@@ -36,11 +36,15 @@ def dashed(name):
 
 @bot.command()
 async def enableDebug(ctx):
+     global debug 
      debug = True
+     print('Debug enabled')
 
 @bot.command()
 async def disableDebug(ctx):
+     global debug
      debug = False
+     print('Debug disabled')
 
 @bot.command()
 async def wheel(ctx):
