@@ -10,8 +10,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 DEBUG = True
 PLACEHOLDER_CHAR = ':question:'
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix="!", intents=intents)
