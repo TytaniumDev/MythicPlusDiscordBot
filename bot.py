@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DEBUG = True
 PLACEHOLDER_CHAR = ':question:'
 
 intents = discord.Intents.default()
@@ -16,7 +15,7 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix="!", intents=intents)
-
+debug = False
 
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
@@ -36,6 +35,14 @@ def dashed(name):
      return '?' * len(name)
 
 @bot.command()
+async def enableDebug(ctx):
+     debug = True
+
+@bot.command()
+async def disableDebug(ctx):
+     debug = False
+
+@bot.command()
 async def wheel(ctx):
     # Set up a list for each role
     tanks = []
@@ -46,7 +53,7 @@ async def wheel(ctx):
     channel = ctx.channel
 
     # Grab all members in the channel the message was sent in
-    if DEBUG:
+    if debug:
         # Testing Code
         testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
         members = [member for member in testChannel.members if member.bot == False]
@@ -69,7 +76,7 @@ async def wheel(ctx):
     
 
     # Debugging help
-    if(DEBUG):
+    if(debug):
         print(f'In {ctx.channel} the members are {members}')
         print(f'Member roles are {[member.roles for member in members]}')
 
