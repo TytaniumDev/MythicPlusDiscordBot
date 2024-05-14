@@ -33,12 +33,57 @@ async def showShortTyping(channel):
 def dashed(name):
      return '?' * len(name)
 
+# !testlink
+# Runs the !link function, but harcdoded to use testing data in my personal
+# discord server.
+@bot.command()
+async def testlink(ctx):
+    await coreLink(ctx, debug = True)
 
+# !link
+# Just gives a link to the spinner wheel website with everyone's names
+# entered that are in the channel where the command was run.
+@bot.command()
+async def link(ctx):
+    await coreLink(ctx)
 
+# Sends an embed message with a pickerwheel.com link to the channel where the
+# command was sent. The pickerwheel link includes all of the members in the 
+# channel where the command was typed.
+async def coreLink(ctx, debug: bool = None):
+    debug = False if debug is None else debug
+    
+    # Save a reference to the channel the command was typed in
+    channel = ctx.channel
+
+     # Get the members of the channel we want to use to fill the roles
+    if debug:
+        # Testing Code
+        testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
+        members = [WoWName(member) for member in testChannel.members if member.bot == False]
+    else:
+        members = [WoWName(member) for member in channel.members if member.bot == False]
+
+    
+    embed = discord.Embed()
+    embed.title = "Link to PickerWheel"
+    embed.description = f"Made you a link with:\n{', '.join(members)}"
+    embed.url = f"https://pickerwheel.com/?choices={','.join(members)}"
+    embedMessage = await ctx.send(embed = embed)
+
+# !test
+# Runs the !wheel function, but hardcoded to use testing data in my personal
+# discord server.
 @bot.command()
 async def test(ctx):
     await coreWheel(ctx, debug = True)
 
+# !wheel
+# Generates a series of embed messages that shows groups of players split
+# into 5 person teams based on their assigned roles in discord.
+# 
+# The available roles are:
+# Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
 async def wheel(ctx):
     await coreWheel(ctx = ctx)
