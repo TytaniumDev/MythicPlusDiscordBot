@@ -98,6 +98,10 @@ def fillRoleLists(members, tanks, healers, dps, offtanks, offhealers, offdps):
             healers.append(WoWName(member))
         elif 'DPS' in roles:
             dps.append(WoWName(member))
+        elif 'Ranged' in roles:
+            dps.append(WoWName(member))
+        elif 'Melee' in roles:
+            dps.append(WoWName(member))
 
         # Add each member to the offspec role buckets they belong to
         roles = [role.name for role in member.roles]
