@@ -2,6 +2,7 @@ import discord
 import os
 import random
 import asyncio
+import urllib.parse
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -20,7 +21,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # they don't have a nickname set.
 # This corresponds to the member's WoW in game name, usually. 
 def WoWName(member):
-    return member.nick if member.nick != None else member.global_name
+    print(f"WoWName - Member: {member}\nNick: {member.nick}\nGlobal: {member.global_name}")
+    rawName =  member.nick if member.nick != None else member.global_name if member.global_name != None else str(member)
+    return rawName.replace('.', '')
 
 async def showLongTyping(channel):
      async with channel.typing():
@@ -64,11 +67,15 @@ async def coreLink(ctx, debug: bool = None):
     else:
         members = [WoWName(member) for member in channel.members if member.bot == False]
 
-    
+    print(f"Members are {members}")
+    queryString = urllib.parse.quote_plus(f"{','.join(members)}")
+    print(f"queryString is:\n{queryString}") 
+    url = f"https://pickerwheel.com/?choices={queryString}"
+    print(f"URL is:\n{url}")
     embed = discord.Embed()
     embed.title = "Link to PickerWheel"
     embed.description = f"Made you a link with:\n{', '.join(members)}"
-    embed.url = f"https://pickerwheel.com/?choices={','.join(members)}"
+    embed.url = url
     embedMessage = await ctx.send(embed = embed)
 
 # !test
