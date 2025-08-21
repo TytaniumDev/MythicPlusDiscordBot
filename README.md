@@ -1,2 +1,8 @@
 # MythicPlusDiscordBot
-Handles Mythic+ groups using pickerwheel.com using everyone in the channel.
+Handles Mythic+ groups for everyone in our guild.
+
+To run on pibot.local:
+```
+ssh tytanium@pibot.local
+./launcher.sh
+```
