@@ -1,3 +1,4 @@
+from enum import member
 import discord
 import os
 import random
@@ -15,7 +16,7 @@ intents.message_content = True
 intents.members = True
 
 client = discord.Client(intents=intents)
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix=["!", "/"], intents=intents)
 
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
@@ -36,48 +37,6 @@ async def showShortTyping(channel):
 def dashed(name):
      return '?' * len(name)
 
-# !testlink
-# Runs the !link function, but harcdoded to use testing data in my personal
-# discord server.
-@bot.command()
-async def testlink(ctx):
-    await coreLink(ctx, debug = True)
-
-# !link
-# Just gives a link to the spinner wheel website with everyone's names
-# entered that are in the channel where the command was run.
-@bot.command()
-async def link(ctx):
-    await coreLink(ctx)
-
-# Sends an embed message with a pickerwheel.com link to the channel where the
-# command was sent. The pickerwheel link includes all of the members in the 
-# channel where the command was typed.
-async def coreLink(ctx, debug: bool = None):
-    debug = False if debug is None else debug
-    
-    # Save a reference to the channel the command was typed in
-    channel = ctx.channel
-
-     # Get the members of the channel we want to use to fill the roles
-    if debug:
-        # Testing Code
-        testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
-        members = [WoWName(member) for member in testChannel.members if member.bot == False]
-    else:
-        members = [WoWName(member) for member in channel.members if member.bot == False]
-
-    print(f"Members are {members}")
-    queryString = urllib.parse.quote_plus(f"{','.join(members)}")
-    print(f"queryString is:\n{queryString}") 
-    url = f"https://pickerwheel.com/?choices={queryString}"
-    print(f"URL is:\n{url}")
-    embed = discord.Embed()
-    embed.title = "Link to PickerWheel"
-    embed.description = f"Made you a link with:\n{', '.join(members)}"
-    embed.url = url
-    embedMessage = await ctx.send(embed = embed)
-
 # !test
 # Runs the !wheel function, but hardcoded to use testing data in my personal
 # discord server.
@@ -95,30 +54,74 @@ async def test(ctx):
 async def wheel(ctx):
     await coreWheel(ctx = ctx)
 
-def fillRoleLists(members, tanks, healers, dps, offtanks, offhealers, offdps):
-    for member in members:
-        # Add each member to one of the primary role buckets, in Tank > Healer > DPS priority
-        roles = [role.name for role in member.roles]
-        if 'Tank' in roles:
-            tanks.append(WoWName(member))
-        elif 'Healer' in roles:
-            healers.append(WoWName(member))
-        elif 'DPS' in roles:
-            dps.append(WoWName(member))
-        elif 'Ranged' in roles:
-            dps.append(WoWName(member))
-        elif 'Melee' in roles:
-            dps.append(WoWName(member))
+all_players = []
 
-        # Add each member to the offspec role buckets they belong to
+class WoWPlayer:
+    # Main roles
+    tankMain = False
+    healerMain = False
+    dpsMain = False
+
+    # Offspecs
+    offtank = False
+    offhealer = False
+    offdps = False
+
+    # Types of DPS
+    ranged = False
+    melee = False
+
+    # Utility
+    hasBrez = False
+    hasLust = False
+
+    def __init__(self, name, roles):
+        self.name = name
+        self.roles = roles
+
+        # Set the main role booleans based on the given roles.
+        if 'Tank' in roles:
+            self.tankMain = True
+        if 'Healer' in roles:
+            self.healerMain = True
+        if 'DPS' in roles:
+            self.dpsMain = True
+        if 'Ranged' in roles:
+            self.dpsMain = True
+            self.ranged = True
+        if 'Melee' in roles:
+            self.dpsMain = True
+            self.melee = True
+
+        #  Set the offspec role booleans based on the given roles.
         roles = [role.name for role in member.roles]
         if 'Tank Offspec' in roles:
-            offtanks.append(WoWName(member))
+            self.offtank = True
         if 'Healer Offspec' in roles:
-            offhealers.append(WoWName(member))
+            self.offhealer = True
         if 'DPS Offspec' in roles:
-            offdps.append(WoWName(member))
+            self.offdps = True
 
+        # Add party utilities
+        if 'Brez' in roles:
+            self.hasBrez = True
+        if 'Lust' in roles:
+            self.hasLust = True
+
+    def __str__(self):
+        return f'WoWPlayer(name={self.name}, roles={self.roles})'
+    
+    def __eq__(self, other):
+        if not isinstance(other, WoWPlayer):
+            return NotImplemented
+        return self.name == other.name
+
+# Gathers the player info from the discord and fills out the all_players list.
+def fillPlayerList(members):
+    for member in members:
+        player = WoWPlayer(name=WoWName(member), roles=[role.name for role in member.roles])
+        all_players.append(player)
+        
 
 async def coreWheel(ctx, debug: bool = None):
     debug = False if debug is None else debug
@@ -144,7 +147,7 @@ async def coreWheel(ctx, debug: bool = None):
     else:
         members = [member for member in channel.members if member.bot == False]
 
-    fillRoleLists(members, tanks, healers, dps, offtanks, offhealers, offdps)
+    fillPlayerList(members)
 
     print(f'Tanks: {tanks}')
     print(f'Healers: {healers}')
