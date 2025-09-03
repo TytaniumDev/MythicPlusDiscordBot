@@ -69,7 +69,7 @@ def getPlayerList(members) -> list[WoWPlayer]:
     players = []
     for member in members:
         if(len(member.roles) > 1):
-            print(f'Creating WoWPlayer for {member.name}, roles are {[role.name for role in member.roles]}')
+            print(f'Creating WoWPlayer for {WoWName(member)}, roles are {[role.name for role in member.roles]}')
             player = WoWPlayer.create(name=WoWName(member), roles=[role.name for role in member.roles])
             players.append(player)
     return players
