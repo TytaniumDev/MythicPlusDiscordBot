@@ -5,6 +5,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from models import WoWPlayer
 from group_creator import create_mythic_plus_groups
+from oldbot import oldCoreWheel
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -52,6 +53,16 @@ async def test(ctx):
 @bot.command()
 async def wheel(ctx):
     await coreWheel(ctx = ctx)
+
+# !oldwheel
+# Generates a series of embed messages that shows groups of players split
+# into 5 person teams based on their assigned roles in discord.
+# 
+# The available roles are:
+# Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
+@bot.command()
+async def oldwheel(ctx):
+    await oldCoreWheel(ctx = ctx)
 
 # Gathers the player info from the discord and returns a list of WoWPlayer objects.
 def getPlayerList(members) -> list[WoWPlayer]:
