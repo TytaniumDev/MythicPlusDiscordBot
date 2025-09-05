@@ -11,6 +11,7 @@ def log(s):
 
 
 def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoWGroup]:
+    global DEBUG
     DEBUG = debug
 
     # Create a copy of the players list and track used players

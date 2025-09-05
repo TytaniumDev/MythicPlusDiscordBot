@@ -4,7 +4,7 @@ import asyncio
 from discord.ext import commands
 from dotenv import load_dotenv
 from models import WoWPlayer
-from group_creator import create_mythic_plus_groups
+from parallel_group_creator import create_mythic_plus_groups
 from oldbot import oldCoreWheel
 
 load_dotenv()
@@ -18,7 +18,10 @@ intents.members = True
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix=["!", "/"], intents=intents)
 
+debug = False
+
 lastPlayerList = []
+lastGroups = []
 
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
@@ -29,11 +32,13 @@ def WoWName(member, debug: bool = None):
     return rawName.replace('.', '')
 
 async def showLongTyping(channel):
-     async with channel.typing():
+    if not debug:
+        async with channel.typing():
             await asyncio.sleep(2)
 
 async def showShortTyping(channel):
-     async with channel.typing():
+    if not debug:
+        async with channel.typing():
             await asyncio.sleep(1)
 
 def dashed(name):
@@ -44,7 +49,7 @@ def dashed(name):
 # discord server.
 @bot.command()
 async def test(ctx):
-    await coreWheel(ctx, debug = True)
+    await coreWheel(ctx, debugValue=True)
 
 # !wheel
 # Generates a series of embed messages that shows groups of players split
@@ -54,7 +59,7 @@ async def test(ctx):
 # Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
 async def wheel(ctx):
-    await coreWheel(ctx = ctx)
+    await coreWheel(ctx=ctx, debugValue=False)
 
 # !oldwheel
 # Generates a series of embed messages that shows groups of players split
@@ -91,10 +96,16 @@ async def printPlayerList(ctx):
             ", ".join(player.toTestString() for player in lastPlayerList)
         )
     )
+    await channel.send(
+        "Groups:\n\n{}".format(
+            "\n\n".join(group.toTestString() for group in lastGroups)
+        )
+    )
 
 
-async def coreWheel(ctx, debug: bool = None):
-    debug = False if debug is None else debug
+async def coreWheel(ctx, debugValue: bool = None):
+    global debug
+    debug = False if debugValue is None else debugValue
     channel = ctx.channel
 
     # Get the members of the channel we want to use to fill the roles
@@ -109,7 +120,10 @@ async def coreWheel(ctx, debug: bool = None):
     global lastPlayerList
     lastPlayerList.clear()
     lastPlayerList = players
-    groups = create_mythic_plus_groups(players)
+    global lastGroups
+    lastGroups.clear()
+    groups = create_mythic_plus_groups(players, debug=debug)
+    lastGroups = groups
 
     for i, group in enumerate(groups, 1):
         # Print out the group in an embed to keep it tidy
@@ -119,33 +133,47 @@ async def coreWheel(ctx, debug: bool = None):
         # Get player names or placeholders
         tank_name = group.tank.name if group.tank else PLACEHOLDER_CHAR
         healer_name = group.healer.name if group.healer else PLACEHOLDER_CHAR
-        dps1_name = group.dps1.name if group.dps1 else PLACEHOLDER_CHAR
-        dps2_name = group.dps2.name if group.dps2 else PLACEHOLDER_CHAR
-        dps3_name = group.dps3.name if group.dps3 else PLACEHOLDER_CHAR
+        dps1_name = group.dps[0].name if len(group.dps) > 0 else PLACEHOLDER_CHAR
+        dps2_name = group.dps[1].name if len(group.dps) > 1 else PLACEHOLDER_CHAR
+        dps3_name = group.dps[2].name if len(group.dps) > 2 else PLACEHOLDER_CHAR
 
         # Find players with utilities
-        brez_player = next((p.name for p in [group.tank, group.healer, group.dps1, group.dps2, group.dps3] if p and p.hasBrez), "None")
-        lust_player = next((p.name for p in [group.tank, group.healer, group.dps1, group.dps2, group.dps3] if p and p.hasLust), "None")
+        brez_player = next(
+            (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasBrez),
+            "None",
+        )
+        lust_player = next(
+            (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasLust),
+            "None",
+        )
 
-        embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
-             .add_field(name='Healer', value=f'{dashed(healer_name)}')\
-             .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
-             .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
-             .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
+        if debug:
+            embed.add_field(name='Tank', value=f'{tank_name}')\
+                .add_field(name='Healer', value=f'{healer_name}')\
+                .add_field(name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')\
+                .add_field(name='Battle Res', value=f'{brez_player}', inline=True)\
+            .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
+            embedMessage = await ctx.send(embed = embed)
+        else:
+            embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
+                .add_field(name='Healer', value=f'{dashed(healer_name)}')\
+                .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
+                .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
+                .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
 
-        embedMessage = await ctx.send(embed = embed)
-        await showShortTyping(channel)
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
-        await showShortTyping(channel)
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
-        await showShortTyping(channel)
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
-        await showShortTyping(channel)
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
-        await showShortTyping(channel)
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
-        embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
+            embedMessage = await ctx.send(embed = embed)
+            await showShortTyping(channel)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
+            await showShortTyping(channel)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
+            await showShortTyping(channel)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
+            await showShortTyping(channel)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
+            await showShortTyping(channel)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
 
 
 bot.run(BOT_TOKEN)

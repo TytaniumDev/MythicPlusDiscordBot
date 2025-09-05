@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 @dataclass(frozen=True, eq=False)
@@ -88,32 +88,47 @@ class WoWPlayer:
         if self.hasLust:
             roles.append("Lust")
         return f'WoWPlayer.create("{self.name}", {roles})'
+    
+    def toUtilitiesString(self) -> str:
+        utilities = []
+        if self.hasBrez:
+            utilities.append("Brez")
+        if self.hasLust:
+            utilities.append("Lust")
+        if utilities:
+            return f'{self.name}({", ".join(utilities)})'
+        return self.name
 
 
 @dataclass
 class WoWGroup:
     tank: WoWPlayer = None
     healer: WoWPlayer = None
-    dps1: WoWPlayer = None
-    dps2: WoWPlayer = None
-    dps3: WoWPlayer = None
+    dps: List[WoWPlayer] = field(default_factory=list)
 
     @property
     def has_brez(self):
-        return any(p and p.hasBrez for p in [self.tank, self.healer, self.dps1, self.dps2, self.dps3])
-    
+        return any(p and p.hasBrez for p in [self.tank, self.healer] + self.dps)
+
     @property
     def has_lust(self):
-        return any(p and p.hasLust for p in [self.tank, self.healer, self.dps1, self.dps2, self.dps3])
-    
+        return any(p and p.hasLust for p in [self.tank, self.healer] + self.dps)
+
     @property
     def has_ranged(self):
-        return any(p and p.ranged for p in [self.tank, self.healer, self.dps1, self.dps2, self.dps3])
-    
+        return any(p and p.ranged for p in [self.tank, self.healer] + self.dps)
+
     @property
     def is_complete(self):
-        return all(p is not None for p in [self.tank, self.healer, self.dps1, self.dps2, self.dps3])
-    
+        return all(p is not None for p in [self.tank, self.healer] + self.dps)
+
     @property
     def size(self):
-        return sum(1 for p in [self.tank, self.healer, self.dps1, self.dps2, self.dps3] if p is not None)
+        return sum(1 for p in [self.tank, self.healer] + self.dps if p is not None)
+    
+    def toTestString(self) -> str:
+        tank_str = f'"{self.tank.toUtilitiesString()}"' if self.tank else 'None'
+        healer_str = f'"{self.healer.toUtilitiesString()}"' if self.healer else 'None'
+        dps_str = ', '.join(f'"{p.toUtilitiesString()}"' for p in self.dps) if self.dps else ''
+        return f'WoWGroup(Tank={tank_str}, Healer={healer_str}, DPS={dps_str})'
+    

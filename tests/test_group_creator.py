@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models import WoWPlayer
-from another_group_creator import create_mythic_plus_groups
+from parallel_group_creator import create_mythic_plus_groups
 from tests.prebuilt_classes import *
 
 
@@ -206,6 +206,29 @@ class TestGroupCreator(unittest.TestCase):
         for group in groups:
             self.assertTrue(group.has_ranged, f"group {group} should have a ranged DPS")
 
+    def test_weird_remainder_groups(self):
+        """Test that it can handle lots of remainders"""
+        # 13 players, should have 2 complete groups and one with 3 players
+        players = [
+            TankWarrior("Tank1"),
+            TankWarrior("Tank2"),
+            TankWarrior("Tank3"),
+            TankWarrior("Tank4"),
+            HealerDruid("Healer1"),
+            Mage("Mage1"),
+            Mage("Mage2"),
+            Warrior("Warrior1"),
+            Warrior("Warrior3"),
+            Warrior("Warrior5"),
+            Warrior("Warrior2"),
+            FeralDruid("Feral1", offhealer=True),
+            FeralDruid("Feral2"),
+        ]
+        groups = create_mythic_plus_groups(players)
+
+        self.assertEqual(len(groups), 4, 'Should form 4 groups')
+        self.assertEqual(groups[2].size, 1, 'Second to last group should have 1 player')
+        self.assertEqual(groups[3].size, 2, 'Last group should have 2 players')
 
 if __name__ == "__main__":
     unittest.main()
