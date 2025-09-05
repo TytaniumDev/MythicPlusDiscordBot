@@ -18,9 +18,11 @@ intents.members = True
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix=["!", "/"], intents=intents)
 
+lastPlayerList = []
+
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
-# This corresponds to the member's WoW in game name, usually. 
+# This corresponds to the member's WoW in game name, usually.
 def WoWName(member, debug: bool = None):
     if debug: print(f"WoWName - Member: {member}\nNick: {member.nick}\nGlobal: {member.global_name}")
     rawName =  member.nick if member.nick != None else member.global_name if member.global_name != None else str(member)
@@ -47,7 +49,7 @@ async def test(ctx):
 # !wheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
-# 
+#
 # The available roles are:
 # Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
@@ -57,12 +59,18 @@ async def wheel(ctx):
 # !oldwheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
-# 
+#
 # The available roles are:
 # Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
 async def oldwheel(ctx):
     await oldCoreWheel(ctx = ctx)
+
+
+@bot.command()
+async def testcase(ctx):
+    await printPlayerList(ctx=ctx)
+
 
 # Gathers the player info from the discord and returns a list of WoWPlayer objects.
 def getPlayerList(members) -> list[WoWPlayer]:
@@ -73,6 +81,16 @@ def getPlayerList(members) -> list[WoWPlayer]:
             player = WoWPlayer.create(name=WoWName(member), roles=[role.name for role in member.roles])
             players.append(player)
     return players
+
+
+async def printPlayerList(ctx):
+    channel = ctx.channel
+    global lastPlayerList
+    await channel.send(
+        "players = [{}]".format(
+            ", ".join(player.toTestString() for player in lastPlayerList)
+        )
+    )
 
 
 async def coreWheel(ctx, debug: bool = None):
@@ -88,13 +106,16 @@ async def coreWheel(ctx, debug: bool = None):
         members = [member for member in channel.members if member.bot == False]
 
     players = getPlayerList(members)
+    global lastPlayerList
+    lastPlayerList.clear()
+    lastPlayerList = players
     groups = create_mythic_plus_groups(players)
-    
+
     for i, group in enumerate(groups, 1):
         # Print out the group in an embed to keep it tidy
         embed = discord.Embed()
         embed.title = f"Group {i}"
-        
+
         # Get player names or placeholders
         tank_name = group.tank.name if group.tank else PLACEHOLDER_CHAR
         healer_name = group.healer.name if group.healer else PLACEHOLDER_CHAR
@@ -111,7 +132,7 @@ async def coreWheel(ctx, debug: bool = None):
              .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
              .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
              .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
-        
+
         embedMessage = await ctx.send(embed = embed)
         await showShortTyping(channel)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))

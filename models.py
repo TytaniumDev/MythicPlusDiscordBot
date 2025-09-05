@@ -4,7 +4,6 @@ from typing import List
 @dataclass(frozen=True, eq=False)
 class WoWPlayer:
     name: str
-    
     # Main roles
     tankMain: bool = False
     healerMain: bool = False
@@ -22,18 +21,18 @@ class WoWPlayer:
     # Utility
     hasBrez: bool = False
     hasLust: bool = False
-    
+
     def __hash__(self):
         return hash(self.name)
-    
+
     def __eq__(self, other):
         if not isinstance(other, WoWPlayer):
             return NotImplemented
         return self.name == other.name
-    
+
     def __str__(self):
         return self.name
-    
+
     def __repr__(self):
         return self.__str__()
 
@@ -50,7 +49,7 @@ class WoWPlayer:
         melee = 'Melee' in roles
         hasBrez = 'Brez' in roles
         hasLust = 'Lust' in roles
-        
+
         # Create the instance with all flags set
         return cls(
             name=name,
@@ -63,8 +62,33 @@ class WoWPlayer:
             ranged=ranged,
             melee=melee,
             hasBrez=hasBrez,
-            hasLust=hasLust
+            hasLust=hasLust,
         )
+
+    def toTestString(self) -> str:
+        roles = []
+        if self.tankMain:
+            roles.append("Tank")
+        if self.healerMain:
+            roles.append("Healer")
+        if self.dpsMain:
+            roles.append("DPS")
+        if self.offtank:
+            roles.append("Tank Offspec")
+        if self.offhealer:
+            roles.append("Healer Offspec")
+        if self.offdps:
+            roles.append("DPS Offspec")
+        if self.ranged:
+            roles.append("Ranged")
+        if self.melee:
+            roles.append("Melee")
+        if self.hasBrez:
+            roles.append("Brez")
+        if self.hasLust:
+            roles.append("Lust")
+        return f'WoWPlayer.create("{self.name}", {roles})'
+
 
 @dataclass
 class WoWGroup:
