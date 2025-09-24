@@ -6,11 +6,17 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models import WoWPlayer
-from parallel_group_creator import create_mythic_plus_groups
+from parallel_group_creator import clear, create_mythic_plus_groups
 from tests.prebuilt_classes import *
 
 
 class TestGroupCreator(unittest.TestCase):
+    def setUp(self):
+        clear()
+
+    def tearDown(self):
+        clear()
+
     def setUp(self):
         # Real examples
         self.cynoc = WoWPlayer.create("Cynoc", ["Tank", "DPS Offspec"])
@@ -229,6 +235,41 @@ class TestGroupCreator(unittest.TestCase):
         self.assertEqual(len(groups), 4, 'Should form 4 groups')
         self.assertEqual(groups[2].size, 1, 'Second to last group should have 1 player')
         self.assertEqual(groups[3].size, 2, 'Last group should have 2 players')
+
+    def test_not_in_same_group_as_last_time(self):
+        """Test that players are not put in the same group as last time if possible"""
+        players = [
+            TankWarrior("Tank1"),
+            TankDeathKnight("Brez1"),
+            HealerDruid("Brez2"),
+            HealerPriest("Healer2"),
+            Mage("Lust1"),
+            Mage("Lust2"),
+            Warrior("Warrior1"),
+            Warrior("Warrior2"),
+            FeralDruid("Feral1"),
+            FeralDruid("Feral2"),
+        ]
+        groups = create_mythic_plus_groups(players)
+        self.assertEqual(len(groups), 2)
+
+        # Save the groups as lastGroups
+        global lastGroups
+        lastGroups = groups
+
+        # Create new groups with the same players
+        new_groups = create_mythic_plus_groups(players)
+
+        # Verify that no players are in the same group as last time
+        for old_group, new_group in zip(lastGroups, new_groups):
+            old_players = set(old_group.players)
+            new_players = set(new_group.players)
+            intersection = old_players.intersection(new_players)
+            self.assertEqual(
+                len(intersection),
+                0,
+                f"Players {intersection} are in the same group as last time",
+            )
 
 if __name__ == "__main__":
     unittest.main()

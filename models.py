@@ -64,6 +64,9 @@ class WoWPlayer:
             hasBrez=hasBrez,
             hasLust=hasLust,
         )
+    
+    def hasRoles(self) -> bool:
+        return any([self.tankMain, self.healerMain, self.dpsMain, self.offtank, self.offhealer, self.offdps])
 
     def toTestString(self) -> str:
         roles = []
@@ -125,6 +128,10 @@ class WoWGroup:
     @property
     def size(self):
         return sum(1 for p in [self.tank, self.healer] + self.dps if p is not None)
+    
+    @property
+    def players(self):
+        return [p for p in [self.tank, self.healer] + self.dps if p is not None]
     
     def toTestString(self) -> str:
         tank_str = f'"{self.tank.toUtilitiesString()}"' if self.tank else 'None'
