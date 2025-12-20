@@ -89,7 +89,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
 
     def get_group_utilities(group: WoWGroup) -> tuple[bool, bool]:
         # Returns a tuple of (has_brez, has_lust) for the given group
-        members = [p for p in [group.tank, group.healer, group.dps1, group.dps2, group.dps3] if p is not None]
+        members = [p for p in [group.tank, group.healer] + group.dps if p is not None]
         has_brez = any(p.hasBrez for p in members)
         has_lust = any(p.hasLust for p in members)
         return has_brez, has_lust
@@ -185,11 +185,12 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
 
         # Assign DPS
         remaining_dps = [p for p in available_dps if p not in used_players]
-        for dps_slot in ['dps1', 'dps2', 'dps3']:
+        for _ in range(3):  # Assign 3 DPS players
             dps = selectDPS(remaining_dps, current_group, max_possible_groups)
             if dps:
-                setattr(current_group, dps_slot, dps)
+                current_group.dps.append(dps)
                 removePlayer(dps)
+                remaining_dps = [p for p in remaining_dps if p != dps]
 
         groups.append(current_group)
         max_possible_groups -= 1
@@ -271,11 +272,11 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
 
         # Try to fill DPS slots
         available_dps = [p for p in remaining if p not in used]
-        for i, slot in enumerate(['dps1', 'dps2', 'dps3']):
+        for i in range(3):  # Fill up to 3 DPS slots
             if available_dps:
                 dps = find_best_dps(available_dps, group, i)
                 if dps:
-                    setattr(group, slot, dps)
+                    group.dps.append(dps)
                     used.add(dps)
                     available_dps.remove(dps)
 
@@ -292,7 +293,8 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
                 remaining_brez = [p for p in remaining if p not in used and p.hasBrez]
                 if remaining_brez:
                     # Try to swap a non-utility player with a brez player
-                    for member in [group.tank, group.healer, group.dps1, group.dps2, group.dps3]:
+                    all_members = [group.tank, group.healer] + group.dps
+                    for member in all_members:
                         if member and not member.hasBrez:
                             for brez_player in remaining_brez:
                                 if (member.tankMain and brez_player.tankMain) or \
@@ -303,12 +305,10 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
                                         group.tank = brez_player
                                     elif member == group.healer:
                                         group.healer = brez_player
-                                    elif member == group.dps1:
-                                        group.dps1 = brez_player
-                                    elif member == group.dps2:
-                                        group.dps2 = brez_player
-                                    elif member == group.dps3:
-                                        group.dps3 = brez_player
+                                    elif member in group.dps:
+                                        # Replace the member in the dps list
+                                        idx = group.dps.index(member)
+                                        group.dps[idx] = brez_player
                                     break
             return group
 
@@ -349,7 +349,8 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
         # If we have a group, add it
         if new_group:
             # Remove used players
-            for player in [new_group.tank, new_group.healer, new_group.dps1, new_group.dps2, new_group.dps3]:
+            all_players = [new_group.tank, new_group.healer] + new_group.dps
+            for player in all_players:
                 if player:
                     removePlayer(player)
             groups.append(new_group)
@@ -368,7 +369,8 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=False) -> List[WoW
                 if len(remaining_players) > 0:
                     new_group = try_complete_group(remaining_players, require_complete=False, try_incomplete=True)
                     if new_group:
-                        for player in [new_group.tank, new_group.healer, new_group.dps1, new_group.dps2, new_group.dps3]:
+                        all_players = [new_group.tank, new_group.healer] + new_group.dps
+                        for player in all_players:
                             if player:
                                 removePlayer(player)
                         groups.append(new_group)

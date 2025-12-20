@@ -12,12 +12,16 @@ def WoWName(member):
     rawName =  member.nick if member.nick != None else member.global_name if member.global_name != None else str(member)
     return rawName.replace('.', '')
 
-async def showLongTyping(channel):
-     async with channel.typing():
+async def showLongTyping(channel, debug_mode: bool = False):
+    # Skip sleeps in debug mode for faster testing
+    if not debug_mode:
+        async with channel.typing():
             await asyncio.sleep(2)
 
-async def showShortTyping(channel):
-     async with channel.typing():
+async def showShortTyping(channel, debug_mode: bool = False):
+    # Skip sleeps in debug mode for faster testing
+    if not debug_mode:
+        async with channel.typing():
             await asyncio.sleep(1)
 
 def dashed(name):
@@ -190,7 +194,7 @@ async def oldCoreWheel(ctx, debug: bool = None):
             recalculateExtras()
         print(f'\nAfter second pass round {x}, we have {len(tanks)} tanks, {len(healers)} healers, {len(dps)} dps\n')
 
-    await printGroups(ctx, channel, tanks, healers, dps)
+    await printGroups(ctx, channel, tanks, healers, dps, debug=debug)
 
 
 # Pulls one user from one group and puts them in another, as long as they're 
@@ -225,7 +229,7 @@ def pullOffspecFromGroup(numberToPull: int, fromGroup: list, offspecGroup: list,
 # Does not have any fancy logic to arrange groups, just does the Discord embed
 # sending. The tanks, healers, and dps should be the exact roles each of those
 # users will fill.
-async def printGroups(ctx, channel, tanks, healers, dps):
+async def printGroups(ctx, channel, tanks, healers, dps, debug: bool = False):
     # We want these groups to be roughly random, so we'll:
     # 1) Shuffle all of the primary role lists
     # 2) Pop 1 tank, 1 healer, and 3 dps from the respective lists
@@ -240,7 +244,7 @@ async def printGroups(ctx, channel, tanks, healers, dps):
     groupNumber = 1
     while tanks or healers or dps:
         # Show typing indicator for *SUSPENSE*
-        await showLongTyping(channel)
+        await showLongTyping(channel, debug_mode=debug)
 
         # Step 2: Assemble the group
         tank = tanks.pop() if tanks else PLACEHOLDER_CHAR
@@ -254,15 +258,15 @@ async def printGroups(ctx, channel, tanks, healers, dps):
         embed.title = f"Group {groupNumber}"
         embed.add_field(name='Tank', value=f'{dashed(tank)}').add_field(name='Healer', value=f'{dashed(healer)}').add_field(name='DPS', value=f'{dashed(dps1)}, {dashed(dps2)}, {dashed(dps3)}')
         embedMessage = await ctx.send(embed = embed)
-        await showShortTyping(channel)
+        await showShortTyping(channel, debug_mode=debug)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank}'))
-        await showShortTyping(channel)
+        await showShortTyping(channel, debug_mode=debug)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer}'))
-        await showShortTyping(channel)
+        await showShortTyping(channel, debug_mode=debug)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1}, {dashed(dps2)}, {dashed(dps3)}'))
-        await showShortTyping(channel)
+        await showShortTyping(channel, debug_mode=debug)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1}, {dps2}, {dashed(dps3)}'))
-        await showShortTyping(channel)
+        await showShortTyping(channel, debug_mode=debug)
         embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS',value=f'{dps1}, {dps2}, {dps3}'))
 
         # Step 4: Increment the group number and loop again
