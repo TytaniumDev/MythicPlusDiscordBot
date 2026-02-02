@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: mythic-plus-bot
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    restart: unless-stopped
