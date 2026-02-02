@@ -74,18 +74,28 @@ async def test(ctx):
 # !wheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
-#
-# The available roles are:
-# Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
 async def wheel(ctx):
+    """Generates groups with the existing animation style."""
     try:
-        await coreWheel(ctx=ctx, debugValue=False)
+        await coreWheel(ctx=ctx, debugValue=False, use_new_animation=False)
     except discord.HTTPException as e:
         await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
     except Exception as e:
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in wheel command: {e}")
+
+# !newwheel
+@bot.command()
+async def newwheel(ctx):
+    """Generates groups with the NEW rolling reveal animation."""
+    try:
+        await coreWheel(ctx=ctx, debugValue=False, use_new_animation=True)
+    except discord.HTTPException as e:
+        await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
+    except Exception as e:
+        await ctx.send("❌ An unexpected error occurred. Please try again later.")
+        print(f"Error in newwheel command: {e}")
 
 @bot.command()
 async def testcase(ctx):
@@ -241,7 +251,7 @@ async def roll_reveal(ctx, message, embed, field_index, field_name, final_value,
     embed.set_field_at(index=field_index, name=field_name, value=final_value)
     return await message.edit(embed=embed)
 
-async def _execute_coreWheel(ctx, channel, guild_id, debug):
+async def _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation=False):
     """Internal function that performs the actual group creation (called within lock)."""
     # Get the members of the channel we want to use to fill the roles
     if debug:
@@ -311,13 +321,23 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
 
             embedMessage = await ctx.send(embed=embed)
 
-            # Reveal Tank
-            embedMessage = await roll_reveal(ctx, embedMessage, embed, 0, 'Tank', tank_name, members, debug)
-            await asyncio.sleep(0.5)
+            if use_new_animation:
+                # Reveal Tank
+                embedMessage = await roll_reveal(ctx, embedMessage, embed, 0, 'Tank', tank_name, members, debug)
+                await asyncio.sleep(0.5)
 
-            # Reveal Healer
-            embedMessage = await roll_reveal(ctx, embedMessage, embed, 1, 'Healer', healer_name, members, debug)
-            await asyncio.sleep(0.5)
+                # Reveal Healer
+                embedMessage = await roll_reveal(ctx, embedMessage, embed, 1, 'Healer', healer_name, members, debug)
+                await asyncio.sleep(0.5)
+            else:
+                # Old style reveal
+                await showShortTyping(channel, debug_mode=debug)
+                embed.set_field_at(index=0, name='Tank', value=f'{tank_name}')
+                embedMessage = await embedMessage.edit(embed=embed)
+
+                await showShortTyping(channel, debug_mode=debug)
+                embed.set_field_at(index=1, name='Healer', value=f'{healer_name}')
+                embedMessage = await embedMessage.edit(embed=embed)
 
             # Reveal DPS one by one
             # DPS 1
@@ -340,7 +360,7 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
             await embedMessage.edit(embed=embed)
 
 
-async def coreWheel(ctx, debugValue: bool = None):
+async def coreWheel(ctx, debugValue: bool = None, use_new_animation: bool = False):
     global debug
     debug = False if debugValue is None else debugValue
     channel = ctx.channel
@@ -364,7 +384,7 @@ async def coreWheel(ctx, debugValue: bool = None):
     
     # Acquire the lock and execute (only one command per server at a time)
     async with server_lock:
-        await _execute_coreWheel(ctx, channel, guild_id, debug)
+        await _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation)
 
 
 # Global error handler for unhandled command errors
