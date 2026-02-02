@@ -67,28 +67,12 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         if player is None:
             return
         usedPlayers.add(player)
-        if player in available_tanks:
-            available_tanks.remove(player)
-        if player in available_healers:
-            available_healers.remove(player)
-        if player in available_dps:
-            available_dps.remove(player)
-        if player in main_tanks:
-            main_tanks.remove(player)
-        if player in off_tanks:
-            off_tanks.remove(player)
-        if player in main_healers:
-            main_healers.remove(player)
-        if player in off_healers:
-            off_healers.remove(player)
-        if player in main_dps:
-            main_dps.remove(player)
-        if player in off_dps:
-            off_dps.remove(player)
-        if player in brez_players:
-            brez_players.remove(player)
-        if player in lust_players:
-            lust_players.remove(player)
+        # Optimized list removals by grouping them - still O(N) but cleaner
+        for role_list in [available_tanks, available_healers, available_dps,
+                          main_tanks, off_tanks, main_healers, off_healers,
+                          main_dps, off_dps, brez_players, lust_players]:
+            if player in role_list:
+                role_list.remove(player)
 
     def grabNextAvailablePlayer(role_list: List[WoWPlayer], currentGroup: WoWGroup) -> WoWPlayer:
         # Attempt to grab someone that wasn't previously in a group with the current players
@@ -99,7 +83,8 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
                 if player in group.players:
                     for p in group.players:
                         if p in filteredList:
-                            print(f"Removing {p} because they were in a previous group with {player}")
+                            # Avoided teammate from previous run - removing the print statement
+                            # because it's a major performance bottleneck in terminal-heavy environments.
                             filteredList.remove(p)
 
         # Try to grab a player from the filtered list first
