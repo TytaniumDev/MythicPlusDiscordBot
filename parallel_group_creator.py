@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import random
 from models import WoWPlayer, WoWGroup
 
@@ -21,6 +21,18 @@ def clear():
 def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWGroup]:
     global DEBUG, lastGroups
     DEBUG = debug
+    if DEBUG:
+        print(f"DEBUG: lastGroups size at start: {len(lastGroups)}")
+
+    # Pre-compute teammate lookups for O(1) check
+    # Maps player name -> set of former teammates
+    last_groups_dict = {}
+    for group in lastGroups:
+        members = group.players
+        for member in members:
+            if member.name not in last_groups_dict:
+                last_groups_dict[member.name] = set()
+            last_groups_dict[member.name].update(m.name for m in members if m != member)
 
     groups: List[WoWGroup] = []
 
@@ -62,45 +74,55 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     log(f"Players with battle res: {brez_players}")
     log(f"Players with bloodlust: {lust_players}")
 
-    # Pre-compute player-to-group mapping for O(1) group lookup
-    # This optimization addresses the O(N^2) bottleneck in grabNextAvailablePlayer
-    playerToOldGroup = {p.name: group for group in lastGroups for p in group.players}
-
     # Helper functions
     def removePlayer(player: WoWPlayer):
         if player is None:
             return
         usedPlayers.add(player)
-        # Optimized list removals by grouping them
-        for role_list in [available_tanks, available_healers, available_dps,
-                          main_tanks, off_tanks, main_healers, off_healers,
-                          main_dps, off_dps, brez_players, lust_players]:
-            if player in role_list:
-                role_list.remove(player)
 
-    def grabNextAvailablePlayer(role_list: List[WoWPlayer], currentGroup: WoWGroup) -> WoWPlayer:
-        # Attempt to grab someone that wasn't previously in a group with the current players
-        filteredList = list(role_list)
-        for player in currentGroup.players:
-            old_group = playerToOldGroup.get(player.name)
-            if old_group:
-                for p in old_group.players:
-                    if p in filteredList:
-                        if DEBUG:
-                            print(f"Removing {p} because they were in a previous group with {player}")
-                        filteredList.remove(p)
+        # Optimization: use a list of lists to iterate over all relevant lists
+        all_lists = [
+            available_tanks, available_healers, available_dps,
+            main_tanks, off_tanks, main_healers, off_healers,
+            main_dps, off_dps, brez_players, lust_players
+        ]
+        for lst in all_lists:
+            if player in lst:
+                lst.remove(player)
+
+    def grabNextAvailablePlayer(availablePlayers: List[WoWPlayer], role: str, group: WoWGroup, debug=True) -> Optional[WoWPlayer]:
+        # Filter out players that were in the same group as any of the current group members last time
+        teammates = group.players
+        filteredList = []
+
+        # Pre-check: Find all players that are ineligible due to previous grouping
+        ineligible_players = set()
+        for teammate in teammates:
+            if teammate.name in last_groups_dict:
+                ineligible_players.update(last_groups_dict[teammate.name])
+
+        for p in availablePlayers:
+            if p.name in ineligible_players:
+                if debug:
+                    # Find which teammate they were with for the log
+                    teammate_match = next((t.name for t in teammates if t.name in last_groups_dict and p.name in last_groups_dict[t.name]), "someone")
+                    print(f"Removing {p.name} because they were in a previous group with {teammate_match}")
+                continue
+            filteredList.append(p)
 
         # Try to grab a player from the filtered list first
-        if filteredList:
-            player = next((p for p in filteredList if p not in usedPlayers), None)
-            if player is not None:
+        for player in filteredList:
+            if player not in usedPlayers:
                 removePlayer(player)
                 return player
 
         # The fallback if we can't find a player who hasn't played with this group before
-        player = next((p for p in role_list if p not in usedPlayers), None)
-        removePlayer(player)
-        return player
+        for player in availablePlayers:
+            if player not in usedPlayers:
+                removePlayer(player)
+                return player
+
+        return None
 
     #
     # Start forming full groups
@@ -110,7 +132,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Fill out each full group in stages, parallelized
     # Grab a tank
     for currentGroup in groups:
-        currentGroup.tank = grabNextAvailablePlayer(available_tanks, currentGroup)
+        currentGroup.tank = grabNextAvailablePlayer(available_tanks, "tank", currentGroup, debug)
         log(f"Selected tank: {currentGroup.tank}")
         log(f"After tank selection - Have brez: {currentGroup.has_brez}, have lust: {currentGroup.has_lust}")
 
@@ -122,7 +144,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Will grab either a healer or a dps
     for currentGroup in groups:
         if not currentGroup.has_lust:
-            lust_player = grabNextAvailablePlayer((p for p in lust_players if p not in available_tanks), currentGroup)
+            lust_player = grabNextAvailablePlayer([p for p in lust_players if p not in available_tanks], "lust", currentGroup, debug)
 
             if lust_player is not None:
                 if lust_player.healerMain or (offhealersToGrab > 0 and lust_player.offhealer):
@@ -146,10 +168,10 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         if not currentGroup.has_brez:
             if currentGroup.healer is not None:
                 # We have a healer already, so grab a dps brez
-                brez_player = grabNextAvailablePlayer((p for p in brez_players if p not in available_tanks and p not in available_healers), currentGroup)
+                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks and p not in available_healers], "brez", currentGroup, debug)
             else:
                 # We don't have a healer, so grab any brez
-                brez_player = grabNextAvailablePlayer((p for p in brez_players if p not in available_tanks), currentGroup)
+                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks], "brez", currentGroup, debug)
 
             if brez_player is not None:
                 if brez_player.healerMain  or (offhealersToGrab > 0 and brez_player.offhealer):
@@ -170,12 +192,12 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # If we still don't have a healer, grab one now
     for currentGroup in groups:
         if currentGroup.healer is None:
-            mainHealer = grabNextAvailablePlayer((p for p in main_healers), currentGroup)
+            mainHealer = grabNextAvailablePlayer([p for p in main_healers], "healer", currentGroup, debug)
             if mainHealer is not None:
                 currentGroup.healer = mainHealer
                 log(f"{currentGroup.tank.name}'s group - Selected main healer: {currentGroup.healer}")
             else:
-                offHealer = grabNextAvailablePlayer((p for p in available_healers), currentGroup)
+                offHealer = grabNextAvailablePlayer([p for p in available_healers], "healer", currentGroup, debug)
                 if offHealer is not None:
                     currentGroup.healer = offHealer
                     log(f"{currentGroup.tank.name}'s group - Selected offhealer: {currentGroup.healer}")
@@ -192,7 +214,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Try to grab a ranged dps if we don't have one
     for currentGroup in groups:
         if not currentGroup.has_ranged:
-            ranged_dps = grabNextAvailablePlayer((p for p in available_dps if p.ranged), currentGroup)
+            ranged_dps = grabNextAvailablePlayer([p for p in available_dps if p.ranged], "dps", currentGroup, debug)
             if ranged_dps is not None:
                 currentGroup.dps.append(ranged_dps)
                 log(f"{currentGroup.tank.name}'s group - Added ranged DPS: {ranged_dps}")
@@ -200,7 +222,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Fill the rest of the dps slots with anyone left
     for currentGroup in groups:
         while len(currentGroup.dps) < 3:
-            dps_player = grabNextAvailablePlayer(available_dps, currentGroup)
+            dps_player = grabNextAvailablePlayer(available_dps, "dps", currentGroup, debug)
             if dps_player is None:
                 break
             currentGroup.dps.append(dps_player)
@@ -213,7 +235,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         remainderGroup = WoWGroup()
         log(f"remainderGroup start: {remainderGroup}")  
         while len(usedPlayers) < len(players):
-            player = grabNextAvailablePlayer((p for p in players if p not in usedPlayers), remainderGroup)
+            player = grabNextAvailablePlayer([p for p in players if p not in usedPlayers], "remainder", remainderGroup, debug)
             if player is not None:
                 if remainderGroup.tank is None and (player.tankMain or player.offtank):
                     remainderGroup.tank = player
@@ -239,5 +261,6 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         log(f"usedPlayers: {len(usedPlayers)}, total players: {len(players)}")
         groups.append(remainderGroup)
 
+    lastGroups.clear()
     lastGroups = groups
     return groups
