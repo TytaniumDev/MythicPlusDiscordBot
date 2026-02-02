@@ -19,7 +19,7 @@ def clear():
     lastGroups = []
 
 def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWGroup]:
-    global DEBUG
+    global DEBUG, lastGroups
     DEBUG = debug
 
     groups: List[WoWGroup] = []
@@ -62,12 +62,16 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     log(f"Players with battle res: {brez_players}")
     log(f"Players with bloodlust: {lust_players}")
 
+    # Pre-compute player-to-group mapping for O(1) group lookup
+    # This optimization addresses the O(N^2) bottleneck in grabNextAvailablePlayer
+    playerToOldGroup = {p.name: group for group in lastGroups for p in group.players}
+
     # Helper functions
     def removePlayer(player: WoWPlayer):
         if player is None:
             return
         usedPlayers.add(player)
-        # Optimized list removals by grouping them - still O(N) but cleaner
+        # Optimized list removals by grouping them
         for role_list in [available_tanks, available_healers, available_dps,
                           main_tanks, off_tanks, main_healers, off_healers,
                           main_dps, off_dps, brez_players, lust_players]:
@@ -76,16 +80,15 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
 
     def grabNextAvailablePlayer(role_list: List[WoWPlayer], currentGroup: WoWGroup) -> WoWPlayer:
         # Attempt to grab someone that wasn't previously in a group with the current players
-        filteredList: List[WoWPlayer]
         filteredList = list(role_list)
         for player in currentGroup.players:
-            for group in lastGroups:
-                if player in group.players:
-                    for p in group.players:
-                        if p in filteredList:
-                            if DEBUG:
-                                print(f"Removing {p} because they were in a previous group with {player}")
-                            filteredList.remove(p)
+            old_group = playerToOldGroup.get(player.name)
+            if old_group:
+                for p in old_group.players:
+                    if p in filteredList:
+                        if DEBUG:
+                            print(f"Removing {p} because they were in a previous group with {player}")
+                        filteredList.remove(p)
 
         # Try to grab a player from the filtered list first
         if filteredList:
@@ -236,7 +239,5 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         log(f"usedPlayers: {len(usedPlayers)}, total players: {len(players)}")
         groups.append(remainderGroup)
 
-    global lastGroups
-    lastGroups.clear()
     lastGroups = groups
     return groups
