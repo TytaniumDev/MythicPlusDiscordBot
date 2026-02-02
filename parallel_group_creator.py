@@ -83,8 +83,8 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
                 if player in group.players:
                     for p in group.players:
                         if p in filteredList:
-                            # Avoided teammate from previous run - removing the print statement
-                            # because it's a major performance bottleneck in terminal-heavy environments.
+                            if DEBUG:
+                                print(f"Removing {p} because they were in a previous group with {player}")
                             filteredList.remove(p)
 
         # Try to grab a player from the filtered list first
