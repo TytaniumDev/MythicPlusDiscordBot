@@ -1,5 +1,10 @@
 from dataclasses import dataclass, field
 from typing import List
+from config import (
+    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
+    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
+    ROLE_BREZ, ROLE_LUST
+)
 
 @dataclass(frozen=True, eq=False)
 class WoWPlayer:
@@ -39,16 +44,16 @@ class WoWPlayer:
     @classmethod
     def create(cls, name: str, roles: list) -> 'WoWPlayer':
         # Calculate all the boolean flags
-        tankMain = 'Tank' in roles
-        healerMain = 'Healer' in roles
-        dpsMain = any(role in roles for role in ['DPS', 'Ranged', 'Melee'])
-        offtank = 'Tank Offspec' in roles
-        offhealer = 'Healer Offspec' in roles
-        offdps = 'DPS Offspec' in roles
-        ranged = 'Ranged' in roles
-        melee = 'Melee' in roles
-        hasBrez = 'Brez' in roles
-        hasLust = 'Lust' in roles
+        tankMain = ROLE_TANK in roles
+        healerMain = ROLE_HEALER in roles
+        dpsMain = any(role in roles for role in [ROLE_DPS, ROLE_RANGED, ROLE_MELEE])
+        offtank = ROLE_TANK_OFFSPEC in roles
+        offhealer = ROLE_HEALER_OFFSPEC in roles
+        offdps = ROLE_DPS_OFFSPEC in roles
+        ranged = ROLE_RANGED in roles
+        melee = ROLE_MELEE in roles
+        hasBrez = ROLE_BREZ in roles
+        hasLust = ROLE_LUST in roles
 
         # Create the instance with all flags set
         return cls(
@@ -71,33 +76,33 @@ class WoWPlayer:
     def toTestString(self) -> str:
         roles = []
         if self.tankMain:
-            roles.append("Tank")
+            roles.append(ROLE_TANK)
         if self.healerMain:
-            roles.append("Healer")
+            roles.append(ROLE_HEALER)
         if self.dpsMain:
-            roles.append("DPS")
+            roles.append(ROLE_DPS)
         if self.offtank:
-            roles.append("Tank Offspec")
+            roles.append(ROLE_TANK_OFFSPEC)
         if self.offhealer:
-            roles.append("Healer Offspec")
+            roles.append(ROLE_HEALER_OFFSPEC)
         if self.offdps:
-            roles.append("DPS Offspec")
+            roles.append(ROLE_DPS_OFFSPEC)
         if self.ranged:
-            roles.append("Ranged")
+            roles.append(ROLE_RANGED)
         if self.melee:
-            roles.append("Melee")
+            roles.append(ROLE_MELEE)
         if self.hasBrez:
-            roles.append("Brez")
+            roles.append(ROLE_BREZ)
         if self.hasLust:
-            roles.append("Lust")
+            roles.append(ROLE_LUST)
         return f'WoWPlayer.create("{self.name}", {roles})'
     
     def toUtilitiesString(self) -> str:
         utilities = []
         if self.hasBrez:
-            utilities.append("Brez")
+            utilities.append(ROLE_BREZ)
         if self.hasLust:
-            utilities.append("Lust")
+            utilities.append(ROLE_LUST)
         if utilities:
             return f'{self.name}({", ".join(utilities)})'
         return self.name
