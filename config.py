@@ -1,0 +1,23 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Discord Roles
+ROLE_TANK = os.getenv("ROLE_TANK", "Tank")
+ROLE_HEALER = os.getenv("ROLE_HEALER", "Healer")
+ROLE_DPS = os.getenv("ROLE_DPS", "DPS")
+ROLE_RANGED = os.getenv("ROLE_RANGED", "Ranged")
+ROLE_MELEE = os.getenv("ROLE_MELEE", "Melee")
+ROLE_TANK_OFFSPEC = os.getenv("ROLE_TANK_OFFSPEC", "Tank Offspec")
+ROLE_HEALER_OFFSPEC = os.getenv("ROLE_HEALER_OFFSPEC", "Healer Offspec")
+ROLE_DPS_OFFSPEC = os.getenv("ROLE_DPS_OFFSPEC", "DPS Offspec")
+ROLE_BREZ = os.getenv("ROLE_BREZ", "Brez")
+ROLE_LUST = os.getenv("ROLE_LUST", "Lust")
+
+# All recognized roles for validation/parsing
+ALL_ROLES = [
+    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
+    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
+    ROLE_BREZ, ROLE_LUST
+]
