@@ -235,7 +235,7 @@ async def printPlayerList(ctx):
     )
 
 
-async def roll_reveal(ctx, message, embed, field_index, field_name, final_value, members, debug_mode=False):
+async def roll_reveal(ctx, message, embed, field_index, field_name, final_value, members, debug_mode=False, prefix="", suffix=""):
     """Effect that 'rolls' through names for suspense."""
     if debug_mode:
         embed.set_field_at(index=field_index, name=field_name, value=final_value)
@@ -244,7 +244,7 @@ async def roll_reveal(ctx, message, embed, field_index, field_name, final_value,
     rolls = 2
     for _ in range(rolls):
         fake_name = WoWName(random.choice(members)) if members else "???"
-        embed.set_field_at(index=field_index, name=field_name, value=f"*{dashed(fake_name)}*")
+        embed.set_field_at(index=field_index, name=field_name, value=f"{prefix}*{dashed(fake_name)}*{suffix}")
         await message.edit(embed=embed)
         await asyncio.sleep(0.6)
 
@@ -340,19 +340,32 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation=Fa
                 embedMessage = await embedMessage.edit(embed=embed)
 
             # Reveal DPS one by one
-            # DPS 1
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
-            embedMessage = await embedMessage.edit(embed=embed)
-            await asyncio.sleep(0.8)
+            if use_new_animation:
+                # DPS 1
+                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}', members, debug, suffix=f', {dashed("DPS 2")}, {dashed("DPS 3")}')
+                await asyncio.sleep(0.5)
 
-            # DPS 2
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
-            embedMessage = await embedMessage.edit(embed=embed)
-            await asyncio.sleep(0.8)
+                # DPS 2
+                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}', members, debug, prefix=f'{dps1_name}, ', suffix=f', {dashed("DPS 3")}')
+                await asyncio.sleep(0.5)
 
-            # DPS 3
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
-            embedMessage = await embedMessage.edit(embed=embed)
+                # DPS 3
+                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dps2_name}, {dps3_name}', members, debug, prefix=f'{dps1_name}, {dps2_name}, ')
+            else:
+                # Reveal DPS one by one (Old style)
+                # DPS 1
+                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
+                embedMessage = await embedMessage.edit(embed=embed)
+                await asyncio.sleep(0.8)
+
+                # DPS 2
+                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
+                embedMessage = await embedMessage.edit(embed=embed)
+                await asyncio.sleep(0.8)
+
+                # DPS 3
+                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
+                embedMessage = await embedMessage.edit(embed=embed)
 
             # Reveal Utilities
             embed.set_field_at(index=3, name='Battle Res', value=brez_player)
