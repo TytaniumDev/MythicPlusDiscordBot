@@ -76,26 +76,13 @@ async def test(ctx):
 # into 5 person teams based on their assigned roles in discord.
 @bot.command()
 async def wheel(ctx):
-    """Generates groups with the existing animation style."""
     try:
-        await coreWheel(ctx=ctx, debugValue=False, use_new_animation=False)
+        await coreWheel(ctx=ctx, debugValue=False)
     except discord.HTTPException as e:
         await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
     except Exception as e:
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in wheel command: {e}")
-
-# !newwheel
-@bot.command()
-async def newwheel(ctx):
-    """Generates groups with the NEW rolling reveal animation."""
-    try:
-        await coreWheel(ctx=ctx, debugValue=False, use_new_animation=True)
-    except discord.HTTPException as e:
-        await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
-    except Exception as e:
-        await ctx.send("❌ An unexpected error occurred. Please try again later.")
-        print(f"Error in newwheel command: {e}")
 
 @bot.command()
 async def testcase(ctx):
@@ -235,23 +222,7 @@ async def printPlayerList(ctx):
     )
 
 
-async def roll_reveal(ctx, message, embed, field_index, field_name, final_value, members, debug_mode=False, prefix="", suffix=""):
-    """Effect that 'rolls' through names for suspense."""
-    if debug_mode:
-        embed.set_field_at(index=field_index, name=field_name, value=final_value)
-        return await message.edit(embed=embed)
-
-    rolls = 2
-    for _ in range(rolls):
-        fake_name = WoWName(random.choice(members)) if members else "???"
-        embed.set_field_at(index=field_index, name=field_name, value=f"{prefix}*{dashed(fake_name)}*{suffix}")
-        await message.edit(embed=embed)
-        await asyncio.sleep(0.6)
-
-    embed.set_field_at(index=field_index, name=field_name, value=final_value)
-    return await message.edit(embed=embed)
-
-async def _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation=False):
+async def _execute_coreWheel(ctx, channel, guild_id, debug):
     """Internal function that performs the actual group creation (called within lock)."""
     # Get the members of the channel we want to use to fill the roles
     if debug:
@@ -321,51 +292,30 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation=Fa
 
             embedMessage = await ctx.send(embed=embed)
 
-            if use_new_animation:
-                # Reveal Tank
-                embedMessage = await roll_reveal(ctx, embedMessage, embed, 0, 'Tank', tank_name, members, debug)
-                await asyncio.sleep(0.5)
+            # Reveal Tank
+            await showShortTyping(channel, debug_mode=debug)
+            embed.set_field_at(index=0, name='Tank', value=f'{tank_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
 
-                # Reveal Healer
-                embedMessage = await roll_reveal(ctx, embedMessage, embed, 1, 'Healer', healer_name, members, debug)
-                await asyncio.sleep(0.5)
-            else:
-                # Old style reveal
-                await showShortTyping(channel, debug_mode=debug)
-                embed.set_field_at(index=0, name='Tank', value=f'{tank_name}')
-                embedMessage = await embedMessage.edit(embed=embed)
-
-                await showShortTyping(channel, debug_mode=debug)
-                embed.set_field_at(index=1, name='Healer', value=f'{healer_name}')
-                embedMessage = await embedMessage.edit(embed=embed)
+            # Reveal Healer
+            await showShortTyping(channel, debug_mode=debug)
+            embed.set_field_at(index=1, name='Healer', value=f'{healer_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
 
             # Reveal DPS one by one
-            if use_new_animation:
-                # DPS 1
-                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}', members, debug, suffix=f', {dashed("DPS 2")}, {dashed("DPS 3")}')
-                await asyncio.sleep(0.5)
+            # DPS 1
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
+            embedMessage = await embedMessage.edit(embed=embed)
+            await asyncio.sleep(0.8)
 
-                # DPS 2
-                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}', members, debug, prefix=f'{dps1_name}, ', suffix=f', {dashed("DPS 3")}')
-                await asyncio.sleep(0.5)
+            # DPS 2
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
+            embedMessage = await embedMessage.edit(embed=embed)
+            await asyncio.sleep(0.8)
 
-                # DPS 3
-                embedMessage = await roll_reveal(ctx, embedMessage, embed, 2, 'DPS', f'{dps1_name}, {dps2_name}, {dps3_name}', members, debug, prefix=f'{dps1_name}, {dps2_name}, ')
-            else:
-                # Reveal DPS one by one (Old style)
-                # DPS 1
-                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
-                embedMessage = await embedMessage.edit(embed=embed)
-                await asyncio.sleep(0.8)
-
-                # DPS 2
-                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
-                embedMessage = await embedMessage.edit(embed=embed)
-                await asyncio.sleep(0.8)
-
-                # DPS 3
-                embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
-                embedMessage = await embedMessage.edit(embed=embed)
+            # DPS 3
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
 
             # Reveal Utilities
             embed.set_field_at(index=3, name='Battle Res', value=brez_player)
@@ -373,7 +323,7 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation=Fa
             await embedMessage.edit(embed=embed)
 
 
-async def coreWheel(ctx, debugValue: bool = None, use_new_animation: bool = False):
+async def coreWheel(ctx, debugValue: bool = None):
     global debug
     debug = False if debugValue is None else debugValue
     channel = ctx.channel
@@ -397,7 +347,7 @@ async def coreWheel(ctx, debugValue: bool = None, use_new_animation: bool = Fals
     
     # Acquire the lock and execute (only one command per server at a time)
     async with server_lock:
-        await _execute_coreWheel(ctx, channel, guild_id, debug, use_new_animation)
+        await _execute_coreWheel(ctx, channel, guild_id, debug)
 
 
 # Global error handler for unhandled command errors
