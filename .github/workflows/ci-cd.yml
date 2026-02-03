@@ -126,7 +126,7 @@ jobs:
             echo "Pulling image..."
             docker compose pull --quiet
             echo "Starting containers..."
-            docker compose up -d --remove-orphans --quiet
+            docker compose up -d --remove-orphans
 
             # Verify container is running
             echo "Verifying deployment..."
