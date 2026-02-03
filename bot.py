@@ -1,11 +1,16 @@
 import discord
 import os
 import asyncio
+import random
+import time
+import datetime
 from discord.ext import commands
 from dotenv import load_dotenv
 from models import WoWPlayer
 from parallel_group_creator import create_mythic_plus_groups
-from oldbot import oldCoreWheel
+from storage import get_player_preference, get_all_preferences, clear_player_preference
+from role_ui import RoleView
+from config import ALL_ROLES
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -18,6 +23,7 @@ intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix=["!", "/"], intents=intents)
+start_time = time.time()
 
 debug = False
 
@@ -68,9 +74,6 @@ async def test(ctx):
 # !wheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
-#
-# The available roles are:
-# Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
 @bot.command()
 async def wheel(ctx):
     try:
@@ -80,23 +83,6 @@ async def wheel(ctx):
     except Exception as e:
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in wheel command: {e}")
-
-# !oldwheel
-# Generates a series of embed messages that shows groups of players split
-# into 5 person teams based on their assigned roles in discord.
-#
-# The available roles are:
-# Tank, Healer, DPS, Tank Offspec, Healer Offspec, DPS Offspec
-@bot.command()
-async def oldwheel(ctx):
-    try:
-        await oldCoreWheel(ctx = ctx)
-    except discord.HTTPException as e:
-        await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
-    except Exception as e:
-        await ctx.send("❌ An unexpected error occurred. Please try again later.")
-        print(f"Error in oldwheel command: {e}")
-
 
 @bot.command()
 async def testcase(ctx):
@@ -113,14 +99,98 @@ async def testcase(ctx):
 def getPlayerList(members) -> list[WoWPlayer]:
     players = []
     for member in members:
-        if(len(member.roles) > 1):
-            print(f'Creating WoWPlayer for {WoWName(member)}, roles are {[role.name for role in member.roles]}')
-            player = WoWPlayer.create(name=WoWName(member), roles=[role.name for role in member.roles])
+        name = WoWName(member)
+        # Check for persistent preferences first
+        saved_roles = get_player_preference(name)
+
+        if saved_roles:
+            print(f'Creating WoWPlayer for {name} from SAVED roles: {saved_roles}')
+            player = WoWPlayer.create(name=name, roles=saved_roles)
+            players.append(player)
+        elif len(member.roles) > 1:
+            print(f'Creating WoWPlayer for {name} from DISCORD roles: {[role.name for role in member.roles]}')
+            player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
             if(player.hasRoles()):
                 players.append(player)
             else:
                 print(f' - No valid roles found for {player}, skipping.')
     return players
+
+@bot.command()
+async def roles(ctx):
+    """Set your persistent WoW roles."""
+    name = WoWName(ctx.author)
+    saved_roles = get_player_preference(name)
+    view = RoleView(name, saved_roles)
+    await ctx.send(f"Select your roles for **{name}**:", view=view, ephemeral=True)
+
+@bot.command()
+async def rolecheck(ctx):
+    """List saved roles for everyone in the current voice channel (or recent players)."""
+    channel = ctx.author.voice.channel if ctx.author.voice else ctx.channel
+    members = [m for m in channel.members if not m.bot]
+
+    if not members:
+        await ctx.send("No members found in the channel.")
+        return
+
+    embed = discord.Embed(title="Saved Roles Check", color=discord.Color.blue())
+
+    found_any = False
+    for member in members:
+        name = WoWName(member)
+        saved_roles = get_player_preference(name)
+        if saved_roles:
+            embed.add_field(name=name, value=", ".join(saved_roles), inline=False)
+            found_any = True
+        else:
+            # Check if they have discord roles at least
+            discord_roles = [r.name for r in member.roles if r.name in ALL_ROLES]
+            if discord_roles:
+                 embed.add_field(name=f"{name} (Discord Only)", value=", ".join(discord_roles), inline=False)
+                 found_any = True
+
+    if not found_any:
+        await ctx.send("No saved roles found for anyone in this channel.")
+    else:
+        await ctx.send(embed=embed)
+
+@bot.command()
+async def status(ctx):
+    """Check the bot's status and uptime."""
+    uptime_seconds = int(time.time() - start_time)
+    uptime_str = str(datetime.timedelta(seconds=uptime_seconds))
+
+    embed = discord.Embed(title="Bot Status", color=discord.Color.green())
+    embed.add_field(name="Uptime", value=uptime_str, inline=True)
+    embed.add_field(name="Ping", value=f"{round(bot.latency * 1000)}ms", inline=True)
+
+    try:
+        load1, load5, load15 = os.getloadavg()
+        embed.add_field(name="System Load", value=f"{load1:.2f}, {load5:.2f}, {load15:.2f}", inline=False)
+    except:
+        pass
+
+    embed.set_footer(text=f"Server ID: {ctx.guild.id if ctx.guild else 'DM'}")
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def clearrole(ctx, name: str = None):
+    """Clear your saved roles, or a specific character's roles."""
+    if name is None:
+        name = WoWName(ctx.author)
+        success = clear_player_preference(name)
+        if success:
+            await ctx.send(f"✅ Cleared your saved roles, **{name}**.")
+        else:
+            await ctx.send(f"❌ You had no saved roles, **{name}**.")
+    else:
+        # Check if user has permission to clear others? Assuming guild context for now.
+        success = clear_player_preference(name)
+        if success:
+            await ctx.send(f"✅ Cleared saved roles for **{name}**.")
+        else:
+            await ctx.send(f"❌ No saved roles found for **{name}**.")
 
 
 async def printPlayerList(ctx):
@@ -160,20 +230,33 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
         testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
         members = [member for member in testChannel.members if member.bot == False]
     else:
-        members = [member for member in channel.members if member.bot == False]
+        # Use voice channel members if possible, otherwise text channel members
+        voice_channel = ctx.author.voice.channel if ctx.author.voice else None
+        if voice_channel:
+            members = [member for member in voice_channel.members if member.bot == False]
+        else:
+            members = [member for member in channel.members if member.bot == False]
+
+    if not members:
+        await ctx.send("❌ No players found in the channel.")
+        return
 
     players = getPlayerList(members)
+    if not players:
+        await ctx.send("❌ No players with valid roles found.")
+        return
+
     groups = create_mythic_plus_groups(players, debug=debug)
     
     # Store results per-server to avoid race conditions
     last_results[guild_id] = {
-        "players": list(players),  # Store a copy to avoid reference issues
-        "groups": list(groups)     # Store a copy to avoid reference issues
+        "players": list(players),
+        "groups": list(groups)
     }
 
     for i, group in enumerate(groups, 1):
         # Print out the group in an embed to keep it tidy
-        embed = discord.Embed()
+        embed = discord.Embed(color=discord.Color.gold())
         embed.title = f"Group {i}"
 
         # Get player names or placeholders
@@ -198,28 +281,46 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
                 .add_field(name='Healer', value=f'{healer_name}')\
                 .add_field(name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')\
                 .add_field(name='Battle Res', value=f'{brez_player}', inline=True)\
-            .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
-            embedMessage = await ctx.send(embed = embed)
+                .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
+            await ctx.send(embed=embed)
         else:
-            embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
-                .add_field(name='Healer', value=f'{dashed(healer_name)}')\
-                .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
-                .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
-                .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
+            embed.add_field(name='Tank', value=f'{dashed("Taaaank")}')\
+                .add_field(name='Healer', value=f'{dashed("Heeealer")}')\
+                .add_field(name='DPS', value=f'{dashed("DPS 1")}, {dashed("DPS 2")}, {dashed("DPS 3")}')\
+                .add_field(name='Battle Res', value=f'{dashed("Breeez")}', inline=True)\
+                .add_field(name='Bloodlust', value=f'{dashed("Luust")}', inline=True)
 
-            embedMessage = await ctx.send(embed = embed)
+            embedMessage = await ctx.send(embed=embed)
+
+            # Reveal Tank
             await showShortTyping(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
+            embed.set_field_at(index=0, name='Tank', value=f'{tank_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
+
+            # Reveal Healer
             await showShortTyping(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
-            await showShortTyping(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
-            await showShortTyping(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
-            await showShortTyping(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
+            embed.set_field_at(index=1, name='Healer', value=f'{healer_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
+
+            # Reveal DPS one by one
+            # DPS 1
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
+            embedMessage = await embedMessage.edit(embed=embed)
+            await asyncio.sleep(0.8)
+
+            # DPS 2
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
+            embedMessage = await embedMessage.edit(embed=embed)
+            await asyncio.sleep(0.8)
+
+            # DPS 3
+            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
+            embedMessage = await embedMessage.edit(embed=embed)
+
+            # Reveal Utilities
+            embed.set_field_at(index=3, name='Battle Res', value=brez_player)
+            embed.set_field_at(index=4, name='Bloodlust', value=lust_player)
+            await embedMessage.edit(embed=embed)
 
 
 async def coreWheel(ctx, debugValue: bool = None):

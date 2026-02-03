@@ -1,6 +1,9 @@
 from typing import List, Optional
 import random
 from models import WoWPlayer, WoWGroup
+from config import (
+    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_BREZ, ROLE_LUST
+)
 
 DEBUG = True
 
@@ -132,7 +135,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Fill out each full group in stages, parallelized
     # Grab a tank
     for currentGroup in groups:
-        currentGroup.tank = grabNextAvailablePlayer(available_tanks, "tank", currentGroup, debug)
+        currentGroup.tank = grabNextAvailablePlayer(available_tanks, ROLE_TANK, currentGroup, debug)
         log(f"Selected tank: {currentGroup.tank}")
         log(f"After tank selection - Have brez: {currentGroup.has_brez}, have lust: {currentGroup.has_lust}")
 
@@ -144,7 +147,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Will grab either a healer or a dps
     for currentGroup in groups:
         if not currentGroup.has_lust:
-            lust_player = grabNextAvailablePlayer([p for p in lust_players if p not in available_tanks], "lust", currentGroup, debug)
+            lust_player = grabNextAvailablePlayer([p for p in lust_players if p not in available_tanks], ROLE_LUST, currentGroup, debug)
 
             if lust_player is not None:
                 if lust_player.healerMain or (offhealersToGrab > 0 and lust_player.offhealer):
@@ -168,10 +171,10 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         if not currentGroup.has_brez:
             if currentGroup.healer is not None:
                 # We have a healer already, so grab a dps brez
-                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks and p not in available_healers], "brez", currentGroup, debug)
+                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks and p not in available_healers], ROLE_BREZ, currentGroup, debug)
             else:
                 # We don't have a healer, so grab any brez
-                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks], "brez", currentGroup, debug)
+                brez_player = grabNextAvailablePlayer([p for p in brez_players if p not in available_tanks], ROLE_BREZ, currentGroup, debug)
 
             if brez_player is not None:
                 if brez_player.healerMain  or (offhealersToGrab > 0 and brez_player.offhealer):
@@ -192,12 +195,12 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # If we still don't have a healer, grab one now
     for currentGroup in groups:
         if currentGroup.healer is None:
-            mainHealer = grabNextAvailablePlayer([p for p in main_healers], "healer", currentGroup, debug)
+            mainHealer = grabNextAvailablePlayer([p for p in main_healers], ROLE_HEALER, currentGroup, debug)
             if mainHealer is not None:
                 currentGroup.healer = mainHealer
                 log(f"{currentGroup.tank.name}'s group - Selected main healer: {currentGroup.healer}")
             else:
-                offHealer = grabNextAvailablePlayer([p for p in available_healers], "healer", currentGroup, debug)
+                offHealer = grabNextAvailablePlayer([p for p in available_healers], ROLE_HEALER, currentGroup, debug)
                 if offHealer is not None:
                     currentGroup.healer = offHealer
                     log(f"{currentGroup.tank.name}'s group - Selected offhealer: {currentGroup.healer}")
@@ -214,7 +217,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Try to grab a ranged dps if we don't have one
     for currentGroup in groups:
         if not currentGroup.has_ranged:
-            ranged_dps = grabNextAvailablePlayer([p for p in available_dps if p.ranged], "dps", currentGroup, debug)
+            ranged_dps = grabNextAvailablePlayer([p for p in available_dps if p.ranged], ROLE_RANGED, currentGroup, debug)
             if ranged_dps is not None:
                 currentGroup.dps.append(ranged_dps)
                 log(f"{currentGroup.tank.name}'s group - Added ranged DPS: {ranged_dps}")
@@ -222,7 +225,7 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
     # Fill the rest of the dps slots with anyone left
     for currentGroup in groups:
         while len(currentGroup.dps) < 3:
-            dps_player = grabNextAvailablePlayer(available_dps, "dps", currentGroup, debug)
+            dps_player = grabNextAvailablePlayer(available_dps, ROLE_DPS, currentGroup, debug)
             if dps_player is None:
                 break
             currentGroup.dps.append(dps_player)
@@ -235,6 +238,9 @@ def create_mythic_plus_groups(players: List[WoWPlayer], debug=True) -> List[WoWG
         remainderGroup = WoWGroup()
         log(f"remainderGroup start: {remainderGroup}")  
         while len(usedPlayers) < len(players):
+            # No constant for "remainder" specifically in config.py, so we'll use ROLE_DPS as a placeholder
+            # or just leave it as "remainder" if it's not a role.
+            # But "lust" and "brez" ARE roles in the config.
             player = grabNextAvailablePlayer([p for p in players if p not in usedPlayers], "remainder", remainderGroup, debug)
             if player is not None:
                 if remainderGroup.tank is None and (player.tankMain or player.offtank):
