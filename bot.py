@@ -13,6 +13,12 @@ from role_ui import RoleView
 from config import ALL_ROLES
 
 load_dotenv()
+
+# Path to assets
+ASSETS_DIR = "assets"
+SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
+REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
+WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN environment variable is required. Please check your .env file.")
@@ -57,6 +63,29 @@ async def showShortTyping(channel, debug_mode: bool = False):
 
 def dashed(name):
      return '?' * len(name)
+
+async def join_voice_channel(ctx):
+    """Joins the voice channel of the command author."""
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        if ctx.voice_client:
+            if ctx.voice_client.channel != channel:
+                await ctx.voice_client.move_to(channel)
+        else:
+            await channel.connect()
+        return ctx.voice_client
+    return None
+
+async def play_sound(voice_client, sound_path):
+    """Plays a sound file in the given voice client."""
+    if voice_client and os.path.exists(sound_path):
+        try:
+            if voice_client.is_playing():
+                voice_client.stop()
+            voice_client.play(discord.FFmpegPCMAudio(sound_path))
+            # We don't necessarily want to wait for the whole sound if it's a loop
+        except Exception as e:
+            print(f"Error playing sound {sound_path}: {e}")
 
 # !test
 # Runs the !wheel function, but hardcoded to use testing data in my personal
@@ -222,8 +251,12 @@ async def printPlayerList(ctx):
     )
 
 
-async def _execute_coreWheel(ctx, channel, guild_id, debug):
+async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
     """Internal function that performs the actual group creation (called within lock)."""
+    voice_client = None
+    if enhanced:
+        voice_client = await join_voice_channel(ctx)
+
     # Get the members of the channel we want to use to fill the roles
     if debug:
         # Testing Code
@@ -279,6 +312,12 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
                 .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
             embedMessage = await ctx.send(embed=embed)
         else:
+            if enhanced:
+                if os.path.exists(WHEEL_GIF):
+                    await ctx.send(file=discord.File(WHEEL_GIF))
+                await play_sound(voice_client, SPIN_SOUND)
+                await asyncio.sleep(2)
+
             embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
                 .add_field(name='Healer', value=f'{dashed(healer_name)}')\
                 .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
@@ -287,20 +326,25 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
 
             embedMessage = await ctx.send(embed = embed)
             await showShortTyping(channel, debug_mode=debug)
+            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
             await showShortTyping(channel, debug_mode=debug)
+            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
             await showShortTyping(channel, debug_mode=debug)
+            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
             await showShortTyping(channel, debug_mode=debug)
+            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
             await showShortTyping(channel, debug_mode=debug)
+            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
             embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
 
 
-async def coreWheel(ctx, debugValue: bool = None):
+async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
     global debug
     debug = False if debugValue is None else debugValue
     channel = ctx.channel
@@ -324,7 +368,55 @@ async def coreWheel(ctx, debugValue: bool = None):
     
     # Acquire the lock and execute (only one command per server at a time)
     async with server_lock:
-        await _execute_coreWheel(ctx, channel, guild_id, debug)
+        await _execute_coreWheel(ctx, channel, guild_id, debug, enhanced)
+
+
+@bot.command()
+async def newwheel(ctx):
+    try:
+        await coreWheel(ctx=ctx, debugValue=False, enhanced=True)
+    except discord.HTTPException as e:
+        await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
+    except Exception as e:
+        await ctx.send("❌ An unexpected error occurred. Please try again later.")
+        print(f"Error in newwheel command: {e}")
+
+@bot.command()
+async def activity(ctx):
+    try:
+        # Run enhanced wheel
+        await coreWheel(ctx=ctx, debugValue=False, enhanced=True)
+
+        # Then create activity invite
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            # You'll need to set your APPLICATION_ID in .env
+            app_id = os.getenv("DISCORD_APPLICATION_ID")
+            if app_id:
+                invite = await channel.create_invite(
+                    target_type=discord.InviteTarget.embedded_application,
+                    target_application_id=int(app_id),
+                    max_age=300 # 5 minutes
+                )
+                await ctx.send(f"🎮 Join the spinning wheel activity! {invite.url}")
+            else:
+                await ctx.send("⚠️ DISCORD_APPLICATION_ID not configured in .env. Cannot start activity.")
+        else:
+            await ctx.send("❌ You must be in a voice channel to start an activity.")
+
+    except discord.HTTPException as e:
+        await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
+    except Exception as e:
+        await ctx.send("❌ An unexpected error occurred. Please try again later.")
+        print(f"Error in activity command: {e}")
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Automatically disconnects the bot if it's the only one left in the voice channel."""
+    voice_client = member.guild.voice_client
+    if voice_client and len(voice_client.channel.members) == 1:
+        await voice_client.disconnect()
 
 
 # Global error handler for unhandled command errors
