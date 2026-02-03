@@ -85,6 +85,15 @@ jobs:
             exit 1
           fi
           echo "Tailscale connected successfully"
+          echo "Tailscale status:"
+          tailscale status
+      - name: Test connectivity to Pi
+        run: |
+          echo "Testing connectivity to PI_HOST: ${{ secrets.PI_HOST }}"
+          echo "Attempting ping..."
+          ping -c 3 ${{ secrets.PI_HOST }} || echo "Ping failed (might be blocked)"
+          echo "Attempting SSH port check..."
+          timeout 10 bash -c "cat < /dev/null > /dev/tcp/${{ secrets.PI_HOST }}/22" && echo "SSH port is open" || echo "SSH port check failed"
       - name: Deploy to Raspberry Pi
         uses: appleboy/ssh-action@v1.0.3
         with:
