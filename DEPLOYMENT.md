@@ -45,6 +45,7 @@ The workflow in `.github/workflows/ci-cd.yml` builds the Docker image, pushes it
 
 **Optional secrets**:
 - `PI_SSH_PORT`: SSH port (defaults to 22).
+ - `DEPLOY_WEBHOOK_URL`: Discord webhook URL for deploy notifications.
 You do not need to create a `.env` file on the Pi if you set `BOT_TOKEN` and `DISCORD_APPLICATION_ID` as GitHub secrets. The deploy job exports them before running `docker compose`, so the container gets the values at runtime.
 
 ## 3. How the GitHub Actions workflow works
@@ -52,6 +53,7 @@ You do not need to create a `.env` file on the Pi if you set `BOT_TOKEN` and `DI
 1. Runs unit tests.
 2. Builds a multi-arch Docker image (amd64 + arm64) and pushes it to GHCR.
 3. SSHs to the Pi and runs `docker compose pull` followed by `docker compose up -d`.
+4. Verifies container health, restarts once if unhealthy, and optionally sends a Discord notification.
 
 The deploy step exports `IMAGE_NAME` and `IMAGE_TAG` for `docker-compose.yml` so the Pi always pulls the exact build that passed CI.
 

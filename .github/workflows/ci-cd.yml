@@ -79,4 +79,54 @@ jobs:
             export IMAGE_TAG
             docker compose pull
             docker compose up -d --remove-orphans
+            container_id=$(docker compose ps -q bot)
+            if [ -z "$container_id" ]; then
+              echo "Bot container not found."
+              exit 1
+            fi
+            for i in $(seq 1 12); do
+              health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")
+              status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+              if [ "$health" = "healthy" ] || { [ "$health" = "none" ] && [ "$status" = "running" ]; }; then
+                echo "Container healthy/running."
+                break
+              fi
+              if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
+                echo "Container unhealthy or stopped."
+                break
+              fi
+              sleep 5
+            done
+            if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
+              echo "Restarting bot container..."
+              docker compose restart bot
+              sleep 5
+              container_id=$(docker compose ps -q bot)
+              health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")
+              status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+              if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
+                echo "Container still unhealthy or stopped."
+                exit 1
+              fi
+            fi
             docker image prune -f
+
+      - name: Notify Discord
+        if: always() && secrets.DEPLOY_WEBHOOK_URL != ''
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_STATUS: ${{ job.status }}
+        run: |
+          payload=$(python - <<'PY'
+import json
+import os
+
+status = os.environ["DEPLOY_STATUS"]
+repo = os.environ["GITHUB_REPOSITORY"]
+ref = os.environ["GITHUB_REF"]
+sha = os.environ["GITHUB_SHA"][:7]
+message = f"Deploy {status} for {repo} ({ref} @ {sha})"
+print(json.dumps({"content": message}))
+PY
+)
+          curl -sS -H "Content-Type: application/json" -d "$payload" "$DEPLOY_WEBHOOK_URL"
