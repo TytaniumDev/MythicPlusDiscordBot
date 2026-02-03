@@ -115,24 +115,3 @@ jobs:
               fi
             fi
             docker image prune -f
-
-      - name: Notify Discord
-        if: always()
-        env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-          DEPLOY_STATUS: ${{ job.status }}
-        run: |
-          if [ -z "$DEPLOY_WEBHOOK_URL" ]; then
-            echo "No webhook URL configured, skipping notification"
-            exit 0
-          fi
-          payload=$(python3 -c "
-          import json, os
-          status = os.environ['DEPLOY_STATUS']
-          repo = os.environ['GITHUB_REPOSITORY']
-          ref = os.environ['GITHUB_REF']
-          sha = os.environ['GITHUB_SHA'][:7]
-          message = f'Deploy {status} for {repo} ({ref} @ {sha})'
-          print(json.dumps({'content': message}))
-          ")
-          curl -sS -H "Content-Type: application/json" -d "$payload" "$DEPLOY_WEBHOOK_URL"
