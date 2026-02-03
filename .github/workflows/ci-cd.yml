@@ -116,9 +116,9 @@ jobs:
             export IMAGE_NAME
             export IMAGE_TAG
             echo "[$(date -Iseconds)] Docker compose pull..."
-            docker compose pull
+            docker compose pull --quiet
             echo "[$(date -Iseconds)] Docker compose pull done. Bringing up containers..."
-            docker compose up -d --remove-orphans
+            docker compose up -d --remove-orphans --quiet
             echo "[$(date -Iseconds)] Containers up. Checking bot container..."
             container_id=$(docker compose ps -q bot)
             if [ -z "$container_id" ]; then
