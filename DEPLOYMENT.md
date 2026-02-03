@@ -148,7 +148,16 @@ Use **Bot** scope and the permissions above; add **applications.commands** if yo
 
 To update an already-invited bot: use a new invite URL with the same permissions and re-invite (or re-authorize when Discord prompts). Role/position of the bot in the server can affect whether it can create invites or speak in voice.
 
-### 3.3 Activity (optional, for `!activity`)
+### 3.3 Permissions integer in code
+
+If you copy the **permissions integer** from the Discord Developer Portal (OAuth2 → URL Generator, shown at the bottom when you select permissions), you can use it in this project so the bot generates invite URLs with those permissions:
+
+1. **Config / env:** Set `BOT_INVITE_PERMISSIONS` to that integer (e.g. `3263489`). In `config.py` it defaults to `3263489`; override with the `BOT_INVITE_PERMISSIONS` environment variable (e.g. in `.env` or GitHub Secrets) if you use a different value.
+2. **Invite URL in Discord:** Run `!invite` in any channel where the bot can reply. The bot will post an “Add this bot to a server” link that uses the configured permissions. Use that link to add the bot to a server or to re-invite with updated permissions.
+
+The permissions integer is only used when generating the OAuth2 invite URL; it does not change the bot’s behavior inside a server. Server admins still grant permissions when they complete the invite flow.
+
+### 3.4 Activity (optional, for `!activity`)
 
 The `!activity` command creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
 

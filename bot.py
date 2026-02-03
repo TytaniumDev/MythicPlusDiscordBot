@@ -10,7 +10,7 @@ from models import WoWPlayer
 from parallel_group_creator import create_mythic_plus_groups
 from storage import get_player_preference, get_all_preferences, clear_player_preference
 from role_ui import RoleView
-from config import ALL_ROLES
+from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
 
 load_dotenv()
 
@@ -183,6 +183,18 @@ async def rolecheck(ctx):
         await ctx.send("No saved roles found for anyone in this channel.")
     else:
         await ctx.send(embed=embed)
+
+@bot.command()
+async def invite(ctx):
+    """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
+    app_id = bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
+    if not app_id:
+        await ctx.send("❌ Application ID not available. Set DISCORD_APPLICATION_ID in your environment.")
+        return
+    app_id = int(app_id) if isinstance(app_id, str) else app_id
+    permissions = discord.Permissions(BOT_INVITE_PERMISSIONS)
+    url = discord.utils.oauth_url(app_id, scopes=["bot"], permissions=permissions)
+    await ctx.send(f"**Add this bot to a server:**\n{url}")
 
 @bot.command()
 async def status(ctx):

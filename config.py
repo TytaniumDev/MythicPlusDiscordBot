@@ -21,3 +21,7 @@ ALL_ROLES = [
     ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
     ROLE_BREZ, ROLE_LUST
 ]
+
+# Bot invite URL permissions (integer from Discord Developer Portal → OAuth2 → URL Generator).
+# Used when generating the "Add bot to server" link so the bot requests these permissions.
+BOT_INVITE_PERMISSIONS = int(os.getenv("BOT_INVITE_PERMISSIONS", "3263489"))
