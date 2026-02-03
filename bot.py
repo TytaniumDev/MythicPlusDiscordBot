@@ -230,12 +230,7 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
         testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
         members = [member for member in testChannel.members if member.bot == False]
     else:
-        # Use voice channel members if possible, otherwise text channel members
-        voice_channel = ctx.author.voice.channel if ctx.author.voice else None
-        if voice_channel:
-            members = [member for member in voice_channel.members if member.bot == False]
-        else:
-            members = [member for member in channel.members if member.bot == False]
+        members = [member for member in channel.members if member.bot == False]
 
     if not members:
         await ctx.send("❌ No players found in the channel.")
@@ -284,43 +279,25 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
                 .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
             await ctx.send(embed=embed)
         else:
-            embed.add_field(name='Tank', value=f'{dashed("Taaaank")}')\
-                .add_field(name='Healer', value=f'{dashed("Heeealer")}')\
-                .add_field(name='DPS', value=f'{dashed("DPS 1")}, {dashed("DPS 2")}, {dashed("DPS 3")}')\
-                .add_field(name='Battle Res', value=f'{dashed("Breeez")}', inline=True)\
-                .add_field(name='Bloodlust', value=f'{dashed("Luust")}', inline=True)
+            embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
+                .add_field(name='Healer', value=f'{dashed(healer_name)}')\
+                .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
+                .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
+                .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
 
-            embedMessage = await ctx.send(embed=embed)
-
-            # Reveal Tank
+            embedMessage = await ctx.send(embed = embed)
             await showShortTyping(channel, debug_mode=debug)
-            embed.set_field_at(index=0, name='Tank', value=f'{tank_name}')
-            embedMessage = await embedMessage.edit(embed=embed)
-
-            # Reveal Healer
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
             await showShortTyping(channel, debug_mode=debug)
-            embed.set_field_at(index=1, name='Healer', value=f'{healer_name}')
-            embedMessage = await embedMessage.edit(embed=embed)
-
-            # Reveal DPS one by one
-            # DPS 1
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed("DPS 2")}, {dashed("DPS 3")}')
-            embedMessage = await embedMessage.edit(embed=embed)
-            await asyncio.sleep(0.8)
-
-            # DPS 2
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed("DPS 3")}')
-            embedMessage = await embedMessage.edit(embed=embed)
-            await asyncio.sleep(0.8)
-
-            # DPS 3
-            embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')
-            embedMessage = await embedMessage.edit(embed=embed)
-
-            # Reveal Utilities
-            embed.set_field_at(index=3, name='Battle Res', value=brez_player)
-            embed.set_field_at(index=4, name='Bloodlust', value=lust_player)
-            await embedMessage.edit(embed=embed)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
+            await showShortTyping(channel, debug_mode=debug)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
+            await showShortTyping(channel, debug_mode=debug)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
+            await showShortTyping(channel, debug_mode=debug)
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
+            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
 
 
 async def coreWheel(ctx, debugValue: bool = None):
