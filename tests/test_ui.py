@@ -7,15 +7,15 @@ from unittest.mock import MagicMock, AsyncMock
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from role_ui import RoleView, RoleButton
+from role_ui import RoleSelectionView, RoleButton, RoleBoardView
 from config import ROLE_TANK, ROLE_HEALER
 import discord
 
 class TestUI(unittest.IsolatedAsyncioTestCase):
-    async def test_role_view_initialization(self):
+    async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
 
-        view = RoleView("TestPlayer", initial_roles)
+        view = RoleSelectionView("TestPlayer", initial_roles)
         self.assertEqual(view.player_name, "TestPlayer")
         self.assertEqual(view.selected_roles, {ROLE_TANK, "Brez"})
 
@@ -26,7 +26,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(healer_button.style, discord.ButtonStyle.secondary)
 
     async def test_role_button_callback(self):
-        view = RoleView("TestPlayer")
+        view = RoleSelectionView("TestPlayer")
         tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
 
         interaction = MagicMock(spec=discord.Interaction)
@@ -44,7 +44,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
     async def test_save_method(self):
         with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
 
-            view = RoleView("TestPlayer", [ROLE_TANK])
+            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
             interaction.response.send_message = AsyncMock()
@@ -64,7 +64,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
     async def test_clear_method(self):
         with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
 
-            view = RoleView("TestPlayer", [ROLE_TANK])
+            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
             interaction.response.send_message = AsyncMock()
@@ -76,6 +76,16 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(view.selected_roles), 0)
             interaction.response.send_message.assert_called_once()
             interaction.edit_original_response.assert_called_once()
+
+    async def test_role_board_view_initialization(self):
+        # We don't need to patch loop for IsolatedAsyncioTestCase usually if we use the right View init or if View uses get_running_loop
+        # However, View uses get_running_loop(). IsolatedAsyncioTestCase provides one.
+        mock_callback = AsyncMock()
+        view = RoleBoardView(update_callback=mock_callback)
+
+        # Check if button exists
+        edit_button = next((item for item in view.children if isinstance(item, discord.ui.Button) and item.custom_id == "edit_roles_button"), None)
+        self.assertIsNotNone(edit_button)
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from models import WoWPlayer
 from parallel_group_creator import create_mythic_plus_groups
 from storage import get_player_preference, get_all_preferences, clear_player_preference
-from role_ui import RoleView
+from role_ui import RoleBoardView, create_role_board_embed, RoleSelectionView
 from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
 
 load_dotenv()
@@ -40,6 +40,16 @@ last_results = {}
 # Locks per server to prevent concurrent group creation
 # Format: {guild_id: asyncio.Lock}
 server_locks = {}
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print("Syncing commands...")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} commands.")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
 
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
@@ -145,13 +155,46 @@ def getPlayerList(members) -> list[WoWPlayer]:
                 print(f' - No valid roles found for {player}, skipping.')
     return players
 
-@bot.command()
+async def launch_role_board(ctx):
+    if not ctx.author.voice or not ctx.author.voice.channel:
+        msg = "❌ You must be in a voice channel to use this command."
+        if hasattr(ctx, "interaction") and ctx.interaction:
+            await ctx.send(msg, ephemeral=True)
+        else:
+            await ctx.send(msg)
+        return
+
+    voice_channel = ctx.author.voice.channel
+
+    async def update_board(interaction, board_message):
+        # Re-fetch members from the voice channel to ensure we have the latest state.
+        channel = ctx.guild.get_channel(voice_channel.id)
+        if not channel:
+             return
+
+        members = [m for m in channel.members if not m.bot]
+        players = getPlayerList(members)
+        embed = create_role_board_embed(players)
+
+        await board_message.edit(embed=embed)
+
+    # Initial render
+    members = [m for m in voice_channel.members if not m.bot]
+    players = getPlayerList(members)
+    embed = create_role_board_embed(players)
+    view = RoleBoardView(update_callback=update_board)
+
+    await ctx.send(embed=embed, view=view)
+
+@bot.hybrid_command(name="roles")
 async def roles(ctx):
-    """Set your persistent WoW roles."""
-    name = WoWName(ctx.author)
-    saved_roles = get_player_preference(name)
-    view = RoleView(name, saved_roles)
-    await ctx.send(f"Select your roles for **{name}**:", view=view, ephemeral=True)
+    """Opens the Mythic+ Role Board for the current voice channel."""
+    await launch_role_board(ctx)
+
+@bot.hybrid_command(name="readycheck")
+async def readycheck(ctx):
+    """Alias for /roles. Opens the Mythic+ Role Board."""
+    await launch_role_board(ctx)
 
 @bot.command()
 async def rolecheck(ctx):

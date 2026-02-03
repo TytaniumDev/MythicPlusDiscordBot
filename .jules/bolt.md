@@ -7,6 +7,10 @@
 **Update:** By stabilizing state management (replacing `lastGroups.clear()` with reassignment) and carefully preserving the search order in the `grabNextAvailablePlayer` function, the O(1) dictionary lookup became fully compatible with existing functional tests while maintaining high performance.
 **Action:** Use dictionary-based lookups to avoid nested loops over group history. Ensure references to previous results are handled by reassignment rather than mutation to avoid side effects.
 
+## 2025-05-15 - [JSON File I/O Caching]
+**Learning:** Repeatedly reading `player_preferences.json` for every player in a list creates an N+1 performance bottleneck, taking ~0.12s for 1000 reads.
+**Action:** Implemented a write-through in-memory cache for preferences. Reads are served from memory (taking ~0.0005s for 1000 reads), while writes immediately update both the cache and the disk to ensure data safety against power loss.
+
 ## 2026-02-03 - [Blocking I/O in Async UI Callbacks]
 **Learning:** Synchronous file I/O in Discord UI callbacks (specifically JSON read/write in `RoleView.save`) blocked the asyncio event loop for ~200ms per call. In high-concurrency scenarios, this causes the bot to become unresponsive.
 **Action:** Offloaded file operations to a separate thread using `asyncio.to_thread`. Guarded `storage.py` writes with `threading.Lock` to prevent race conditions during concurrent access from multiple threads.
