@@ -40,10 +40,12 @@ The workflow in `.github/workflows/ci-cd.yml` builds the Docker image, pushes it
 - `PI_SSH_KEY`: private key for SSH access.
 - `PI_APP_DIR`: path to the repo on the Pi (e.g., `/home/pi/mythic-plus-bot`).
 - `GHCR_TOKEN`: GitHub PAT with `read:packages` scope (used by the Pi to pull the image).
+- `BOT_TOKEN`: Discord bot token (used on each deploy to set runtime env vars).
+- `DISCORD_APPLICATION_ID`: Discord application ID (used on each deploy to set runtime env vars).
 
 **Optional secrets**:
 - `PI_SSH_PORT`: SSH port (defaults to 22).
-- `BOT_TOKEN` / `DISCORD_APPLICATION_ID`: only needed if you want to inject secrets from GitHub instead of keeping them on the Pi.
+You do not need to create a `.env` file on the Pi if you set `BOT_TOKEN` and `DISCORD_APPLICATION_ID` as GitHub secrets. The deploy job exports them before running `docker compose`, so the container gets the values at runtime.
 
 ## 3. How the GitHub Actions workflow works
 

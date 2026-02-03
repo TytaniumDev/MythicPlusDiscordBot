@@ -72,6 +72,8 @@ jobs:
             IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
             IMAGE_TAG=${{ github.sha }}
             docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
+            export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
+            export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
             cd ${{ secrets.PI_APP_DIR }}
             export IMAGE_NAME
             export IMAGE_TAG
