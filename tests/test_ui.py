@@ -7,11 +7,20 @@ from unittest.mock import MagicMock, AsyncMock
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from role_ui import RoleSelectionView, RoleButton, RoleBoardView
+from role_ui import RoleSelectionView, RoleButton, RoleBoardView, create_role_board_embed
 from config import ROLE_TANK, ROLE_HEALER
+from models import WoWPlayer
 import discord
 
 class TestUI(unittest.IsolatedAsyncioTestCase):
+    def test_create_role_board_embed_description(self):
+        # Create a dummy list of players (can be empty for this test)
+        players = []
+        embed = create_role_board_embed(players)
+
+        self.assertEqual(embed.title, "Mythic+ Role Board")
+        self.assertEqual(embed.description, "Current channel roster")
+        self.assertEqual(embed.color, discord.Color.gold())
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
         # Mocking get_running_loop to avoid "no running event loop" error during View.__init__
