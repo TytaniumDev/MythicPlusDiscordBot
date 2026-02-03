@@ -92,7 +92,7 @@ class RoleBoardView(discord.ui.View):
         await interaction.response.send_message(f"Select your roles for **{name}**:", view=view, ephemeral=True)
 
 def create_role_board_embed(players):
-    embed = discord.Embed(title="Mythic+ Role Board", description="Current voice channel roster", color=discord.Color.gold())
+    embed = discord.Embed(title="Mythic+ Role Board", description="Current channel roster", color=discord.Color.gold())
 
     def format_player(p):
         icons = ""

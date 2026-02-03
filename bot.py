@@ -156,19 +156,23 @@ def getPlayerList(members) -> list[WoWPlayer]:
     return players
 
 async def launch_role_board(ctx):
-    if not ctx.author.voice or not ctx.author.voice.channel:
-        msg = "❌ You must be in a voice channel to use this command."
+    if not ctx.guild:
+        msg = "❌ This command can only be used in a server."
         if hasattr(ctx, "interaction") and ctx.interaction:
             await ctx.send(msg, ephemeral=True)
         else:
             await ctx.send(msg)
         return
 
-    voice_channel = ctx.author.voice.channel
+    # Determine target channel: Voice channel if available, otherwise current text channel
+    if ctx.author.voice and ctx.author.voice.channel:
+        target_channel = ctx.author.voice.channel
+    else:
+        target_channel = ctx.channel
 
     async def update_board(interaction, board_message):
-        # Re-fetch members from the voice channel to ensure we have the latest state.
-        channel = ctx.guild.get_channel(voice_channel.id)
+        # Re-fetch members from the channel to ensure we have the latest state.
+        channel = ctx.guild.get_channel(target_channel.id)
         if not channel:
              return
 
@@ -179,7 +183,7 @@ async def launch_role_board(ctx):
         await board_message.edit(embed=embed)
 
     # Initial render
-    members = [m for m in voice_channel.members if not m.bot]
+    members = [m for m in target_channel.members if not m.bot]
     players = getPlayerList(members)
     embed = create_role_board_embed(players)
     view = RoleBoardView(update_callback=update_board)
