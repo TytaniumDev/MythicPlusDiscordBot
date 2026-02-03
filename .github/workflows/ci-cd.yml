@@ -127,8 +127,8 @@ jobs:
             fi
             echo "[$(date -Iseconds)] Bot container id: $container_id. Waiting for healthy/running (up to 60s)..."
             for i in $(seq 1 12); do
-              health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")
-              status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+              health=$(docker inspect -f '${{ '{{' }}if .State.Health}}${{ '}}' }}${{ '{{' }}.State.Health.Status}}${{ '}}' }}${{ '{{' }}else}}none${{ '}}' }}${{ '{{' }}end}}${{ '}}' }}' "$container_id")
+              status=$(docker inspect -f '${{ '{{' }}.State.Status}}${{ '}}' }}' "$container_id")
               echo "[$(date -Iseconds)]   attempt $i/12: health=$health status=$status"
               if [ "$health" = "healthy" ] || { [ "$health" = "none" ] && [ "$status" = "running" ]; }; then
                 echo "Container healthy/running."
@@ -145,8 +145,8 @@ jobs:
               docker compose restart bot
               sleep 5
               container_id=$(docker compose ps -q bot)
-              health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")
-              status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+              health=$(docker inspect -f '${{ '{{' }}if .State.Health}}${{ '}}' }}${{ '{{' }}.State.Health.Status}}${{ '}}' }}${{ '{{' }}else}}none${{ '}}' }}${{ '{{' }}end}}${{ '}}' }}' "$container_id")
+              status=$(docker inspect -f '${{ '{{' }}.State.Status}}${{ '}}' }}' "$container_id")
               if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
                 echo "Container still unhealthy or stopped."
                 exit 1
