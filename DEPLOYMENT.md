@@ -176,6 +176,13 @@ If Activities are not set up, `!activity` will fail; `!wheel` and `!newwheel` (v
    docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
    ```
 
+### 4.1 Data Persistence
+
+The bot now stores player preferences (roles) in a `data/` directory inside the repository folder on the Pi (`/home/deploy/mythic-plus-bot/data`).
+- This directory is created automatically by Docker when the container starts.
+- It is ignored by git (via `.gitignore`), so your data survives deployments and `git reset`.
+- You can back up this file manually: `cp /home/deploy/mythic-plus-bot/data/player_preferences.json ~/.backup_prefs.json`.
+
 ## 5. Verification checklist
 
 Run these checks if a deploy fails or you want to validate the setup.
