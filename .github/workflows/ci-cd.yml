@@ -87,32 +87,24 @@ jobs:
           echo "Tailscale connected successfully"
           echo "Tailscale status:"
           tailscale status
-      - name: Test connectivity to Pi
+      - name: Setup SSH key
         run: |
-          echo "Testing connectivity to PI_HOST: ${{ secrets.PI_HOST }}"
-          echo "Attempting ping..."
-          ping -c 3 ${{ secrets.PI_HOST }} || echo "Ping failed (might be blocked)"
-          echo "Attempting SSH port check..."
-          timeout 10 bash -c "cat < /dev/null > /dev/tcp/${{ secrets.PI_HOST }}/22" && echo "SSH port is open" || echo "SSH port check failed"
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Add Pi to known hosts (get the host key)
+          ssh-keyscan -H ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Test SSH connection
+        run: |
+          echo "Testing SSH connection to ${{ secrets.PI_HOST }}..."
+          ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} "echo 'SSH connection successful!'"
       - name: Deploy to Raspberry Pi
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PI_HOST }}
-          username: ${{ secrets.PI_USER }}
-          key: ${{ secrets.PI_SSH_KEY }}
-          port: ${{ secrets.PI_SSH_PORT != '' && secrets.PI_SSH_PORT || 22 }}
-          timeout: 2m
-          command_timeout: 10m
-          debug: true
-          script: |
+        run: |
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
+            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} bash << DEPLOY_SCRIPT
             set -e
             echo "=== Deploy started ==="
-
-            # Set up variables
-            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
-            export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
 
             # Login to GHCR
             echo "Logging into GHCR..."
@@ -122,6 +114,12 @@ jobs:
             cd ${{ secrets.PI_APP_DIR }}
             echo "Updating repo..."
             git fetch origin && git reset --hard origin/${{ github.ref_name }}
+
+            # Set environment for docker compose
+            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+            export IMAGE_TAG=${{ github.sha }}
+            export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
+            export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
 
             # Deploy
             echo "Pulling image..."
@@ -136,3 +134,4 @@ jobs:
             # Cleanup
             docker image prune -f > /dev/null
             echo "=== Deploy finished ==="
+          DEPLOY_SCRIPT
