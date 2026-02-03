@@ -94,13 +94,21 @@ class RoleBoardView(discord.ui.View):
 def create_role_board_embed(players):
     embed = discord.Embed(title="Mythic+ Role Board", description="Current voice channel roster", color=discord.Color.gold())
 
-    tanks = [p.name for p in players if p.tankMain]
-    healers = [p.name for p in players if p.healerMain]
-    melee = [p.name for p in players if p.melee]
-    ranged = [p.name for p in players if p.ranged]
+    def format_player(p):
+        icons = ""
+        if p.hasBrez:
+            icons += "⚰️"
+        if p.hasLust:
+            icons += "🎺"
+        return f"{p.name} {icons}".strip()
+
+    tanks = [format_player(p) for p in players if p.tankMain]
+    healers = [format_player(p) for p in players if p.healerMain]
+    melee = [format_player(p) for p in players if p.melee]
+    ranged = [format_player(p) for p in players if p.ranged]
 
     # Generic DPS are those who are dpsMain but not specifically melee or ranged
-    generic_dps = [p.name for p in players if p.dpsMain and not p.melee and not p.ranged]
+    generic_dps = [format_player(p) for p in players if p.dpsMain and not p.melee and not p.ranged]
 
     def format_list(names):
         return "\n".join(names) if names else "-"
