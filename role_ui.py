@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from storage import set_player_preference, get_player_preference, clear_player_preference
 from config import (
@@ -47,13 +48,13 @@ class RoleView(discord.ui.View):
 
     @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=2)
     async def save(self, interaction: discord.Interaction, button: discord.ui.Button):
-        set_player_preference(self.player_name, list(self.selected_roles))
+        await asyncio.to_thread(set_player_preference, self.player_name, list(self.selected_roles))
         await interaction.response.send_message(f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}", ephemeral=True)
         self.stop()
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=2)
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
-        clear_player_preference(self.player_name)
+        await asyncio.to_thread(clear_player_preference, self.player_name)
         self.selected_roles.clear()
         for item in self.children:
             if isinstance(item, RoleButton):

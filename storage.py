@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 
 PREFERENCES_PATH = os.environ.get("PREFERENCES_PATH")
 DATA_DIR = os.environ.get("DATA_DIR")
@@ -8,6 +9,8 @@ STORAGE_FILE = (
     or (os.path.join(DATA_DIR, "player_preferences.json") if DATA_DIR else None)
     or "player_preferences.json"
 )
+
+file_lock = threading.Lock()
 
 def load_preferences():
     if os.path.exists(STORAGE_FILE):
@@ -31,17 +34,19 @@ def get_player_preference(player_name):
     return prefs.get(player_name)
 
 def set_player_preference(player_name, roles):
-    prefs = load_preferences()
-    prefs[player_name] = roles
-    save_preferences(prefs)
+    with file_lock:
+        prefs = load_preferences()
+        prefs[player_name] = roles
+        save_preferences(prefs)
 
 def clear_player_preference(player_name):
-    prefs = load_preferences()
-    if player_name in prefs:
-        del prefs[player_name]
-        save_preferences(prefs)
-        return True
-    return False
+    with file_lock:
+        prefs = load_preferences()
+        if player_name in prefs:
+            del prefs[player_name]
+            save_preferences(prefs)
+            return True
+        return False
 
 def get_all_preferences():
     return load_preferences()

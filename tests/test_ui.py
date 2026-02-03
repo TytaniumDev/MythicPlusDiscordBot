@@ -14,34 +14,68 @@ import discord
 class TestUI(unittest.IsolatedAsyncioTestCase):
     async def test_role_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
-        # Mocking get_running_loop to avoid "no running event loop" error during View.__init__
-        with unittest.mock.patch("asyncio.get_running_loop"):
-            view = RoleView("TestPlayer", initial_roles)
-            self.assertEqual(view.player_name, "TestPlayer")
-            self.assertEqual(view.selected_roles, {ROLE_TANK, "Brez"})
 
-            tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
-            self.assertEqual(tank_button.style, discord.ButtonStyle.primary)
+        view = RoleView("TestPlayer", initial_roles)
+        self.assertEqual(view.player_name, "TestPlayer")
+        self.assertEqual(view.selected_roles, {ROLE_TANK, "Brez"})
 
-            healer_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_HEALER)
-            self.assertEqual(healer_button.style, discord.ButtonStyle.secondary)
+        tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
+        self.assertEqual(tank_button.style, discord.ButtonStyle.primary)
+
+        healer_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_HEALER)
+        self.assertEqual(healer_button.style, discord.ButtonStyle.secondary)
 
     async def test_role_button_callback(self):
-        with unittest.mock.patch("asyncio.get_running_loop"):
-            view = RoleView("TestPlayer")
-            tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
+        view = RoleView("TestPlayer")
+        tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
 
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.edit_message = AsyncMock()
+
+        await tank_button.callback(interaction)
+        self.assertIn(ROLE_TANK, view.selected_roles)
+        self.assertEqual(tank_button.style, discord.ButtonStyle.primary)
+
+        await tank_button.callback(interaction)
+        self.assertNotIn(ROLE_TANK, view.selected_roles)
+        self.assertEqual(tank_button.style, discord.ButtonStyle.secondary)
+
+    async def test_save_method(self):
+        with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
+
+            view = RoleView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
-            interaction.response.edit_message = AsyncMock()
+            interaction.response.send_message = AsyncMock()
+            view.stop = MagicMock()
 
-            await tank_button.callback(interaction)
-            self.assertIn(ROLE_TANK, view.selected_roles)
-            self.assertEqual(tank_button.style, discord.ButtonStyle.primary)
+            # Use callback similar to benchmark
+            await view.save.callback(interaction)
 
-            await tank_button.callback(interaction)
-            self.assertNotIn(ROLE_TANK, view.selected_roles)
-            self.assertEqual(tank_button.style, discord.ButtonStyle.secondary)
+            mock_set_pref.assert_called_once()
+            args, _ = mock_set_pref.call_args
+            self.assertEqual(args[0], "TestPlayer")
+            self.assertIn(ROLE_TANK, args[1])
+
+            interaction.response.send_message.assert_called_once()
+            view.stop.assert_called_once()
+
+    async def test_clear_method(self):
+        with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
+
+            view = RoleView("TestPlayer", [ROLE_TANK])
+            interaction = MagicMock(spec=discord.Interaction)
+            interaction.response = MagicMock()
+            interaction.response.send_message = AsyncMock()
+            interaction.edit_original_response = AsyncMock()
+
+            await view.clear.callback(interaction)
+
+            mock_clear_pref.assert_called_once_with("TestPlayer")
+            self.assertEqual(len(view.selected_roles), 0)
+            interaction.response.send_message.assert_called_once()
+            interaction.edit_original_response.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()
