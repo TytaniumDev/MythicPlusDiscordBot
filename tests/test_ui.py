@@ -87,14 +87,5 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         edit_button = next((item for item in view.children if isinstance(item, discord.ui.Button) and item.custom_id == "edit_roles_button"), None)
         self.assertIsNotNone(edit_button)
 
-    async def test_role_board_view_initialization(self):
-         with unittest.mock.patch("asyncio.get_running_loop"):
-            mock_callback = AsyncMock()
-            view = RoleBoardView(update_callback=mock_callback)
-
-            # Check if button exists
-            edit_button = next((item for item in view.children if isinstance(item, discord.ui.Button) and item.custom_id == "edit_roles_button"), None)
-            self.assertIsNotNone(edit_button)
-
 if __name__ == "__main__":
     unittest.main()
