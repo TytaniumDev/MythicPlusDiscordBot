@@ -6,6 +6,7 @@ import sys
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import storage
 from storage import (
     load_preferences,
     save_preferences,
@@ -15,6 +16,7 @@ from storage import (
     get_all_preferences,
     STORAGE_FILE
 )
+from unittest.mock import patch
 
 class TestStorage(unittest.TestCase):
     def setUp(self):
@@ -22,6 +24,8 @@ class TestStorage(unittest.TestCase):
         self.backup_exists = os.path.exists(STORAGE_FILE)
         if self.backup_exists:
             os.rename(STORAGE_FILE, STORAGE_FILE + ".bak")
+        # Reset cache
+        storage._PREFERENCES_CACHE = None
 
     def tearDown(self):
         # Remove test storage file
@@ -30,6 +34,31 @@ class TestStorage(unittest.TestCase):
         # Restore backup
         if self.backup_exists:
             os.rename(STORAGE_FILE + ".bak", STORAGE_FILE)
+        # Reset cache
+        storage._PREFERENCES_CACHE = None
+
+    def test_caching_behavior(self):
+        # Setup initial file
+        initial_data = {"Player1": ["Tank"]}
+        with open(STORAGE_FILE, "w") as f:
+            json.dump(initial_data, f)
+
+        with patch("builtins.open", wraps=open) as mock_file:
+            # First load
+            data1 = load_preferences()
+            self.assertEqual(data1, initial_data)
+
+            # Verify read called
+            read_calls_1 = [c for c in mock_file.call_args_list if c[0][0] == STORAGE_FILE and 'r' in c[0]]
+            self.assertEqual(len(read_calls_1), 1)
+
+            # Second load - should use cache
+            data2 = load_preferences()
+            self.assertEqual(data2, initial_data)
+
+            # Verify read NOT called again
+            read_calls_2 = [c for c in mock_file.call_args_list if c[0][0] == STORAGE_FILE and 'r' in c[0]]
+            self.assertEqual(len(read_calls_2), 1)
 
     def test_save_and_load(self):
         prefs = {"Player1": ["Tank", "DPS"]}
