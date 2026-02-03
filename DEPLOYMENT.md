@@ -1,86 +1,170 @@
-# Deployment Guide for MythicPlusDiscordBot
+# Deployment Guide (Docker + GitHub Actions over Tailscale)
 
-This guide explains how to set up the enhanced MythicPlusDiscordBot with Voice, Sound, and Activities on your Raspberry Pi.
+This guide documents the only supported deployment flow for this project:
+Docker images built by GitHub Actions and deployed to a Raspberry Pi over Tailscale.
+There are no `.env` files on the Pi; secrets are injected at deploy time.
 
-## 1. Raspberry Pi Setup (using Docker)
+## 1. Raspberry Pi bootstrap (new device)
 
-The easiest way to run the bot is using Docker, which handles all dependencies including `ffmpeg` and `PyNaCl`.
+Run these steps once on a fresh Pi.
 
-1.  **Install Docker and Docker Compose** on your Raspberry Pi if you haven't already.
-2.  **Clone the repository** to your Pi.
-3.  **Configure Environment Variables**:
-    You have two main options for managing secrets:
+### 1.1 Create a deploy user (recommended)
+```bash
+sudo adduser deploy
+sudo usermod -aG sudo deploy
+```
+Use `pi` instead of `deploy` if you prefer.
 
-    ### Option A: Use Host Environment Variables (Recommended)
-    You can set the environment variables directly in your shell or your user's profile (`~/.bashrc` or `~/.profile`):
-    ```bash
-    export BOT_TOKEN=your_discord_bot_token
-    export DISCORD_APPLICATION_ID=your_discord_application_id
-    ```
-    Docker Compose will automatically pick these up from your environment.
+### 1.2 Install Docker and Compose (v2)
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo apt-get install -y docker-compose-plugin
+sudo systemctl enable --now docker
+sudo usermod -aG docker deploy
+```
+Log out and back in (or run `newgrp docker`) for group changes to apply.
 
-    ### Option B: Use a `.env` file
-    Create a `.env` file in the root directory:
-    ```env
-    BOT_TOKEN=your_discord_bot_token
-    DISCORD_APPLICATION_ID=your_discord_application_id
-    ```
+### 1.3 Install and enable Tailscale
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+sudo systemctl enable --now tailscaled
+```
+Find the Tailscale hostname or IP:
+```bash
+tailscale status
+tailscale ip -4
+```
+Use this value for the `PI_HOST` secret (example: `pi.something.ts.net`).
 
-4.  **Using GitHub Secrets (CI/CD)**:
-    If you use GitHub Actions to deploy to your Raspberry Pi, you can store these as **GitHub Secrets** and inject them during deployment.
+### 1.4 Install SSH server and add deploy key
+```bash
+sudo apt-get install -y openssh-server
+sudo systemctl enable --now ssh
+```
 
-    Example GitHub Action snippet for deployment via SSH:
-    ```yaml
-    - name: Deploy to Pi
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.PI_HOST }}
-        username: ${{ secrets.PI_USER }}
-        key: ${{ secrets.PI_SSH_KEY }}
-        script: |
-          cd ~/MythicPlusDiscordBot
-          git pull
-          export BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          export DISCORD_APPLICATION_ID=${{ secrets.DISCORD_APPLICATION_ID }}
-          docker-compose up -d --build
-    ```
+Generate a deploy key (do this on the Pi or your local machine):
+```bash
+ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions_ed25519
+```
 
-5.  **Start the Bot**:
-    ```bash
-    docker-compose up -d --build
-    ```
-    *Note: The Docker build process will automatically run `setup_assets.py` to download sound effects and generate the spinning wheel GIF.*
+Add the public key to the deploy user on the Pi:
+```bash
+sudo -u deploy mkdir -p /home/deploy/.ssh
+sudo -u deploy chmod 700 /home/deploy/.ssh
+cat ~/.ssh/github_actions_ed25519.pub | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys >/dev/null
+sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
+```
 
-## 2. Discord Developer Portal (for Activities)
+Save the private key for the `PI_SSH_KEY` secret:
+```bash
+cat ~/.ssh/github_actions_ed25519
+```
 
-To enable the `!activity` command, you need to configure your bot as a Discord Activity.
+### 1.5 Lock down SSH (Tailscale-only)
+```bash
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+sudo tee /etc/ssh/sshd_config.d/99-tailscale.conf >/dev/null <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+AllowTcpForwarding no
+X11Forwarding no
+EOF
+sudo apt-get update && sudo apt-get install -y ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow in on tailscale0 to any port 22
+sudo ufw enable
+sudo sshd -t
+sudo systemctl restart ssh
+```
+Keep your current SSH session open while testing new settings.
 
-1.  Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-2.  Select your Application.
-3.  Go to **Activities** -> **Getting Started**.
-4.  Set up the **URL Mapping**:
-    - Set the origin to your GitHub Pages URL (see below).
-5.  Note your **Application ID** and ensure it's in the `.env` file as `DISCORD_APPLICATION_ID`.
+### 1.6 Clone the repo on the Pi
+```bash
+sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
+```
+Use this path for the `PI_APP_DIR` secret.
 
-## 3. Hosting the Activity (GitHub Pages)
+## 2. GitHub Secrets for CI/CD
 
-The Discord Activity is a static web app located in the `activity/` folder.
+Go to GitHub repo -> Settings -> Secrets and variables -> Actions.
+Click New repository secret for each:
 
-1.  Create a new repository on GitHub.
-2.  Upload the contents of the `activity/` folder (`index.html`, `style.css`, `script.js`) to the repository.
-3.  Enable **GitHub Pages** in the repository settings (Settings -> Pages).
-4.  Once deployed, you will get a URL like `https://yourusername.github.io/your-repo/`.
-5.  Use this URL in the Discord Developer Portal for URL Mapping.
+### Required
+- `TS_AUTHKEY`: Tailscale auth key (reusable + ephemeral recommended).
+- `PI_HOST`: Tailscale hostname or IP (example: `pi.something.ts.net`).
+- `PI_USER`: SSH user on the Pi (example: `deploy`).
+- `PI_SSH_KEY`: Private SSH key contents from step 1.4.
+- `PI_APP_DIR`: Repo path on the Pi (example: `/home/deploy/mythic-plus-bot`).
+- `GHCR_TOKEN`: GitHub PAT with `read:packages`.
+  If fine-grained tokens do not show Packages, use a classic PAT with `read:packages`
+  (and `repo` if the repo is private).
+- `BOT_TOKEN`: Discord bot token.
+- `DISCORD_APPLICATION_ID`: Discord app ID.
 
-## 5. Bot Commands
+### Optional
+- `PI_SSH_PORT`: Defaults to 22 if omitted.
+- `DEPLOY_WEBHOOK_URL`: Discord webhook for deploy notifications.
 
-- `!wheel`: The classic text-based reveal.
-- `!newwheel`: Enhanced UI with Voice Channel integration, sound effects, and a spinning wheel GIF.
-- `!activity`: Everything in `!newwheel` plus an invite to join the Discord Activity for a synchronized wheel experience.
+### Create a Tailscale auth key
+In the Tailscale admin console: Settings -> Keys -> Generate auth key.
+Recommended settings:
+- Reusable: on
+- Ephemeral: on
 
-## 6. Troubleshooting
+## 3. First deploy
 
-- **Audio not working**: Ensure the bot has "Connect" and "Speak" permissions in the voice channel.
-- **Activity not starting**: Ensure the `DISCORD_APPLICATION_ID` is correct and the URL mapping in the Discord Developer Portal is properly configured.
-- **Docker issues**: Check logs with `docker-compose logs -f`.
-- **Manual Asset Setup**: If you are not using Docker, you can run `python3 setup_assets.py` manually to prepare the sounds and GIF.
+1. Push to `main`/`master`.
+2. Watch the GitHub Actions workflow run.
+3. On the Pi, confirm the container is running:
+   ```bash
+   docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
+   ```
+
+## 4. Verification checklist
+
+Run these checks if a deploy fails or you want to validate the setup.
+
+### 4.1 Tailscale connectivity
+On your local machine (or another device on your tailnet):
+```bash
+ping -c 3 pi.something.ts.net
+ssh deploy@pi.something.ts.net
+```
+
+### 4.2 SSH access and permissions
+On the Pi:
+```bash
+whoami
+groups
+docker ps
+```
+You should see your user in the `docker` group.
+
+### 4.3 Repo path and compose config
+```bash
+ls -la /home/deploy/mythic-plus-bot
+docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
+```
+
+### 4.4 Container health
+```bash
+docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
+docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
+```
+
+### 4.5 GitHub Actions logs
+In GitHub:
+**Actions → CI and Deploy → deploy job**
+Look for:
+- Successful Tailscale connection
+- SSH step completed
+- `docker compose pull` and `up` succeeded
+
+## 5. Updates
+
+Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.

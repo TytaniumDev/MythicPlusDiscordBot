@@ -1,7 +1,13 @@
 import json
 import os
 
-STORAGE_FILE = "player_preferences.json"
+PREFERENCES_PATH = os.environ.get("PREFERENCES_PATH")
+DATA_DIR = os.environ.get("DATA_DIR")
+STORAGE_FILE = (
+    PREFERENCES_PATH
+    or (os.path.join(DATA_DIR, "player_preferences.json") if DATA_DIR else None)
+    or "player_preferences.json"
+)
 
 def load_preferences():
     if os.path.exists(STORAGE_FILE):

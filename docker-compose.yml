@@ -2,11 +2,22 @@ version: '3.8'
 
 services:
   bot:
+    image: ${IMAGE_NAME:-mythic-plus-bot}:${IMAGE_TAG:-latest}
     build: .
     container_name: mythic-plus-bot
-    volumes:
-      - .:/app
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - DISCORD_APPLICATION_ID=${DISCORD_APPLICATION_ID}
+      - PREFERENCES_PATH=/data/player_preferences.json
+    volumes:
+      - bot-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "grep -aq 'bot.py' /proc/1/cmdline"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
+
+volumes:
+  bot-data:
