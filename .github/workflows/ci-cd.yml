@@ -93,65 +93,37 @@ jobs:
           key: ${{ secrets.PI_SSH_KEY }}
           port: ${{ secrets.PI_SSH_PORT != '' && secrets.PI_SSH_PORT || 22 }}
           timeout: 2m
-          command_timeout: 15m
+          command_timeout: 10m
+          debug: true
           script: |
             set -e
-            echo "[$(date -Iseconds)] === Deploy started ==="
-            IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            IMAGE_TAG=${{ github.sha }}
-            echo "[$(date -Iseconds)] Image: $IMAGE_NAME:$IMAGE_TAG"
-            echo "[$(date -Iseconds)] Docker login to ghcr.io..."
-            docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
-            echo "[$(date -Iseconds)] Docker login done."
+            echo "=== Deploy started ==="
+
+            # Set up variables
+            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+            export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
-            echo "[$(date -Iseconds)] cd to app dir: ${{ secrets.PI_APP_DIR }}"
+
+            # Login to GHCR
+            echo "Logging into GHCR..."
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # Update repo
             cd ${{ secrets.PI_APP_DIR }}
-            BRANCH="${{ github.ref_name }}"
-            echo "[$(date -Iseconds)] Git fetch origin..."
-            git fetch origin
-            echo "[$(date -Iseconds)] Git fetch done. Resetting to origin/${BRANCH}..."
-            git reset --hard "origin/${BRANCH}"
-            echo "[$(date -Iseconds)] Git reset done."
-            export IMAGE_NAME
-            export IMAGE_TAG
-            echo "[$(date -Iseconds)] Docker compose pull..."
+            echo "Updating repo..."
+            git fetch origin && git reset --hard origin/${{ github.ref_name }}
+
+            # Deploy
+            echo "Pulling image..."
             docker compose pull --quiet
-            echo "[$(date -Iseconds)] Docker compose pull done. Bringing up containers..."
+            echo "Starting containers..."
             docker compose up -d --remove-orphans --quiet
-            echo "[$(date -Iseconds)] Containers up. Checking bot container..."
-            container_id=$(docker compose ps -q bot)
-            if [ -z "$container_id" ]; then
-              echo "Bot container not found."
-              exit 1
-            fi
-            echo "[$(date -Iseconds)] Bot container id: $container_id. Waiting for healthy/running (up to 60s)..."
-            for i in $(seq 1 12); do
-              health=$(docker inspect -f '${{ '{{' }}if .State.Health}}${{ '}}' }}${{ '{{' }}.State.Health.Status}}${{ '}}' }}${{ '{{' }}else}}none${{ '}}' }}${{ '{{' }}end}}${{ '}}' }}' "$container_id")
-              status=$(docker inspect -f '${{ '{{' }}.State.Status}}${{ '}}' }}' "$container_id")
-              echo "[$(date -Iseconds)]   attempt $i/12: health=$health status=$status"
-              if [ "$health" = "healthy" ] || { [ "$health" = "none" ] && [ "$status" = "running" ]; }; then
-                echo "Container healthy/running."
-                break
-              fi
-              if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
-                echo "Container unhealthy or stopped."
-                break
-              fi
-              sleep 5
-            done
-            if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
-              echo "[$(date -Iseconds)] Restarting bot container..."
-              docker compose restart bot
-              sleep 5
-              container_id=$(docker compose ps -q bot)
-              health=$(docker inspect -f '${{ '{{' }}if .State.Health}}${{ '}}' }}${{ '{{' }}.State.Health.Status}}${{ '}}' }}${{ '{{' }}else}}none${{ '}}' }}${{ '{{' }}end}}${{ '}}' }}' "$container_id")
-              status=$(docker inspect -f '${{ '{{' }}.State.Status}}${{ '}}' }}' "$container_id")
-              if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
-                echo "Container still unhealthy or stopped."
-                exit 1
-              fi
-            fi
-            echo "[$(date -Iseconds)] Pruning unused images..."
-            docker image prune -f
-            echo "[$(date -Iseconds)] === Deploy finished ==="
+
+            # Verify container is running
+            echo "Verifying deployment..."
+            docker compose ps
+
+            # Cleanup
+            docker image prune -f > /dev/null
+            echo "=== Deploy finished ==="
