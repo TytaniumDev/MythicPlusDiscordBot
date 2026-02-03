@@ -59,6 +59,7 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    timeout-minutes: 20
     steps:
       - name: Connect to Tailscale
         uses: tailscale/github-action@v2
@@ -72,26 +73,44 @@ jobs:
           username: ${{ secrets.PI_USER }}
           key: ${{ secrets.PI_SSH_KEY }}
           port: ${{ secrets.PI_SSH_PORT != '' && secrets.PI_SSH_PORT || 22 }}
+          timeout: 2m
+          command_timeout: 15m
           script: |
             set -e
+            echo "[$(date -Iseconds)] === Deploy started ==="
             IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
             IMAGE_TAG=${{ github.sha }}
+            echo "[$(date -Iseconds)] Image: $IMAGE_NAME:$IMAGE_TAG"
+            echo "[$(date -Iseconds)] Docker login to ghcr.io..."
             docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_TOKEN }}
+            echo "[$(date -Iseconds)] Docker login done."
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
+            echo "[$(date -Iseconds)] cd to app dir: ${{ secrets.PI_APP_DIR }}"
             cd ${{ secrets.PI_APP_DIR }}
+            BRANCH="${{ github.ref_name }}"
+            echo "[$(date -Iseconds)] Git fetch origin..."
+            git fetch origin
+            echo "[$(date -Iseconds)] Git fetch done. Resetting to origin/${BRANCH}..."
+            git reset --hard "origin/${BRANCH}"
+            echo "[$(date -Iseconds)] Git reset done."
             export IMAGE_NAME
             export IMAGE_TAG
+            echo "[$(date -Iseconds)] Docker compose pull..."
             docker compose pull
+            echo "[$(date -Iseconds)] Docker compose pull done. Bringing up containers..."
             docker compose up -d --remove-orphans
+            echo "[$(date -Iseconds)] Containers up. Checking bot container..."
             container_id=$(docker compose ps -q bot)
             if [ -z "$container_id" ]; then
               echo "Bot container not found."
               exit 1
             fi
+            echo "[$(date -Iseconds)] Bot container id: $container_id. Waiting for healthy/running (up to 60s)..."
             for i in $(seq 1 12); do
               health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id")
               status=$(docker inspect -f '{{.State.Status}}' "$container_id")
+              echo "[$(date -Iseconds)]   attempt $i/12: health=$health status=$status"
               if [ "$health" = "healthy" ] || { [ "$health" = "none" ] && [ "$status" = "running" ]; }; then
                 echo "Container healthy/running."
                 break
@@ -103,7 +122,7 @@ jobs:
               sleep 5
             done
             if [ "$health" = "unhealthy" ] || [ "$status" != "running" ]; then
-              echo "Restarting bot container..."
+              echo "[$(date -Iseconds)] Restarting bot container..."
               docker compose restart bot
               sleep 5
               container_id=$(docker compose ps -q bot)
@@ -114,4 +133,6 @@ jobs:
                 exit 1
               fi
             fi
+            echo "[$(date -Iseconds)] Pruning unused images..."
             docker image prune -f
+            echo "[$(date -Iseconds)] === Deploy finished ==="

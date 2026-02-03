@@ -168,3 +168,4 @@ Look for:
 ## 5. Updates
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
+Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
