@@ -99,6 +99,8 @@ The workflow in `.github/workflows/ci-cd.yml` builds the Docker image, pushes it
 - `PI_SSH_KEY`: private key for SSH access.
 - `PI_APP_DIR`: path to the repo on the Pi (e.g., `/home/pi/mythic-plus-bot`).
 - `GHCR_TOKEN`: GitHub PAT with `read:packages` scope (used by the Pi to pull the image).
+  If you do not see a Packages permission in fine-grained tokens, create a **classic** PAT
+  with `read:packages` (and `repo` if the repository is private).
 - `BOT_TOKEN`: Discord bot token (used on each deploy to set runtime env vars).
 - `DISCORD_APPLICATION_ID`: Discord application ID (used on each deploy to set runtime env vars).
 - `TS_AUTHKEY`: Tailscale auth key (recommended to create as reusable + ephemeral).
