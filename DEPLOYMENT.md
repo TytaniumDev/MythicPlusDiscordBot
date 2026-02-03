@@ -9,12 +9,43 @@ The easiest way to run the bot is using Docker, which handles all dependencies i
 1.  **Install Docker and Docker Compose** on your Raspberry Pi if you haven't already.
 2.  **Clone the repository** to your Pi.
 3.  **Configure Environment Variables**:
-    Create a `.env` file in the root directory and add your bot token and application ID:
+    You have two main options for managing secrets:
+
+    ### Option A: Use Host Environment Variables (Recommended)
+    You can set the environment variables directly in your shell or your user's profile (`~/.bashrc` or `~/.profile`):
+    ```bash
+    export BOT_TOKEN=your_discord_bot_token
+    export DISCORD_APPLICATION_ID=your_discord_application_id
+    ```
+    Docker Compose will automatically pick these up from your environment.
+
+    ### Option B: Use a `.env` file
+    Create a `.env` file in the root directory:
     ```env
     BOT_TOKEN=your_discord_bot_token
     DISCORD_APPLICATION_ID=your_discord_application_id
     ```
-4.  **Start the Bot**:
+
+4.  **Using GitHub Secrets (CI/CD)**:
+    If you use GitHub Actions to deploy to your Raspberry Pi, you can store these as **GitHub Secrets** and inject them during deployment.
+
+    Example GitHub Action snippet for deployment via SSH:
+    ```yaml
+    - name: Deploy to Pi
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.PI_HOST }}
+        username: ${{ secrets.PI_USER }}
+        key: ${{ secrets.PI_SSH_KEY }}
+        script: |
+          cd ~/MythicPlusDiscordBot
+          git pull
+          export BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          export DISCORD_APPLICATION_ID=${{ secrets.DISCORD_APPLICATION_ID }}
+          docker-compose up -d --build
+    ```
+
+5.  **Start the Bot**:
     ```bash
     docker-compose up -d --build
     ```
@@ -41,13 +72,13 @@ The Discord Activity is a static web app located in the `activity/` folder.
 4.  Once deployed, you will get a URL like `https://yourusername.github.io/your-repo/`.
 5.  Use this URL in the Discord Developer Portal for URL Mapping.
 
-## 4. Bot Commands
+## 5. Bot Commands
 
 - `!wheel`: The classic text-based reveal.
 - `!newwheel`: Enhanced UI with Voice Channel integration, sound effects, and a spinning wheel GIF.
 - `!activity`: Everything in `!newwheel` plus an invite to join the Discord Activity for a synchronized wheel experience.
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 - **Audio not working**: Ensure the bot has "Connect" and "Speak" permissions in the voice channel.
 - **Activity not starting**: Ensure the `DISCORD_APPLICATION_ID` is correct and the URL mapping in the Discord Developer Portal is properly configured.

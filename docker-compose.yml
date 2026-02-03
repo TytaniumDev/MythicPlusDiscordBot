@@ -6,6 +6,7 @@ services:
     container_name: mythic-plus-bot
     volumes:
       - .:/app
-    env_file:
-      - .env
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DISCORD_APPLICATION_ID=${DISCORD_APPLICATION_ID}
     restart: unless-stopped
