@@ -125,6 +125,46 @@ Recommended settings:
    docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
    ```
 
-## 4. Updates
+## 4. Verification checklist
+
+Run these checks if a deploy fails or you want to validate the setup.
+
+### 4.1 Tailscale connectivity
+On your local machine (or another device on your tailnet):
+```bash
+ping -c 3 pibot.tail1a5d8b.ts.net
+ssh deploy@pibot.tail1a5d8b.ts.net
+```
+
+### 4.2 SSH access and permissions
+On the Pi:
+```bash
+whoami
+groups
+docker ps
+```
+You should see your user in the `docker` group.
+
+### 4.3 Repo path and compose config
+```bash
+ls -la /home/deploy/mythic-plus-bot
+docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
+```
+
+### 4.4 Container health
+```bash
+docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
+docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
+```
+
+### 4.5 GitHub Actions logs
+In GitHub:
+**Actions → CI and Deploy → deploy job**
+Look for:
+- Successful Tailscale connection
+- SSH step completed
+- `docker compose pull` and `up` succeeded
+
+## 5. Updates
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
