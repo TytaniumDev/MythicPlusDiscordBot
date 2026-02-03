@@ -104,7 +104,7 @@ Click New repository secret for each:
   If fine-grained tokens do not show Packages, use a classic PAT with `read:packages`
   (and `repo` if the repo is private).
 - `BOT_TOKEN`: Discord bot token.
-- `DISCORD_APPLICATION_ID`: Discord app ID.
+- `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `!activity` invite).
 
 ### Optional
 - `PI_SSH_PORT`: Defaults to 22 if omitted.
@@ -116,7 +116,49 @@ Recommended settings:
 - Reusable: on
 - Ephemeral: on
 
-## 3. First deploy
+## 3. Discord Developer Portal (bot permissions)
+
+Configure the bot in the [Discord Developer Portal](https://discord.com/developers/applications): select your application → **Bot** and **OAuth2**.
+
+### 3.1 Privileged intents (Bot → Privileged Gateway Intents)
+
+Enable these so the bot can read members and message content:
+
+- **Server Members Intent** — required for role-based player lists and nicknames (e.g. `!wheel`, `!rolecheck`).
+- **Message Content Intent** — required if the bot uses the message content of commands (e.g. `!wheel`).
+
+Save changes after toggling intents.
+
+### 3.2 Bot permissions (OAuth2 → URL Generator or invite)
+
+When inviting the bot or generating an invite URL, include at least these **scopes** and **permissions**:
+
+| Permission        | Why |
+|-------------------|-----|
+| **View Channel**  | See text and voice channels. |
+| **Send Messages**  | Send group results and GIFs. |
+| **Embed Links**    | Send embeds (e.g. group cards). |
+| **Attach Files**   | Post the wheel GIF and other assets. |
+| **Connect**        | Join voice channels. |
+| **Speak**          | Play spin/reveal sounds in voice. |
+| **Create Instant Invite** | Required for `!activity` (embedded activity invite). |
+| **Read Message History** | Recommended so the bot can work in existing channels. |
+
+Use **Bot** scope and the permissions above; add **applications.commands** if you use slash commands.
+
+To update an already-invited bot: use a new invite URL with the same permissions and re-invite (or re-authorize when Discord prompts). Role/position of the bot in the server can affect whether it can create invites or speak in voice.
+
+### 3.3 Activity (optional, for `!activity`)
+
+The `!activity` command creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
+
+1. In the Developer Portal: your application → **Activities** (or **Rich Presence** / app type).
+2. Create or link an Activity so Discord allows `target_type=embedded_application` invites.
+3. Set the **DISCORD_APPLICATION_ID** secret (and `DISCORD_APPLICATION_ID` in `.env` locally) to your application’s **Application ID** (Application → General Information).
+
+If Activities are not set up, `!activity` will fail; `!wheel` and `!newwheel` (voice + GIFs) still work with the permissions above.
+
+## 4. First deploy
 
 1. Push to `main`/`master`.
 2. Watch the GitHub Actions workflow run.
@@ -125,18 +167,18 @@ Recommended settings:
    docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
    ```
 
-## 4. Verification checklist
+## 5. Verification checklist
 
 Run these checks if a deploy fails or you want to validate the setup.
 
-### 4.1 Tailscale connectivity
+### 5.1 Tailscale connectivity
 On your local machine (or another device on your tailnet):
 ```bash
 ping -c 3 pi.something.ts.net
 ssh deploy@pi.something.ts.net
 ```
 
-### 4.2 SSH access and permissions
+### 5.2 SSH access and permissions
 On the Pi:
 ```bash
 whoami
@@ -145,19 +187,19 @@ docker ps
 ```
 You should see your user in the `docker` group.
 
-### 4.3 Repo path and compose config
+### 5.3 Repo path and compose config
 ```bash
 ls -la /home/deploy/mythic-plus-bot
 docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
 ```
 
-### 4.4 Container health
+### 5.4 Container health
 ```bash
 docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
 docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
 ```
 
-### 4.5 GitHub Actions logs
+### 5.5 GitHub Actions logs
 In GitHub:
 **Actions → CI and Deploy → deploy job**
 Look for:
@@ -165,7 +207,7 @@ Look for:
 - SSH step completed
 - `docker compose pull` and `up` succeeded
 
-## 5. Updates
+## 6. Updates
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
 Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
