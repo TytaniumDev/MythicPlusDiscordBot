@@ -30,25 +30,44 @@ The easiest way to run the bot is using Docker, which handles all dependencies i
     The default `docker-compose.yml` stores `player_preferences.json` in a named volume mounted at `/data`.
     If you want to customize the location, set `PREFERENCES_PATH` or `DATA_DIR`.
 
-## 2. GitHub Secrets for CI/CD
+## 2. Tailscale setup (recommended, no public SSH)
+
+This setup keeps SSH off the public internet while still allowing push-based deploys.
+
+1. **Install Tailscale on the Pi**:
+   ```bash
+   curl -fsSL https://tailscale.com/install.sh | sh
+   ```
+2. **Join your tailnet**:
+   ```bash
+   sudo tailscale up
+   ```
+   Follow the login link to authorize the device.
+3. **Find the Tailscale hostname or IP** (from the Tailscale admin console or `tailscale status`).
+   This value will be used for `PI_HOST`.
+4. **Ensure SSH is running** on the Pi (standard `openssh-server` is fine).
+   You do not need to open port 22 on your router when using Tailscale.
+
+## 3. GitHub Secrets for CI/CD
 
 The workflow in `.github/workflows/ci-cd.yml` builds the Docker image, pushes it to GitHub Container Registry (GHCR), then SSHs into the Pi to pull and restart the container.
 
 **Required secrets**:
-- `PI_HOST`: IP or hostname of the Pi.
+- `PI_HOST`: Tailscale hostname or IP of the Pi (e.g., `pi.yourtailnet.ts.net`).
 - `PI_USER`: SSH username.
 - `PI_SSH_KEY`: private key for SSH access.
 - `PI_APP_DIR`: path to the repo on the Pi (e.g., `/home/pi/mythic-plus-bot`).
 - `GHCR_TOKEN`: GitHub PAT with `read:packages` scope (used by the Pi to pull the image).
 - `BOT_TOKEN`: Discord bot token (used on each deploy to set runtime env vars).
 - `DISCORD_APPLICATION_ID`: Discord application ID (used on each deploy to set runtime env vars).
+- `TS_AUTHKEY`: Tailscale auth key (recommended to create as reusable + ephemeral).
 
 **Optional secrets**:
 - `PI_SSH_PORT`: SSH port (defaults to 22).
  - `DEPLOY_WEBHOOK_URL`: Discord webhook URL for deploy notifications.
 You do not need to create a `.env` file on the Pi if you set `BOT_TOKEN` and `DISCORD_APPLICATION_ID` as GitHub secrets. The deploy job exports them before running `docker compose`, so the container gets the values at runtime.
 
-## 3. How the GitHub Actions workflow works
+## 4. How the GitHub Actions workflow works
 
 1. Runs unit tests.
 2. Builds a multi-arch Docker image (amd64 + arm64) and pushes it to GHCR.
@@ -57,7 +76,7 @@ You do not need to create a `.env` file on the Pi if you set `BOT_TOKEN` and `DI
 
 The deploy step exports `IMAGE_NAME` and `IMAGE_TAG` for `docker-compose.yml` so the Pi always pulls the exact build that passed CI.
 
-## 4. Manual deploy/update (if needed)
+## 5. Manual deploy/update (if needed)
 
 On the Pi:
 ```bash
@@ -68,7 +87,7 @@ docker compose pull
 docker compose up -d --remove-orphans
 ```
 
-## 5. Discord Developer Portal (for Activities)
+## 6. Discord Developer Portal (for Activities)
 
 To enable the `!activity` command, you need to configure your bot as a Discord Activity.
 
@@ -79,7 +98,7 @@ To enable the `!activity` command, you need to configure your bot as a Discord A
     - Set the origin to your GitHub Pages URL (see below).
 5.  Note your **Application ID** and ensure it's in the `.env` file as `DISCORD_APPLICATION_ID`.
 
-## 6. Hosting the Activity (GitHub Pages)
+## 7. Hosting the Activity (GitHub Pages)
 
 The Discord Activity is a static web app located in the `activity/` folder.
 
@@ -89,13 +108,13 @@ The Discord Activity is a static web app located in the `activity/` folder.
 4.  Once deployed, you will get a URL like `https://yourusername.github.io/your-repo/`.
 5.  Use this URL in the Discord Developer Portal for URL Mapping.
 
-## 7. Bot Commands
+## 8. Bot Commands
 
 - `!wheel`: The classic text-based reveal.
 - `!newwheel`: Enhanced UI with Voice Channel integration, sound effects, and a spinning wheel GIF.
 - `!activity`: Everything in `!newwheel` plus an invite to join the Discord Activity for a synchronized wheel experience.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 - **Audio not working**: Ensure the bot has "Connect" and "Speak" permissions in the voice channel.
 - **Activity not starting**: Ensure the `DISCORD_APPLICATION_ID` is correct and the URL mapping in the Discord Developer Portal is properly configured.
