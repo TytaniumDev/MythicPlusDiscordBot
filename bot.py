@@ -277,7 +277,7 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug):
                 .add_field(name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')\
                 .add_field(name='Battle Res', value=f'{brez_player}', inline=True)\
                 .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
-            await ctx.send(embed=embed)
+            embedMessage = await ctx.send(embed=embed)
         else:
             embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
                 .add_field(name='Healer', value=f'{dashed(healer_name)}')\
