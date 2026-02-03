@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   bot:
     image: ${IMAGE_NAME:-mythic-plus-bot}:${IMAGE_TAG:-latest}

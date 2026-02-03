@@ -71,7 +71,7 @@ jobs:
           host: ${{ secrets.PI_HOST }}
           username: ${{ secrets.PI_USER }}
           key: ${{ secrets.PI_SSH_KEY }}
-          port: ${{ secrets.PI_SSH_PORT || 22 }}
+          port: ${{ secrets.PI_SSH_PORT != '' && secrets.PI_SSH_PORT || 22 }}
           script: |
             set -e
             IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
@@ -117,21 +117,22 @@ jobs:
             docker image prune -f
 
       - name: Notify Discord
-        if: always() && secrets.DEPLOY_WEBHOOK_URL != ''
+        if: always()
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           DEPLOY_STATUS: ${{ job.status }}
         run: |
-          payload=$(python - <<'PY'
-import json
-import os
-
-status = os.environ["DEPLOY_STATUS"]
-repo = os.environ["GITHUB_REPOSITORY"]
-ref = os.environ["GITHUB_REF"]
-sha = os.environ["GITHUB_SHA"][:7]
-message = f"Deploy {status} for {repo} ({ref} @ {sha})"
-print(json.dumps({"content": message}))
-PY
-)
+          if [ -z "$DEPLOY_WEBHOOK_URL" ]; then
+            echo "No webhook URL configured, skipping notification"
+            exit 0
+          fi
+          payload=$(python3 -c "
+          import json, os
+          status = os.environ['DEPLOY_STATUS']
+          repo = os.environ['GITHUB_REPOSITORY']
+          ref = os.environ['GITHUB_REF']
+          sha = os.environ['GITHUB_SHA'][:7]
+          message = f'Deploy {status} for {repo} ({ref} @ {sha})'
+          print(json.dumps({'content': message}))
+          ")
           curl -sS -H "Content-Type: application/json" -d "$payload" "$DEPLOY_WEBHOOK_URL"
