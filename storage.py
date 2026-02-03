@@ -32,9 +32,9 @@ def load_preferences():
 def save_preferences(preferences):
     global _PREFERENCES_CACHE
     try:
+        _PREFERENCES_CACHE = preferences
         with open(STORAGE_FILE, "w") as f:
             json.dump(preferences, f, indent=4)
-        _PREFERENCES_CACHE = preferences
     except Exception as e:
         print(f"Error saving preferences: {e}")
 
