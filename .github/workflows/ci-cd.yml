@@ -64,23 +64,24 @@ jobs:
       - name: Connect to Tailscale
         id: tailscale
         continue-on-error: true
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v3
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
-          hostname: gha-deploy-bot
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci-runner
       - name: Verify Tailscale connection
         run: |
           if [ "${{ steps.tailscale.outcome }}" != "success" ]; then
             echo "::error::============================================"
             echo "::error::TAILSCALE CONNECTION FAILED"
             echo "::error::============================================"
-            echo "::error::The Tailscale auth key (TS_AUTHKEY) may be expired!"
-            echo "::error::Auth keys expire after 90 days."
+            echo "::error::The Tailscale OAuth credentials may be invalid!"
             echo "::error::"
             echo "::error::To fix this:"
-            echo "::error::1. Go to Tailscale Admin Console → Settings → Keys"
-            echo "::error::2. Generate a new auth key (Reusable + Ephemeral)"
-            echo "::error::3. Update the TS_AUTHKEY secret in GitHub repository settings"
+            echo "::error::1. Go to Tailscale Admin Console → Settings → OAuth clients"
+            echo "::error::2. Create/verify OAuth client with 'devices:write' scope"
+            echo "::error::3. Ensure TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET are set in GitHub secrets"
+            echo "::error::4. Verify ACLs allow tag:ci-runner"
             echo "::error::============================================"
             exit 1
           fi
