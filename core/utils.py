@@ -24,16 +24,17 @@ def WoWName(member: discord.Member | discord.User, debug: bool | None = None) ->
             "WoWName - Member: %s\nNick: %s\nGlobal: %s",
             member,
             nick,
-            getattr(member, "global_name", None),
+            member.global_name,
         )
-    rawName: str = (
-        nick
-        if nick is not None
-        else getattr(member, "global_name", None)
-        if getattr(member, "global_name", None) is not None
-        else str(member)
-    )
-    return rawName.replace(".", "")
+
+    if nick is not None:
+        raw_name = str(nick)
+    elif member.global_name is not None:
+        raw_name = member.global_name
+    else:
+        raw_name = str(member)
+
+    return raw_name.replace(".", "")
 
 
 async def showLongTyping(
