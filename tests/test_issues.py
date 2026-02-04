@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, mock_open, patch
 
 import discord
 
@@ -100,3 +100,38 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             mock_interaction.followup.send.assert_called_with(
                 "❌ Failed to create issue: Test Error", ephemeral=True
             )
+
+    async def test_modal_submission_with_logs(self):
+        # Mock interaction and user
+        mock_interaction = AsyncMock(spec=discord.Interaction)
+        mock_interaction.user.global_name = "TestUser"
+        mock_interaction.user.name = "testuser"
+        mock_interaction.user.id = 12345
+        mock_interaction.response = AsyncMock()
+        mock_interaction.followup = AsyncMock()
+
+        modal = GitHubIssueModal(issue_type="bug")
+
+        # Simulate user input
+        modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
+        modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
+        modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+
+        # Mock config and create_github_issue
+        with (
+            patch("core.issues.create_github_issue", new_callable=AsyncMock) as mock_create,
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="Line 1\nLine 2\nLine 3")),
+        ):
+            mock_create.return_value = {"html_url": "http://url"}
+
+            await modal.on_submit(mock_interaction)
+
+            mock_create.assert_called_once()
+            args, _ = mock_create.call_args
+            title, body, labels = args
+
+            self.assertEqual(title, "Bug Title")
+            self.assertIn("Recent Logs:", body)
+            self.assertIn("Line 1", body)
+            self.assertIn("Line 3", body)

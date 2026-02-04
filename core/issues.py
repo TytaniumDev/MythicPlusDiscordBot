@@ -1,3 +1,7 @@
+import asyncio
+import os
+from collections import deque
+
 import aiohttp
 import discord
 from discord import ui
@@ -93,6 +97,19 @@ class GitHubIssueModal(ui.Modal):
                 "Reproduction Steps" if self.issue_type == "bug" else "Benefit/Impact"
             )
             body += f"\n**{section_title}:**\n{extra}\n"
+
+        if self.issue_type == "bug":
+            if os.path.exists(config.LOG_FILE):
+                try:
+
+                    def read_last_logs():
+                        with open(config.LOG_FILE, "r", encoding="utf-8") as f:
+                            return "".join(deque(f, maxlen=50))
+
+                    last_lines = await asyncio.to_thread(read_last_logs)
+                    body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+                except Exception as e:
+                    print(f"Failed to attach logs: {e}")
 
         # Add Jules label for automation
         labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]

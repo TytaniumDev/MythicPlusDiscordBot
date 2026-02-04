@@ -1,4 +1,5 @@
 import io
+import logging
 import traceback
 from typing import Any
 
@@ -6,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.config import BOT_TOKEN, DEVELOPER_ID
+from core.config import BOT_TOKEN, DEVELOPER_ID, LOG_FILE
 from services.group_service import GroupService
 
 intents = discord.Intents.default()
@@ -152,8 +153,35 @@ if __name__ == "__main__":
         raise ValueError(
             "BOT_TOKEN environment variable is required. Please check your .env file."
         )
+
+    # Setup logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # File Handler
+    from logging.handlers import RotatingFileHandler
+
+    file_handler = RotatingFileHandler(
+        filename=LOG_FILE,
+        encoding="utf-8",
+        mode="a",
+        maxBytes=5 * 1024 * 1024,
+        backupCount=1,
+    )
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+    )
+    logger.addHandler(file_handler)
+
+    # Stream Handler (Console)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
+        logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+    )
+    logger.addHandler(console_handler)
+
     try:
-        bot.run(BOT_TOKEN)
+        bot.run(BOT_TOKEN, log_handler=None)
     except discord.LoginFailure:
         print("❌ Failed to login. Please check your BOT_TOKEN.")
     except Exception as e:
