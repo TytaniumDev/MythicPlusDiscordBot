@@ -35,18 +35,27 @@ class MythicPlusBot(commands.Bot):
             )
 
             message = f"⚠️ **Bot Error Detected**\n**Context:** {context_info}\n**Error:** `{error}`"
+            files = []
 
-            if len(tb_str) + len(message) < 1900:
-                await dev.send(f"{message}\n```python\n{tb_str}\n```")
-            else:
-                # If traceback is too long, send it as a file
-                await dev.send(
-                    message,
-                    file=discord.File(
+            # Attach traceback if too long
+            if len(tb_str) + len(message) >= 1900:
+                files.append(
+                    discord.File(
                         fp=io.BytesIO(tb_str.encode("utf-8")),
                         filename="traceback.txt",
-                    ),
+                    )
                 )
+            else:
+                message += f"\n```python\n{tb_str}\n```"
+
+            # Attach recent logs
+            import os
+
+            if os.path.exists(LOG_FILE):
+                files.append(discord.File(LOG_FILE))
+
+            await dev.send(message, files=files)
+
         except Exception as e:
             print(f"Failed to send error DM to developer: {e}")
             print(f"Original error in {context_info}: {error}")

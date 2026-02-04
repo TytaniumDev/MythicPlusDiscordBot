@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import discord
 from discord import app_commands
@@ -21,25 +21,36 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
 
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
-    async def test_send_error_to_dev_short(
+    async def test_send_error_to_dev_short_with_log(
         self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
     ):
         mock_get_user.return_value = self.mock_dev
 
         error = ValueError("Test Error")
-        await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
+
+        # Mock os.path.exists to simulate log file existence and open to avoid FileNotFoundError
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="mock log data")),
+        ):
+            await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
 
         self.mock_dev.send.assert_called_once()
-        args, _ = self.mock_dev.send.call_args
+        args, kwargs = self.mock_dev.send.call_args
         message = args[0]
         self.assertIn("Bot Error Detected", message)
         self.assertIn("Test Context", message)
         self.assertIn("Test Error", message)
         self.assertIn("ValueError", message)
 
+        # Verify files list
+        self.assertIn("files", kwargs)
+        self.assertEqual(len(kwargs["files"]), 1)
+        self.assertIsInstance(kwargs["files"][0], discord.File)
+
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
-    async def test_send_error_to_dev_long(
+    async def test_send_error_to_dev_long_with_log(
         self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
     ):
         mock_get_user.return_value = self.mock_dev
@@ -50,15 +61,23 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
             error = e
 
         # Mock traceback.format_exception to return a very long list
-        with patch("traceback.format_exception") as mock_format:
+        with (
+            patch("traceback.format_exception") as mock_format,
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="mock log data")),
+        ):
             mock_format.return_value = ["A" * 2000]
             await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
 
         self.mock_dev.send.assert_called_once()
         _, kwargs = self.mock_dev.send.call_args
-        self.assertIn("file", kwargs)
-        self.assertIsInstance(kwargs["file"], discord.File)
-        self.assertEqual(kwargs["file"].filename, "traceback.txt")
+
+        self.assertIn("files", kwargs)
+        self.assertEqual(len(kwargs["files"]), 2)  # traceback + log
+
+        # Check that one file is traceback and other is log (order might vary)
+        filenames = [f.filename for f in kwargs["files"]]
+        self.assertIn("traceback.txt", filenames)
 
     @patch("bot.MythicPlusBot._send_error_to_dev")
     async def test_on_command_error_calls_send_to_dev(
