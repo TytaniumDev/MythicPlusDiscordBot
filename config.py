@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +18,16 @@ ROLE_LUST = os.getenv("ROLE_LUST", "Lust")
 
 # All recognized roles for validation/parsing
 ALL_ROLES = [
-    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
-    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
-    ROLE_BREZ, ROLE_LUST
+    ROLE_TANK,
+    ROLE_HEALER,
+    ROLE_DPS,
+    ROLE_RANGED,
+    ROLE_MELEE,
+    ROLE_TANK_OFFSPEC,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_DPS_OFFSPEC,
+    ROLE_BREZ,
+    ROLE_LUST,
 ]
 
 # Bot invite URL permissions (integer from Discord Developer Portal → OAuth2 → URL Generator).
@@ -34,3 +42,8 @@ WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
 
 # Constants
 PLACEHOLDER_CHAR = ':question:'
+
+# GitHub Issue Integration
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev")
+GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot")

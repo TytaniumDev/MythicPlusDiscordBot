@@ -8,6 +8,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dev dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Ruff (lint)
+        run: ruff check .
+      - name: Ruff (format check)
+        run: ruff format --check .
+      - name: Pyright (type check)
+        run: pyright .
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +41,7 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py"
 
   build-and-push:
-    needs: test
+    needs: [lint, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -121,6 +139,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
+            export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
 
             # Deploy
             echo "Pulling image..."

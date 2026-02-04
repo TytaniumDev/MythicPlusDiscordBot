@@ -1,12 +1,11 @@
-import discord
+from __future__ import annotations
+
 import os
-import asyncio
+import discord
 from discord.ext import commands
 from services.group_service import GroupService
 
 # Load environment variables
-# config.py does load_dotenv(), but we can do it explicitly if we want.
-# Assuming config imported implicitly or we just trust os.getenv
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -53,18 +52,26 @@ async def on_ready():
 
 # Global error handler for unhandled command errors
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(
+    ctx: commands.Context[commands.Bot],
+    error: commands.CommandError,
+) -> None:
     if isinstance(error, commands.CommandNotFound):
         return  # Ignore unknown commands
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ You don't have permission to use this command.")
         return
     if isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"❌ Command is on cooldown. Try again in {error.retry_after:.1f} seconds.")
+        await ctx.send(
+            f"❌ Command is on cooldown. Try again in {error.retry_after:.1f} seconds."
+        )
         return
     # Log other errors
     print(f"Error in {ctx.command}: {error}")
-    await ctx.send("❌ An error occurred while processing your command. Please try again later.")
+    await ctx.send(
+        "❌ An error occurred while processing your command. Please try again later."
+    )
+
 
 if __name__ == "__main__":
     try:

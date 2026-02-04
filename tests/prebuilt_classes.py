@@ -2,7 +2,7 @@ from core.models import WoWPlayer
 
 
 ### Tanks
-def TankPaladin(name: str, offhealer=False, offdps=False) -> WoWPlayer:
+def TankPaladin(name: str, offhealer: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         tankMain=True,
@@ -13,13 +13,13 @@ def TankPaladin(name: str, offhealer=False, offdps=False) -> WoWPlayer:
     )
 
 
-def TankWarrior(name: str, offdps=False) -> WoWPlayer:
+def TankWarrior(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, tankMain=True, hasBrez=False, hasLust=False, offdps=offdps
     )
 
 
-def TankDruid(name: str, offhealer=False, offdps=False) -> WoWPlayer:
+def TankDruid(name: str, offhealer: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         tankMain=True,
@@ -30,13 +30,13 @@ def TankDruid(name: str, offhealer=False, offdps=False) -> WoWPlayer:
     )
 
 
-def TankDeathKnight(name: str, offdps=False) -> WoWPlayer:
+def TankDeathKnight(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, tankMain=True, hasBrez=True, hasLust=False, offdps=offdps
     )
 
 
-def TankMonk(name: str, offhealer=False, offdps=False) -> WoWPlayer:
+def TankMonk(name: str, offhealer: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         tankMain=True,
@@ -47,14 +47,14 @@ def TankMonk(name: str, offhealer=False, offdps=False) -> WoWPlayer:
     )
 
 
-def TankDemonHunter(name: str, offdps=False) -> WoWPlayer:
+def TankDemonHunter(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, tankMain=True, hasBrez=False, hasLust=False, offdps=offdps
     )
 
 
 ### Healers
-def HealerPaladin(name: str, offtank=False, offdps=False) -> WoWPlayer:
+def HealerPaladin(name: str, offtank: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         healerMain=True,
@@ -65,19 +65,19 @@ def HealerPaladin(name: str, offtank=False, offdps=False) -> WoWPlayer:
     )
 
 
-def HealerPriest(name: str, offdps=False) -> WoWPlayer:
+def HealerPriest(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, healerMain=True, hasBrez=False, hasLust=False, offdps=offdps
     )
 
 
-def HealerShaman(name: str, offdps=False) -> WoWPlayer:
+def HealerShaman(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, healerMain=True, hasBrez=False, hasLust=True, offdps=offdps
     )
 
 
-def HealerDruid(name: str, offtank=False, offdps=False) -> WoWPlayer:
+def HealerDruid(name: str, offtank: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         healerMain=True,
@@ -88,13 +88,13 @@ def HealerDruid(name: str, offtank=False, offdps=False) -> WoWPlayer:
     )
 
 
-def HealerEvoker(name: str, offdps=False) -> WoWPlayer:
+def HealerEvoker(name: str, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name, healerMain=True, hasBrez=False, hasLust=True, offdps=offdps
     )
 
 
-def HealerMonk(name: str, offtank=False, offdps=False) -> WoWPlayer:
+def HealerMonk(name: str, offtank: bool = False, offdps: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         healerMain=True,
@@ -108,7 +108,7 @@ def HealerMonk(name: str, offtank=False, offdps=False) -> WoWPlayer:
 ### DPS
 def DeathKnight(
     name: str,
-    offtank=False,
+    offtank: bool = False,
 ) -> WoWPlayer:
     return WoWPlayer(
         name=name,
@@ -122,7 +122,7 @@ def DeathKnight(
 
 def DemonHunter(
     name: str,
-    offtank=False,
+    offtank: bool = False,
 ) -> WoWPlayer:
     return WoWPlayer(
         name=name,
@@ -134,7 +134,9 @@ def DemonHunter(
     )
 
 
-def BalanceDruid(name: str, offtank=False, offhealer=False) -> WoWPlayer:
+def BalanceDruid(
+    name: str, offtank: bool = False, offhealer: bool = False
+) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -146,7 +148,7 @@ def BalanceDruid(name: str, offtank=False, offhealer=False) -> WoWPlayer:
     )
 
 
-def FeralDruid(name: str, offtank=False, offhealer=False) -> WoWPlayer:
+def FeralDruid(name: str, offtank: bool = False, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -158,7 +160,7 @@ def FeralDruid(name: str, offtank=False, offhealer=False) -> WoWPlayer:
     )
 
 
-def Evoker(name: str, offhealer=False) -> WoWPlayer:
+def Evoker(name: str, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -193,7 +195,7 @@ def Mage(
     )
 
 
-def Monk(name: str, offtank=False, offhealer=False) -> WoWPlayer:
+def Monk(name: str, offtank: bool = False, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -205,7 +207,7 @@ def Monk(name: str, offtank=False, offhealer=False) -> WoWPlayer:
     )
 
 
-def Paladin(name: str, offtank=False, offhealer=False) -> WoWPlayer:
+def Paladin(name: str, offtank: bool = False, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -217,7 +219,7 @@ def Paladin(name: str, offtank=False, offhealer=False) -> WoWPlayer:
     )
 
 
-def Priest(name: str, offhealer=False) -> WoWPlayer:
+def Priest(name: str, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -240,7 +242,7 @@ def Rogue(
     )
 
 
-def Shaman(name: str, offhealer=False) -> WoWPlayer:
+def Shaman(name: str, offhealer: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,
@@ -261,7 +263,7 @@ def Warlock(name: str) -> WoWPlayer:
     )
 
 
-def Warrior(name: str, offtank=False) -> WoWPlayer:
+def Warrior(name: str, offtank: bool = False) -> WoWPlayer:
     return WoWPlayer(
         name=name,
         dpsMain=True,

@@ -1,10 +1,19 @@
 from dataclasses import dataclass, field
-from typing import List
+from types import NotImplementedType
+
 from config import (
-    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
-    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
-    ROLE_BREZ, ROLE_LUST
+    ROLE_BREZ,
+    ROLE_DPS,
+    ROLE_DPS_OFFSPEC,
+    ROLE_HEALER,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+    ROLE_TANK_OFFSPEC,
 )
+
 
 @dataclass(frozen=True, eq=False)
 class WoWPlayer:
@@ -30,7 +39,7 @@ class WoWPlayer:
     def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, WoWPlayer):
             return NotImplemented
         return self.name == other.name
@@ -42,7 +51,7 @@ class WoWPlayer:
         return self.__str__()
 
     @classmethod
-    def create(cls, name: str, roles: list) -> 'WoWPlayer':
+    def create(cls, name: str, roles: list[str]) -> "WoWPlayer":
         # Calculate all the boolean flags
         tankMain = ROLE_TANK in roles
         healerMain = ROLE_HEALER in roles
@@ -69,9 +78,18 @@ class WoWPlayer:
             hasBrez=hasBrez,
             hasLust=hasLust,
         )
-    
+
     def hasRoles(self) -> bool:
-        return any([self.tankMain, self.healerMain, self.dpsMain, self.offtank, self.offhealer, self.offdps])
+        return any(
+            [
+                self.tankMain,
+                self.healerMain,
+                self.dpsMain,
+                self.offtank,
+                self.offhealer,
+                self.offdps,
+            ]
+        )
 
     def toTestString(self) -> str:
         roles = []
@@ -96,7 +114,7 @@ class WoWPlayer:
         if self.hasLust:
             roles.append(ROLE_LUST)
         return f'WoWPlayer.create("{self.name}", {roles})'
-    
+
     def toUtilitiesString(self) -> str:
         utilities = []
         if self.hasBrez:
@@ -104,15 +122,15 @@ class WoWPlayer:
         if self.hasLust:
             utilities.append(ROLE_LUST)
         if utilities:
-            return f'{self.name}({", ".join(utilities)})'
+            return f"{self.name}({', '.join(utilities)})"
         return self.name
 
 
 @dataclass
 class WoWGroup:
-    tank: WoWPlayer = None
-    healer: WoWPlayer = None
-    dps: List[WoWPlayer] = field(default_factory=list)
+    tank: WoWPlayer | None = None
+    healer: WoWPlayer | None = None
+    dps: list[WoWPlayer] = field(default_factory=list)
 
     @property
     def has_brez(self):
@@ -133,14 +151,17 @@ class WoWGroup:
     @property
     def size(self):
         return sum(1 for p in [self.tank, self.healer] + self.dps if p is not None)
-    
+
     @property
     def players(self):
         return [p for p in [self.tank, self.healer] + self.dps if p is not None]
-    
+
     def toTestString(self) -> str:
-        tank_str = f'"{self.tank.toUtilitiesString()}"' if self.tank else 'None'
-        healer_str = f'"{self.healer.toUtilitiesString()}"' if self.healer else 'None'
-        dps_str = ', '.join(f'"{p.toUtilitiesString()}"' for p in self.dps) if self.dps else ''
-        return f'WoWGroup(Tank={tank_str}, Healer={healer_str}, DPS={dps_str})'
-    
+        tank_str = f'"{self.tank.toUtilitiesString()}"' if self.tank else "None"
+        healer_str = f'"{self.healer.toUtilitiesString()}"' if self.healer else "None"
+        dps_str = (
+            ", ".join(f'"{p.toUtilitiesString()}"' for p in self.dps)
+            if self.dps
+            else ""
+        )
+        return f"WoWGroup(Tank={tank_str}, Healer={healer_str}, DPS={dps_str})"
