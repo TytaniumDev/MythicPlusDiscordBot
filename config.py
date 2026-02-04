@@ -25,3 +25,8 @@ ALL_ROLES = [
 # Bot invite URL permissions (integer from Discord Developer Portal → OAuth2 → URL Generator).
 # Used when generating the "Add bot to server" link so the bot requests these permissions.
 BOT_INVITE_PERMISSIONS = int(os.getenv("BOT_INVITE_PERMISSIONS", "3263489"))
+
+# GitHub Issue Integration
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev")
+GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot")

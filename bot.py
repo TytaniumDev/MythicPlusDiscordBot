@@ -11,6 +11,7 @@ from parallel_group_creator import create_mythic_plus_groups
 from storage import get_player_preference, get_all_preferences, clear_player_preference
 from role_ui import RoleBoardView, create_role_board_embed, RoleSelectionView
 from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
+from issues import GitHubIssueModal
 
 load_dotenv()
 
@@ -40,6 +41,16 @@ last_results = {}
 # Locks per server to prevent concurrent group creation
 # Format: {guild_id: asyncio.Lock}
 server_locks = {}
+
+@bot.tree.command(name="bug")
+async def bug_report(interaction: discord.Interaction):
+    """Report a bug to the developers."""
+    await interaction.response.send_modal(GitHubIssueModal(issue_type="bug"))
+
+@bot.tree.command(name="featurerequest")
+async def feature_request(interaction: discord.Interaction):
+    """Request a new feature for the bot."""
+    await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
 
 @bot.event
 async def on_ready():
@@ -113,7 +124,7 @@ async def test(ctx):
 # !wheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
-@bot.hybrid_command(name="wheel", description="Generates Mythic+ groups based on roles.")
+@bot.command()
 async def wheel(ctx):
     try:
         await coreWheel(ctx=ctx, debugValue=False)
@@ -200,7 +211,7 @@ async def readycheck(ctx):
     """Alias for /roles. Opens the Mythic+ Role Board."""
     await launch_role_board(ctx)
 
-@bot.hybrid_command(name="rolecheck", description="Check saved roles for players in your channel.")
+@bot.command()
 async def rolecheck(ctx):
     """List saved roles for everyone in the current voice channel (or recent players)."""
     channel = ctx.author.voice.channel if ctx.author.voice else ctx.channel
@@ -231,7 +242,7 @@ async def rolecheck(ctx):
     else:
         await ctx.send(embed=embed)
 
-@bot.hybrid_command(name="invite", description="Get an invite link to add this bot to your server.")
+@bot.command()
 async def invite(ctx):
     """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
     app_id = bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
@@ -243,7 +254,7 @@ async def invite(ctx):
     url = discord.utils.oauth_url(app_id, scopes=["bot"], permissions=permissions)
     await ctx.send(f"**Add this bot to a server:**\n{url}")
 
-@bot.hybrid_command(name="status", description="Displays bot uptime and system status.")
+@bot.command()
 async def status(ctx):
     """Check the bot's status and uptime."""
     uptime_seconds = int(time.time() - start_time)
@@ -262,8 +273,7 @@ async def status(ctx):
     embed.set_footer(text=f"Server ID: {ctx.guild.id if ctx.guild else 'DM'}")
     await ctx.send(embed=embed)
 
-@bot.hybrid_command(name="clearrole", description="Clear saved roles for yourself or a specific character.")
-@discord.app_commands.describe(name="The specific character name to clear (optional).")
+@bot.command()
 async def clearrole(ctx, name: str = None):
     """Clear your saved roles, or a specific character's roles."""
     if name is None:
@@ -431,7 +441,7 @@ async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
         await _execute_coreWheel(ctx, channel, guild_id, debug, enhanced)
 
 
-@bot.hybrid_command(name="newwheel", description="Generates groups with enhanced visuals and sound.")
+@bot.command()
 async def newwheel(ctx):
     try:
         await coreWheel(ctx=ctx, debugValue=False, enhanced=True)
@@ -441,7 +451,7 @@ async def newwheel(ctx):
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in newwheel command: {e}")
 
-@bot.hybrid_command(name="activity", description="Starts the spinning wheel activity with an invite link.")
+@bot.command()
 async def activity(ctx):
     try:
         # Run enhanced wheel
