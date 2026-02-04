@@ -103,7 +103,7 @@ class GitHubIssueModal(ui.Modal):
                 try:
 
                     def read_last_logs():
-                        with open(config.LOG_FILE, "r", encoding="utf-8") as f:
+                        with open(config.LOG_FILE, encoding="utf-8") as f:
                             return "".join(deque(f, maxlen=50))
 
                     last_lines = await asyncio.to_thread(read_last_logs)
