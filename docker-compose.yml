@@ -6,6 +6,7 @@ services:
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - DISCORD_APPLICATION_ID=${DISCORD_APPLICATION_ID}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
       - PREFERENCES_PATH=/data/player_preferences.json
     volumes:
       - ./data:/data
