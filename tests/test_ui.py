@@ -51,40 +51,52 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tank_button.style, discord.ButtonStyle.secondary)
 
     async def test_save_method(self):
-        with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
+        # Mock asyncio.to_thread to call the function directly (synchronously)
+        # This avoids thread pool issues when testing with mocked functions
+        async def mock_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
 
-            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
-            interaction = MagicMock(spec=discord.Interaction)
-            interaction.response = MagicMock()
-            interaction.response.send_message = AsyncMock()
-            view.stop = MagicMock()
+        with unittest.mock.patch("role_ui.asyncio.to_thread", side_effect=mock_to_thread):
+            with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
 
-            # Use callback similar to benchmark
-            await view.save.callback(interaction)
+                view = RoleSelectionView("TestPlayer", [ROLE_TANK])
+                interaction = MagicMock(spec=discord.Interaction)
+                interaction.response = MagicMock()
+                interaction.response.send_message = AsyncMock()
+                view.stop = MagicMock()
 
-            mock_set_pref.assert_called_once()
-            args, _ = mock_set_pref.call_args
-            self.assertEqual(args[0], "TestPlayer")
-            self.assertIn(ROLE_TANK, args[1])
+                # Use callback similar to benchmark
+                await view.save.callback(interaction)
 
-            interaction.response.send_message.assert_called_once()
-            view.stop.assert_called_once()
+                mock_set_pref.assert_called_once()
+                args, _ = mock_set_pref.call_args
+                self.assertEqual(args[0], "TestPlayer")
+                self.assertIn(ROLE_TANK, args[1])
+
+                interaction.response.send_message.assert_called_once()
+                view.stop.assert_called_once()
 
     async def test_clear_method(self):
-        with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
+        # Mock asyncio.to_thread to call the function directly (synchronously)
+        # This avoids thread pool issues when testing with mocked functions
+        async def mock_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
 
-            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
-            interaction = MagicMock(spec=discord.Interaction)
-            interaction.response = MagicMock()
-            interaction.response.send_message = AsyncMock()
-            interaction.edit_original_response = AsyncMock()
+        with unittest.mock.patch("role_ui.asyncio.to_thread", side_effect=mock_to_thread):
+            with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
 
-            await view.clear.callback(interaction)
+                view = RoleSelectionView("TestPlayer", [ROLE_TANK])
+                interaction = MagicMock(spec=discord.Interaction)
+                interaction.response = MagicMock()
+                interaction.response.send_message = AsyncMock()
+                interaction.edit_original_response = AsyncMock()
 
-            mock_clear_pref.assert_called_once_with("TestPlayer")
-            self.assertEqual(len(view.selected_roles), 0)
-            interaction.response.send_message.assert_called_once()
-            interaction.edit_original_response.assert_called_once()
+                await view.clear.callback(interaction)
+
+                mock_clear_pref.assert_called_once_with("TestPlayer")
+                self.assertEqual(len(view.selected_roles), 0)
+                interaction.response.send_message.assert_called_once()
+                interaction.edit_original_response.assert_called_once()
 
     async def test_role_board_view_initialization(self):
         # We don't need to patch loop for IsolatedAsyncioTestCase usually if we use the right View init or if View uses get_running_loop
