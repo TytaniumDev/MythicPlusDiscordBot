@@ -9,17 +9,29 @@ STORAGE_FILE = (
     or "player_preferences.json"
 )
 
+_preferences_cache = None
+
 def load_preferences():
+    global _preferences_cache
+    if _preferences_cache is not None:
+        return _preferences_cache
+
     if os.path.exists(STORAGE_FILE):
         try:
             with open(STORAGE_FILE, "r") as f:
-                return json.load(f)
+                _preferences_cache = json.load(f)
+                return _preferences_cache
         except Exception as e:
             print(f"Error loading preferences: {e}")
-            return {}
-    return {}
+            _preferences_cache = {}
+            return _preferences_cache
+
+    _preferences_cache = {}
+    return _preferences_cache
 
 def save_preferences(preferences):
+    global _preferences_cache
+    _preferences_cache = preferences
     try:
         with open(STORAGE_FILE, "w") as f:
             json.dump(preferences, f, indent=4)
