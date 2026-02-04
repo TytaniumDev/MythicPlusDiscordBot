@@ -119,7 +119,9 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
 
         # Mock config and create_github_issue
         with (
-            patch("core.issues.create_github_issue", new_callable=AsyncMock) as mock_create,
+            patch(
+                "core.issues.create_github_issue", new_callable=AsyncMock
+            ) as mock_create,
             patch("os.path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data="Line 1\nLine 2\nLine 3")),
         ):
