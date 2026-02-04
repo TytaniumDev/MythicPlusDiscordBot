@@ -134,6 +134,7 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             title, body, labels = args
 
             self.assertEqual(title, "Bug Title")
+            self.assertEqual(labels, ["bug", "jules"])
             self.assertIn("Recent Logs:", body)
             self.assertIn("Line 1", body)
             self.assertIn("Line 3", body)
