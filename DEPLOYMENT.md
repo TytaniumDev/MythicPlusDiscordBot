@@ -235,9 +235,19 @@ To enable the `/bug` and `/featurerequest` commands, you need to configure the b
 
 ### 7.1 Create a Personal Access Token (PAT)
 
+You can use either a **Classic** or **Fine-grained** Personal Access Token.
+
+**Option A: Classic Token (Easier)**
 1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Tokens (classic)**.
 2. Generate a new token.
 3. Select the **repo** scope (Full control of private repositories).
+4. Copy the generated token.
+
+**Option B: Fine-grained Token (More Secure)**
+1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
+2. Generate a new token and select your repository.
+3. Under **Repository permissions**, grant **Issues** access: **Read and Write**.
+   *(Note: **Metadata** read-only access is usually included by default, which is sufficient).*
 4. Copy the generated token.
 
 ### 7.2 Add GitHub Secret
