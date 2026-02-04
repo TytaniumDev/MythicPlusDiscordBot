@@ -35,9 +35,11 @@ ALL_ROLES = [
 BOT_INVITE_PERMISSIONS = int(os.getenv("BOT_INVITE_PERMISSIONS", "3263489"))
 
 # GitHub Issue Integration
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev")
-GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot")
+_github_token = os.getenv("GITHUB_TOKEN")
+GITHUB_TOKEN = _github_token.strip() if _github_token else None
+
+GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev").strip()
+GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot").strip()
 
 # Bot Token
 BOT_TOKEN = os.getenv("BOT_TOKEN")
