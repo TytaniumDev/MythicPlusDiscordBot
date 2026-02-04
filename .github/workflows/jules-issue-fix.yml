@@ -1,17 +1,24 @@
 name: Send Issue to Jules
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled] # Removed 'opened' to prevent a double-fire of events
 
+# 1. Add this Concurrency block at the root level
 concurrency:
+  # Group runs by the specific workflow name AND the issue number.
+  # This ensures that fixing Issue #5 doesn't block fixing Issue #6,
+  # but two runs for Issue #5 will not overlap.
   group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  
+  # If true, a new run immediately kills the currently running one.
+  # If false, the new run waits in a queue until the current one finishes.
+  # For a "fix" bot, 'true' is usually best to stop wasted work if a new request comes in.
   cancel-in-progress: true
 
 jobs:
   dispatch-jules:
-    if: |
-      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'jules')) ||
-      (github.event.action == 'labeled' && github.event.label.name == 'jules')
+    # Strict Check: Only run if the *specific* label added in this event was 'jules'
+    if: github.event.label.name == 'jules'
     runs-on: ubuntu-latest
     permissions:
       contents: read
