@@ -44,6 +44,9 @@ GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot").strip()
 # Bot Token
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+# Developer Contact
+DEVELOPER_ID = int(os.getenv("DEVELOPER_ID", "202184987469021184"))
+
 # Assets
 ASSETS_DIR = "assets"
 SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
