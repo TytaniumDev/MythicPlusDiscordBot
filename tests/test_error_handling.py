@@ -21,11 +21,13 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
 
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
-    async def test_send_error_to_dev_short(self, mock_get_user, mock_fetch_user):
+    async def test_send_error_to_dev_short(
+        self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
+    ):
         mock_get_user.return_value = self.mock_dev
 
         error = ValueError("Test Error")
-        await self.bot._send_error_to_dev(error, "Test Context")
+        await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
 
         self.mock_dev.send.assert_called_once()
         args, _ = self.mock_dev.send.call_args
@@ -37,7 +39,9 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
 
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
-    async def test_send_error_to_dev_long(self, mock_get_user, mock_fetch_user):
+    async def test_send_error_to_dev_long(
+        self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
+    ):
         mock_get_user.return_value = self.mock_dev
 
         try:
@@ -48,7 +52,7 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         # Mock traceback.format_exception to return a very long list
         with patch("traceback.format_exception") as mock_format:
             mock_format.return_value = ["A" * 2000]
-            await self.bot._send_error_to_dev(error, "Test Context")
+            await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
 
         self.mock_dev.send.assert_called_once()
         _, kwargs = self.mock_dev.send.call_args
@@ -57,7 +61,9 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kwargs["file"].filename, "traceback.txt")
 
     @patch("bot.MythicPlusBot._send_error_to_dev")
-    async def test_on_command_error_calls_send_to_dev(self, mock_send_to_dev):
+    async def test_on_command_error_calls_send_to_dev(
+        self, mock_send_to_dev: MagicMock
+    ):
         ctx = MagicMock(spec=commands.Context)
         ctx.command = "test_cmd"
         ctx.author = MagicMock()
@@ -75,7 +81,9 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Command: !test_cmd", args[1])
 
     @patch("bot.MythicPlusBot._send_error_to_dev")
-    async def test_on_app_command_error_calls_send_to_dev(self, mock_send_to_dev):
+    async def test_on_app_command_error_calls_send_to_dev(
+        self, mock_send_to_dev: MagicMock
+    ):
         interaction = MagicMock(spec=discord.Interaction)
         interaction.command = MagicMock()
         interaction.command.name = "test_slash"
@@ -101,15 +109,14 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         interaction.followup.send.assert_called_once()
 
     @patch("bot.MythicPlusBot._send_error_to_dev")
-    async def test_on_error_calls_send_to_dev(self, mock_send_to_dev):
+    async def test_on_error_calls_send_to_dev(self, mock_send_to_dev: MagicMock):
         error = ValueError("Event Error")
-        self.bot.loop = MagicMock()
         with patch(
             "sys.exc_info", return_value=(type(error), error, error.__traceback__)
         ):
-            self.bot.on_error("on_message", "arg1")
+            await self.bot.on_error("on_message", "arg1")
 
-        self.bot.loop.create_task.assert_called_once()
+        mock_send_to_dev.assert_called_once()
         args, _ = mock_send_to_dev.call_args
         self.assertEqual(args[0], error)
         self.assertIn("Event: on_message", args[1])

@@ -1,5 +1,6 @@
 import io
 import traceback
+from typing import Any
 
 import discord
 from discord import app_commands
@@ -19,7 +20,7 @@ class MythicPlusBot(commands.Bot):
         self.group_service = GroupService()
 
     async def _send_error_to_dev(
-        self, error: Exception, context_info: str = "Unknown Context"
+        self, error: BaseException, context_info: str = "Unknown Context"
     ) -> None:
         """Sends a detailed error message and traceback to the developer via DM."""
         try:
@@ -101,44 +102,44 @@ class MythicPlusBot(commands.Bot):
                 ephemeral=True,
             )
 
-    def on_error(self, event_method: str, *args, **kwargs) -> None:
+    async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
         """Handles errors in events."""
         import sys
 
         _, error, _ = sys.exc_info()
         if error:
             context = f"Event: {event_method}\nArgs: {args}\nKwargs: {kwargs}"
-            self.loop.create_task(self._send_error_to_dev(error, context))
+            await self._send_error_to_dev(error, context)
             print(f"Error in event {event_method}: {error}")
         else:
             print(f"Error in event {event_method} (no exception info)")
 
     async def on_command_error(
         self,
-        ctx: commands.Context[commands.Bot],
-        error: commands.CommandError,
+        context: commands.Context[Any],
+        exception: commands.CommandError,
     ) -> None:
-        if isinstance(error, commands.CommandNotFound):
+        if isinstance(exception, commands.CommandNotFound):
             return  # Ignore unknown commands
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send("❌ You don't have permission to use this command.")
+        if isinstance(exception, commands.MissingPermissions):
+            await context.send("❌ You don't have permission to use this command.")
             return
-        if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(
-                f"❌ Command is on cooldown. Try again in {error.retry_after:.1f} seconds."
+        if isinstance(exception, commands.CommandOnCooldown):
+            await context.send(
+                f"❌ Command is on cooldown. Try again in {exception.retry_after:.1f} seconds."
             )
             return
 
         # Log and notify developer for other errors
-        context = (
-            f"Command: !{ctx.command}\n"
-            f"User: {ctx.author} ({ctx.author.id})\n"
-            f"Channel: {ctx.channel}"
+        context_info = (
+            f"Command: !{context.command}\n"
+            f"User: {context.author} ({context.author.id})\n"
+            f"Channel: {context.channel}"
         )
-        await self._send_error_to_dev(error, context)
+        await self._send_error_to_dev(exception, context_info)
 
-        print(f"Error in {ctx.command}: {error}")
-        await ctx.send(
+        print(f"Error in {context.command}: {exception}")
+        await context.send(
             "❌ An error occurred while processing your command. Please try again later."
         )
 
