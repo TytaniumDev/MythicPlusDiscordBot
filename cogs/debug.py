@@ -39,8 +39,8 @@ class Debug(commands.Cog):
             return
 
         if not hasattr(self.bot, "group_service"):
-             await ctx.send("❌ GroupService not initialized.")
-             return
+            await ctx.send("❌ GroupService not initialized.")
+            return
 
         # Get last results for this server
         last_results = self.bot.group_service.last_results
@@ -55,10 +55,14 @@ class Debug(commands.Cog):
         groups = result.get("groups", [])
 
         await channel.send(
-            "players = [{}]".format(", ".join(player.toTestString() for player in players))
+            "players = [{}]".format(
+                ", ".join(player.toTestString() for player in players)
+            )
         )
         await channel.send(
-            "Groups:\n\n{}".format("\n\n".join(group.toTestString() for group in groups))
+            "Groups:\n\n{}".format(
+                "\n\n".join(group.toTestString() for group in groups)
+            )
         )
 
 

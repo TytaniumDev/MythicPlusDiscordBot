@@ -20,7 +20,9 @@ class General(commands.Cog):
         """Report a bug to the developers."""
         await interaction.response.send_modal(GitHubIssueModal(issue_type="bug"))
 
-    @app_commands.command(name="featurerequest", description="Request a new feature for the bot.")
+    @app_commands.command(
+        name="featurerequest", description="Request a new feature for the bot."
+    )
     async def feature_request(self, interaction: discord.Interaction):
         """Request a new feature for the bot."""
         await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))

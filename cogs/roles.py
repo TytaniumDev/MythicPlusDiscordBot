@@ -1,6 +1,7 @@
+from typing import cast
+
 import discord
 from discord.ext import commands
-from typing import cast
 
 from core.config import ALL_ROLES
 from core.role_ui import RoleBoardView, create_role_board_embed
@@ -100,9 +101,7 @@ class Roles(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def clearrole(
-        self, ctx: commands.Context, name: str | None = None
-    ) -> None:
+    async def clearrole(self, ctx: commands.Context, name: str | None = None) -> None:
         """Clear your saved roles, or a specific character's roles."""
         if name is None:
             name = WoWName(ctx.author)

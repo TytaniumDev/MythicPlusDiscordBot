@@ -30,3 +30,7 @@ Secrets are injected by GitHub Actions at deploy time, so there is no `.env` fil
 4. Verifies container health and restarts once if unhealthy.
 
 See `DEPLOYMENT.md` for detailed Raspberry Pi setup steps.
+
+## Development
+- Install dev dependencies: `pip install -r requirements-dev.txt` (or `uv pip install -r requirements-dev.txt`).
+- **Git hook:** Run `pre-commit install` once to run Ruff lint and format automatically before each commit.

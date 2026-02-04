@@ -82,7 +82,9 @@ class GroupService:
             if ctx.guild is None:
                 members = []
             else:
-                testChannel = discord.utils.get(ctx.guild.channels, name="path-of-exile")
+                testChannel = discord.utils.get(
+                    ctx.guild.channels, name="path-of-exile"
+                )
                 if testChannel is None or not hasattr(testChannel, "members"):
                     members = []
                 else:
@@ -121,11 +123,19 @@ class GroupService:
 
             # Find players with utilities
             brez_player = next(
-                (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasBrez),
+                (
+                    p.name
+                    for p in [group.tank, group.healer] + group.dps
+                    if p and p.hasBrez
+                ),
                 "None",
             )
             lust_player = next(
-                (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasLust),
+                (
+                    p.name
+                    for p in [group.tank, group.healer] + group.dps
+                    if p and p.hasLust
+                ),
                 "None",
             )
 
@@ -152,7 +162,9 @@ class GroupService:
                     value=f"{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}",
                 ).add_field(
                     name="Battle Res", value=f"{dashed(brez_player)}", inline=True
-                ).add_field(name="Bloodlust", value=f"{dashed(lust_player)}", inline=True)
+                ).add_field(
+                    name="Bloodlust", value=f"{dashed(lust_player)}", inline=True
+                )
 
                 embedMessage = await ctx.send(embed=embed)
                 await showShortTyping(channel, debug_mode=debug)
@@ -165,7 +177,9 @@ class GroupService:
                 if enhanced:
                     await play_sound(voice_client, REVEAL_SOUND)
                 embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
+                    embed=embed.set_field_at(
+                        index=1, name="Healer", value=f"{healer_name}"
+                    )
                 )
                 await showShortTyping(channel, debug_mode=debug)
                 if enhanced:
@@ -192,7 +206,9 @@ class GroupService:
                     await play_sound(voice_client, REVEAL_SOUND)
                 embedMessage = await embedMessage.edit(
                     embed=embed.set_field_at(
-                        index=2, name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
+                        index=2,
+                        name="DPS",
+                        value=f"{dps1_name}, {dps2_name}, {dps3_name}",
                     )
                 )
                 embedMessage = await embedMessage.edit(

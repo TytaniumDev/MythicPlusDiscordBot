@@ -57,7 +57,9 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
 
         # Mock config and create_github_issue
-        with patch("core.issues.create_github_issue", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "core.issues.create_github_issue", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = {"html_url": "http://url"}
 
             await modal.on_submit(mock_interaction)
