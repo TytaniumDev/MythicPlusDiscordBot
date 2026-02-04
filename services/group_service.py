@@ -110,114 +110,131 @@ class GroupService:
         self.last_results[guild_id] = {"players": list(players), "groups": list(groups)}
 
         for i, group in enumerate(groups, 1):
-            # Print out the group in an embed to keep it tidy
-            embed = discord.Embed(color=discord.Color.gold())
-            embed.title = f"Group {i}"
-
-            # Get player names or placeholders
-            tank_name = group.tank.name if group.tank else PLACEHOLDER_CHAR
-            healer_name = group.healer.name if group.healer else PLACEHOLDER_CHAR
-            dps1_name = group.dps[0].name if len(group.dps) > 0 else PLACEHOLDER_CHAR
-            dps2_name = group.dps[1].name if len(group.dps) > 1 else PLACEHOLDER_CHAR
-            dps3_name = group.dps[2].name if len(group.dps) > 2 else PLACEHOLDER_CHAR
-
-            # Find players with utilities
-            brez_player = next(
-                (
-                    p.name
-                    for p in [group.tank, group.healer] + group.dps
-                    if p and p.hasBrez
-                ),
-                "None",
-            )
-            lust_player = next(
-                (
-                    p.name
-                    for p in [group.tank, group.healer] + group.dps
-                    if p and p.hasLust
-                ),
-                "None",
+            await self._announce_group(
+                ctx, channel, group, i, voice_client, debug, enhanced
             )
 
-            if debug:
-                embed.add_field(name="Tank", value=f"{tank_name}").add_field(
-                    name="Healer", value=f"{healer_name}"
-                ).add_field(
-                    name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
-                ).add_field(
-                    name="Battle Res", value=f"{brez_player}", inline=True
-                ).add_field(name="Bloodlust", value=f"{lust_player}", inline=True)
-                embedMessage = await ctx.send(embed=embed)
-            else:
-                if enhanced:
-                    if os.path.exists(WHEEL_GIF):
-                        await ctx.send(file=discord.File(WHEEL_GIF))
-                    await play_sound(voice_client, SPIN_SOUND)
-                    await asyncio.sleep(2)
+    async def _announce_group(
+        self,
+        ctx: commands.Context[commands.Bot],
+        channel: discord.abc.GuildChannel | discord.abc.Messageable,
+        group: WoWGroup,
+        group_number: int,
+        voice_client: discord.VoiceClient | None,
+        debug: bool,
+        enhanced: bool,
+    ) -> None:
+        """
+        Constructs and sends the group announcement embed, handling the reveal animation if enhanced.
+        """
+        # Print out the group in an embed to keep it tidy
+        embed = discord.Embed(color=discord.Color.gold())
+        embed.title = f"Group {group_number}"
 
-                embed.add_field(name="Tank", value=f"{dashed(tank_name)}").add_field(
-                    name="Healer", value=f"{dashed(healer_name)}"
-                ).add_field(
+        # Get player names or placeholders
+        tank_name = group.tank.name if group.tank else PLACEHOLDER_CHAR
+        healer_name = group.healer.name if group.healer else PLACEHOLDER_CHAR
+        dps1_name = group.dps[0].name if len(group.dps) > 0 else PLACEHOLDER_CHAR
+        dps2_name = group.dps[1].name if len(group.dps) > 1 else PLACEHOLDER_CHAR
+        dps3_name = group.dps[2].name if len(group.dps) > 2 else PLACEHOLDER_CHAR
+
+        # Find players with utilities
+        brez_player = next(
+            (
+                p.name
+                for p in [group.tank, group.healer] + group.dps
+                if p and p.hasBrez
+            ),
+            "None",
+        )
+        lust_player = next(
+            (
+                p.name
+                for p in [group.tank, group.healer] + group.dps
+                if p and p.hasLust
+            ),
+            "None",
+        )
+
+        if debug:
+            embed.add_field(name="Tank", value=f"{tank_name}").add_field(
+                name="Healer", value=f"{healer_name}"
+            ).add_field(
+                name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
+            ).add_field(
+                name="Battle Res", value=f"{brez_player}", inline=True
+            ).add_field(name="Bloodlust", value=f"{lust_player}", inline=True)
+            await ctx.send(embed=embed)
+        else:
+            if enhanced:
+                if os.path.exists(WHEEL_GIF):
+                    await ctx.send(file=discord.File(WHEEL_GIF))
+                await play_sound(voice_client, SPIN_SOUND)
+                await asyncio.sleep(2)
+
+            embed.add_field(name="Tank", value=f"{dashed(tank_name)}").add_field(
+                name="Healer", value=f"{dashed(healer_name)}"
+            ).add_field(
+                name="DPS",
+                value=f"{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}",
+            ).add_field(
+                name="Battle Res", value=f"{dashed(brez_player)}", inline=True
+            ).add_field(
+                name="Bloodlust", value=f"{dashed(lust_player)}", inline=True
+            )
+
+            embedMessage = await ctx.send(embed=embed)
+            await showShortTyping(channel, debug_mode=debug)
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
+            )
+            await showShortTyping(channel, debug_mode=debug)
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=1, name="Healer", value=f"{healer_name}"
+                )
+            )
+            await showShortTyping(channel, debug_mode=debug)
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2,
                     name="DPS",
-                    value=f"{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}",
-                ).add_field(
-                    name="Battle Res", value=f"{dashed(brez_player)}", inline=True
-                ).add_field(
-                    name="Bloodlust", value=f"{dashed(lust_player)}", inline=True
+                    value=f"{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}",
                 )
-
-                embedMessage = await ctx.send(embed=embed)
-                await showShortTyping(channel, debug_mode=debug)
-                if enhanced:
-                    await play_sound(voice_client, REVEAL_SOUND)
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
+            )
+            await showShortTyping(channel, debug_mode=debug)
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2,
+                    name="DPS",
+                    value=f"{dps1_name}, {dps2_name}, {dashed(dps3_name)}",
                 )
-                await showShortTyping(channel, debug_mode=debug)
-                if enhanced:
-                    await play_sound(voice_client, REVEAL_SOUND)
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=1, name="Healer", value=f"{healer_name}"
-                    )
+            )
+            await showShortTyping(channel, debug_mode=debug)
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2,
+                    name="DPS",
+                    value=f"{dps1_name}, {dps2_name}, {dps3_name}",
                 )
-                await showShortTyping(channel, debug_mode=debug)
-                if enhanced:
-                    await play_sound(voice_client, REVEAL_SOUND)
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=2,
-                        name="DPS",
-                        value=f"{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}",
-                    )
+            )
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=3, name="Battle Res", value=f"{brez_player}"
                 )
-                await showShortTyping(channel, debug_mode=debug)
-                if enhanced:
-                    await play_sound(voice_client, REVEAL_SOUND)
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=2,
-                        name="DPS",
-                        value=f"{dps1_name}, {dps2_name}, {dashed(dps3_name)}",
-                    )
+            )
+            await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=4, name="Bloodlust", value=f"{lust_player}"
                 )
-                await showShortTyping(channel, debug_mode=debug)
-                if enhanced:
-                    await play_sound(voice_client, REVEAL_SOUND)
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=2,
-                        name="DPS",
-                        value=f"{dps1_name}, {dps2_name}, {dps3_name}",
-                    )
-                )
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=3, name="Battle Res", value=f"{brez_player}"
-                    )
-                )
-                embedMessage = await embedMessage.edit(
-                    embed=embed.set_field_at(
-                        index=4, name="Bloodlust", value=f"{lust_player}"
-                    )
-                )
+            )
