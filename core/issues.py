@@ -107,6 +107,6 @@ class GitHubIssueModal(ui.Modal):
             # Log the error for the admin/bot owner
             print(f"Error creating GitHub issue: {e}")
             await interaction.followup.send(
-                "❌ Failed to create issue. Please tell the bot owner to check the logs.",
+                f"❌ Failed to create issue: {e}",
                 ephemeral=True,
             )

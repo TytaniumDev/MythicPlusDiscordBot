@@ -76,3 +76,25 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             mock_interaction.followup.send.assert_called_with(
                 "✅ Issue created successfully: http://url", ephemeral=True
             )
+
+    async def test_modal_submission_failure(self):
+        # Mock interaction
+        mock_interaction = AsyncMock(spec=discord.Interaction)
+        mock_interaction.user.global_name = "TestUser"
+        mock_interaction.user.name = "testuser"
+        mock_interaction.user.id = 12345
+        mock_interaction.response = AsyncMock()
+        mock_interaction.followup = AsyncMock()
+
+        modal = GitHubIssueModal(issue_type="bug")
+        # Simulate user input
+        modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
+        modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
+        modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+
+        with patch("core.issues.create_github_issue", side_effect=Exception("Test Error")):
+            await modal.on_submit(mock_interaction)
+
+            mock_interaction.followup.send.assert_called_with(
+                "❌ Failed to create issue: Test Error", ephemeral=True
+            )
