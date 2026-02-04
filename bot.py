@@ -14,6 +14,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
+logger = logging.getLogger(__name__)
+
 
 class MythicPlusBot(commands.Bot):
     def __init__(self):
@@ -27,7 +29,7 @@ class MythicPlusBot(commands.Bot):
         try:
             dev = self.get_user(DEVELOPER_ID) or await self.fetch_user(DEVELOPER_ID)
             if not dev:
-                print(f"Could not find developer with ID {DEVELOPER_ID}")
+                logger.error("Could not find developer with ID %s", DEVELOPER_ID)
                 return
 
             tb_str = "".join(
@@ -57,8 +59,8 @@ class MythicPlusBot(commands.Bot):
             await dev.send(message, files=files)
 
         except Exception as e:
-            print(f"Failed to send error DM to developer: {e}")
-            print(f"Original error in {context_info}: {error}")
+            logger.error("Failed to send error DM to developer: %s", e)
+            logger.error("Original error in %s: %s", context_info, error)
 
     async def setup_hook(self):
         # Load extensions
@@ -70,16 +72,16 @@ class MythicPlusBot(commands.Bot):
         # Register app command error handler
         self.tree.on_error = self.on_app_command_error
 
-        print("Syncing commands...")
+        logger.info("Syncing commands...")
         try:
             synced = await self.tree.sync()
-            print(f"Synced {len(synced)} commands.")
+            logger.info("Synced %d commands.", len(synced))
         except Exception as e:
-            print(f"Failed to sync commands: {e}")
+            logger.error("Failed to sync commands: %s", e)
 
     async def on_ready(self):
         if self.user:
-            print(f"Logged in as {self.user} (ID: {self.user.id})")
+            logger.info("Logged in as %s (ID: %s)", self.user, self.user.id)
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
@@ -100,7 +102,7 @@ class MythicPlusBot(commands.Bot):
         )
         await self._send_error_to_dev(error, context)
 
-        print(f"App Command Error: {error}")
+        logger.error("App Command Error: %s", error)
         if not interaction.response.is_done():
             await interaction.response.send_message(
                 "❌ An error occurred while processing your command. Please try again later.",
@@ -120,9 +122,9 @@ class MythicPlusBot(commands.Bot):
         if error:
             context = f"Event: {event_method}\nArgs: {args}\nKwargs: {kwargs}"
             await self._send_error_to_dev(error, context)
-            print(f"Error in event {event_method}: {error}")
+            logger.error("Error in event %s: %s", event_method, error)
         else:
-            print(f"Error in event {event_method} (no exception info)")
+            logger.warning("Error in event %s (no exception info)", event_method)
 
     async def on_command_error(
         self,
@@ -148,7 +150,7 @@ class MythicPlusBot(commands.Bot):
         )
         await self._send_error_to_dev(exception, context_info)
 
-        print(f"Error in {context.command}: {exception}")
+        logger.error("Error in %s: %s", context.command, exception)
         await context.send(
             "❌ An error occurred while processing your command. Please try again later."
         )
@@ -164,8 +166,8 @@ if __name__ == "__main__":
         )
 
     # Setup logging
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
 
     # File Handler
     from logging.handlers import RotatingFileHandler
@@ -180,18 +182,18 @@ if __name__ == "__main__":
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
     )
-    logger.addHandler(file_handler)
+    root_logger.addHandler(file_handler)
 
     # Stream Handler (Console)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(
         logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
     )
-    logger.addHandler(console_handler)
+    root_logger.addHandler(console_handler)
 
     try:
         bot.run(BOT_TOKEN, log_handler=None)
     except discord.LoginFailure:
-        print("❌ Failed to login. Please check your BOT_TOKEN.")
+        logger.error("❌ Failed to login. Please check your BOT_TOKEN.")
     except Exception as e:
-        print(f"❌ Fatal error starting bot: {e}")
+        logger.fatal("❌ Fatal error starting bot: %s", e)

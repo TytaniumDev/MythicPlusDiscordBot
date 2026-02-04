@@ -1,7 +1,10 @@
+import logging
 import os
 
 import discord
 from discord.ext import commands
+
+logger = logging.getLogger(__name__)
 
 
 class Groups(commands.Cog):
@@ -21,7 +24,7 @@ class Groups(commands.Cog):
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            print(f"Error in wheel command: {e}")
+            logger.error("Error in wheel command: %s", e)
 
     @commands.hybrid_command(name="newwheel")
     async def newwheel(self, ctx: commands.Context[commands.Bot]) -> None:
@@ -38,7 +41,7 @@ class Groups(commands.Cog):
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            print(f"Error in newwheel command: {e}")
+            logger.error("Error in newwheel command: %s", e)
 
     @commands.hybrid_command(name="activity")
     async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
@@ -79,7 +82,7 @@ class Groups(commands.Cog):
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            print(f"Error in activity command: {e}")
+            logger.error("Error in activity command: %s", e)
 
 
 async def setup(bot: commands.Bot):

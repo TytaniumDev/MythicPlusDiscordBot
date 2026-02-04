@@ -1,14 +1,10 @@
+import logging
 import random
 
 from .config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_RANGED, ROLE_TANK
 from .models import WoWGroup, WoWPlayer
 
-_debug = True
-
-
-def log(s: str) -> None:
-    if _debug:
-        print(s)
+logger = logging.getLogger(__name__)
 
 
 def _tank_name(group: WoWGroup) -> str:
@@ -29,10 +25,15 @@ def clear():
 def create_mythic_plus_groups(
     players: list[WoWPlayer], debug: bool = True
 ) -> list[WoWGroup]:
-    global _debug, lastGroups
-    _debug = debug
-    if _debug:
-        print(f"DEBUG: lastGroups size at start: {len(lastGroups)}")
+    global lastGroups
+
+    # Logging for reproduction
+    logger.info("Starting group creation for %d players", len(players))
+    logger.info("Input Players: [%s]", ", ".join(p.toTestString() for p in players))
+    logger.info(
+        "Last Groups (to avoid teammates): [%s]",
+        ", ".join(g.toTestString() for g in lastGroups),
+    )
 
     # Pre-compute teammate lookups for O(1) check
     # Maps player name -> set of former teammates
@@ -57,8 +58,11 @@ def create_mythic_plus_groups(
     random.shuffle(main_tanks)
     random.shuffle(off_tanks)
     available_tanks = main_tanks + off_tanks
-    log(
-        f"Available tanks: {len(available_tanks)}\nMain tank: {main_tanks} --- Offtank: {off_tanks}"
+    logger.debug(
+        "Available tanks: %d\nMain tank: %s --- Offtank: %s",
+        len(available_tanks),
+        main_tanks,
+        off_tanks,
     )
 
     # Healers
@@ -67,8 +71,11 @@ def create_mythic_plus_groups(
     random.shuffle(main_healers)
     random.shuffle(off_healers)
     available_healers = main_healers + off_healers
-    log(
-        f"Available healers: {len(available_healers)}\nMain heals: {main_healers} --- Offheals: {off_healers}"
+    logger.debug(
+        "Available healers: %d\nMain heals: %s --- Offheals: %s",
+        len(available_healers),
+        main_healers,
+        off_healers,
     )
     offhealersToGrab = len(main_healers) < maximumPossibleGroups
 
@@ -78,8 +85,11 @@ def create_mythic_plus_groups(
     random.shuffle(main_dps)
     random.shuffle(off_dps)
     available_dps = main_dps + off_dps
-    log(
-        f"Available DPS: {len(available_dps)}\nMain DPS: {main_dps} --- Off DPS: {off_dps}"
+    logger.debug(
+        "Available DPS: %d\nMain DPS: %s --- Off DPS: %s",
+        len(available_dps),
+        main_dps,
+        off_dps,
     )
 
     # Utilities
@@ -87,8 +97,8 @@ def create_mythic_plus_groups(
     random.shuffle(brez_players)
     lust_players = [p for p in players if p.hasLust]
     random.shuffle(lust_players)
-    log(f"Players with battle res: {brez_players}")
-    log(f"Players with bloodlust: {lust_players}")
+    logger.debug("Players with battle res: %s", brez_players)
+    logger.debug("Players with bloodlust: %s", lust_players)
 
     # Helper functions
     def removePlayer(player: WoWPlayer | None) -> None:
@@ -132,20 +142,21 @@ def create_mythic_plus_groups(
 
         for p in availablePlayers:
             if p.name in ineligible_players:
-                if debug:
-                    # Find which teammate they were with for the log
-                    teammate_match = next(
-                        (
-                            t.name
-                            for t in teammates
-                            if t.name in last_groups_dict
-                            and p.name in last_groups_dict[t.name]
-                        ),
-                        "someone",
-                    )
-                    print(
-                        f"Removing {p.name} because they were in a previous group with {teammate_match}"
-                    )
+                # Find which teammate they were with for the log
+                teammate_match = next(
+                    (
+                        t.name
+                        for t in teammates
+                        if t.name in last_groups_dict
+                        and p.name in last_groups_dict[t.name]
+                    ),
+                    "someone",
+                )
+                logger.debug(
+                    "Removing %s because they were in a previous group with %s",
+                    p.name,
+                    teammate_match,
+                )
                 continue
             filteredList.append(p)
 
@@ -174,9 +185,11 @@ def create_mythic_plus_groups(
         currentGroup.tank = grabNextAvailablePlayer(
             available_tanks, ROLE_TANK, currentGroup, debug
         )
-        log(f"Selected tank: {currentGroup.tank}")
-        log(
-            f"After tank selection - Have brez: {currentGroup.has_brez}, have lust: {currentGroup.has_lust}"
+        logger.debug("Selected tank: %s", currentGroup.tank)
+        logger.debug(
+            "After tank selection - Have brez: %s, have lust: %s",
+            currentGroup.has_brez,
+            currentGroup.has_lust,
         )
 
     #
@@ -201,24 +214,31 @@ def create_mythic_plus_groups(
                     currentGroup.healer = lust_player
                     if lust_player.offhealer:
                         offhealersToGrab -= 1
-                        log(
-                            f"{_tank_name(currentGroup)}'s group - Selected lust player - offhealer: {lust_player}"
+                        logger.debug(
+                            "%s's group - Selected lust player - offhealer: %s",
+                            _tank_name(currentGroup),
+                            lust_player,
                         )
                     else:
-                        log(
-                            f"{_tank_name(currentGroup)}'s group - Selected lust player - healer: {lust_player}"
+                        logger.debug(
+                            "%s's group - Selected lust player - healer: %s",
+                            _tank_name(currentGroup),
+                            lust_player,
                         )
                 elif lust_player.dpsMain:
                     currentGroup.dps.append(lust_player)
-                    log(
-                        f"{_tank_name(currentGroup)}'s group - Selected lust player - dps: {lust_player}"
+                    logger.debug(
+                        "%s's group - Selected lust player - dps: %s",
+                        _tank_name(currentGroup),
+                        lust_player,
                     )
             else:
-                log(
-                    f"{_tank_name(currentGroup)}'s group - No more lust players available"
+                logger.debug(
+                    "%s's group - No more lust players available",
+                    _tank_name(currentGroup),
                 )
         else:
-            log(f"{_tank_name(currentGroup)}'s group - Already have a lust")
+            logger.debug("%s's group - Already have a lust", _tank_name(currentGroup))
 
     # Now grab a brez if we don't have one
     # Will grab either a healer or a dps
@@ -252,24 +272,31 @@ def create_mythic_plus_groups(
                     currentGroup.healer = brez_player
                     if brez_player.offhealer:
                         offhealersToGrab -= 1
-                        log(
-                            f"{_tank_name(currentGroup)}'s group - Selected brez player - offhealer: {brez_player}"
+                        logger.debug(
+                            "%s's group - Selected brez player - offhealer: %s",
+                            _tank_name(currentGroup),
+                            brez_player,
                         )
                     else:
-                        log(
-                            f"{_tank_name(currentGroup)}'s group - Selected brez player - healer: {brez_player}"
+                        logger.debug(
+                            "%s's group - Selected brez player - healer: %s",
+                            _tank_name(currentGroup),
+                            brez_player,
                         )
                 elif brez_player.dpsMain:
                     currentGroup.dps.append(brez_player)
-                    log(
-                        f"{_tank_name(currentGroup)}'s group - Selected brez player - dps: {brez_player}"
+                    logger.debug(
+                        "%s's group - Selected brez player - dps: %s",
+                        _tank_name(currentGroup),
+                        brez_player,
                     )
             else:
-                log(
-                    f"{_tank_name(currentGroup)}'s group - No more brez players available"
+                logger.debug(
+                    "%s's group - No more brez players available",
+                    _tank_name(currentGroup),
                 )
         else:
-            log(f"{_tank_name(currentGroup)}'s group - Already have a brez")
+            logger.debug("%s's group - Already have a brez", _tank_name(currentGroup))
 
     # If we still don't have a healer, grab one now
     for currentGroup in groups:
@@ -279,8 +306,10 @@ def create_mythic_plus_groups(
             )
             if mainHealer is not None:
                 currentGroup.healer = mainHealer
-                log(
-                    f"{_tank_name(currentGroup)}'s group - Selected main healer: {currentGroup.healer}"
+                logger.debug(
+                    "%s's group - Selected main healer: %s",
+                    _tank_name(currentGroup),
+                    currentGroup.healer,
                 )
             else:
                 offHealer = grabNextAvailablePlayer(
@@ -288,19 +317,27 @@ def create_mythic_plus_groups(
                 )
                 if offHealer is not None:
                     currentGroup.healer = offHealer
-                    log(
-                        f"{_tank_name(currentGroup)}'s group - Selected offhealer: {currentGroup.healer}"
+                    logger.debug(
+                        "%s's group - Selected offhealer: %s",
+                        _tank_name(currentGroup),
+                        currentGroup.healer,
                     )
                 else:
-                    log(
-                        f"{_tank_name(currentGroup)}'s group - No more healers available"
+                    logger.debug(
+                        "%s's group - No more healers available",
+                        _tank_name(currentGroup),
                     )
-            log(
-                f"{_tank_name(currentGroup)}'s group - After healer selection - Have brez: {currentGroup.has_brez}, have lust: {currentGroup.has_lust}"
+            logger.debug(
+                "%s's group - After healer selection - Have brez: %s, have lust: %s",
+                _tank_name(currentGroup),
+                currentGroup.has_brez,
+                currentGroup.has_lust,
             )
         else:
-            log(
-                f"{_tank_name(currentGroup)}'s group - Healer already selected: {currentGroup.healer}"
+            logger.debug(
+                "%s's group - Healer already selected: %s",
+                _tank_name(currentGroup),
+                currentGroup.healer,
             )
 
     #
@@ -315,8 +352,10 @@ def create_mythic_plus_groups(
             )
             if ranged_dps is not None:
                 currentGroup.dps.append(ranged_dps)
-                log(
-                    f"{_tank_name(currentGroup)}'s group - Added ranged DPS: {ranged_dps}"
+                logger.debug(
+                    "%s's group - Added ranged DPS: %s",
+                    _tank_name(currentGroup),
+                    ranged_dps,
                 )
 
     # Fill the rest of the dps slots with anyone left
@@ -328,20 +367,20 @@ def create_mythic_plus_groups(
             if dps_player is None:
                 break
             currentGroup.dps.append(dps_player)
-            log(f"{_tank_name(currentGroup)}'s group - Selected DPS: {dps_player}")
-        log(f"Formed group: {currentGroup}")
+            logger.debug(
+                "%s's group - Selected DPS: %s", _tank_name(currentGroup), dps_player
+            )
+        logger.debug("Formed group: %s", currentGroup)
 
     # We've filled out all the full groups we can, now deal with any remainder players
     while len(usedPlayers) < len(players):
-        log(
-            f"Making a remainder group with these players: {[p.name for p in players if p not in usedPlayers]}"
+        logger.debug(
+            "Making a remainder group with these players: %s",
+            [p.name for p in players if p not in usedPlayers],
         )
         remainderGroup = WoWGroup()
-        log(f"remainderGroup start: {remainderGroup}")
+        logger.debug("remainderGroup start: %s", remainderGroup)
         while len(usedPlayers) < len(players):
-            # No constant for "remainder" specifically in config.py, so we'll use ROLE_DPS as a placeholder
-            # or just leave it as "remainder" if it's not a role.
-            # But "lust" and "brez" ARE roles in the config.
             player = grabNextAvailablePlayer(
                 [p for p in players if p not in usedPlayers],
                 "remainder",
@@ -351,30 +390,40 @@ def create_mythic_plus_groups(
             if player is not None:
                 if remainderGroup.tank is None and (player.tankMain or player.offtank):
                     remainderGroup.tank = player
-                    log(f"Remainder group - Selected tank: {player}")
+                    logger.debug("Remainder group - Selected tank: %s", player)
                     continue
                 elif remainderGroup.healer is None and (
                     player.healerMain or player.offhealer
                 ):
                     remainderGroup.healer = player
-                    log(f"Remainder group - Selected healer: {player}")
+                    logger.debug("Remainder group - Selected healer: %s", player)
                     continue
                 elif len(remainderGroup.dps) < 3 and (player.dpsMain or player.offdps):
                     remainderGroup.dps.append(player)
-                    log(f"Remainder group - Selected DPS: {player}")
+                    logger.debug("Remainder group - Selected DPS: %s", player)
                     continue
                 else:
                     # Everything is full, make another group
                     usedPlayers.remove(player)
-                    log(f"Remainder group - Player did not fit any role: {player}")
+                    logger.debug(
+                        "Remainder group - Player did not fit any role: %s", player
+                    )
                     break
             else:
-                log("No more players to add to remainder group")
+                logger.debug("No more players to add to remainder group")
                 break
-        log(f"Formed remainder group: {remainderGroup}")
-        log(f"usedPlayers: {len(usedPlayers)}, total players: {len(players)}")
+        logger.debug("Formed remainder group: %s", remainderGroup)
+        logger.debug(
+            "usedPlayers: %d, total players: %d", len(usedPlayers), len(players)
+        )
         groups.append(remainderGroup)
 
     lastGroups.clear()
     lastGroups = groups
+
+    # Log final results
+    logger.info("Group creation complete. Formed %d groups.", len(groups))
+    for i, g in enumerate(groups, 1):
+        logger.info("Group %d: %s", i, g.toTestString())
+
     return groups
