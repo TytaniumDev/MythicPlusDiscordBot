@@ -25,3 +25,12 @@ ALL_ROLES = [
 # Bot invite URL permissions (integer from Discord Developer Portal → OAuth2 → URL Generator).
 # Used when generating the "Add bot to server" link so the bot requests these permissions.
 BOT_INVITE_PERMISSIONS = int(os.getenv("BOT_INVITE_PERMISSIONS", "3263489"))
+
+# Assets
+ASSETS_DIR = "assets"
+SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
+REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
+WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
+
+# Constants
+PLACEHOLDER_CHAR = ':question:'

@@ -6,8 +6,8 @@ import sys
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import storage
-from storage import (
+import core.storage as storage
+from core.storage import (
     load_preferences,
     save_preferences,
     get_player_preference,

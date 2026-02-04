@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, AsyncMock
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from role_ui import RoleSelectionView, RoleButton, RoleBoardView, create_role_board_embed
+from core.role_ui import RoleSelectionView, RoleButton, RoleBoardView, create_role_board_embed
 from config import ROLE_TANK, ROLE_HEALER
-from models import WoWPlayer
+from core.models import WoWPlayer
 import discord
 
 class TestUI(unittest.IsolatedAsyncioTestCase):
@@ -51,7 +51,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tank_button.style, discord.ButtonStyle.secondary)
 
     async def test_save_method(self):
-        with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
+        with unittest.mock.patch("core.role_ui.set_player_preference") as mock_set_pref:
 
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
@@ -71,7 +71,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
             view.stop.assert_called_once()
 
     async def test_clear_method(self):
-        with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
+        with unittest.mock.patch("core.role_ui.clear_player_preference") as mock_clear_pref:
 
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)

@@ -1,6 +1,6 @@
 from typing import List, Optional
 import random
-from models import WoWPlayer, WoWGroup
+from .models import WoWPlayer, WoWGroup
 from config import (
     ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_BREZ, ROLE_LUST
 )

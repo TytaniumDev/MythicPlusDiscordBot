@@ -1,6 +1,6 @@
 import asyncio
 import discord
-from storage import set_player_preference, get_player_preference, clear_player_preference
+from .storage import set_player_preference, get_player_preference, clear_player_preference
 from config import (
     ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
     ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
