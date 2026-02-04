@@ -11,7 +11,9 @@ class GitHubError(Exception):
     pass
 
 
-async def create_github_issue(title, body, labels):
+async def create_github_issue(
+    title: str, body: str, labels: list[str]
+) -> dict[str, object]:
     if (
         not config.GITHUB_TOKEN
         or not config.GITHUB_REPO_OWNER
@@ -40,7 +42,7 @@ async def create_github_issue(title, body, labels):
 
 
 class GitHubIssueModal(ui.Modal):
-    def __init__(self, issue_type):
+    def __init__(self, issue_type: str) -> None:
         self.issue_type = issue_type
         modal_title = "Feature Request" if issue_type == "feature" else "Bug Report"
         super().__init__(title=modal_title)

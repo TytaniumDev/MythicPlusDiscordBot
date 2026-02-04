@@ -40,3 +40,17 @@ typeCheckingMode = "strict"
 reportMissingImports = false
 reportUnusedVariable = true
 reportUnusedImport = true
+
+# Enabled checks (fixed via code changes or type: ignore comments where needed)
+reportConstantRedefinition = true
+reportPrivateUsage = true
+reportMissingParameterType = true
+reportOptionalMemberAccess = true
+reportUnknownParameterType = true
+
+# Disabled: discord.py has incomplete stubs causing "Unknown" types to propagate
+# These checks produce many false positives that would require extensive workarounds
+reportAttributeAccessIssue = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false

@@ -4,7 +4,7 @@ import requests
 from PIL import Image, ImageDraw
 
 
-def download_file(url, filename):
+def download_file(url: str, filename: str) -> None:
     print(f"Downloading {url} to {filename}...")
     try:
         response = requests.get(url, stream=True, timeout=10)
@@ -19,7 +19,7 @@ def download_file(url, filename):
         print(f"Error downloading {url}: {e}")
 
 
-def generate_wheel_gif(filename):
+def generate_wheel_gif(filename: str) -> None:
     print(f"Generating spinning wheel GIF {filename}...")
     images = []
     width = 200

@@ -26,8 +26,8 @@ class TestStorage(unittest.TestCase):
         self.backup_exists = os.path.exists(STORAGE_FILE)
         if self.backup_exists:
             os.rename(STORAGE_FILE, STORAGE_FILE + ".bak")
-        # Reset cache
-        storage._PREFERENCES_CACHE = None
+        # Reset cache (accessing private cache is necessary for test isolation)
+        storage._preferences_cache = None  # pyright: ignore[reportPrivateUsage]
 
     def tearDown(self):
         # Remove test storage file
@@ -36,8 +36,8 @@ class TestStorage(unittest.TestCase):
         # Restore backup
         if self.backup_exists:
             os.rename(STORAGE_FILE + ".bak", STORAGE_FILE)
-        # Reset cache
-        storage._PREFERENCES_CACHE = None
+        # Reset cache (accessing private cache is necessary for test isolation)
+        storage._preferences_cache = None  # pyright: ignore[reportPrivateUsage]
 
     def test_caching_behavior(self):
         # Setup initial file
@@ -45,7 +45,7 @@ class TestStorage(unittest.TestCase):
         with open(STORAGE_FILE, "w") as f:
             json.dump(initial_data, f)
 
-        def is_read_call(c):
+        def is_read_call(c: tuple[tuple[object, ...], dict[str, object]]) -> bool:
             args = c[0]
             kwargs = c[1] if len(c) > 1 else {}
             if args[0] != STORAGE_FILE:

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from types import NotImplementedType
 
 from config import (
     ROLE_BREZ,
@@ -38,7 +39,7 @@ class WoWPlayer:
     def __hash__(self):
         return hash(self.name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, WoWPlayer):
             return NotImplemented
         return self.name == other.name
@@ -50,7 +51,7 @@ class WoWPlayer:
         return self.__str__()
 
     @classmethod
-    def create(cls, name: str, roles: list) -> "WoWPlayer":
+    def create(cls, name: str, roles: list[str]) -> "WoWPlayer":
         # Calculate all the boolean flags
         tankMain = ROLE_TANK in roles
         healerMain = ROLE_HEALER in roles
@@ -127,8 +128,8 @@ class WoWPlayer:
 
 @dataclass
 class WoWGroup:
-    tank: WoWPlayer = None
-    healer: WoWPlayer = None
+    tank: WoWPlayer | None = None
+    healer: WoWPlayer | None = None
     dps: list[WoWPlayer] = field(default_factory=list)
 
     @property

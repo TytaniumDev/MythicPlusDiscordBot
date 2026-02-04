@@ -51,10 +51,10 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
 
         modal = GitHubIssueModal(issue_type="bug")
 
-        # Simulate user input
-        modal.issue_title._value = "Bug Title"
-        modal.description._value = "Bug Description"
-        modal.extra_info._value = "Steps"
+        # Simulate user input (accessing _value is necessary for testing discord.py modals)
+        modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
+        modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
+        modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
 
         # Mock config and create_github_issue
         with patch("issues.create_github_issue", new_callable=AsyncMock) as mock_create:

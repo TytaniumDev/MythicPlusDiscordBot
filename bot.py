@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import datetime
 import os
 import time
+from typing import cast
 
 import discord
 from discord.ext import commands
@@ -9,7 +12,7 @@ from dotenv import load_dotenv
 
 from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
 from issues import GitHubIssueModal
-from models import WoWPlayer
+from models import WoWGroup, WoWPlayer
 from parallel_group_creator import create_mythic_plus_groups
 from role_ui import RoleBoardView, create_role_board_embed
 from storage import clear_player_preference, get_player_preference
@@ -38,12 +41,11 @@ start_time = time.time()
 debug = False
 
 # Store last results per-server (guild) to avoid race conditions
-# Format: {guild_id: {"players": list, "groups": list}}
-last_results = {}
+last_results: dict[int, dict[str, list[WoWPlayer] | list[WoWGroup]]] = {}
 
 # Locks per server to prevent concurrent group creation
 # Format: {guild_id: asyncio.Lock}
-server_locks = {}
+server_locks: dict[int, asyncio.Lock] = {}
 
 
 @bot.tree.command(name="bug")
@@ -60,7 +62,8 @@ async def feature_request(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    if bot.user:
+        print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     print("Syncing commands...")
     try:
         synced = await bot.tree.sync()
@@ -72,14 +75,13 @@ async def on_ready():
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
 # This corresponds to the member's WoW in game name, usually.
-def WoWName(member, debug: bool = None):
+def WoWName(member: discord.Member | discord.User, debug: bool | None = None) -> str:
+    nick = getattr(member, "nick", None)
     if debug:
-        print(
-            f"WoWName - Member: {member}\nNick: {member.nick}\nGlobal: {member.global_name}"
-        )
-    rawName = (
-        member.nick
-        if member.nick is not None
+        print(f"WoWName - Member: {member}\nNick: {nick}\nGlobal: {member.global_name}")
+    rawName: str = (
+        nick
+        if nick is not None
         else member.global_name
         if member.global_name is not None
         else str(member)
@@ -87,38 +89,46 @@ def WoWName(member, debug: bool = None):
     return rawName.replace(".", "")
 
 
-async def showLongTyping(channel, debug_mode: bool = False):
+async def showLongTyping(
+    channel: discord.abc.Messageable | discord.abc.GuildChannel,
+    debug_mode: bool = False,
+) -> None:
     # Skip sleeps in debug mode for faster testing
     if not debug_mode:
         async with channel.typing():
             await asyncio.sleep(2)
 
 
-async def showShortTyping(channel, debug_mode: bool = False):
+async def showShortTyping(
+    channel: discord.abc.Messageable | discord.abc.GuildChannel,
+    debug_mode: bool = False,
+) -> None:
     # Skip sleeps in debug mode for faster testing
     if not debug_mode:
         async with channel.typing():
             await asyncio.sleep(1)
 
 
-def dashed(name):
+def dashed(name: str) -> str:
     return "?" * len(name)
 
 
-async def join_voice_channel(ctx):
+async def join_voice_channel(
+    ctx: commands.Context[commands.Bot],
+) -> discord.VoiceClient | None:
     """Joins the voice channel of the command author."""
-    if ctx.author.voice:
+    if ctx.author.voice and ctx.author.voice.channel:
         channel = ctx.author.voice.channel
         if ctx.voice_client:
             if ctx.voice_client.channel != channel:
                 await ctx.voice_client.move_to(channel)
         else:
             await channel.connect()
-        return ctx.voice_client
+        return cast(discord.VoiceClient | None, ctx.voice_client)
     return None
 
 
-async def play_sound(voice_client, sound_path):
+async def play_sound(voice_client: discord.VoiceClient | None, sound_path: str) -> None:
     """Plays a sound file in the given voice client."""
     if voice_client and os.path.exists(sound_path):
         try:
@@ -134,7 +144,7 @@ async def play_sound(voice_client, sound_path):
 # Runs the !wheel function, but hardcoded to use testing data in my personal
 # discord server.
 @bot.command()
-async def test(ctx):
+async def test(ctx: commands.Context[commands.Bot]) -> None:
     try:
         await coreWheel(ctx, debugValue=True)
     except discord.HTTPException as e:
@@ -148,7 +158,7 @@ async def test(ctx):
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
 @bot.command()
-async def wheel(ctx):
+async def wheel(ctx: commands.Context[commands.Bot]) -> None:
     try:
         await coreWheel(ctx=ctx, debugValue=False)
     except discord.HTTPException as e:
@@ -159,7 +169,7 @@ async def wheel(ctx):
 
 
 @bot.command()
-async def testcase(ctx):
+async def testcase(ctx: commands.Context[commands.Bot]) -> None:
     try:
         await printPlayerList(ctx=ctx)
     except discord.HTTPException as e:
@@ -170,7 +180,7 @@ async def testcase(ctx):
 
 
 # Gathers the player info from the discord and returns a list of WoWPlayer objects.
-def getPlayerList(members) -> list[WoWPlayer]:
+def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
     players = []
     for member in members:
         name = WoWName(member)
@@ -195,7 +205,7 @@ def getPlayerList(members) -> list[WoWPlayer]:
     return players
 
 
-async def launch_role_board(ctx):
+async def launch_role_board(ctx: commands.Context[commands.Bot]) -> None:
     if not ctx.guild:
         msg = "❌ This command can only be used in a server."
         if hasattr(ctx, "interaction") and ctx.interaction:
@@ -204,27 +214,33 @@ async def launch_role_board(ctx):
             await ctx.send(msg)
         return
 
+    # Capture guild reference for the nested function (already validated above)
+    guild = ctx.guild
+
     # Determine target channel: Voice channel if available, otherwise current text channel
     if ctx.author.voice and ctx.author.voice.channel:
         target_channel = ctx.author.voice.channel
     else:
         target_channel = ctx.channel
 
-    async def update_board(interaction, board_message):
+    async def update_board(
+        interaction: discord.Interaction,
+        board_message: discord.Message,
+    ) -> None:
         # Re-fetch members from the channel to ensure we have the latest state.
-        channel = ctx.guild.get_channel(target_channel.id)
+        channel = guild.get_channel(target_channel.id)
         if not channel:
             return
 
         members = [m for m in channel.members if not m.bot]
-        players = getPlayerList(members)
+        players = getPlayerList(cast(list[discord.Member], members))
         embed = create_role_board_embed(players)
 
         await board_message.edit(embed=embed)
 
     # Initial render
     members = [m for m in target_channel.members if not m.bot]
-    players = getPlayerList(members)
+    players = getPlayerList(cast(list[discord.Member], members))
     embed = create_role_board_embed(players)
     view = RoleBoardView(update_callback=update_board)
 
@@ -232,21 +248,22 @@ async def launch_role_board(ctx):
 
 
 @bot.hybrid_command(name="roles")
-async def roles(ctx):
+async def roles(ctx: commands.Context[commands.Bot]) -> None:
     """Opens the Mythic+ Role Board for the current voice channel."""
     await launch_role_board(ctx)
 
 
 @bot.hybrid_command(name="readycheck")
-async def readycheck(ctx):
+async def readycheck(ctx: commands.Context[commands.Bot]) -> None:
     """Alias for /roles. Opens the Mythic+ Role Board."""
     await launch_role_board(ctx)
 
 
 @bot.command()
-async def rolecheck(ctx):
+async def rolecheck(ctx: commands.Context[commands.Bot]) -> None:
     """List saved roles for everyone in the current voice channel (or recent players)."""
-    channel = ctx.author.voice.channel if ctx.author.voice else ctx.channel
+    voice_channel = ctx.author.voice.channel if ctx.author.voice else None
+    channel = voice_channel if voice_channel else ctx.channel
     members = [m for m in channel.members if not m.bot]
 
     if not members:
@@ -257,7 +274,7 @@ async def rolecheck(ctx):
 
     found_any = False
     for member in members:
-        name = WoWName(member)
+        name = WoWName(cast(discord.Member, member))
         saved_roles = get_player_preference(name)
         if saved_roles:
             embed.add_field(name=name, value=", ".join(saved_roles), inline=False)
@@ -280,7 +297,7 @@ async def rolecheck(ctx):
 
 
 @bot.command()
-async def invite(ctx):
+async def invite(ctx: commands.Context[commands.Bot]) -> None:
     """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
     app_id = bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
     if not app_id:
@@ -295,7 +312,7 @@ async def invite(ctx):
 
 
 @bot.command()
-async def status(ctx):
+async def status(ctx: commands.Context[commands.Bot]) -> None:
     """Check the bot's status and uptime."""
     uptime_seconds = int(time.time() - start_time)
     uptime_str = str(datetime.timedelta(seconds=uptime_seconds))
@@ -319,7 +336,9 @@ async def status(ctx):
 
 
 @bot.command()
-async def clearrole(ctx, name: str = None):
+async def clearrole(
+    ctx: commands.Context[commands.Bot], name: str | None = None
+) -> None:
     """Clear your saved roles, or a specific character's roles."""
     if name is None:
         name = WoWName(ctx.author)
@@ -337,7 +356,7 @@ async def clearrole(ctx, name: str = None):
             await ctx.send(f"❌ No saved roles found for **{name}**.")
 
 
-async def printPlayerList(ctx):
+async def printPlayerList(ctx: commands.Context[commands.Bot]) -> None:
     channel = ctx.channel
     guild_id = ctx.guild.id if ctx.guild else None
 
@@ -364,19 +383,34 @@ async def printPlayerList(ctx):
     )
 
 
-async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
+async def _execute_coreWheel(
+    ctx: commands.Context[commands.Bot],
+    channel: discord.abc.GuildChannel | discord.abc.Messageable,
+    guild_id: int,
+    debug: bool,
+    enhanced: bool = False,
+) -> None:
     """Internal function that performs the actual group creation (called within lock)."""
-    voice_client = None
+    voice_client: discord.VoiceClient | None = None
     if enhanced:
         voice_client = await join_voice_channel(ctx)
 
     # Get the members of the channel we want to use to fill the roles
     if debug:
-        # Testing Code
-        testChannel = discord.utils.get(ctx.guild.channels, name="path-of-exile")
-        members = [member for member in testChannel.members if not member.bot]
+        # Testing Code - guild is guaranteed to exist since guild_id was passed
+        if ctx.guild is None:
+            members = []
+        else:
+            testChannel = discord.utils.get(ctx.guild.channels, name="path-of-exile")
+            if testChannel is None or not hasattr(testChannel, "members"):
+                members = []
+            else:
+                members = [m for m in testChannel.members if not m.bot]
     else:
-        members = [member for member in channel.members if not member.bot]
+        members = cast(
+            list[discord.Member],
+            [m for m in channel.members if not m.bot],
+        )
 
     if not members:
         await ctx.send("❌ No players found in the channel.")
@@ -492,7 +526,11 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
             )
 
 
-async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
+async def coreWheel(
+    ctx: commands.Context[commands.Bot],
+    debugValue: bool | None = None,
+    enhanced: bool = False,
+) -> None:
     global debug
     debug = False if debugValue is None else debugValue
     channel = ctx.channel
@@ -522,7 +560,7 @@ async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
 
 
 @bot.command()
-async def newwheel(ctx):
+async def newwheel(ctx: commands.Context[commands.Bot]) -> None:
     try:
         await coreWheel(ctx=ctx, debugValue=False, enhanced=True)
     except discord.HTTPException as e:
@@ -533,13 +571,13 @@ async def newwheel(ctx):
 
 
 @bot.command()
-async def activity(ctx):
+async def activity(ctx: commands.Context[commands.Bot]) -> None:
     try:
         # Run enhanced wheel
         await coreWheel(ctx=ctx, debugValue=False, enhanced=True)
 
         # Then create activity invite
-        if ctx.author.voice:
+        if ctx.author.voice and ctx.author.voice.channel:
             channel = ctx.author.voice.channel
             # You'll need to set your APPLICATION_ID in .env
             app_id = os.getenv("DISCORD_APPLICATION_ID")
@@ -565,16 +603,23 @@ async def activity(ctx):
 
 
 @bot.event
-async def on_voice_state_update(member, before, after):
+async def on_voice_state_update(
+    member: discord.Member,
+    before: discord.VoiceState,
+    after: discord.VoiceState,
+) -> None:
     """Automatically disconnects the bot if it's the only one left in the voice channel."""
     voice_client = member.guild.voice_client
-    if voice_client and len(voice_client.channel.members) == 1:
-        await voice_client.disconnect()
+    if voice_client and voice_client.channel and len(voice_client.channel.members) == 1:
+        await voice_client.disconnect(force=False)
 
 
 # Global error handler for unhandled command errors
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(
+    ctx: commands.Context[commands.Bot],
+    error: commands.CommandError,
+) -> None:
     if isinstance(error, commands.CommandNotFound):
         return  # Ignore unknown commands
     if isinstance(error, commands.MissingPermissions):

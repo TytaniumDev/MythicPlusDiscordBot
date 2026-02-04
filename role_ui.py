@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import asyncio
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 import discord
 
@@ -14,6 +18,7 @@ from config import (
     ROLE_TANK,
     ROLE_TANK_OFFSPEC,
 )
+from models import WoWPlayer
 from storage import (
     clear_player_preference,
     get_player_preference,
@@ -21,13 +26,21 @@ from storage import (
 )
 
 
-class RoleButton(discord.ui.Button):
-    def __init__(self, role_name, label, style=discord.ButtonStyle.secondary):
+class RoleButton(discord.ui.Button["RoleSelectionView"]):
+    def __init__(
+        self,
+        role_name: str,
+        label: str,
+        style: discord.ButtonStyle = discord.ButtonStyle.secondary,
+    ):
         super().__init__(label=label, style=style, custom_id=role_name)
         self.role_name = role_name
 
     async def callback(self, interaction: discord.Interaction):
-        view: RoleSelectionView = self.view
+        view = self.view
+        if view is None:
+            return
+        assert isinstance(view, RoleSelectionView)
         if self.role_name in view.selected_roles:
             view.selected_roles.remove(self.role_name)
             self.style = discord.ButtonStyle.secondary
@@ -39,7 +52,14 @@ class RoleButton(discord.ui.Button):
 
 
 class RoleSelectionView(discord.ui.View):
-    def __init__(self, player_name, initial_roles=None, on_save_callback=None):
+    def __init__(
+        self,
+        player_name: str,
+        initial_roles: list[str] | None = None,
+        on_save_callback: (
+            Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
+        ) = None,
+    ):
         super().__init__(timeout=60)
         self.player_name = player_name
         self.selected_roles = set(initial_roles or [])
@@ -67,7 +87,11 @@ class RoleSelectionView(discord.ui.View):
             self.add_item(RoleButton(role_id, label, style))
 
     @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=2)
-    async def save(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def save(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button[RoleSelectionView],
+    ):
         await asyncio.to_thread(
             set_player_preference, self.player_name, list(self.selected_roles)
         )
@@ -82,7 +106,11 @@ class RoleSelectionView(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=2)
-    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def clear(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button[RoleSelectionView],
+    ):
         await asyncio.to_thread(clear_player_preference, self.player_name)
         self.selected_roles.clear()
         for item in self.children:
@@ -98,7 +126,13 @@ class RoleSelectionView(discord.ui.View):
 
 
 class RoleBoardView(discord.ui.View):
-    def __init__(self, update_callback):
+    def __init__(
+        self,
+        update_callback: Callable[
+            [discord.Interaction, discord.Message],
+            Coroutine[Any, Any, None],
+        ],
+    ):
         super().__init__(timeout=None)  # Persistent view
         self.update_callback = update_callback
 
@@ -108,40 +142,42 @@ class RoleBoardView(discord.ui.View):
         custom_id="edit_roles_button",
     )
     async def edit_roles(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button[RoleBoardView],
     ):
         member = interaction.user
         # Logic duplicated from bot.py WoWName to avoid circular imports
-        name = (
-            member.nick
-            if member.nick
-            else member.global_name
-            if member.global_name
-            else member.name
-        )
+        # User may be Member (has nick) or User (no nick) depending on context
+        nick = getattr(member, "nick", None)
+        global_name = getattr(member, "global_name", None)
+        name = nick if nick else global_name if global_name else member.name
         name = name.replace(".", "")
 
         saved_roles = get_player_preference(name)
         board_message = interaction.message
+        if board_message is None:
+            return
 
-        async def on_save(save_interaction):
-            # Trigger the update callback to refresh the board, passing the board message
+        async def on_save(
+            save_interaction: discord.Interaction,
+        ) -> None:
             await self.update_callback(save_interaction, board_message)
 
-        view = RoleSelectionView(name, saved_roles, on_save_callback=on_save)
+        view = RoleSelectionView(name, (saved_roles or []), on_save_callback=on_save)
         await interaction.response.send_message(
             f"Select your roles for **{name}**:", view=view, ephemeral=True
         )
 
 
-def create_role_board_embed(players):
+def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
     embed = discord.Embed(
         title="Mythic+ Role Board",
         description="Current channel roster",
         color=discord.Color.gold(),
     )
 
-    def format_player(p):
+    def format_player(p: WoWPlayer) -> str:
         icons = ""
         if p.hasBrez:
             icons += "⚰️"
@@ -159,7 +195,7 @@ def create_role_board_embed(players):
         format_player(p) for p in players if p.dpsMain and not p.melee and not p.ranged
     ]
 
-    def format_list(names):
+    def format_list(names: list[str]) -> str:
         return "\n".join(names) if names else "-"
 
     embed.add_field(
