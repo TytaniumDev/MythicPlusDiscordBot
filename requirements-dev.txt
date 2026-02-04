@@ -1,0 +1,4 @@
+# Linting, formatting, and type checking (pip install -r requirements-dev.txt)
+-r requirements.txt
+ruff>=0.8.0
+pyright>=1.1.0

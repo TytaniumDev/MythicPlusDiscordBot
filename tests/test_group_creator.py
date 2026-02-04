@@ -7,17 +7,23 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from models import WoWPlayer
 from parallel_group_creator import clear, create_mythic_plus_groups
-from tests.prebuilt_classes import *
+from tests.prebuilt_classes import (
+    BalanceDruid,
+    FeralDruid,
+    HealerDruid,
+    HealerPriest,
+    Mage,
+    Paladin,
+    TankDeathKnight,
+    TankPaladin,
+    TankWarrior,
+    Warrior,
+)
 
 
 class TestGroupCreator(unittest.TestCase):
     def setUp(self):
         clear()
-
-    def tearDown(self):
-        clear()
-
-    def setUp(self):
         # Real examples
         self.cynoc = WoWPlayer.create("Cynoc", ["Tank", "DPS Offspec"])
         self.gazzi = WoWPlayer.create("Gazzi", ["Tank", "Brez"])
@@ -43,6 +49,9 @@ class TestGroupCreator(unittest.TestCase):
         self.justine = WoWPlayer.create("Justine", ["Melee", "Brez"])
         self.raxef = WoWPlayer.create("Raxef", ["Melee"])
         self.kat = WoWPlayer.create("Kat", ["Melee"])
+
+    def tearDown(self):
+        clear()
 
     def test_real_world(self):
         """Test real world scenario"""
@@ -232,9 +241,9 @@ class TestGroupCreator(unittest.TestCase):
         ]
         groups = create_mythic_plus_groups(players)
 
-        self.assertEqual(len(groups), 4, 'Should form 4 groups')
-        self.assertEqual(groups[2].size, 1, 'Second to last group should have 1 player')
-        self.assertEqual(groups[3].size, 2, 'Last group should have 2 players')
+        self.assertEqual(len(groups), 4, "Should form 4 groups")
+        self.assertEqual(groups[2].size, 1, "Second to last group should have 1 player")
+        self.assertEqual(groups[3].size, 2, "Last group should have 2 players")
 
     def test_not_in_same_group_as_last_time(self):
         """Test that players are not put in the same group as last time if possible"""
@@ -261,7 +270,7 @@ class TestGroupCreator(unittest.TestCase):
         new_groups = create_mythic_plus_groups(players)
 
         # Verify that no players are in the same group as last time
-        for old_group, new_group in zip(lastGroups, new_groups):
+        for old_group, new_group in zip(lastGroups, new_groups, strict=False):
             old_players = set(old_group.players)
             new_players = set(new_group.players)
             intersection = old_players.intersection(new_players)
@@ -270,6 +279,7 @@ class TestGroupCreator(unittest.TestCase):
                 0,
                 f"Players {intersection} are in the same group as last time",
             )
+
 
 if __name__ == "__main__":
     unittest.main()

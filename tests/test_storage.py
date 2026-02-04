@@ -1,22 +1,24 @@
-import os
-import unittest
 import json
+import os
 import sys
+import unittest
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from unittest.mock import patch
+
 import storage
 from storage import (
-    load_preferences,
-    save_preferences,
-    get_player_preference,
-    set_player_preference,
+    STORAGE_FILE,
     clear_player_preference,
     get_all_preferences,
-    STORAGE_FILE
+    get_player_preference,
+    load_preferences,
+    save_preferences,
+    set_player_preference,
 )
-from unittest.mock import patch
+
 
 class TestStorage(unittest.TestCase):
     def setUp(self):
@@ -43,13 +45,21 @@ class TestStorage(unittest.TestCase):
         with open(STORAGE_FILE, "w") as f:
             json.dump(initial_data, f)
 
+        def is_read_call(c):
+            args = c[0]
+            kwargs = c[1] if len(c) > 1 else {}
+            if args[0] != STORAGE_FILE:
+                return False
+            mode = args[1] if len(args) > 1 else kwargs.get("mode", "r")
+            return mode == "r"
+
         with patch("builtins.open", wraps=open) as mock_file:
             # First load
             data1 = load_preferences()
             self.assertEqual(data1, initial_data)
 
-            # Verify read called
-            read_calls_1 = [c for c in mock_file.call_args_list if c[0][0] == STORAGE_FILE and 'r' in c[0]]
+            # Verify read called (open with no mode or mode 'r')
+            read_calls_1 = [c for c in mock_file.call_args_list if is_read_call(c)]
             self.assertEqual(len(read_calls_1), 1)
 
             # Second load - should use cache
@@ -57,7 +67,7 @@ class TestStorage(unittest.TestCase):
             self.assertEqual(data2, initial_data)
 
             # Verify read NOT called again
-            read_calls_2 = [c for c in mock_file.call_args_list if c[0][0] == STORAGE_FILE and 'r' in c[0]]
+            read_calls_2 = [c for c in mock_file.call_args_list if is_read_call(c)]
             self.assertEqual(len(read_calls_2), 1)
 
     def test_save_and_load(self):
@@ -84,6 +94,7 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(len(all_prefs), 2)
         self.assertIn("P1", all_prefs)
         self.assertIn("P2", all_prefs)
+
 
 if __name__ == "__main__":
     unittest.main()

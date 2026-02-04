@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +18,16 @@ ROLE_LUST = os.getenv("ROLE_LUST", "Lust")
 
 # All recognized roles for validation/parsing
 ALL_ROLES = [
-    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
-    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
-    ROLE_BREZ, ROLE_LUST
+    ROLE_TANK,
+    ROLE_HEALER,
+    ROLE_DPS,
+    ROLE_RANGED,
+    ROLE_MELEE,
+    ROLE_TANK_OFFSPEC,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_DPS_OFFSPEC,
+    ROLE_BREZ,
+    ROLE_LUST,
 ]
 
 # Bot invite URL permissions (integer from Discord Developer Portal → OAuth2 → URL Generator).

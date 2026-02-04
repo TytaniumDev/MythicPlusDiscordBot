@@ -1,38 +1,43 @@
 import unittest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, patch
+
 import discord
-from issues import create_github_issue, GitHubIssueModal
-import config
+
+from issues import GitHubError, GitHubIssueModal, create_github_issue
+
 
 class TestIssues(unittest.IsolatedAsyncioTestCase):
-
     async def test_create_github_issue_success(self):
         # Mock config values
-        with patch('config.GITHUB_TOKEN', 'fake_token'), \
-             patch('config.GITHUB_REPO_OWNER', 'owner'), \
-             patch('config.GITHUB_REPO_NAME', 'repo'):
-
-            with patch('aiohttp.ClientSession.post') as mock_post:
+        with (
+            patch("config.GITHUB_TOKEN", "fake_token"),
+            patch("config.GITHUB_REPO_OWNER", "owner"),
+            patch("config.GITHUB_REPO_NAME", "repo"),
+        ):
+            with patch("aiohttp.ClientSession.post") as mock_post:
                 mock_response = AsyncMock()
                 mock_response.status = 201
-                mock_response.json.return_value = {'html_url': 'http://github.com/issue/1'}
+                mock_response.json.return_value = {
+                    "html_url": "http://github.com/issue/1"
+                }
                 mock_post.return_value.__aenter__.return_value = mock_response
 
                 result = await create_github_issue("Title", "Body", ["bug"])
-                self.assertEqual(result['html_url'], 'http://github.com/issue/1')
+                self.assertEqual(result["html_url"], "http://github.com/issue/1")
 
     async def test_create_github_issue_failure(self):
-        with patch('config.GITHUB_TOKEN', 'fake_token'), \
-             patch('config.GITHUB_REPO_OWNER', 'owner'), \
-             patch('config.GITHUB_REPO_NAME', 'repo'):
-
-            with patch('aiohttp.ClientSession.post') as mock_post:
+        with (
+            patch("config.GITHUB_TOKEN", "fake_token"),
+            patch("config.GITHUB_REPO_OWNER", "owner"),
+            patch("config.GITHUB_REPO_NAME", "repo"),
+        ):
+            with patch("aiohttp.ClientSession.post") as mock_post:
                 mock_response = AsyncMock()
                 mock_response.status = 401
                 mock_response.text.return_value = "Unauthorized"
                 mock_post.return_value.__aenter__.return_value = mock_response
 
-                with self.assertRaises(Exception):
+                with self.assertRaises(GitHubError):
                     await create_github_issue("Title", "Body", ["bug"])
 
     async def test_modal_submission(self):
@@ -52,8 +57,8 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.extra_info._value = "Steps"
 
         # Mock config and create_github_issue
-        with patch('issues.create_github_issue', new_callable=AsyncMock) as mock_create:
-            mock_create.return_value = {'html_url': 'http://url'}
+        with patch("issues.create_github_issue", new_callable=AsyncMock) as mock_create:
+            mock_create.return_value = {"html_url": "http://url"}
 
             await modal.on_submit(mock_interaction)
 
