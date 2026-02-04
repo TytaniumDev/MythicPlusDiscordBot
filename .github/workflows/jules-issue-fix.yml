@@ -5,7 +5,9 @@ on:
 
 jobs:
   dispatch-jules:
-    if: contains(github.event.issue.labels.*.name, 'jules')
+    if: |
+      (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'jules')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'jules')
     runs-on: ubuntu-latest
     permissions:
       contents: read
