@@ -14,3 +14,11 @@
 ## 2026-02-03 - [Blocking I/O in Async UI Callbacks]
 **Learning:** Synchronous file I/O in Discord UI callbacks (specifically JSON read/write in `RoleView.save`) blocked the asyncio event loop for ~200ms per call. In high-concurrency scenarios, this causes the bot to become unresponsive.
 **Action:** Offloaded file operations to a separate thread using `asyncio.to_thread`. Guarded `storage.py` writes with `threading.Lock` to prevent race conditions during concurrent access from multiple threads.
+
+## 2026-02-03 - [Infinite Loops in Constrained Selection]
+**Learning:** When implementing selection logic with constraints (e.g., avoiding previous teammates), failing to provide a fallback mechanism when all candidates are filtered out can lead to infinite loops. Specifically, `grabNextAvailablePlayer` returned `None` when all available players were filtered, causing the calling loop `while len(usedPlayers) < len(players)` to spin indefinitely because no progress was being made.
+**Action:** Always implement a fallback strategy (e.g., relax constraints) when a strict filter returns no results in a resource consumption loop. Ensure `while` loops have a guaranteed exit condition or progress step even in failure modes.
+
+## 2026-02-03 - [Deadlock in Re-entrant Locking]
+**Learning:** `threading.Lock` is not re-entrant in Python. Using it in a function (`load_preferences`) that is called by another function (`set_player_preference`) which *also* acquires the same lock results in a deadlock.
+**Action:** Use `threading.RLock` for locks that may be acquired recursively by the same thread.
