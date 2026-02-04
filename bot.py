@@ -1,17 +1,18 @@
-import discord
-import os
 import asyncio
-import random
-import time
 import datetime
+import os
+import time
+
+import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from models import WoWPlayer
-from parallel_group_creator import create_mythic_plus_groups
-from storage import get_player_preference, get_all_preferences, clear_player_preference
-from role_ui import RoleBoardView, create_role_board_embed, RoleSelectionView
+
 from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
 from issues import GitHubIssueModal
+from models import WoWPlayer
+from parallel_group_creator import create_mythic_plus_groups
+from role_ui import RoleBoardView, create_role_board_embed
+from storage import clear_player_preference, get_player_preference
 
 load_dotenv()
 
@@ -22,8 +23,10 @@ REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
 WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN environment variable is required. Please check your .env file.")
-PLACEHOLDER_CHAR = ':question:'
+    raise ValueError(
+        "BOT_TOKEN environment variable is required. Please check your .env file."
+    )
+PLACEHOLDER_CHAR = ":question:"
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -42,15 +45,18 @@ last_results = {}
 # Format: {guild_id: asyncio.Lock}
 server_locks = {}
 
+
 @bot.tree.command(name="bug")
 async def bug_report(interaction: discord.Interaction):
     """Report a bug to the developers."""
     await interaction.response.send_modal(GitHubIssueModal(issue_type="bug"))
 
+
 @bot.tree.command(name="featurerequest")
 async def feature_request(interaction: discord.Interaction):
     """Request a new feature for the bot."""
     await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
+
 
 @bot.event
 async def on_ready():
@@ -62,13 +68,24 @@ async def on_ready():
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
+
 # Returns the member's nickname if it exists, or their normal Discord name if
 # they don't have a nickname set.
 # This corresponds to the member's WoW in game name, usually.
 def WoWName(member, debug: bool = None):
-    if debug: print(f"WoWName - Member: {member}\nNick: {member.nick}\nGlobal: {member.global_name}")
-    rawName =  member.nick if member.nick != None else member.global_name if member.global_name != None else str(member)
-    return rawName.replace('.', '')
+    if debug:
+        print(
+            f"WoWName - Member: {member}\nNick: {member.nick}\nGlobal: {member.global_name}"
+        )
+    rawName = (
+        member.nick
+        if member.nick is not None
+        else member.global_name
+        if member.global_name is not None
+        else str(member)
+    )
+    return rawName.replace(".", "")
+
 
 async def showLongTyping(channel, debug_mode: bool = False):
     # Skip sleeps in debug mode for faster testing
@@ -76,14 +93,17 @@ async def showLongTyping(channel, debug_mode: bool = False):
         async with channel.typing():
             await asyncio.sleep(2)
 
+
 async def showShortTyping(channel, debug_mode: bool = False):
     # Skip sleeps in debug mode for faster testing
     if not debug_mode:
         async with channel.typing():
             await asyncio.sleep(1)
 
+
 def dashed(name):
-     return '?' * len(name)
+    return "?" * len(name)
+
 
 async def join_voice_channel(ctx):
     """Joins the voice channel of the command author."""
@@ -97,6 +117,7 @@ async def join_voice_channel(ctx):
         return ctx.voice_client
     return None
 
+
 async def play_sound(voice_client, sound_path):
     """Plays a sound file in the given voice client."""
     if voice_client and os.path.exists(sound_path):
@@ -107,6 +128,7 @@ async def play_sound(voice_client, sound_path):
             # We don't necessarily want to wait for the whole sound if it's a loop
         except Exception as e:
             print(f"Error playing sound {sound_path}: {e}")
+
 
 # !test
 # Runs the !wheel function, but hardcoded to use testing data in my personal
@@ -121,6 +143,7 @@ async def test(ctx):
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in test command: {e}")
 
+
 # !wheel
 # Generates a series of embed messages that shows groups of players split
 # into 5 person teams based on their assigned roles in discord.
@@ -133,6 +156,7 @@ async def wheel(ctx):
     except Exception as e:
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in wheel command: {e}")
+
 
 @bot.command()
 async def testcase(ctx):
@@ -154,17 +178,22 @@ def getPlayerList(members) -> list[WoWPlayer]:
         saved_roles = get_player_preference(name)
 
         if saved_roles:
-            print(f'Creating WoWPlayer for {name} from SAVED roles: {saved_roles}')
+            print(f"Creating WoWPlayer for {name} from SAVED roles: {saved_roles}")
             player = WoWPlayer.create(name=name, roles=saved_roles)
             players.append(player)
         elif len(member.roles) > 1:
-            print(f'Creating WoWPlayer for {name} from DISCORD roles: {[role.name for role in member.roles]}')
-            player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
-            if(player.hasRoles()):
+            print(
+                f"Creating WoWPlayer for {name} from DISCORD roles: {[role.name for role in member.roles]}"
+            )
+            player = WoWPlayer.create(
+                name=name, roles=[role.name for role in member.roles]
+            )
+            if player.hasRoles():
                 players.append(player)
             else:
-                print(f' - No valid roles found for {player}, skipping.')
+                print(f" - No valid roles found for {player}, skipping.")
     return players
+
 
 async def launch_role_board(ctx):
     if not ctx.guild:
@@ -185,7 +214,7 @@ async def launch_role_board(ctx):
         # Re-fetch members from the channel to ensure we have the latest state.
         channel = ctx.guild.get_channel(target_channel.id)
         if not channel:
-             return
+            return
 
         members = [m for m in channel.members if not m.bot]
         players = getPlayerList(members)
@@ -201,15 +230,18 @@ async def launch_role_board(ctx):
 
     await ctx.send(embed=embed, view=view)
 
+
 @bot.hybrid_command(name="roles")
 async def roles(ctx):
     """Opens the Mythic+ Role Board for the current voice channel."""
     await launch_role_board(ctx)
 
+
 @bot.hybrid_command(name="readycheck")
 async def readycheck(ctx):
     """Alias for /roles. Opens the Mythic+ Role Board."""
     await launch_role_board(ctx)
+
 
 @bot.command()
 async def rolecheck(ctx):
@@ -234,25 +266,33 @@ async def rolecheck(ctx):
             # Check if they have discord roles at least
             discord_roles = [r.name for r in member.roles if r.name in ALL_ROLES]
             if discord_roles:
-                 embed.add_field(name=f"{name} (Discord Only)", value=", ".join(discord_roles), inline=False)
-                 found_any = True
+                embed.add_field(
+                    name=f"{name} (Discord Only)",
+                    value=", ".join(discord_roles),
+                    inline=False,
+                )
+                found_any = True
 
     if not found_any:
         await ctx.send("No saved roles found for anyone in this channel.")
     else:
         await ctx.send(embed=embed)
 
+
 @bot.command()
 async def invite(ctx):
     """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
     app_id = bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
     if not app_id:
-        await ctx.send("❌ Application ID not available. Set DISCORD_APPLICATION_ID in your environment.")
+        await ctx.send(
+            "❌ Application ID not available. Set DISCORD_APPLICATION_ID in your environment."
+        )
         return
     app_id = int(app_id) if isinstance(app_id, str) else app_id
     permissions = discord.Permissions(BOT_INVITE_PERMISSIONS)
     url = discord.utils.oauth_url(app_id, scopes=["bot"], permissions=permissions)
     await ctx.send(f"**Add this bot to a server:**\n{url}")
+
 
 @bot.command()
 async def status(ctx):
@@ -266,12 +306,17 @@ async def status(ctx):
 
     try:
         load1, load5, load15 = os.getloadavg()
-        embed.add_field(name="System Load", value=f"{load1:.2f}, {load5:.2f}, {load15:.2f}", inline=False)
-    except:
+        embed.add_field(
+            name="System Load",
+            value=f"{load1:.2f}, {load5:.2f}, {load15:.2f}",
+            inline=False,
+        )
+    except OSError:
         pass
 
     embed.set_footer(text=f"Server ID: {ctx.guild.id if ctx.guild else 'DM'}")
     await ctx.send(embed=embed)
+
 
 @bot.command()
 async def clearrole(ctx, name: str = None):
@@ -295,29 +340,27 @@ async def clearrole(ctx, name: str = None):
 async def printPlayerList(ctx):
     channel = ctx.channel
     guild_id = ctx.guild.id if ctx.guild else None
-    
+
     if not guild_id:
         await ctx.send("❌ This command can only be used in a server.")
         return
-    
+
     # Get last results for this server
     if guild_id not in last_results:
-        await ctx.send("❌ No previous results found for this server. Run `!wheel` first.")
+        await ctx.send(
+            "❌ No previous results found for this server. Run `!wheel` first."
+        )
         return
-    
+
     result = last_results[guild_id]
     players = result.get("players", [])
     groups = result.get("groups", [])
-    
+
     await channel.send(
-        "players = [{}]".format(
-            ", ".join(player.toTestString() for player in players)
-        )
+        "players = [{}]".format(", ".join(player.toTestString() for player in players))
     )
     await channel.send(
-        "Groups:\n\n{}".format(
-            "\n\n".join(group.toTestString() for group in groups)
-        )
+        "Groups:\n\n{}".format("\n\n".join(group.toTestString() for group in groups))
     )
 
 
@@ -330,10 +373,10 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
     # Get the members of the channel we want to use to fill the roles
     if debug:
         # Testing Code
-        testChannel = discord.utils.get(ctx.guild.channels, name='path-of-exile')
-        members = [member for member in testChannel.members if member.bot == False]
+        testChannel = discord.utils.get(ctx.guild.channels, name="path-of-exile")
+        members = [member for member in testChannel.members if not member.bot]
     else:
-        members = [member for member in channel.members if member.bot == False]
+        members = [member for member in channel.members if not member.bot]
 
     if not members:
         await ctx.send("❌ No players found in the channel.")
@@ -345,12 +388,9 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
         return
 
     groups = create_mythic_plus_groups(players, debug=debug)
-    
+
     # Store results per-server to avoid race conditions
-    last_results[guild_id] = {
-        "players": list(players),
-        "groups": list(groups)
-    }
+    last_results[guild_id] = {"players": list(players), "groups": list(groups)}
 
     for i, group in enumerate(groups, 1):
         # Print out the group in an embed to keep it tidy
@@ -375,11 +415,13 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
         )
 
         if debug:
-            embed.add_field(name='Tank', value=f'{tank_name}')\
-                .add_field(name='Healer', value=f'{healer_name}')\
-                .add_field(name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}')\
-                .add_field(name='Battle Res', value=f'{brez_player}', inline=True)\
-                .add_field(name='Bloodlust', value=f'{lust_player}', inline=True)
+            embed.add_field(name="Tank", value=f"{tank_name}").add_field(
+                name="Healer", value=f"{healer_name}"
+            ).add_field(
+                name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
+            ).add_field(
+                name="Battle Res", value=f"{brez_player}", inline=True
+            ).add_field(name="Bloodlust", value=f"{lust_player}", inline=True)
             embedMessage = await ctx.send(embed=embed)
         else:
             if enhanced:
@@ -388,30 +430,66 @@ async def _execute_coreWheel(ctx, channel, guild_id, debug, enhanced=False):
                 await play_sound(voice_client, SPIN_SOUND)
                 await asyncio.sleep(2)
 
-            embed.add_field(name='Tank', value=f'{dashed(tank_name)}')\
-                .add_field(name='Healer', value=f'{dashed(healer_name)}')\
-                .add_field(name='DPS', value=f'{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}')\
-                .add_field(name='Battle Res', value=f'{dashed(brez_player)}', inline=True)\
-                .add_field(name='Bloodlust', value=f'{dashed(lust_player)}', inline=True)
+            embed.add_field(name="Tank", value=f"{dashed(tank_name)}").add_field(
+                name="Healer", value=f"{dashed(healer_name)}"
+            ).add_field(
+                name="DPS",
+                value=f"{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}",
+            ).add_field(
+                name="Battle Res", value=f"{dashed(brez_player)}", inline=True
+            ).add_field(name="Bloodlust", value=f"{dashed(lust_player)}", inline=True)
 
-            embedMessage = await ctx.send(embed = embed)
+            embedMessage = await ctx.send(embed=embed)
             await showShortTyping(channel, debug_mode=debug)
-            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=0, name='Tank', value=f'{tank_name}'))
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
+            )
             await showShortTyping(channel, debug_mode=debug)
-            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=1, name='Healer', value=f'{healer_name}'))
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
+            )
             await showShortTyping(channel, debug_mode=debug)
-            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}'))
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2,
+                    name="DPS",
+                    value=f"{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}",
+                )
+            )
             await showShortTyping(channel, debug_mode=debug)
-            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dashed(dps3_name)}'))
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2,
+                    name="DPS",
+                    value=f"{dps1_name}, {dps2_name}, {dashed(dps3_name)}",
+                )
+            )
             await showShortTyping(channel, debug_mode=debug)
-            if enhanced: await play_sound(voice_client, REVEAL_SOUND)
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=2, name='DPS', value=f'{dps1_name}, {dps2_name}, {dps3_name}'))
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=3, name='Battle Res', value=f'{brez_player}'))
-            embedMessage = await embedMessage.edit(embed = embed.set_field_at(index=4, name='Bloodlust', value=f'{lust_player}'))
+            if enhanced:
+                await play_sound(voice_client, REVEAL_SOUND)
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=2, name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
+                )
+            )
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=3, name="Battle Res", value=f"{brez_player}"
+                )
+            )
+            embedMessage = await embedMessage.edit(
+                embed=embed.set_field_at(
+                    index=4, name="Bloodlust", value=f"{lust_player}"
+                )
+            )
 
 
 async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
@@ -419,23 +497,25 @@ async def coreWheel(ctx, debugValue: bool = None, enhanced: bool = False):
     debug = False if debugValue is None else debugValue
     channel = ctx.channel
     guild_id = ctx.guild.id if ctx.guild else None
-    
+
     if not guild_id:
         await ctx.send("❌ This command can only be used in a server.")
         return
-    
+
     # Get or create a lock for this server to prevent concurrent executions
     if guild_id not in server_locks:
         server_locks[guild_id] = asyncio.Lock()
-    
+
     server_lock = server_locks[guild_id]
-    
+
     # Check if lock is already acquired (another command is running)
     # Note: There's a small race condition window here, but it's acceptable for this use case
     if server_lock.locked():
-        await ctx.send("⏳ Another group creation is already in progress for this server. Please wait for it to complete.")
+        await ctx.send(
+            "⏳ Another group creation is already in progress for this server. Please wait for it to complete."
+        )
         return
-    
+
     # Acquire the lock and execute (only one command per server at a time)
     async with server_lock:
         await _execute_coreWheel(ctx, channel, guild_id, debug, enhanced)
@@ -450,6 +530,7 @@ async def newwheel(ctx):
     except Exception as e:
         await ctx.send("❌ An unexpected error occurred. Please try again later.")
         print(f"Error in newwheel command: {e}")
+
 
 @bot.command()
 async def activity(ctx):
@@ -466,11 +547,13 @@ async def activity(ctx):
                 invite = await channel.create_invite(
                     target_type=discord.InviteTarget.embedded_application,
                     target_application_id=int(app_id),
-                    max_age=300 # 5 minutes
+                    max_age=300,  # 5 minutes
                 )
                 await ctx.send(f"🎮 Join the spinning wheel activity! {invite.url}")
             else:
-                await ctx.send("⚠️ DISCORD_APPLICATION_ID not configured in .env. Cannot start activity.")
+                await ctx.send(
+                    "⚠️ DISCORD_APPLICATION_ID not configured in .env. Cannot start activity."
+                )
         else:
             await ctx.send("❌ You must be in a voice channel to start an activity.")
 
@@ -498,11 +581,16 @@ async def on_command_error(ctx, error):
         await ctx.send("❌ You don't have permission to use this command.")
         return
     if isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"❌ Command is on cooldown. Try again in {error.retry_after:.1f} seconds.")
+        await ctx.send(
+            f"❌ Command is on cooldown. Try again in {error.retry_after:.1f} seconds."
+        )
         return
     # Log other errors
     print(f"Error in {ctx.command}: {error}")
-    await ctx.send("❌ An error occurred while processing your command. Please try again later.")
+    await ctx.send(
+        "❌ An error occurred while processing your command. Please try again later."
+    )
+
 
 # Run the bot
 try:

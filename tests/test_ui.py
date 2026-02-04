@@ -1,16 +1,21 @@
 import os
-import unittest
 import sys
-import asyncio
-from unittest.mock import MagicMock, AsyncMock
+import unittest
+from unittest.mock import AsyncMock, MagicMock
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from role_ui import RoleSelectionView, RoleButton, RoleBoardView, create_role_board_embed
-from config import ROLE_TANK, ROLE_HEALER
-from models import WoWPlayer
 import discord
+
+from config import ROLE_HEALER, ROLE_TANK
+from role_ui import (
+    RoleBoardView,
+    RoleButton,
+    RoleSelectionView,
+    create_role_board_embed,
+)
+
 
 class TestUI(unittest.IsolatedAsyncioTestCase):
     def test_create_role_board_embed_description(self):
@@ -21,6 +26,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.title, "Mythic+ Role Board")
         self.assertEqual(embed.description, "Current channel roster")
         self.assertEqual(embed.color, discord.Color.gold())
+
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
 
@@ -28,15 +34,27 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(view.player_name, "TestPlayer")
         self.assertEqual(view.selected_roles, {ROLE_TANK, "Brez"})
 
-        tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
+        tank_button = next(
+            item
+            for item in view.children
+            if isinstance(item, RoleButton) and item.role_name == ROLE_TANK
+        )
         self.assertEqual(tank_button.style, discord.ButtonStyle.primary)
 
-        healer_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_HEALER)
+        healer_button = next(
+            item
+            for item in view.children
+            if isinstance(item, RoleButton) and item.role_name == ROLE_HEALER
+        )
         self.assertEqual(healer_button.style, discord.ButtonStyle.secondary)
 
     async def test_role_button_callback(self):
         view = RoleSelectionView("TestPlayer")
-        tank_button = next(item for item in view.children if isinstance(item, RoleButton) and item.role_name == ROLE_TANK)
+        tank_button = next(
+            item
+            for item in view.children
+            if isinstance(item, RoleButton) and item.role_name == ROLE_TANK
+        )
 
         interaction = MagicMock(spec=discord.Interaction)
         interaction.response = MagicMock()
@@ -52,7 +70,6 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
     async def test_save_method(self):
         with unittest.mock.patch("role_ui.set_player_preference") as mock_set_pref:
-
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
@@ -72,7 +89,6 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
     async def test_clear_method(self):
         with unittest.mock.patch("role_ui.clear_player_preference") as mock_clear_pref:
-
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
@@ -93,8 +109,17 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         view = RoleBoardView(update_callback=mock_callback)
 
         # Check if button exists
-        edit_button = next((item for item in view.children if isinstance(item, discord.ui.Button) and item.custom_id == "edit_roles_button"), None)
+        edit_button = next(
+            (
+                item
+                for item in view.children
+                if isinstance(item, discord.ui.Button)
+                and item.custom_id == "edit_roles_button"
+            ),
+            None,
+        )
         self.assertIsNotNone(edit_button)
+
 
 if __name__ == "__main__":
     unittest.main()

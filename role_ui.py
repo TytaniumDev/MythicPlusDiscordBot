@@ -1,11 +1,25 @@
 import asyncio
+
 import discord
-from storage import set_player_preference, get_player_preference, clear_player_preference
+
 from config import (
-    ROLE_TANK, ROLE_HEALER, ROLE_DPS, ROLE_RANGED, ROLE_MELEE,
-    ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC,
-    ROLE_BREZ, ROLE_LUST
+    ROLE_BREZ,
+    ROLE_DPS,
+    ROLE_DPS_OFFSPEC,
+    ROLE_HEALER,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+    ROLE_TANK_OFFSPEC,
 )
+from storage import (
+    clear_player_preference,
+    get_player_preference,
+    set_player_preference,
+)
+
 
 class RoleButton(discord.ui.Button):
     def __init__(self, role_name, label, style=discord.ButtonStyle.secondary):
@@ -22,6 +36,7 @@ class RoleButton(discord.ui.Button):
             self.style = discord.ButtonStyle.primary
 
         await interaction.response.edit_message(view=view)
+
 
 class RoleSelectionView(discord.ui.View):
     def __init__(self, player_name, initial_roles=None, on_save_callback=None):
@@ -44,13 +59,22 @@ class RoleSelectionView(discord.ui.View):
         ]
 
         for role_id, label in roles:
-            style = discord.ButtonStyle.primary if role_id in self.selected_roles else discord.ButtonStyle.secondary
+            style = (
+                discord.ButtonStyle.primary
+                if role_id in self.selected_roles
+                else discord.ButtonStyle.secondary
+            )
             self.add_item(RoleButton(role_id, label, style))
 
     @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=2)
     async def save(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await asyncio.to_thread(set_player_preference, self.player_name, list(self.selected_roles))
-        await interaction.response.send_message(f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}", ephemeral=True)
+        await asyncio.to_thread(
+            set_player_preference, self.player_name, list(self.selected_roles)
+        )
+        await interaction.response.send_message(
+            f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}",
+            ephemeral=True,
+        )
 
         if self.on_save_callback:
             await self.on_save_callback(interaction)
@@ -64,36 +88,58 @@ class RoleSelectionView(discord.ui.View):
         for item in self.children:
             if isinstance(item, RoleButton):
                 item.style = discord.ButtonStyle.secondary
-        await interaction.response.send_message(f"🗑️ Cleared roles for **{self.player_name}**", ephemeral=True)
+        await interaction.response.send_message(
+            f"🗑️ Cleared roles for **{self.player_name}**", ephemeral=True
+        )
         await interaction.edit_original_response(view=self)
 
         if self.on_save_callback:
             await self.on_save_callback(interaction)
 
+
 class RoleBoardView(discord.ui.View):
     def __init__(self, update_callback):
-        super().__init__(timeout=None) # Persistent view
+        super().__init__(timeout=None)  # Persistent view
         self.update_callback = update_callback
 
-    @discord.ui.button(label="Edit My Roles", style=discord.ButtonStyle.primary, custom_id="edit_roles_button")
-    async def edit_roles(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="Edit My Roles",
+        style=discord.ButtonStyle.primary,
+        custom_id="edit_roles_button",
+    )
+    async def edit_roles(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         member = interaction.user
         # Logic duplicated from bot.py WoWName to avoid circular imports
-        name = member.nick if member.nick else member.global_name if member.global_name else member.name
-        name = name.replace('.', '')
+        name = (
+            member.nick
+            if member.nick
+            else member.global_name
+            if member.global_name
+            else member.name
+        )
+        name = name.replace(".", "")
 
         saved_roles = get_player_preference(name)
         board_message = interaction.message
 
         async def on_save(save_interaction):
-             # Trigger the update callback to refresh the board, passing the board message
-             await self.update_callback(save_interaction, board_message)
+            # Trigger the update callback to refresh the board, passing the board message
+            await self.update_callback(save_interaction, board_message)
 
         view = RoleSelectionView(name, saved_roles, on_save_callback=on_save)
-        await interaction.response.send_message(f"Select your roles for **{name}**:", view=view, ephemeral=True)
+        await interaction.response.send_message(
+            f"Select your roles for **{name}**:", view=view, ephemeral=True
+        )
+
 
 def create_role_board_embed(players):
-    embed = discord.Embed(title="Mythic+ Role Board", description="Current channel roster", color=discord.Color.gold())
+    embed = discord.Embed(
+        title="Mythic+ Role Board",
+        description="Current channel roster",
+        color=discord.Color.gold(),
+    )
 
     def format_player(p):
         icons = ""
@@ -109,21 +155,35 @@ def create_role_board_embed(players):
     ranged = [format_player(p) for p in players if p.ranged]
 
     # Generic DPS are those who are dpsMain but not specifically melee or ranged
-    generic_dps = [format_player(p) for p in players if p.dpsMain and not p.melee and not p.ranged]
+    generic_dps = [
+        format_player(p) for p in players if p.dpsMain and not p.melee and not p.ranged
+    ]
 
     def format_list(names):
         return "\n".join(names) if names else "-"
 
-    embed.add_field(name=f"🛡️ Tank ({len(tanks)})", value=format_list(tanks), inline=True)
-    embed.add_field(name=f"🌿 Healer ({len(healers)})", value=format_list(healers), inline=True)
-    embed.add_field(name="\u200b", value="\u200b", inline=True) # Spacer row 1
+    embed.add_field(
+        name=f"🛡️ Tank ({len(tanks)})", value=format_list(tanks), inline=True
+    )
+    embed.add_field(
+        name=f"🌿 Healer ({len(healers)})", value=format_list(healers), inline=True
+    )
+    embed.add_field(name="\u200b", value="\u200b", inline=True)  # Spacer row 1
 
-    embed.add_field(name=f"🪓 Melee ({len(melee)})", value=format_list(melee), inline=True)
-    embed.add_field(name=f"🏹 Ranged ({len(ranged)})", value=format_list(ranged), inline=True)
-    embed.add_field(name="\u200b", value="\u200b", inline=True) # Spacer row 2
+    embed.add_field(
+        name=f"🪓 Melee ({len(melee)})", value=format_list(melee), inline=True
+    )
+    embed.add_field(
+        name=f"🏹 Ranged ({len(ranged)})", value=format_list(ranged), inline=True
+    )
+    embed.add_field(name="\u200b", value="\u200b", inline=True)  # Spacer row 2
 
     if generic_dps:
-        embed.add_field(name=f"⚔️ DPS ({len(generic_dps)})", value=format_list(generic_dps), inline=True)
+        embed.add_field(
+            name=f"⚔️ DPS ({len(generic_dps)})",
+            value=format_list(generic_dps),
+            inline=True,
+        )
 
     # Calculate utility counts
     brez_count = sum(1 for p in players if p.hasBrez)

@@ -1,22 +1,32 @@
-import discord
 import aiohttp
-import config
+import discord
 from discord import ui
 
+import config
+
+
+class GitHubError(Exception):
+    """Raised when GitHub API calls fail."""
+
+    pass
+
+
 async def create_github_issue(title, body, labels):
-    if not config.GITHUB_TOKEN or not config.GITHUB_REPO_OWNER or not config.GITHUB_REPO_NAME:
-         raise Exception("GitHub configuration is missing. Please check your .env file.")
+    if (
+        not config.GITHUB_TOKEN
+        or not config.GITHUB_REPO_OWNER
+        or not config.GITHUB_REPO_NAME
+    ):
+        raise GitHubError(
+            "GitHub configuration is missing. Please check your .env file."
+        )
 
     url = f"https://api.github.com/repos/{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}/issues"
     headers = {
         "Authorization": f"token {config.GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
-    data = {
-        "title": title,
-        "body": body,
-        "labels": labels
-    }
+    data = {"title": title, "body": body, "labels": labels}
 
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=data) as response:
@@ -24,7 +34,10 @@ async def create_github_issue(title, body, labels):
                 return await response.json()
             else:
                 error_text = await response.text()
-                raise Exception(f"Failed to create issue: {response.status} - {error_text}")
+                raise GitHubError(
+                    f"Failed to create issue: {response.status} - {error_text}"
+                )
+
 
 class GitHubIssueModal(ui.Modal):
     def __init__(self, issue_type):
@@ -33,10 +46,7 @@ class GitHubIssueModal(ui.Modal):
         super().__init__(title=modal_title)
 
         self.issue_title = ui.TextInput(
-            label="Title",
-            placeholder="Short summary...",
-            required=True,
-            max_length=100
+            label="Title", placeholder="Short summary...", required=True, max_length=100
         )
         self.add_item(self.issue_title)
 
@@ -44,7 +54,7 @@ class GitHubIssueModal(ui.Modal):
             label="Description",
             style=discord.TextStyle.paragraph,
             placeholder="Detailed description...",
-            required=True
+            required=True,
         )
         self.add_item(self.description)
 
@@ -53,14 +63,14 @@ class GitHubIssueModal(ui.Modal):
                 label="Reproduction Steps",
                 style=discord.TextStyle.paragraph,
                 placeholder="1. Do this\n2. Do that...",
-                required=False
+                required=False,
             )
         else:
-             self.extra_info = ui.TextInput(
+            self.extra_info = ui.TextInput(
                 label="Benefit / Impact",
                 style=discord.TextStyle.paragraph,
                 placeholder="How will this help?",
-                required=False
+                required=False,
             )
         self.add_item(self.extra_info)
 
@@ -77,7 +87,9 @@ class GitHubIssueModal(ui.Modal):
         body = f"**Reporter:** {reporter} (`{interaction.user.id}`)\n\n**Description:**\n{description}\n"
 
         if extra:
-            section_title = "Reproduction Steps" if self.issue_type == "bug" else "Benefit/Impact"
+            section_title = (
+                "Reproduction Steps" if self.issue_type == "bug" else "Benefit/Impact"
+            )
             body += f"\n**{section_title}:**\n{extra}\n"
 
         # Add Jules label for automation
@@ -86,8 +98,13 @@ class GitHubIssueModal(ui.Modal):
 
         try:
             issue = await create_github_issue(title, body, labels)
-            await interaction.followup.send(f"✅ Issue created successfully: {issue['html_url']}", ephemeral=True)
+            await interaction.followup.send(
+                f"✅ Issue created successfully: {issue['html_url']}", ephemeral=True
+            )
         except Exception as e:
             # Log the error for the admin/bot owner
             print(f"Error creating GitHub issue: {e}")
-            await interaction.followup.send(f"❌ Failed to create issue. Please tell the bot owner to check the logs.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Failed to create issue. Please tell the bot owner to check the logs.",
+                ephemeral=True,
+            )

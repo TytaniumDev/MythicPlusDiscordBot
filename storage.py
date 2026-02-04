@@ -13,6 +13,7 @@ STORAGE_FILE = (
 file_lock = threading.RLock()
 _PREFERENCES_CACHE = None
 
+
 def load_preferences():
     global _PREFERENCES_CACHE
 
@@ -23,11 +24,11 @@ def load_preferences():
     # If cache miss, lock to prevent race conditions during load
     with file_lock:
         if _PREFERENCES_CACHE is not None:
-             return _PREFERENCES_CACHE.copy()
+            return _PREFERENCES_CACHE.copy()
 
         if os.path.exists(STORAGE_FILE):
             try:
-                with open(STORAGE_FILE, "r") as f:
+                with open(STORAGE_FILE) as f:
                     _PREFERENCES_CACHE = json.load(f)
                     return _PREFERENCES_CACHE.copy()
             except Exception as e:
@@ -37,6 +38,7 @@ def load_preferences():
 
         _PREFERENCES_CACHE = {}
         return _PREFERENCES_CACHE.copy()
+
 
 def save_preferences(preferences):
     # This function is assumed to be called under lock
@@ -49,9 +51,11 @@ def save_preferences(preferences):
     except Exception as e:
         print(f"Error saving preferences: {e}")
 
+
 def get_player_preference(player_name):
     prefs = load_preferences()
     return prefs.get(player_name)
+
 
 def set_player_preference(player_name, roles):
     with file_lock:
@@ -59,6 +63,7 @@ def set_player_preference(player_name, roles):
         prefs = load_preferences()
         prefs[player_name] = roles
         save_preferences(prefs)
+
 
 def clear_player_preference(player_name):
     with file_lock:
@@ -68,6 +73,7 @@ def clear_player_preference(player_name):
             save_preferences(prefs)
             return True
         return False
+
 
 def get_all_preferences():
     return load_preferences()
