@@ -53,3 +53,6 @@ SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
 REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
 WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
 PLACEHOLDER_CHAR = ":question:"
+
+# Logging
+LOG_FILE = "mythic_bot.log"

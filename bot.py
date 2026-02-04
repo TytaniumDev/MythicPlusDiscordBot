@@ -1,4 +1,5 @@
 import io
+import logging
 import traceback
 from typing import Any
 
@@ -6,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.config import BOT_TOKEN, DEVELOPER_ID
+from core.config import BOT_TOKEN, DEVELOPER_ID, LOG_FILE
 from services.group_service import GroupService
 
 intents = discord.Intents.default()
@@ -34,18 +35,27 @@ class MythicPlusBot(commands.Bot):
             )
 
             message = f"⚠️ **Bot Error Detected**\n**Context:** {context_info}\n**Error:** `{error}`"
+            files = []
 
-            if len(tb_str) + len(message) < 1900:
-                await dev.send(f"{message}\n```python\n{tb_str}\n```")
-            else:
-                # If traceback is too long, send it as a file
-                await dev.send(
-                    message,
-                    file=discord.File(
+            # Attach traceback if too long
+            if len(tb_str) + len(message) >= 1900:
+                files.append(
+                    discord.File(
                         fp=io.BytesIO(tb_str.encode("utf-8")),
                         filename="traceback.txt",
-                    ),
+                    )
                 )
+            else:
+                message += f"\n```python\n{tb_str}\n```"
+
+            # Attach recent logs
+            import os
+
+            if os.path.exists(LOG_FILE):
+                files.append(discord.File(LOG_FILE))
+
+            await dev.send(message, files=files)
+
         except Exception as e:
             print(f"Failed to send error DM to developer: {e}")
             print(f"Original error in {context_info}: {error}")
@@ -152,8 +162,35 @@ if __name__ == "__main__":
         raise ValueError(
             "BOT_TOKEN environment variable is required. Please check your .env file."
         )
+
+    # Setup logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # File Handler
+    from logging.handlers import RotatingFileHandler
+
+    file_handler = RotatingFileHandler(
+        filename=LOG_FILE,
+        encoding="utf-8",
+        mode="a",
+        maxBytes=5 * 1024 * 1024,
+        backupCount=1,
+    )
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+    )
+    logger.addHandler(file_handler)
+
+    # Stream Handler (Console)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
+        logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+    )
+    logger.addHandler(console_handler)
+
     try:
-        bot.run(BOT_TOKEN)
+        bot.run(BOT_TOKEN, log_handler=None)
     except discord.LoginFailure:
         print("❌ Failed to login. Please check your BOT_TOKEN.")
     except Exception as e:
