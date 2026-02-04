@@ -41,6 +41,36 @@ async def create_github_issue(
                 )
 
 
+async def add_github_issue_labels(issue_number: int, labels: list[str]) -> list[dict]:
+    if (
+        not config.GITHUB_TOKEN
+        or not config.GITHUB_REPO_OWNER
+        or not config.GITHUB_REPO_NAME
+    ):
+        raise GitHubError(
+            "GitHub configuration is missing. Please check your .env file."
+        )
+
+    url = f"https://api.github.com/repos/{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}/issues/{issue_number}/labels"
+    headers = {
+        "Authorization": f"token {config.GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    # API expects a list of strings directly
+    data = labels
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=data) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                error_text = await response.text()
+                raise GitHubError(
+                    f"Failed to add labels: {response.status} - {error_text}"
+                )
+
+
 class GitHubIssueModal(ui.Modal):
     def __init__(self, issue_type: str) -> None:
         self.issue_type = issue_type
@@ -94,12 +124,19 @@ class GitHubIssueModal(ui.Modal):
             )
             body += f"\n**{section_title}:**\n{extra}\n"
 
-        # Add Jules label for automation
-        labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
-        labels.append("jules")
+        # Create issue first WITHOUT Jules label to prevent double-triggering
+        # (Opened event triggers, then Labeled event triggers)
+        initial_labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
 
         try:
-            issue = await create_github_issue(title, body, labels)
+            # Step 1: Create Issue
+            issue = await create_github_issue(title, body, initial_labels)
+            issue_number = int(issue["number"])  # Ensure integer
+
+            # Step 2: Add 'jules' label separately
+            # This ensures we rely on the 'labeled' event or clear separation
+            await add_github_issue_labels(issue_number, ["jules"])
+
             await interaction.followup.send(
                 f"✅ Issue created successfully: {issue['html_url']}", ephemeral=True
             )

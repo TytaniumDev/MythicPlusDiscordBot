@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import discord
 
-from core.issues import GitHubError, GitHubIssueModal, create_github_issue
+from core.issues import GitHubError, GitHubIssueModal, create_github_issue, add_github_issue_labels
 
 
 class TestIssues(unittest.IsolatedAsyncioTestCase):
@@ -24,6 +24,22 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
 
                 result = await create_github_issue("Title", "Body", ["bug"])
                 self.assertEqual(result["html_url"], "http://github.com/issue/1")
+
+    async def test_add_github_issue_labels_success(self):
+        # Mock config values
+        with (
+            patch("core.config.GITHUB_TOKEN", "fake_token"),
+            patch("core.config.GITHUB_REPO_OWNER", "owner"),
+            patch("core.config.GITHUB_REPO_NAME", "repo"),
+        ):
+            with patch("aiohttp.ClientSession.post") as mock_post:
+                mock_response = AsyncMock()
+                mock_response.status = 200
+                mock_response.json.return_value = [{"name": "jules"}]
+                mock_post.return_value.__aenter__.return_value = mock_response
+
+                result = await add_github_issue_labels(1, ["jules"])
+                self.assertEqual(result[0]["name"], "jules")
 
     async def test_create_github_issue_failure(self):
         with (
@@ -56,11 +72,13 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
 
-        # Mock config and create_github_issue
-        with patch(
-            "core.issues.create_github_issue", new_callable=AsyncMock
-        ) as mock_create:
-            mock_create.return_value = {"html_url": "http://url"}
+        # Mock config and create_github_issue and add_github_issue_labels
+        with (
+            patch("core.issues.create_github_issue", new_callable=AsyncMock) as mock_create,
+            patch("core.issues.add_github_issue_labels", new_callable=AsyncMock) as mock_add_labels
+        ):
+            mock_create.return_value = {"html_url": "http://url", "number": 123}
+            mock_add_labels.return_value = [{"name": "jules"}]
 
             await modal.on_submit(mock_interaction)
 
@@ -71,7 +89,11 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(title, "Bug Title")
             self.assertIn("Bug Description", body)
             self.assertIn("Steps", body)
-            self.assertEqual(labels, ["bug", "jules"])
+            # Should NOT contain 'jules' at creation time
+            self.assertEqual(labels, ["bug"])
+
+            # Verify 'jules' was added in the second step
+            mock_add_labels.assert_called_once_with(123, ["jules"])
 
             mock_interaction.followup.send.assert_called_with(
                 "✅ Issue created successfully: http://url", ephemeral=True

@@ -9,6 +9,9 @@ concurrency:
 
 jobs:
   dispatch-jules:
+    # Trigger logic:
+    # 1. Manual creation with label: 'opened' event contains 'jules' in labels list.
+    # 2. Label added later (or via bot): 'labeled' event has 'jules' as the specific label added.
     if: |
       (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'jules')) ||
       (github.event.action == 'labeled' && github.event.label.name == 'jules')
