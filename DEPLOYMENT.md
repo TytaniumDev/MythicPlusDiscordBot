@@ -105,6 +105,7 @@ Click New repository secret for each:
   (and `repo` if the repo is private).
 - `BOT_TOKEN`: Discord bot token.
 - `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `!activity` invite).
+- `GH_ISSUE_TOKEN`: GitHub PAT with `repo` scope for creating issues.
 
 ### Optional
 - `PI_SSH_PORT`: Defaults to 22 if omitted.
@@ -227,3 +228,43 @@ Look for:
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
 Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
+
+## 7. GitHub Issues Integration
+
+To enable the `/bug` and `/featurerequest` commands, you need to configure the bot to interact with GitHub.
+
+### 7.1 Create a Personal Access Token (PAT)
+
+You can use either a **Classic** or **Fine-grained** Personal Access Token.
+
+**Option A: Classic Token (Easier)**
+1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Tokens (classic)**.
+2. Generate a new token.
+3. Select the **repo** scope (Full control of private repositories).
+4. Copy the generated token.
+
+**Option B: Fine-grained Token (More Secure)**
+1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
+2. Generate a new token and select your repository.
+3. Under **Repository permissions**, grant **Issues** access: **Read and Write**.
+   *(Note: **Metadata** read-only access is usually included by default, which is sufficient).*
+4. Copy the generated token.
+
+### 7.2 Add GitHub Secret
+
+Go to your repository **Settings** -> **Secrets and variables** -> **Actions**.
+Create a new repository secret:
+- Name: `GH_ISSUE_TOKEN`
+- Value: (The token you copied in the previous step)
+
+This token will be injected into the container at runtime.
+
+### 7.3 Jules Automation
+
+To enable automatic fix attempts by Jules:
+
+1.  **Jules GitHub App:** Ensure the Jules app is installed on your repository (via `jules.google`).
+2.  **API Key:** Generate a Jules API Key from your [Jules Settings](https://jules.google/settings).
+3.  **GitHub Secret:** Go to your repository **Settings > Secrets and variables > Actions** and create a new Repository Secret named `JULES_API_KEY` with your key.
+
+The bot automatically adds the `jules` label to new issues, which triggers the `.github/workflows/jules-issue-fix.yml` workflow to send the issue to Jules for an automated fix attempt.

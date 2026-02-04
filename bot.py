@@ -11,6 +11,7 @@ from parallel_group_creator import create_mythic_plus_groups
 from storage import get_player_preference, get_all_preferences, clear_player_preference
 from role_ui import RoleBoardView, create_role_board_embed, RoleSelectionView
 from config import ALL_ROLES, BOT_INVITE_PERMISSIONS
+from issues import GitHubIssueModal
 
 load_dotenv()
 
@@ -40,6 +41,16 @@ last_results = {}
 # Locks per server to prevent concurrent group creation
 # Format: {guild_id: asyncio.Lock}
 server_locks = {}
+
+@bot.tree.command(name="bug")
+async def bug_report(interaction: discord.Interaction):
+    """Report a bug to the developers."""
+    await interaction.response.send_modal(GitHubIssueModal(issue_type="bug"))
+
+@bot.tree.command(name="featurerequest")
+async def feature_request(interaction: discord.Interaction):
+    """Request a new feature for the bot."""
+    await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
 
 @bot.event
 async def on_ready():

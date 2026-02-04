@@ -121,6 +121,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
+            export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
 
             # Deploy
             echo "Pulling image..."
