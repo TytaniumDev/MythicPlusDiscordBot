@@ -1,4 +1,4 @@
-from models import WoWPlayer
+from core.models import WoWPlayer
 
 
 ### Tanks

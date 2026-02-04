@@ -1,7 +1,7 @@
 import random
 
-from config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_RANGED, ROLE_TANK
-from models import WoWGroup, WoWPlayer
+from .config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_RANGED, ROLE_TANK
+from .models import WoWGroup, WoWPlayer
 
 _debug = True
 

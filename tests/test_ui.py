@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import discord
 
-from config import ROLE_HEALER, ROLE_TANK
-from role_ui import (
+from core.config import ROLE_HEALER, ROLE_TANK
+from core.role_ui import (
     RoleBoardView,
     RoleButton,
     RoleSelectionView,
@@ -69,7 +69,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tank_button.style, discord.ButtonStyle.secondary)
 
     async def test_save_method(self):
-        with patch("role_ui.set_player_preference") as mock_set_pref:
+        with patch("core.role_ui.set_player_preference") as mock_set_pref:
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
@@ -88,7 +88,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
             view.stop.assert_called_once()
 
     async def test_clear_method(self):
-        with patch("role_ui.clear_player_preference") as mock_clear_pref:
+        with patch("core.role_ui.clear_player_preference") as mock_clear_pref:
             view = RoleSelectionView("TestPlayer", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()

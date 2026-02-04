@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from types import NotImplementedType
 
-from config import (
+from .config import (
     ROLE_BREZ,
     ROLE_DPS,
     ROLE_DPS_OFFSPEC,

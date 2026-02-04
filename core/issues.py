@@ -2,7 +2,7 @@ import aiohttp
 import discord
 from discord import ui
 
-import config
+from . import config
 
 
 class GitHubError(Exception):
