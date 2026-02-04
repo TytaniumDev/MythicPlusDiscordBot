@@ -92,7 +92,9 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
 
-        with patch("core.issues.create_github_issue", side_effect=Exception("Test Error")):
+        with patch(
+            "core.issues.create_github_issue", side_effect=Exception("Test Error")
+        ):
             await modal.on_submit(mock_interaction)
 
             mock_interaction.followup.send.assert_called_with(
