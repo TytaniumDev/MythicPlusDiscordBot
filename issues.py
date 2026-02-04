@@ -80,10 +80,9 @@ class GitHubIssueModal(ui.Modal):
             section_title = "Reproduction Steps" if self.issue_type == "bug" else "Benefit/Impact"
             body += f"\n**{section_title}:**\n{extra}\n"
 
-        # Cursor trigger
-        body += "\n---\n@cursor please attempt to fix this"
-
+        # Add Jules label for automation
         labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
+        labels.append("jules")
 
         try:
             issue = await create_github_issue(title, body, labels)

@@ -64,8 +64,7 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(title, "Bug Title")
             self.assertIn("Bug Description", body)
             self.assertIn("Steps", body)
-            self.assertIn("@cursor please attempt to fix this", body)
-            self.assertEqual(labels, ["bug"])
+            self.assertEqual(labels, ["bug", "jules"])
 
             mock_interaction.followup.send.assert_called_with(
                 "✅ Issue created successfully: http://url", ephemeral=True

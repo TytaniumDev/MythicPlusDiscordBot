@@ -249,9 +249,12 @@ Create a new repository secret:
 
 This token will be injected into the container at runtime.
 
-### 7.3 Cursor Automation
+### 7.3 Jules Automation
 
-To enable automatic fix attempts by Cursor:
-1. Install the **Cursor** GitHub App on your repository: [https://github.com/apps/cursor](https://github.com/apps/cursor)
-2. Ensure the app has permissions to read issues and create pull requests.
-3. The bot automatically adds `@cursor please attempt to fix this` to new issues, which triggers the Cursor agent.
+To enable automatic fix attempts by Jules:
+
+1.  **Jules GitHub App:** Ensure the Jules app is installed on your repository (via `jules.google`).
+2.  **API Key:** Generate a Jules API Key from your [Jules Settings](https://jules.google/settings).
+3.  **GitHub Secret:** Go to your repository **Settings > Secrets and variables > Actions** and create a new Repository Secret named `JULES_API_KEY` with your key.
+
+The bot automatically adds the `jules` label to new issues, which triggers the `.github/workflows/jules-issue-fix.yml` workflow to send the issue to Jules for an automated fix attempt.
