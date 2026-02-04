@@ -105,6 +105,7 @@ Click New repository secret for each:
   (and `repo` if the repo is private).
 - `BOT_TOKEN`: Discord bot token.
 - `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `!activity` invite).
+- `GH_ISSUE_TOKEN`: GitHub PAT with `repo` scope for creating issues.
 
 ### Optional
 - `PI_SSH_PORT`: Defaults to 22 if omitted.
@@ -227,3 +228,30 @@ Look for:
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
 Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
+
+## 7. GitHub Issues Integration
+
+To enable the `/bug` and `/featurerequest` commands, you need to configure the bot to interact with GitHub.
+
+### 7.1 Create a Personal Access Token (PAT)
+
+1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Tokens (classic)**.
+2. Generate a new token.
+3. Select the **repo** scope (Full control of private repositories).
+4. Copy the generated token.
+
+### 7.2 Add GitHub Secret
+
+Go to your repository **Settings** -> **Secrets and variables** -> **Actions**.
+Create a new repository secret:
+- Name: `GH_ISSUE_TOKEN`
+- Value: (The token you copied in the previous step)
+
+This token will be injected into the container at runtime.
+
+### 7.3 Cursor Automation
+
+To enable automatic fix attempts by Cursor:
+1. Install the **Cursor** GitHub App on your repository: [https://github.com/apps/cursor](https://github.com/apps/cursor)
+2. Ensure the app has permissions to read issues and create pull requests.
+3. The bot automatically adds `@cursor please attempt to fix this` to new issues, which triggers the Cursor agent.
