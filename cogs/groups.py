@@ -8,9 +8,10 @@ class Groups(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command()
+    @commands.hybrid_command(name="wheel")
     async def wheel(self, ctx: commands.Context[commands.Bot]) -> None:
         """Generates a series of embed messages that shows groups of players split into 5 person teams."""
+        await ctx.defer()
         try:
             if hasattr(self.bot, "group_service"):
                 await self.bot.group_service.core_wheel(ctx, debug_value=False)
@@ -22,8 +23,10 @@ class Groups(commands.Cog):
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             print(f"Error in wheel command: {e}")
 
-    @commands.command()
+    @commands.hybrid_command(name="newwheel")
     async def newwheel(self, ctx: commands.Context[commands.Bot]) -> None:
+        """Generates groups with an enhanced rolling reveal animation and sound effects."""
+        await ctx.defer()
         try:
             if hasattr(self.bot, "group_service"):
                 await self.bot.group_service.core_wheel(
@@ -37,8 +40,10 @@ class Groups(commands.Cog):
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             print(f"Error in newwheel command: {e}")
 
-    @commands.command()
+    @commands.hybrid_command(name="activity")
     async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
+        """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
+        await ctx.defer()
         try:
             # Run enhanced wheel
             if hasattr(self.bot, "group_service"):
