@@ -30,5 +30,6 @@ class TestUtils(unittest.TestCase):
         member.__str__.return_value = "User.Name"
         self.assertEqual(WoWName(member), "UserName")
 
+
 if __name__ == "__main__":
     unittest.main()
