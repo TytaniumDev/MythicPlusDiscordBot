@@ -10,7 +10,7 @@ STORAGE_FILE = (
     or "player_preferences.json"
 )
 
-file_lock = threading.Lock()
+file_lock = threading.RLock()
 _PREFERENCES_CACHE = None
 
 def load_preferences():
