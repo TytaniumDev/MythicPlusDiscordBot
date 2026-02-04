@@ -28,7 +28,7 @@ class General(commands.Cog):
         await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
 
     @commands.command()
-    async def invite(self, ctx: commands.Context) -> None:
+    async def invite(self, ctx: commands.Context[commands.Bot]) -> None:
         """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
         app_id = self.bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
         if not app_id:
@@ -42,7 +42,7 @@ class General(commands.Cog):
         await ctx.send(f"**Add this bot to a server:**\n{url}")
 
     @commands.command()
-    async def status(self, ctx: commands.Context) -> None:
+    async def status(self, ctx: commands.Context[commands.Bot]) -> None:
         """Check the bot's status and uptime."""
         uptime_seconds = int(time.time() - self.start_time)
         uptime_str = str(datetime.timedelta(seconds=uptime_seconds))

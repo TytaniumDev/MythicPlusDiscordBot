@@ -34,7 +34,7 @@ class GroupService:
 
     async def core_wheel(
         self,
-        ctx: commands.Context,
+        ctx: commands.Context[commands.Bot],
         debug_value: bool | None = None,
         enhanced: bool = False,
     ) -> None:
@@ -65,7 +65,7 @@ class GroupService:
 
     async def _execute_core_wheel(
         self,
-        ctx: commands.Context,
+        ctx: commands.Context[commands.Bot],
         channel: discord.abc.GuildChannel | discord.abc.Messageable,
         guild_id: int,
         debug: bool,

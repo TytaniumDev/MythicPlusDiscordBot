@@ -9,7 +9,7 @@ class Groups(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def wheel(self, ctx: commands.Context) -> None:
+    async def wheel(self, ctx: commands.Context[commands.Bot]) -> None:
         """Generates a series of embed messages that shows groups of players split into 5 person teams."""
         try:
             if hasattr(self.bot, "group_service"):
@@ -23,7 +23,7 @@ class Groups(commands.Cog):
             print(f"Error in wheel command: {e}")
 
     @commands.command()
-    async def newwheel(self, ctx: commands.Context) -> None:
+    async def newwheel(self, ctx: commands.Context[commands.Bot]) -> None:
         try:
             if hasattr(self.bot, "group_service"):
                 await self.bot.group_service.core_wheel(
@@ -38,7 +38,7 @@ class Groups(commands.Cog):
             print(f"Error in newwheel command: {e}")
 
     @commands.command()
-    async def activity(self, ctx: commands.Context) -> None:
+    async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
         try:
             # Run enhanced wheel
             if hasattr(self.bot, "group_service"):

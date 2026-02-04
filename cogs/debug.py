@@ -7,7 +7,7 @@ class Debug(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def test(self, ctx: commands.Context) -> None:
+    async def test(self, ctx: commands.Context[commands.Bot]) -> None:
         try:
             # Assumes group_service is attached to bot
             if hasattr(self.bot, "group_service"):
@@ -21,7 +21,7 @@ class Debug(commands.Cog):
             print(f"Error in test command: {e}")
 
     @commands.command()
-    async def testcase(self, ctx: commands.Context) -> None:
+    async def testcase(self, ctx: commands.Context[commands.Bot]) -> None:
         try:
             await self._print_player_list(ctx)
         except discord.HTTPException as e:
@@ -30,7 +30,7 @@ class Debug(commands.Cog):
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             print(f"Error in testcase command: {e}")
 
-    async def _print_player_list(self, ctx: commands.Context) -> None:
+    async def _print_player_list(self, ctx: commands.Context[commands.Bot]) -> None:
         channel = ctx.channel
         guild_id = ctx.guild.id if ctx.guild else None
 
