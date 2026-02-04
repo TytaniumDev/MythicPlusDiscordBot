@@ -38,3 +38,13 @@ BOT_INVITE_PERMISSIONS = int(os.getenv("BOT_INVITE_PERMISSIONS", "3263489"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev")
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot")
+
+# Bot Token
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# Assets
+ASSETS_DIR = "assets"
+SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
+REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
+WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
+PLACEHOLDER_CHAR = ":question:"

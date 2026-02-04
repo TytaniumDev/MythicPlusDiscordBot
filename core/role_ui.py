@@ -6,7 +6,7 @@ from typing import Any
 
 import discord
 
-from config import (
+from .config import (
     ROLE_BREZ,
     ROLE_DPS,
     ROLE_DPS_OFFSPEC,
@@ -18,8 +18,8 @@ from config import (
     ROLE_TANK,
     ROLE_TANK_OFFSPEC,
 )
-from models import WoWPlayer
-from storage import (
+from .models import WoWPlayer
+from .storage import (
     clear_player_preference,
     get_player_preference,
     set_player_preference,

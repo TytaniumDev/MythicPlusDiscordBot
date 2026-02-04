@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from unittest.mock import patch
 
-import storage
-from storage import (
+import core.storage as storage
+from core.storage import (
     STORAGE_FILE,
     clear_player_preference,
     get_all_preferences,
