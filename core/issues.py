@@ -21,7 +21,7 @@ class GitHubError(Exception):
 
 async def create_github_issue(
     title: str, body: str, labels: list[str]
-) -> dict[str, object]:
+) -> dict[str, Any]:
     if (
         not config.GITHUB_TOKEN
         or not config.GITHUB_REPO_OWNER
@@ -133,6 +133,58 @@ class GitHubIssueModal(ui.Modal):
             )
 
 
+async def report_bad_group(
+    user: discord.User | discord.Member,
+    last_results: dict[str, Any],
+    title: str,
+    description: str,
+) -> dict[str, Any]:
+    """Helper function to format and create a GitHub issue for a bad group."""
+    formatted_title = f"[Bad Group] {title}"
+
+    # Format reporter name safely
+    reporter = user.global_name or user.name
+
+    players = last_results.get("players", [])
+    groups = last_results.get("groups", [])
+
+    # Format the reproduction data
+    repro_info = (
+        "**Input Players:**\n```python\n["
+        + ", ".join(p.toTestString() for p in players)
+        + "]\n```\n"
+    )
+    repro_info += (
+        "**Resulting Groups:**\n```python\n["
+        + ", ".join(g.toTestString() for g in groups)
+        + "]\n```\n"
+    )
+
+    body = (
+        f"**Reporter:** {reporter} (`{user.id}`)\n\n"
+        f"**Description:**\n{description}\n\n"
+        f"{repro_info}"
+    )
+
+    # Include recent logs as well
+    if os.path.exists(config.LOG_FILE):
+        try:
+
+            def read_last_logs():
+                with open(config.LOG_FILE, encoding="utf-8") as f:
+                    return "".join(deque(f, maxlen=50))
+
+            last_lines = await asyncio.to_thread(read_last_logs)
+            body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+        except Exception as e:
+            logger.error("Failed to attach logs: %s", e)
+
+    # Add labels for automation and categorization
+    labels = ["bug", "jules", "bad-group"]
+
+    return await create_github_issue(formatted_title, body, labels)
+
+
 class BadGroupIssueModal(ui.Modal):
     def __init__(self, last_results: dict[str, Any]) -> None:
         super().__init__(title="Bad Group Report")
@@ -157,51 +209,13 @@ class BadGroupIssueModal(ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
-        title = f"[Bad Group] {self.issue_title.value}"
-        description = self.description.value
-
-        # Format reporter name safely
-        reporter = interaction.user.global_name or interaction.user.name
-
-        players = self.last_results.get("players", [])
-        groups = self.last_results.get("groups", [])
-
-        # Format the reproduction data
-        repro_info = (
-            "**Input Players:**\n```python\n["
-            + ", ".join(p.toTestString() for p in players)
-            + "]\n```\n"
-        )
-        repro_info += (
-            "**Resulting Groups:**\n```python\n["
-            + ", ".join(g.toTestString() for g in groups)
-            + "]\n```\n"
-        )
-
-        body = (
-            f"**Reporter:** {reporter} (`{interaction.user.id}`)\n\n"
-            f"**Description:**\n{description}\n\n"
-            f"{repro_info}"
-        )
-
-        # Include recent logs as well
-        if os.path.exists(config.LOG_FILE):
-            try:
-
-                def read_last_logs():
-                    with open(config.LOG_FILE, encoding="utf-8") as f:
-                        return "".join(deque(f, maxlen=50))
-
-                last_lines = await asyncio.to_thread(read_last_logs)
-                body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
-            except Exception as e:
-                logger.error("Failed to attach logs: %s", e)
-
-        # Add labels for automation and categorization
-        labels = ["bug", "jules", "bad-group"]
-
         try:
-            issue = await create_github_issue(title, body, labels)
+            issue = await report_bad_group(
+                interaction.user,
+                self.last_results,
+                self.issue_title.value,
+                self.description.value,
+            )
             await interaction.followup.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
                 ephemeral=True,
