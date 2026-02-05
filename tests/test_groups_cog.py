@@ -110,7 +110,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
 
         # We don't patch core.config.ACTIVITY_URL here because we want to test the default
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
-            await cog.activity.callback(cog, ctx)
+            await cog.activity.callback(cog, ctx)  # type: ignore
 
             # Check if the message contains the default URL
             calls = ctx.send.call_args_list
@@ -165,7 +165,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             patch("core.config.ACTIVITY_URL", custom_url),
             patch("core.config.DISCORD_APPLICATION_ID", "12345"),
         ):
-            await cog.activity.callback(cog, ctx)
+            await cog.activity.callback(cog, ctx)  # type: ignore
 
             # Check if the message contains the custom URL
             calls = ctx.send.call_args_list
