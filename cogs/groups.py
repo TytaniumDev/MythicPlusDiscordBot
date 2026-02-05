@@ -1,7 +1,4 @@
-import base64
-import json
 import logging
-import urllib.parse
 from typing import cast
 
 import discord
@@ -10,7 +7,8 @@ from discord.ext import commands
 
 from core import config
 from core.issues import BadGroupIssueModal, report_bad_group
-from core.models import WoWGroup, WoWPlayer
+from core.models import WoWPlayer
+from services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +16,7 @@ logger = logging.getLogger(__name__)
 class Groups(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.session_service = SessionService(bot)
 
     @commands.hybrid_command(name="wheel")
     async def wheel(self, ctx: commands.Context[commands.Bot]) -> None:
@@ -62,96 +61,82 @@ class Groups(commands.Cog):
                 await ctx.send("❌ GroupService not initialized.")
                 return
 
-            # Get group data (this handles checking for players/channels)
+            # Check if user is in voice
+            if not (ctx.author.voice and ctx.author.voice.channel):
+                await ctx.send(
+                    "❌ You must be in a voice channel to start an activity."
+                )
+                return
+
+            # Use get_groups_data merely to validate and get initial players.
+            # We don't need the groups calculated yet.
             result = await self.bot.group_service.get_groups_data(ctx, debug=debug)
             if not result:
                 return  # Error message already sent
 
-            # Save results for !badgroup
-            if ctx.guild:
-                self.bot.group_service.last_results[ctx.guild.id] = result
-
             players = cast(list[WoWPlayer], result["players"])
-            groups = cast(list[WoWGroup], result["groups"])
 
-            # 1. Post Spoilers
-            spoiler_msg = "**🙈 Spoilers (Results):**\n"
-            for i, group in enumerate(groups, 1):
-                tank = group.tank.name if group.tank else "None"
-                healer = group.healer.name if group.healer else "None"
-                dps = ", ".join([p.name for p in group.dps])
-                spoiler_msg += (
-                    f"||**Group {i}**: Tank: {tank} | Healer: {healer} | DPS: {dps}||\n"
+            # Create Session in Firebase
+            session_id = await self.session_service.create_session(ctx, players)
+
+            if not session_id:
+                await ctx.send("❌ Failed to create session. Is Firebase configured?")
+                return
+
+            # Create Links
+            channel = ctx.author.voice.channel
+            app_id = config.DISCORD_APPLICATION_ID
+
+            # Create Embedded Invite
+            invite_url = "N/A"
+            if app_id:
+                invite = await channel.create_invite(
+                    target_type=discord.InviteTarget.embedded_application,
+                    target_application_id=int(app_id),
+                    max_age=300,  # 5 minutes
                 )
-            await ctx.send(spoiler_msg)
+                invite_url = invite.url
 
-            # 2. Prepare Data for Activity
-            candidates_data = {
-                "tanks": [p.name for p in players if p.tankMain or p.offtank],
-                "healers": [p.name for p in players if p.healerMain or p.offhealer],
-                "dps": [p.name for p in players if p.dpsMain or p.offdps],
-            }
+            # Create Direct Link
+            activity_url_base = config.ACTIVITY_URL
 
-            groups_data = []
-            for group in groups:
-                groups_data.append(
-                    {
-                        "tank": group.tank.name if group.tank else None,
-                        "healer": group.healer.name if group.healer else None,
-                        "dps": [p.name for p in group.dps],
-                    }
-                )
+            msg = "🎮 **Join the Activity!**\n"
+            msg += f"**Voice Channel Activity:** {invite_url}\n"
 
-            json_data = json.dumps(
-                {"candidates": candidates_data, "groups": groups_data}
-            )
-            encoded_data_b64 = base64.b64encode(json_data.encode("utf-8")).decode(
-                "utf-8"
-            )
-            encoded_data = urllib.parse.quote(encoded_data_b64)
-
-            # 3. Create Links
-            if ctx.author.voice and ctx.author.voice.channel:
-                channel = ctx.author.voice.channel
-                app_id = config.DISCORD_APPLICATION_ID
-
-                # Create Embedded Invite
-                invite_url = "N/A"
-                if app_id:
-                    invite = await channel.create_invite(
-                        target_type=discord.InviteTarget.embedded_application,
-                        target_application_id=int(app_id),
-                        max_age=300,  # 5 minutes
-                    )
-                    invite_url = invite.url
-
-                # Create Direct Link (fallback/primary for data)
-                activity_url_base = config.ACTIVITY_URL
-
-                msg = "🎮 **Join the Activity!**\n"
-                msg += f"**Voice Channel Activity:** {invite_url}\n"
-
-                if activity_url_base:
-                    # Ensure trailing slash logic if needed, but assuming user provides base
-                    direct_link = f"{activity_url_base}?data={encoded_data}"
-                    msg += (
-                        f"**Browser Link (Pre-filled):** [Click Here]({direct_link})\n"
-                    )
-                else:
-                    msg += "⚠️ `ACTIVITY_URL` not set in .env. Cannot generate pre-filled browser link."
-
-                await ctx.send(msg)
-
+            if activity_url_base:
+                direct_link = f"{activity_url_base}?sessionId={session_id}"
+                msg += f"**Browser Link:** [Click Here]({direct_link})\n"
             else:
-                await ctx.send(
-                    "❌ You must be in a voice channel to start an activity."
-                )
+                msg += "⚠️ `ACTIVITY_URL` not set in .env."
+
+            await ctx.send(msg)
 
         except discord.HTTPException as e:
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             logger.error("Error in activity command: %s", e)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
+        """
+        Listen for voice state updates to sync the lobby.
+        """
+        # We only care if someone joined or left a channel that has an active session
+        channel = after.channel or before.channel
+        if not channel:
+            return
+
+        # Check if we have a session for this channel
+        if channel.id in self.session_service.active_sessions:
+            members = [m for m in channel.members if not m.bot]
+            # Update lobby
+            await self.session_service.update_lobby_players(channel.id, members)
 
     @commands.hybrid_command(
         name="badgroup", description="Report a bad set of groups to the developers."

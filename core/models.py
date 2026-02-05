@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from types import NotImplementedType
+from typing import Any
 
 from .config import (
     ROLE_BREZ,
@@ -125,6 +126,24 @@ class WoWPlayer:
             return f"{self.name}({', '.join(utilities)})"
         return self.name
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serializable dictionary representation for Firestore."""
+        return {
+            "name": self.name,
+            "roles": {
+                "tankMain": self.tankMain,
+                "healerMain": self.healerMain,
+                "dpsMain": self.dpsMain,
+                "offtank": self.offtank,
+                "offhealer": self.offhealer,
+                "offdps": self.offdps,
+                "ranged": self.ranged,
+                "melee": self.melee,
+                "hasBrez": self.hasBrez,
+                "hasLust": self.hasLust,
+            },
+        }
+
 
 @dataclass
 class WoWGroup:
@@ -165,3 +184,11 @@ class WoWGroup:
             else ""
         )
         return f"WoWGroup(Tank={tank_str}, Healer={healer_str}, DPS={dps_str})"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serializable dictionary representation for Firestore."""
+        return {
+            "tank": self.tank.to_dict() if self.tank else None,
+            "healer": self.healer.to_dict() if self.healer else None,
+            "dps": [p.to_dict() for p in self.dps] if self.dps else [],
+        }
