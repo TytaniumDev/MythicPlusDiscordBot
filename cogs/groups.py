@@ -159,13 +159,11 @@ class Groups(commands.Cog):
     @app_commands.describe(
         title="What's the issue? (e.g. Too many melee in Group 1)",
         description="Please explain why these groups are not ideal...",
-        include_logs="Whether to include detailed logs (default: True)",
     )
     async def badgroup(
         self,
         ctx: commands.Context[commands.Bot],
         title: str | None = None,
-        include_logs: bool = True,
         *,
         description: str | None = None,
     ):
@@ -186,9 +184,7 @@ class Groups(commands.Cog):
 
         # If called via slash command without arguments, open the modal
         if ctx.interaction and title is None:
-            await ctx.interaction.response.send_modal(
-                BadGroupIssueModal(last_results, include_logs=include_logs)
-            )
+            await ctx.interaction.response.send_modal(BadGroupIssueModal(last_results))
             return
 
         # If arguments are provided (either prefix or slash), process directly
@@ -204,7 +200,7 @@ class Groups(commands.Cog):
         await ctx.defer(ephemeral=True)
         try:
             issue = await report_bad_group(
-                ctx.author, last_results, title, description, include_logs=include_logs
+                ctx.author, last_results, title, description, include_logs=True
             )
             await ctx.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",

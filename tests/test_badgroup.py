@@ -67,7 +67,6 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         # Simulate user input
         modal.issue_title._value = "Bad Algo"  # pyright: ignore[reportPrivateUsage]
         modal.description._value = "Too many melee"  # pyright: ignore[reportPrivateUsage]
-        modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         # Mock report_bad_group
         with patch(

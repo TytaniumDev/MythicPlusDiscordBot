@@ -20,7 +20,7 @@ class General(commands.Cog):
         include_logs="Whether to include detailed logs (default: True)"
     )
     async def bug_report(
-        self, interaction: discord.Interaction, include_logs: bool = True
+        self, interaction: discord.Interaction, *, include_logs: bool = True
     ):
         """Report a bug to the developers."""
         await interaction.response.send_modal(
