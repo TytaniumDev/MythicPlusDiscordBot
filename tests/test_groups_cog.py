@@ -74,6 +74,111 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             ephemeral=True,
         )
 
+    async def test_activity_command_default_url(self):
+        bot = MagicMock()
+        bot.group_service = AsyncMock()
+
+        # Mocking players and groups
+        player = MagicMock()
+        player.name = "TestPlayer"
+        player.tankMain = True
+        player.offtank = False
+        player.healerMain = False
+        player.offhealer = False
+        player.dpsMain = False
+        player.offdps = False
+
+        group = MagicMock()
+        group.tank = player
+        group.healer = None
+        group.dps = []
+
+        bot.group_service.get_groups_data.return_value = {
+            "players": [player],
+            "groups": [group],
+        }
+        bot.group_service.last_results = {}
+
+        cog = Groups(bot)
+        ctx = AsyncMock()
+        ctx.guild.id = 123
+        ctx.author.voice.channel = MagicMock()
+        ctx.author.voice.channel.create_invite = AsyncMock()
+        ctx.author.voice.channel.create_invite.return_value.url = (
+            "http://discord.invite"
+        )
+
+        # We don't patch core.config.ACTIVITY_URL here because we want to test the default
+        with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
+            await cog.activity.callback(cog, ctx)
+
+            # Check if the message contains the default URL
+            calls = ctx.send.call_args_list
+            found_url = False
+            default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            for call in calls:
+                msg = call.args[0]
+                if f"{default_url}?data=" in msg:
+                    found_url = True
+                    break
+            self.assertTrue(
+                found_url, f"Default ACTIVITY_URL {default_url} not found in response"
+            )
+
+    async def test_activity_command_override_url(self):
+        bot = MagicMock()
+        bot.group_service = AsyncMock()
+
+        # Mocking players and groups
+        player = MagicMock()
+        player.name = "TestPlayer"
+        player.tankMain = True
+        player.offtank = False
+        player.healerMain = False
+        player.offhealer = False
+        player.dpsMain = False
+        player.offdps = False
+
+        group = MagicMock()
+        group.tank = player
+        group.healer = None
+        group.dps = []
+
+        bot.group_service.get_groups_data.return_value = {
+            "players": [player],
+            "groups": [group],
+        }
+        bot.group_service.last_results = {}
+
+        cog = Groups(bot)
+        ctx = AsyncMock()
+        ctx.guild.id = 123
+        ctx.author.voice.channel = MagicMock()
+        ctx.author.voice.channel.create_invite = AsyncMock()
+        ctx.author.voice.channel.create_invite.return_value.url = (
+            "http://discord.invite"
+        )
+
+        # Patch core.config.ACTIVITY_URL to simulate override
+        custom_url = "https://custom.url/"
+        with (
+            patch("core.config.ACTIVITY_URL", custom_url),
+            patch("core.config.DISCORD_APPLICATION_ID", "12345"),
+        ):
+            await cog.activity.callback(cog, ctx)
+
+            # Check if the message contains the custom URL
+            calls = ctx.send.call_args_list
+            found_url = False
+            for call in calls:
+                msg = call.args[0]
+                if f"{custom_url}?data=" in msg:
+                    found_url = True
+                    break
+            self.assertTrue(
+                found_url, f"Custom ACTIVITY_URL {custom_url} not found in response"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
