@@ -1,12 +1,15 @@
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock
+from typing import cast
+from unittest.mock import MagicMock, patch
+
+import discord
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.utils import WoWName  # noqa: E402, I001
+from core.utils import WoWName, getPlayerList  # noqa: E402, I001
 
 
 class TestUtils(unittest.TestCase):
@@ -29,6 +32,58 @@ class TestUtils(unittest.TestCase):
         member.global_name = None
         member.__str__.return_value = "User.Name"
         self.assertEqual(WoWName(member), "UserName")
+
+    @patch("core.utils.get_player_preference")
+    def test_getPlayerList(self, mock_get_pref: MagicMock):
+        """Test that getPlayerList correctly creates WoWPlayer objects from members."""
+        # Setup members
+        role_everyone = MagicMock()
+        role_everyone.name = "@everyone"
+
+        role_dps = MagicMock()
+        role_dps.name = "DPS"
+
+        member_saved = MagicMock()
+        member_saved.nick = "SavedPlayer"
+        member_saved.roles = [role_everyone]
+
+        member_discord = MagicMock()
+        member_discord.nick = "DiscordPlayer"
+        member_discord.roles = [role_everyone, role_dps]
+
+        member_invalid = MagicMock()
+        member_invalid.nick = "InvalidPlayer"
+        member_invalid.roles = [role_everyone]  # No saved roles, no extra discord roles
+
+        members = [member_saved, member_discord, member_invalid]
+
+        # Setup mock preferences
+        def get_pref_side_effect(name: str):
+            if name == "SavedPlayer":
+                return ["Tank"]
+            return None
+
+        mock_get_pref.side_effect = get_pref_side_effect
+
+        # Call function
+        players = getPlayerList(cast(list[discord.Member], members))
+
+        # Assertions
+        self.assertEqual(len(players), 2)
+
+        # Verify SavedPlayer
+        p1 = next((p for p in players if p.name == "SavedPlayer"), None)
+        assert p1 is not None
+        self.assertTrue(p1.tankMain)
+
+        # Verify DiscordPlayer
+        p2 = next((p for p in players if p.name == "DiscordPlayer"), None)
+        assert p2 is not None
+        self.assertTrue(p2.dpsMain)
+
+        # Verify InvalidPlayer is skipped
+        p3 = next((p for p in players if p.name == "InvalidPlayer"), None)
+        self.assertIsNone(p3)
 
 
 if __name__ == "__main__":

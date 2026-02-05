@@ -88,31 +88,39 @@ async def play_sound(voice_client: discord.VoiceClient | None, sound_path: str) 
             logger.error("Error playing sound %s: %s", sound_path, e)
 
 
+def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
+    """
+    Creates a WoWPlayer instance from a Discord member.
+    Prioritizes saved preferences over Discord roles.
+    """
+    name = WoWName(member)
+    # Check for persistent preferences first
+    saved_roles = get_player_preference(name)
+
+    if saved_roles:
+        logger.info("Creating WoWPlayer for %s from SAVED roles: %s", name, saved_roles)
+        return WoWPlayer.create(name=name, roles=saved_roles)
+
+    if len(member.roles) > 1:
+        logger.info(
+            "Creating WoWPlayer for %s from DISCORD roles: %s",
+            name,
+            [role.name for role in member.roles],
+        )
+        player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
+        if player.hasRoles():
+            return player
+        else:
+            logger.info(" - No valid roles found for %s, skipping.", name)
+
+    return None
+
+
 def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
     """Gathers the player info from the discord and returns a list of WoWPlayer objects."""
     players = []
     for member in members:
-        name = WoWName(member)
-        # Check for persistent preferences first
-        saved_roles = get_player_preference(name)
-
-        if saved_roles:
-            logger.info(
-                "Creating WoWPlayer for %s from SAVED roles: %s", name, saved_roles
-            )
-            player = WoWPlayer.create(name=name, roles=saved_roles)
+        player = _get_player_from_member(member)
+        if player:
             players.append(player)
-        elif len(member.roles) > 1:
-            logger.info(
-                "Creating WoWPlayer for %s from DISCORD roles: %s",
-                name,
-                [role.name for role in member.roles],
-            )
-            player = WoWPlayer.create(
-                name=name, roles=[role.name for role in member.roles]
-            )
-            if player.hasRoles():
-                players.append(player)
-            else:
-                logger.info(" - No valid roles found for %s, skipping.", name)
     return players
