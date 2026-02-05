@@ -50,7 +50,7 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(title, "[Bad Group] Bad Algo")
             self.assertIn("Too many melee", body)
             self.assertIn('WoWPlayer.create("Player1"', body)
-            self.assertEqual(labels, ["bug", "jules", "bad-group"])
+            self.assertEqual(labels, ["bug", "bad-group"])
             self.assertEqual(result["html_url"], "http://url")
 
     async def test_bad_group_modal_submission(self):

@@ -180,7 +180,7 @@ async def report_bad_group(
             logger.error("Failed to attach logs: %s", e)
 
     # Add labels for automation and categorization
-    labels = ["bug", "jules", "bad-group"]
+    labels = ["bug", "bad-group"]
 
     return await create_github_issue(formatted_title, body, labels)
 
