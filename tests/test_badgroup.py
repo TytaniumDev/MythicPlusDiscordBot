@@ -81,7 +81,6 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
                 self.last_results,
                 "Bad Algo",
                 "Too many melee",
-                include_logs=True,
             )
 
             mock_interaction.followup.send.assert_called_with(
