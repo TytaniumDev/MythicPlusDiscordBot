@@ -1,94 +1,334 @@
-const canvas = document.getElementById('wheel');
-const ctx = canvas.getContext('2d');
-const spinBtn = document.getElementById('spin');
-const resultDiv = document.getElementById('result');
-
-const colors = [
+const COLORS = [
     '#e74c3c', '#e67e22', '#f1c40f', '#2ecc71',
     '#3498db', '#9b59b6', '#1abc9c', '#34495e'
 ];
 
-let names = ['Tank', 'Healer', 'DPS 1', 'DPS 2', 'DPS 3', 'Brez', 'Lust', 'Bench'];
-
-// Parse names from URL if available
-const urlParams = new URLSearchParams(window.location.search);
-const namesParam = urlParams.get('names');
-if (namesParam) {
-    names = namesParam.split(',').map(n => n.trim());
+// Utility: Ease Out Cubic
+// t: current time, b: start value, c: change in value, d: duration
+function easeOutCubic(t, b, c, d) {
+    t /= d;
+    t--;
+    return c * (t * t * t + 1) + b;
 }
 
-let startAngle = 0;
-const arc = Math.PI / (names.length / 2);
-let spinTimeout = null;
+class Wheel {
+    constructor(canvasId, resultId, wrapperId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.resultDiv = document.getElementById(resultId);
+        this.wrapper = document.getElementById(wrapperId);
 
-let spinAngleStart = 10;
-let spinTime = 0;
-let spinTimeTotal = 0;
+        this.names = [];
+        this.arc = 0;
+        this.startAngle = 0; // Radians
 
-function drawWheel() {
-    ctx.clearRect(0, 0, 500, 500);
-    const outsideRadius = 200;
-    const textRadius = 160;
-    const insideRadius = 0;
+        this.animationFrame = null;
+        this.isSpinning = false;
+    }
 
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-    ctx.font = 'bold 16px Helvetica, Arial';
+    // Initialize/Update the wheel with names
+    init(names) {
+        this.names = names;
+        this.resultDiv.innerText = "";
 
-    for (let i = 0; i < names.length; i++) {
-        const angle = startAngle + i * arc;
-        ctx.fillStyle = colors[i % colors.length];
+        if (this.names.length === 0) {
+            this.wrapper.classList.add('hidden');
+            return;
+        } else {
+            this.wrapper.classList.remove('hidden');
+        }
 
-        ctx.beginPath();
-        ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
-        ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
-        ctx.stroke();
-        ctx.fill();
+        this.arc = Math.PI / (names.length / 2);
+        this.draw();
+    }
 
-        ctx.save();
-        ctx.fillStyle = "white";
-        ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius,
-            250 + Math.sin(angle + arc / 2) * textRadius);
-        ctx.rotate(angle + arc / 2 + Math.PI / 2);
-        const text = names[i];
-        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
-        ctx.restore();
+    draw() {
+        if (!this.ctx) return;
+
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const cx = width / 2;
+        const cy = height / 2;
+        const outsideRadius = width * 0.4;
+        const textRadius = width * 0.32;
+        const insideRadius = 0;
+
+        this.ctx.clearRect(0, 0, width, height);
+
+        this.ctx.strokeStyle = "white";
+        this.ctx.lineWidth = 2;
+        this.ctx.font = 'bold 14px Helvetica, Arial';
+
+        for (let i = 0; i < this.names.length; i++) {
+            const angle = this.startAngle + i * this.arc;
+            this.ctx.fillStyle = COLORS[i % COLORS.length];
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, outsideRadius, angle, angle + this.arc, false);
+            this.ctx.arc(cx, cy, insideRadius, angle + this.arc, angle, true);
+            this.ctx.stroke();
+            this.ctx.fill();
+
+            this.ctx.save();
+            this.ctx.fillStyle = "white";
+            this.ctx.translate(cx + Math.cos(angle + this.arc / 2) * textRadius,
+                               cy + Math.sin(angle + this.arc / 2) * textRadius);
+            this.ctx.rotate(angle + this.arc / 2 + Math.PI / 2);
+            const text = this.names[i];
+            // Truncate text if too long
+            let displayText = text;
+            if (displayText.length > 12) displayText = displayText.substring(0, 10) + "..";
+            this.ctx.fillText(displayText, -this.ctx.measureText(displayText).width / 2, 0);
+            this.ctx.restore();
+        }
+    }
+
+    spinTo(winnerName, duration = 4000) {
+        return new Promise((resolve) => {
+            if (this.names.length === 0 || !this.names.includes(winnerName)) {
+                // If winner not in list (edge case), just resolve
+                this.resultDiv.innerText = winnerName;
+                resolve();
+                return;
+            }
+
+            this.isSpinning = true;
+            const winnerIndex = this.names.indexOf(winnerName);
+
+            // Calculate target angle
+            // The pointer is at 270 degrees (3*PI/2)
+            // We want the center of the winner slice to be at 3*PI/2
+            // center_slice = startAngle + index*arc + arc/2
+            // 3*PI/2 = startAngle_final + index*arc + arc/2
+            // startAngle_final = 3*PI/2 - (index*arc + arc/2)
+
+            let currentAngle = this.startAngle;
+            const targetRotation = (3 * Math.PI / 2) - (winnerIndex * this.arc + this.arc / 2);
+
+            // Add extra rotations (min 5)
+            // We need to find delta such that current + delta = targetRotation (mod 2PI)
+            // Actually simpler: just set target to targetRotation + K * 2PI where K is large enough
+            // to be > currentAngle
+
+            let finalAngle = targetRotation;
+            while (finalAngle < currentAngle + Math.PI * 10) { // Ensure at least 5 rotations
+                finalAngle += Math.PI * 2;
+            }
+
+            const startTime = performance.now();
+            const startVal = currentAngle;
+            const changeVal = finalAngle - currentAngle;
+
+            const animate = (time) => {
+                const elapsed = time - startTime;
+                if (elapsed < duration) {
+                    this.startAngle = easeOutCubic(elapsed, startVal, changeVal, duration);
+                    this.draw();
+                    this.animationFrame = requestAnimationFrame(animate);
+                } else {
+                    this.startAngle = finalAngle;
+                    this.draw();
+                    this.isSpinning = false;
+                    this.resultDiv.innerText = winnerName;
+                    resolve();
+                }
+            };
+            this.animationFrame = requestAnimationFrame(animate);
+        });
     }
 }
 
-function rotateWheel() {
-    spinTime += 30;
-    if (spinTime >= spinTimeTotal) {
-        stopRotateWheel();
+// --- APP LOGIC ---
+
+// State
+let appData = null;
+let currentGroupIndex = 0;
+let candidatePools = {
+    tanks: [],
+    healers: [],
+    dps: []
+};
+
+// UI Elements
+const groupIndicator = document.getElementById('group-indicator');
+const nextBtn = document.getElementById('next-btn');
+const prevBtn = document.getElementById('prev-btn');
+const spinBtn = document.getElementById('spin-btn');
+const statusMsg = document.getElementById('status-message');
+
+// Wheels
+const wheelTank = new Wheel('wheel-tank', 'result-tank', 'tank-wrapper');
+const wheelHealer = new Wheel('wheel-healer', 'result-healer', 'healer-wrapper');
+const wheelDps = new Wheel('wheel-dps', 'result-dps', 'dps-wrapper');
+
+function init() {
+    // 1. Parse Data
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataStr = urlParams.get('data');
+
+    if (!dataStr) {
+        statusMsg.innerText = "No data found in URL. Please use the /activity command.";
         return;
     }
-    const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-    startAngle += (spinAngle * Math.PI / 180);
-    drawWheel();
-    spinTimeout = setTimeout(rotateWheel, 30);
+
+    try {
+        const jsonStr = atob(dataStr);
+        appData = JSON.parse(jsonStr);
+
+        // Init Pools (Clone them)
+        candidatePools.tanks = [...appData.candidates.tanks];
+        candidatePools.healers = [...appData.candidates.healers];
+        candidatePools.dps = [...appData.candidates.dps];
+
+        // Initial Render
+        renderGroup(0);
+
+    } catch (e) {
+        console.error(e);
+        statusMsg.innerText = "Error parsing data.";
+    }
 }
 
-function stopRotateWheel() {
-    clearTimeout(spinTimeout);
-    const degrees = startAngle * 180 / Math.PI + 90;
-    const arcd = arc * 180 / Math.PI;
-    const index = Math.floor((360 - degrees % 360) / arcd);
-    resultDiv.innerHTML = "Result: " + names[index];
+function renderGroup(index) {
+    if (!appData || !appData.groups[index]) return;
+
+    currentGroupIndex = index;
+    const group = appData.groups[index];
+
+    // Update UI
+    groupIndicator.innerText = `Group ${index + 1} of ${appData.groups.length}`;
+
+    // Navigation Buttons
+    prevBtn.classList.toggle('hidden', index === 0);
+    nextBtn.classList.toggle('hidden', index === appData.groups.length - 1);
+
+    // Reset Spin Button if viewing a new group?
+    // Actually, we want to see the state.
+    // If we've already spun this group, show results?
+    // Complex. For now, we'll just re-init the wheels with CURRENT pools.
+    // WARNING: If we spin Group 1, candidates are removed.
+    // If we go BACK to Group 1, we can't really "re-spin".
+    // AND the wheels shouldn't change.
+
+    // Simplified Logic:
+    // This tool is for a linear reveal.
+    // "Cycling through groups" -> 1 -> 2 -> 3.
+    // If you go back, you just see the empty wheels?
+    // Or we just block navigation until spin is done?
+
+    // Let's assume linear progression.
+    // But we need to Populate wheels with *current* pools.
+
+    wheelTank.init(candidatePools.tanks);
+    wheelHealer.init(candidatePools.healers);
+    wheelDps.init(candidatePools.dps);
+
+    spinBtn.disabled = false;
+    spinBtn.innerText = "SPIN GROUP " + (index + 1) + "!";
+    statusMsg.innerText = "";
 }
 
-function easeOut(t, b, c, d) {
-    const ts = (t /= d) * t;
-    const tc = ts * t;
-    return b + c * (tc + -3 * ts + 3 * t);
+function removePlayerFromPools(name) {
+    if (!name) return;
+    candidatePools.tanks = candidatePools.tanks.filter(n => n !== name);
+    candidatePools.healers = candidatePools.healers.filter(n => n !== name);
+    candidatePools.dps = candidatePools.dps.filter(n => n !== name);
 }
 
-spinBtn.addEventListener('click', () => {
-    if (spinTimeout) return;
-    resultDiv.innerHTML = "Spinning...";
-    spinAngleStart = Math.random() * 10 + 10;
-    spinTime = 0;
-    spinTimeTotal = Math.random() * 3000 + 4000;
-    rotateWheel();
+spinBtn.addEventListener('click', async () => {
+    if (!appData) return;
+
+    const group = appData.groups[currentGroupIndex];
+    spinBtn.disabled = true;
+
+    // Execute Spins in Parallel (Tank, Healer) + DPS Sequence
+
+    const promises = [];
+
+    // Tank
+    if (group.tank) {
+        promises.push(
+            wheelTank.spinTo(group.tank).then(() => {
+                removePlayerFromPools(group.tank);
+            })
+        );
+    }
+
+    // Healer
+    if (group.healer) {
+        promises.push(
+            wheelHealer.spinTo(group.healer).then(() => {
+                removePlayerFromPools(group.healer);
+            })
+        );
+    }
+
+    // DPS Sequence
+    if (group.dps && group.dps.length > 0) {
+        const dpsPromise = (async () => {
+            // Wait a bit before starting DPS? Or start immediately?
+            // Start immediately.
+
+            for (const dpsName of group.dps) {
+                // Ensure wheel is updated with latest removals from other spins?
+                // Tank/Healer spins take 4s.
+                // We want to update the wheel visually *between* DPS spins.
+
+                // Spin 1
+                await wheelDps.spinTo(dpsName, 4000);
+                removePlayerFromPools(dpsName);
+
+                // Wait briefly to show result
+                await new Promise(r => setTimeout(r, 1000));
+
+                // Re-init wheel to remove the winner visually
+                wheelDps.init(candidatePools.dps);
+            }
+        })();
+        promises.push(dpsPromise);
+    }
+
+    await Promise.all(promises);
+
+    statusMsg.innerText = "Group Complete!";
+
+    // Check if next group exists
+    if (currentGroupIndex < appData.groups.length - 1) {
+        spinBtn.innerText = "Next Group >";
+        spinBtn.disabled = false;
+
+        // Change button behavior to just go next?
+        // Or unhide the actual next button?
+        // Let's auto-advance or let user click Next Btn
+        nextBtn.classList.remove('hidden');
+
+        // Use the Main button as "Next"
+        spinBtn.onclick = () => {
+            // Restore original handler
+            spinBtn.onclick = null; // Rebinds via addEventListener? No.
+            // This is messy.
+            // Better: Just show the Next arrow.
+            spinBtn.style.display = 'none';
+        };
+    } else {
+        spinBtn.innerText = "All Groups Done!";
+    }
 });
 
-drawWheel();
+// Nav Buttons
+nextBtn.addEventListener('click', () => {
+    if (currentGroupIndex < appData.groups.length - 1) {
+        renderGroup(currentGroupIndex + 1);
+        spinBtn.style.display = 'inline-block'; // Show spin button again
+    }
+});
+
+prevBtn.addEventListener('click', () => {
+    if (currentGroupIndex > 0) {
+        renderGroup(currentGroupIndex - 1);
+        spinBtn.style.display = 'inline-block';
+    }
+});
+
+// Start
+init();
