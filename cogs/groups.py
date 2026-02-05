@@ -102,8 +102,12 @@ class Groups(commands.Cog):
                     }
                 )
 
-            json_data = json.dumps({"candidates": candidates_data, "groups": groups_data})
-            encoded_data_b64 = base64.b64encode(json_data.encode("utf-8")).decode("utf-8")
+            json_data = json.dumps(
+                {"candidates": candidates_data, "groups": groups_data}
+            )
+            encoded_data_b64 = base64.b64encode(json_data.encode("utf-8")).decode(
+                "utf-8"
+            )
             encoded_data = urllib.parse.quote(encoded_data_b64)
 
             # 3. Create Links
@@ -128,11 +132,13 @@ class Groups(commands.Cog):
                 msg += f"**Voice Channel Activity:** {invite_url}\n"
 
                 if activity_url_base:
-                     # Ensure trailing slash logic if needed, but assuming user provides base
-                     direct_link = f"{activity_url_base}?data={encoded_data}"
-                     msg += f"**Browser Link (Pre-filled):** [Click Here]({direct_link})\n"
+                    # Ensure trailing slash logic if needed, but assuming user provides base
+                    direct_link = f"{activity_url_base}?data={encoded_data}"
+                    msg += (
+                        f"**Browser Link (Pre-filled):** [Click Here]({direct_link})\n"
+                    )
                 else:
-                     msg += "⚠️ `ACTIVITY_URL` not set in .env. Cannot generate pre-filled browser link."
+                    msg += "⚠️ `ACTIVITY_URL` not set in .env. Cannot generate pre-filled browser link."
 
                 await ctx.send(msg)
 
