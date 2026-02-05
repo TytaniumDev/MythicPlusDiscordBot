@@ -167,10 +167,16 @@ class BadGroupIssueModal(ui.Modal):
         groups = self.last_results.get("groups", [])
 
         # Format the reproduction data
-        # We assume players and groups have toTestString() method
-        # These lists are expected to contain WoWPlayer and WoWGroup objects
-        repro_info = "**Input Players:**\n```python\n[" + ", ".join(p.toTestString() for p in players) + "]\n```\n"
-        repro_info += "**Resulting Groups:**\n```python\n[" + ", ".join(g.toTestString() for g in groups) + "]\n```\n"
+        repro_info = (
+            "**Input Players:**\n```python\n["
+            + ", ".join(p.toTestString() for p in players)
+            + "]\n```\n"
+        )
+        repro_info += (
+            "**Resulting Groups:**\n```python\n["
+            + ", ".join(g.toTestString() for g in groups)
+            + "]\n```\n"
+        )
 
         body = (
             f"**Reporter:** {reporter} (`{interaction.user.id}`)\n\n"
@@ -197,7 +203,8 @@ class BadGroupIssueModal(ui.Modal):
         try:
             issue = await create_github_issue(title, body, labels)
             await interaction.followup.send(
-                f"✅ Bad group reported successfully: {issue['html_url']}", ephemeral=True
+                f"✅ Bad group reported successfully: {issue['html_url']}",
+                ephemeral=True,
             )
         except Exception as e:
             # Log the error for the admin/bot owner
