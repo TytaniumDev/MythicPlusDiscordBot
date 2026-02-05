@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from collections import deque
+from typing import Any
 
 import aiohttp
 import discord
@@ -122,6 +123,81 @@ class GitHubIssueModal(ui.Modal):
             issue = await create_github_issue(title, body, labels)
             await interaction.followup.send(
                 f"✅ Issue created successfully: {issue['html_url']}", ephemeral=True
+            )
+        except Exception as e:
+            # Log the error for the admin/bot owner
+            logger.error("Error creating GitHub issue: %s", e)
+            await interaction.followup.send(
+                f"❌ Failed to create issue: {e}",
+                ephemeral=True,
+            )
+
+
+class BadGroupIssueModal(ui.Modal):
+    def __init__(self, last_results: dict[str, Any]) -> None:
+        super().__init__(title="Bad Group Report")
+        self.last_results = last_results
+
+        self.issue_title = ui.TextInput(
+            label="Title",
+            placeholder="What's the issue? (e.g. Too many melee in Group 1)",
+            required=True,
+            max_length=100,
+        )
+        self.add_item(self.issue_title)
+
+        self.description = ui.TextInput(
+            label="Detailed Description",
+            style=discord.TextStyle.paragraph,
+            placeholder="Please explain why these groups are not ideal...",
+            required=True,
+        )
+        self.add_item(self.description)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        title = f"[Bad Group] {self.issue_title.value}"
+        description = self.description.value
+
+        # Format reporter name safely
+        reporter = interaction.user.global_name or interaction.user.name
+
+        players = self.last_results.get("players", [])
+        groups = self.last_results.get("groups", [])
+
+        # Format the reproduction data
+        # We assume players and groups have toTestString() method
+        # These lists are expected to contain WoWPlayer and WoWGroup objects
+        repro_info = "**Input Players:**\n```python\n[" + ", ".join(p.toTestString() for p in players) + "]\n```\n"
+        repro_info += "**Resulting Groups:**\n```python\n[" + ", ".join(g.toTestString() for g in groups) + "]\n```\n"
+
+        body = (
+            f"**Reporter:** {reporter} (`{interaction.user.id}`)\n\n"
+            f"**Description:**\n{description}\n\n"
+            f"{repro_info}"
+        )
+
+        # Include recent logs as well
+        if os.path.exists(config.LOG_FILE):
+            try:
+
+                def read_last_logs():
+                    with open(config.LOG_FILE, encoding="utf-8") as f:
+                        return "".join(deque(f, maxlen=50))
+
+                last_lines = await asyncio.to_thread(read_last_logs)
+                body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+            except Exception as e:
+                logger.error("Failed to attach logs: %s", e)
+
+        # Add labels for automation and categorization
+        labels = ["bug", "jules", "bad-group"]
+
+        try:
+            issue = await create_github_issue(title, body, labels)
+            await interaction.followup.send(
+                f"✅ Bad group reported successfully: {issue['html_url']}", ephemeral=True
             )
         except Exception as e:
             # Log the error for the admin/bot owner

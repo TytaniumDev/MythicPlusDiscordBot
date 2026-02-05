@@ -2,7 +2,10 @@ import logging
 import os
 
 import discord
+from discord import app_commands
 from discord.ext import commands
+
+from core.issues import BadGroupIssueModal
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,28 @@ class Groups(commands.Cog):
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             logger.error("Error in activity command: %s", e)
+
+    @app_commands.command(
+        name="badgroup", description="Report a bad set of groups to the developers."
+    )
+    async def badgroup(self, interaction: discord.Interaction):
+        """Report a bad set of groups to the developers."""
+        if not hasattr(self.bot, "group_service"):
+            await interaction.response.send_message(
+                "❌ GroupService not initialized.", ephemeral=True
+            )
+            return
+
+        guild_id = interaction.guild_id
+        if not guild_id or guild_id not in self.bot.group_service.last_results:
+            await interaction.response.send_message(
+                "❌ No group creation data found for this server. Run /wheel first.",
+                ephemeral=True,
+            )
+            return
+
+        last_results = self.bot.group_service.last_results[guild_id]
+        await interaction.response.send_modal(BadGroupIssueModal(last_results))
 
 
 async def setup(bot: commands.Bot):
