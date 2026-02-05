@@ -1,13 +1,15 @@
+import os
+import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import discord
-import sys
-import os
 
 # Add project root to sys.path to allow imports from core
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from cogs.groups import Groups
+from cogs.groups import Groups  # noqa: E402, I001
+
 
 class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
     async def test_badgroup_command_success(self):
@@ -42,8 +44,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
 
         interaction.response.send_message.assert_called_once_with(
             "❌ No group creation data found for this server. Run /wheel first.",
-            ephemeral=True
+            ephemeral=True,
         )
+
 
 if __name__ == "__main__":
     unittest.main()
