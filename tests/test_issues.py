@@ -55,6 +55,7 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
         modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+        modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         # Mock config and create_github_issue
         with patch(
@@ -91,6 +92,7 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
         modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+        modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         with patch(
             "core.issues.create_github_issue", side_effect=Exception("Test Error")
@@ -116,6 +118,7 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
         modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
         modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+        modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         # Mock config and create_github_issue
         with (
@@ -138,3 +141,38 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Recent Logs:", body)
             self.assertIn("Line 1", body)
             self.assertIn("Line 3", body)
+
+    async def test_modal_submission_without_logs(self):
+        # Mock interaction and user
+        mock_interaction = AsyncMock(spec=discord.Interaction)
+        mock_interaction.user.global_name = "TestUser"
+        mock_interaction.user.name = "testuser"
+        mock_interaction.user.id = 12345
+        mock_interaction.response = AsyncMock()
+        mock_interaction.followup = AsyncMock()
+
+        modal = GitHubIssueModal(issue_type="bug")
+
+        # Simulate user input
+        modal.issue_title._value = "Bug Title"  # pyright: ignore[reportPrivateUsage]
+        modal.description._value = "Bug Description"  # pyright: ignore[reportPrivateUsage]
+        modal.extra_info._value = "Steps"  # pyright: ignore[reportPrivateUsage]
+        modal.include_logs._value = "No"  # pyright: ignore[reportPrivateUsage]
+
+        # Mock config and create_github_issue
+        with (
+            patch(
+                "core.issues.create_github_issue", new_callable=AsyncMock
+            ) as mock_create,
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="Line 1\nLine 2\nLine 3")),
+        ):
+            mock_create.return_value = {"html_url": "http://url"}
+
+            await modal.on_submit(mock_interaction)
+
+            mock_create.assert_called_once()
+            args, _ = mock_create.call_args
+            _, body, _ = args
+
+            self.assertNotIn("Recent Logs:", body)

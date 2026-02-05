@@ -24,9 +24,13 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx.interaction.response = AsyncMock()
 
         with patch("cogs.groups.BadGroupIssueModal") as mock_modal_cls:
-            await cog.badgroup.callback(cog, ctx, None, description=None)  # type: ignore
+            await cog.badgroup.callback(
+                cog, ctx, None, include_logs=True, description=None
+            )  # type: ignore
 
-            mock_modal_cls.assert_called_once_with({"players": [], "groups": []})
+            mock_modal_cls.assert_called_once_with(
+                {"players": [], "groups": []}, include_logs=True
+            )
             ctx.interaction.response.send_modal.assert_called_once()
 
     async def test_badgroup_command_direct_report(self):
@@ -47,10 +51,16 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ) as mock_report:
             mock_report.return_value = {"html_url": "http://url"}
 
-            await cog.badgroup.callback(cog, ctx, "Title", description="Desc")  # type: ignore
+            await cog.badgroup.callback(
+                cog, ctx, "Title", include_logs=True, description="Desc"
+            )  # type: ignore
 
             mock_report.assert_called_once_with(
-                ctx.author, {"players": [], "groups": []}, "Title", "Desc"
+                ctx.author,
+                {"players": [], "groups": []},
+                "Title",
+                "Desc",
+                include_logs=True,
             )
             ctx.send.assert_called_with(
                 "✅ Bad group reported successfully: http://url", ephemeral=True

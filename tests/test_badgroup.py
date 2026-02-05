@@ -67,6 +67,7 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         # Simulate user input
         modal.issue_title._value = "Bad Algo"  # pyright: ignore[reportPrivateUsage]
         modal.description._value = "Too many melee"  # pyright: ignore[reportPrivateUsage]
+        modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         # Mock report_bad_group
         with patch(
@@ -77,7 +78,11 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             await modal.on_submit(mock_interaction)
 
             mock_report.assert_called_once_with(
-                mock_interaction.user, self.last_results, "Bad Algo", "Too many melee"
+                mock_interaction.user,
+                self.last_results,
+                "Bad Algo",
+                "Too many melee",
+                include_logs=True,
             )
 
             mock_interaction.followup.send.assert_called_with(

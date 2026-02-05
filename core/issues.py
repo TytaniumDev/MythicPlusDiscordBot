@@ -50,7 +50,7 @@ async def create_github_issue(
 
 
 class GitHubIssueModal(ui.Modal):
-    def __init__(self, issue_type: str) -> None:
+    def __init__(self, issue_type: str, include_logs: bool = True) -> None:
         self.issue_type = issue_type
         modal_title = "Feature Request" if issue_type == "feature" else "Bug Report"
         super().__init__(title=modal_title)
@@ -84,6 +84,17 @@ class GitHubIssueModal(ui.Modal):
             )
         self.add_item(self.extra_info)
 
+        if issue_type == "bug":
+            self.include_logs = ui.TextInput(
+                label="Include Logs? (Yes/No)",
+                default="Yes" if include_logs else "No",
+                placeholder="Yes or No",
+                min_length=2,
+                max_length=3,
+                required=True,
+            )
+            self.add_item(self.include_logs)
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
@@ -103,7 +114,8 @@ class GitHubIssueModal(ui.Modal):
             body += f"\n**{section_title}:**\n{extra}\n"
 
         if self.issue_type == "bug":
-            if os.path.exists(config.LOG_FILE):
+            should_include_logs = self.include_logs.value.lower() == "yes"
+            if should_include_logs and os.path.exists(config.LOG_FILE):
                 try:
 
                     def read_last_logs():
@@ -138,6 +150,7 @@ async def report_bad_group(
     last_results: dict[str, Any],
     title: str,
     description: str,
+    include_logs: bool = True,
 ) -> dict[str, Any]:
     """Helper function to format and create a GitHub issue for a bad group."""
     formatted_title = f"[Bad Group] {title}"
@@ -167,7 +180,7 @@ async def report_bad_group(
     )
 
     # Include recent logs as well
-    if os.path.exists(config.LOG_FILE):
+    if include_logs and os.path.exists(config.LOG_FILE):
         try:
 
             def read_last_logs():
@@ -186,7 +199,7 @@ async def report_bad_group(
 
 
 class BadGroupIssueModal(ui.Modal):
-    def __init__(self, last_results: dict[str, Any]) -> None:
+    def __init__(self, last_results: dict[str, Any], include_logs: bool = True) -> None:
         super().__init__(title="Bad Group Report")
         self.last_results = last_results
 
@@ -206,8 +219,20 @@ class BadGroupIssueModal(ui.Modal):
         )
         self.add_item(self.description)
 
+        self.include_logs = ui.TextInput(
+            label="Include Logs? (Yes/No)",
+            default="Yes" if include_logs else "No",
+            placeholder="Yes or No",
+            min_length=2,
+            max_length=3,
+            required=True,
+        )
+        self.add_item(self.include_logs)
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
+
+        should_include_logs = self.include_logs.value.lower() == "yes"
 
         try:
             issue = await report_bad_group(
@@ -215,6 +240,7 @@ class BadGroupIssueModal(ui.Modal):
                 self.last_results,
                 self.issue_title.value,
                 self.description.value,
+                include_logs=should_include_logs,
             )
             await interaction.followup.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",

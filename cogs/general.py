@@ -16,9 +16,16 @@ class General(commands.Cog):
         self.start_time = time.time()
 
     @app_commands.command(name="bug", description="Report a bug to the developers.")
-    async def bug_report(self, interaction: discord.Interaction):
+    @app_commands.describe(
+        include_logs="Whether to include detailed logs (default: True)"
+    )
+    async def bug_report(
+        self, interaction: discord.Interaction, include_logs: bool = True
+    ):
         """Report a bug to the developers."""
-        await interaction.response.send_modal(GitHubIssueModal(issue_type="bug"))
+        await interaction.response.send_modal(
+            GitHubIssueModal(issue_type="bug", include_logs=include_logs)
+        )
 
     @app_commands.command(
         name="featurerequest", description="Request a new feature for the bot."
