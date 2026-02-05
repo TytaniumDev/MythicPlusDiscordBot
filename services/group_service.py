@@ -32,6 +32,50 @@ class GroupService:
         # Format: {guild_id: asyncio.Lock}
         self.server_locks: dict[int, asyncio.Lock] = {}
 
+    async def get_groups_data(
+        self,
+        ctx: commands.Context[commands.Bot],
+        debug: bool = False,
+    ) -> dict[str, list[WoWPlayer] | list[WoWGroup]] | None:
+        """
+        Calculates groups without announcing them.
+        Returns a dict with 'players' and 'groups' keys, or None if validation fails.
+        Sends error messages to ctx if validation fails.
+        """
+        channel = ctx.channel
+
+        # Get the members of the channel we want to use to fill the roles
+        if debug:
+            # Testing Code - guild is guaranteed to exist since guild_id was passed
+            if ctx.guild is None:
+                members = []
+            else:
+                testChannel = discord.utils.get(
+                    ctx.guild.channels, name="path-of-exile"
+                )
+                if testChannel is None or not hasattr(testChannel, "members"):
+                    members = []
+                else:
+                    members = [m for m in testChannel.members if not m.bot]
+        else:
+            members = cast(
+                list[discord.Member],
+                [m for m in channel.members if not m.bot],
+            )
+
+        if not members:
+            await ctx.send("❌ No players found in the channel.")
+            return None
+
+        players = getPlayerList(members)
+        if not players:
+            await ctx.send("❌ No players with valid roles found.")
+            return None
+
+        groups = create_mythic_plus_groups(players, debug=debug)
+
+        return {"players": list(players), "groups": list(groups)}
+
     async def core_wheel(
         self,
         ctx: commands.Context[commands.Bot],
@@ -76,38 +120,13 @@ class GroupService:
         if enhanced:
             voice_client = await join_voice_channel(ctx)
 
-        # Get the members of the channel we want to use to fill the roles
-        if debug:
-            # Testing Code - guild is guaranteed to exist since guild_id was passed
-            if ctx.guild is None:
-                members = []
-            else:
-                testChannel = discord.utils.get(
-                    ctx.guild.channels, name="path-of-exile"
-                )
-                if testChannel is None or not hasattr(testChannel, "members"):
-                    members = []
-                else:
-                    members = [m for m in testChannel.members if not m.bot]
-        else:
-            members = cast(
-                list[discord.Member],
-                [m for m in channel.members if not m.bot],
-            )
-
-        if not members:
-            await ctx.send("❌ No players found in the channel.")
+        result = await self.get_groups_data(ctx, debug)
+        if not result:
             return
-
-        players = getPlayerList(members)
-        if not players:
-            await ctx.send("❌ No players with valid roles found.")
-            return
-
-        groups = create_mythic_plus_groups(players, debug=debug)
 
         # Store results per-server to avoid race conditions
-        self.last_results[guild_id] = {"players": list(players), "groups": list(groups)}
+        self.last_results[guild_id] = result
+        groups = cast(list[WoWGroup], result["groups"])
 
         for i, group in enumerate(groups, 1):
             await self._announce_group(

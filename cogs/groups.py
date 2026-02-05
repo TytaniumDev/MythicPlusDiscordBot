@@ -1,11 +1,16 @@
+import base64
+import json
 import logging
 import os
+import urllib.parse
+from typing import cast
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from core.issues import BadGroupIssueModal, report_bad_group
+from core.models import WoWGroup, WoWPlayer
 
 logger = logging.getLogger(__name__)
 
@@ -47,35 +52,96 @@ class Groups(commands.Cog):
             logger.error("Error in newwheel command: %s", e)
 
     @commands.hybrid_command(name="activity")
-    async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
+    async def activity(
+        self, ctx: commands.Context[commands.Bot], debug: bool = False
+    ) -> None:
         """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
         await ctx.defer()
         try:
-            # Run enhanced wheel
-            if hasattr(self.bot, "group_service"):
-                await self.bot.group_service.core_wheel(
-                    ctx, debug_value=False, enhanced=True
-                )
-            else:
+            if not hasattr(self.bot, "group_service"):
                 await ctx.send("❌ GroupService not initialized.")
                 return
 
-            # Then create activity invite
+            # Get group data (this handles checking for players/channels)
+            result = await self.bot.group_service.get_groups_data(ctx, debug=debug)
+            if not result:
+                return  # Error message already sent
+
+            # Save results for !badgroup
+            if ctx.guild:
+                self.bot.group_service.last_results[ctx.guild.id] = result
+
+            players = cast(list[WoWPlayer], result["players"])
+            groups = cast(list[WoWGroup], result["groups"])
+
+            # 1. Post Spoilers
+            spoiler_msg = "**🙈 Spoilers (Results):**\n"
+            for i, group in enumerate(groups, 1):
+                tank = group.tank.name if group.tank else "None"
+                healer = group.healer.name if group.healer else "None"
+                dps = ", ".join([p.name for p in group.dps])
+                spoiler_msg += (
+                    f"||**Group {i}**: Tank: {tank} | Healer: {healer} | DPS: {dps}||\n"
+                )
+            await ctx.send(spoiler_msg)
+
+            # 2. Prepare Data for Activity
+            candidates_data = {
+                "tanks": [p.name for p in players if p.tankMain or p.offtank],
+                "healers": [p.name for p in players if p.healerMain or p.offhealer],
+                "dps": [p.name for p in players if p.dpsMain or p.offdps],
+            }
+
+            groups_data = []
+            for group in groups:
+                groups_data.append(
+                    {
+                        "tank": group.tank.name if group.tank else None,
+                        "healer": group.healer.name if group.healer else None,
+                        "dps": [p.name for p in group.dps],
+                    }
+                )
+
+            json_data = json.dumps(
+                {"candidates": candidates_data, "groups": groups_data}
+            )
+            encoded_data_b64 = base64.b64encode(json_data.encode("utf-8")).decode(
+                "utf-8"
+            )
+            encoded_data = urllib.parse.quote(encoded_data_b64)
+
+            # 3. Create Links
             if ctx.author.voice and ctx.author.voice.channel:
                 channel = ctx.author.voice.channel
-                # You'll need to set your APPLICATION_ID in .env
                 app_id = os.getenv("DISCORD_APPLICATION_ID")
+
+                # Create Embedded Invite
+                invite_url = "N/A"
                 if app_id:
                     invite = await channel.create_invite(
                         target_type=discord.InviteTarget.embedded_application,
                         target_application_id=int(app_id),
                         max_age=300,  # 5 minutes
                     )
-                    await ctx.send(f"🎮 Join the spinning wheel activity! {invite.url}")
-                else:
-                    await ctx.send(
-                        "⚠️ DISCORD_APPLICATION_ID not configured in .env. Cannot start activity."
+                    invite_url = invite.url
+
+                # Create Direct Link (fallback/primary for data)
+                activity_url_base = os.getenv("ACTIVITY_URL")
+
+                msg = "🎮 **Join the Activity!**\n"
+                msg += f"**Voice Channel Activity:** {invite_url}\n"
+
+                if activity_url_base:
+                    # Ensure trailing slash logic if needed, but assuming user provides base
+                    direct_link = f"{activity_url_base}?data={encoded_data}"
+                    msg += (
+                        f"**Browser Link (Pre-filled):** [Click Here]({direct_link})\n"
                     )
+                else:
+                    msg += "⚠️ `ACTIVITY_URL` not set in .env. Cannot generate pre-filled browser link."
+
+                await ctx.send(msg)
+
             else:
                 await ctx.send(
                     "❌ You must be in a voice channel to start an activity."
