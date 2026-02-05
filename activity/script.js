@@ -63,17 +63,24 @@ class Wheel {
             const angle = this.startAngle + i * this.arc;
             this.ctx.fillStyle = COLORS[i % COLORS.length];
 
+            // Explicitly handle the single-player case to ensure a visible circle is drawn
+            let endAngle = angle + this.arc;
+            if (this.names.length === 1) {
+                endAngle = angle + 2 * Math.PI - 0.0001;
+            }
+
             this.ctx.beginPath();
-            this.ctx.arc(cx, cy, outsideRadius, angle, angle + this.arc, false);
-            this.ctx.arc(cx, cy, insideRadius, angle + this.arc, angle, true);
+            this.ctx.arc(cx, cy, outsideRadius, angle, endAngle, false);
+            this.ctx.arc(cx, cy, insideRadius, endAngle, angle, true);
             this.ctx.stroke();
             this.ctx.fill();
 
             this.ctx.save();
             this.ctx.fillStyle = "white";
-            this.ctx.translate(cx + Math.cos(angle + this.arc / 2) * textRadius,
-                               cy + Math.sin(angle + this.arc / 2) * textRadius);
-            this.ctx.rotate(angle + this.arc / 2 + Math.PI / 2);
+            const textAngle = (this.names.length === 1) ? angle + Math.PI : angle + this.arc / 2;
+            this.ctx.translate(cx + Math.cos(textAngle) * textRadius,
+                               cy + Math.sin(textAngle) * textRadius);
+            this.ctx.rotate(textAngle + Math.PI / 2);
             const text = this.names[i];
             // Truncate text if too long
             let displayText = text;
@@ -172,7 +179,8 @@ function init() {
     }
 
     try {
-        const jsonStr = atob(dataStr);
+        const bytes = Uint8Array.from(atob(dataStr), c => c.charCodeAt(0));
+        const jsonStr = new TextDecoder().decode(bytes);
         appData = JSON.parse(jsonStr);
 
         // Init Pools (Clone them)

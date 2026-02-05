@@ -101,9 +101,9 @@ class GitHubIssueModal(ui.Modal):
 
         if issue_type == "bug":
             self.include_logs = ui.TextInput(
-                label="Include Logs? (Yes/No)",
+                label="Include Logs? (Type 'Yes' or 'No')",
                 default="Yes" if include_logs else "No",
-                placeholder="Yes or No",
+                placeholder="Yes",
                 min_length=2,
                 max_length=3,
                 required=True,
@@ -129,7 +129,7 @@ class GitHubIssueModal(ui.Modal):
             body += f"\n**{section_title}:**\n{extra}\n"
 
         if self.issue_type == "bug":
-            should_include_logs = self.include_logs.value.lower() == "yes"
+            should_include_logs = self.include_logs.value.lower().startswith("y")
             if should_include_logs:
                 last_lines = await _get_recent_logs()
                 if last_lines:
@@ -220,8 +220,20 @@ class BadGroupIssueModal(ui.Modal):
         )
         self.add_item(self.description)
 
+        self.include_logs = ui.TextInput(
+            label="Include Logs? (Type 'Yes' or 'No')",
+            default="Yes",
+            placeholder="Yes",
+            min_length=2,
+            max_length=3,
+            required=True,
+        )
+        self.add_item(self.include_logs)
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
+
+        should_include_logs = self.include_logs.value.lower().startswith("y")
 
         try:
             issue = await report_bad_group(
@@ -229,7 +241,7 @@ class BadGroupIssueModal(ui.Modal):
                 self.last_results,
                 self.issue_title.value,
                 self.description.value,
-                include_logs=True,
+                include_logs=should_include_logs,
             )
             await interaction.followup.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
