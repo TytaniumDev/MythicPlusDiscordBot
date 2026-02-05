@@ -1,9 +1,16 @@
+import asyncio
 import json
 import logging
 import threading
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-import firebase_admin
-from firebase_admin import credentials, firestore
+import firebase_admin  # pyright: ignore[reportMissingTypeStubs]
+from firebase_admin import (  # pyright: ignore[reportMissingTypeStubs]
+    credentials,
+    firestore,
+)
 
 from core import config
 
@@ -52,7 +59,7 @@ class FirebaseService:
         return self.db is not None
 
     async def create_session(
-        self, guild_id: int, channel_id: int, players: list
+        self, guild_id: int, channel_id: int, players: list[dict[str, Any]]
     ) -> str:
         """
         Creates a new session document in Firestore.
@@ -83,7 +90,7 @@ class FirebaseService:
 
         return doc_ref.id
 
-    async def update_session(self, session_id: str, data: dict):
+    async def update_session(self, session_id: str, data: dict[str, Any]) -> None:
         """Updates fields in an existing session."""
         if not self.db:
             return
@@ -93,7 +100,11 @@ class FirebaseService:
 
         await asyncio.to_thread(doc_ref.update, data)
 
-    def listen_to_session(self, session_id: str, callback):
+    def listen_to_session(
+        self,
+        session_id: str,
+        callback: Callable[..., None],
+    ) -> object | None:
         """
         Sets up a real-time listener for a specific session.
         callback(doc_snapshot, changes, read_time)
@@ -106,3 +117,40 @@ class FirebaseService:
         # Watch is blocking/threaded in background by the SDK
         watch = doc_ref.on_snapshot(callback)
         return watch
+
+    async def delete_session(self, session_id: str) -> None:
+        """Deletes a session document from Firestore."""
+        if not self.db:
+            return
+
+        doc_ref = self.db.collection("sessions").document(session_id)
+        await asyncio.to_thread(doc_ref.delete)
+        logger.debug("Deleted session %s from Firestore", session_id)
+
+    async def delete_sessions_older_than(self, seconds: int) -> int:
+        """
+        Deletes session documents whose createdAt is older than the given age.
+        Returns the number of documents deleted. Used to clean up abandoned sessions.
+        """
+        if not self.db:
+            return 0
+
+        db = self.db
+        cutoff = datetime.now(UTC) - timedelta(seconds=seconds)
+
+        def _run() -> int:
+            refs = list(
+                db.collection("sessions").where("createdAt", "<", cutoff).stream()
+            )
+            for doc in refs:
+                doc.reference.delete()
+            return len(refs)
+
+        deleted = await asyncio.to_thread(_run)
+        if deleted:
+            logger.info(
+                "Deleted %d old session(s) from Firestore (older than %d seconds)",
+                deleted,
+                seconds,
+            )
+        return deleted

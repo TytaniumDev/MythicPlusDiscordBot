@@ -1,8 +1,9 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 import discord
+from discord.ext import commands
 
 from core.firebase_service import FirebaseService
 from core.models import WoWPlayer
@@ -11,27 +12,34 @@ from core.utils import getPlayerList
 
 logger = logging.getLogger(__name__)
 
-# Delay (seconds) before removing a completed session and unsubscribing its listener.
-SESSION_CLEANUP_DELAY_SECONDS = 90
-
 
 class SessionService:
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.firebase = FirebaseService()
         self.active_sessions: dict[int, str] = {}  # channel_id -> session_id
         self.listeners: dict[str, Any] = {}  # session_id -> watch object
 
-    async def create_session(self, ctx, players: list[WoWPlayer]) -> str | None:
+    async def create_session(
+        self, ctx: commands.Context[commands.Bot], players: list[WoWPlayer]
+    ) -> str | None:
         """Creates a session and sets up listeners."""
         if not self.firebase.is_available():
             return None
 
-        guild_id = ctx.guild.id
-        channel_id = ctx.author.voice.channel.id if ctx.author.voice else 0
-
-        if not channel_id:
+        if ctx.guild is None:
             return None
+        voice = ctx.author.voice
+        if voice is None or voice.channel is None:
+            return None
+
+        guild_id = ctx.guild.id
+        channel_id = voice.channel.id
+
+        # Replace previous session in this channel (one active session per channel).
+        old_session_id = self.active_sessions.get(channel_id)
+        if old_session_id is not None:
+            await self._cleanup_session_immediately(old_session_id)
 
         # Convert players to serializable format
         players_data = [p.to_dict() for p in players]
@@ -47,10 +55,10 @@ class SessionService:
 
         return session_id
 
-    def _start_listening(self, session_id: str, channel_id: int):
+    def _start_listening(self, session_id: str, channel_id: int) -> None:
         """Internal method to attach the Firestore listener."""
 
-        def on_snapshot(col_snapshot, changes, read_time):
+        def on_snapshot(col_snapshot: Any, changes: Any, read_time: Any) -> None:
             for change in changes:
                 if change.type.name == "MODIFIED":
                     doc = change.document
@@ -60,7 +68,9 @@ class SessionService:
         watch = self.firebase.listen_to_session(session_id, on_snapshot)
         self.listeners[session_id] = watch
 
-    def _handle_update(self, session_id: str, channel_id: int, data: dict):
+    def _handle_update(
+        self, session_id: str, channel_id: int, data: dict[str, Any]
+    ) -> None:
         """
         Handles updates from Firestore.
         Executed in a separate thread by the Firestore SDK, so we must be careful with async.
@@ -78,11 +88,10 @@ class SessionService:
             asyncio.run_coroutine_threadsafe(
                 self._announce_completion(channel_id, data), self.bot.loop
             )
-            asyncio.run_coroutine_threadsafe(
-                self._cleanup_session_after_delay(session_id), self.bot.loop
-            )
 
-    async def _process_spin_request(self, session_id: str, channel_id: int, data: dict):
+    async def _process_spin_request(
+        self, session_id: str, channel_id: int, data: dict[str, Any]
+    ) -> None:
         """Calculates groups and updates Firestore."""
         logger.info(f"Processing spin request for session {session_id}")
 
@@ -99,7 +108,7 @@ class SessionService:
             return
 
         # 2. Parse Players (using existing util)
-        players = getPlayerList(members)
+        players = getPlayerList(cast(list[discord.Member], members))
         if not players:
             logger.warning("No valid players found.")
             return
@@ -123,7 +132,7 @@ class SessionService:
             session_id, {"status": "spinning", "groups": groups_data}
         )
 
-    async def _announce_completion(self, channel_id: int, data: dict):
+    async def _announce_completion(self, channel_id: int, data: dict[str, Any]) -> None:
         """Announces results to the channel with an embed listing each group."""
         channel = self.bot.get_channel(channel_id)
         if not channel:
@@ -165,9 +174,8 @@ class SessionService:
         players_data = [p.to_dict() for p in players]
         await self.firebase.update_session(session_id, {"players": players_data})
 
-    async def _cleanup_session_after_delay(self, session_id: str):
-        """Removes the session and unsubscribes its Firestore listener after a delay."""
-        await asyncio.sleep(SESSION_CLEANUP_DELAY_SECONDS)
+    async def _cleanup_session_immediately(self, session_id: str) -> None:
+        """Removes the session, unsubscribes its Firestore listener, and deletes the document. No delay."""
         channel_id = None
         for ch_id, sess_id in list(self.active_sessions.items()):
             if sess_id == session_id:
@@ -178,4 +186,6 @@ class SessionService:
         watch = self.listeners.pop(session_id, None)
         if watch is not None and hasattr(watch, "unsubscribe"):
             watch.unsubscribe()
+        if self.firebase.is_available():
+            await self.firebase.delete_session(session_id)
         logger.debug("Cleaned up session %s", session_id)

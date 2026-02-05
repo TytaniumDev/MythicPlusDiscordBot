@@ -118,7 +118,12 @@ class Groups(commands.Cog):
             logger.error("Error in activity command: %s", e)
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(
+        self,
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
         """
         Listen for voice state updates to sync the lobby.
         """

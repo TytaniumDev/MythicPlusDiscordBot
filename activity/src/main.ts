@@ -44,11 +44,21 @@ function init() {
       const data = docSnap.data() as Session;
       handleSessionUpdate(data);
     } else {
-      statusMsg.innerText = "Session not found.";
+      statusMsg.innerText = "Activity ended.";
+      if (appDiv) {
+        const hint = document.createElement('p');
+        hint.className = 'activity-ended-hint';
+        hint.innerText = "Use /activity in Discord to start a new one.";
+        hint.style.marginTop = "10px";
+        hint.style.color = "#aaa";
+        if (!appDiv.querySelector('.activity-ended-hint')) {
+          appDiv.appendChild(hint);
+        }
+      }
     }
   }, (error) => {
     console.error(error);
-    statusMsg.innerText = "Error connecting to session: " + error.message;
+    statusMsg.innerText = "Activity ended.";
   });
 
   // Setup Wheels

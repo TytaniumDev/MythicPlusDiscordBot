@@ -54,3 +54,11 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
    }
    ```
    *Warning: This allows anyone to read/write sessions. For a production app, you should restrict writes to only the fields the frontend needs to update (like status).*
+
+## 6. Session cleanup (database growth)
+
+Session documents are cleaned up so the database does not grow indefinitely:
+
+- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The session and document stay active so the Activity page remains valid (e.g. you can keep viewing results).
+- **New Activity replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** session first (removes from memory, unsubscribes its listener, deletes the session document), then creates the new session. Anyone still on the old Activity page will see **"Activity ended"** and can start a new one via Discord.
+- **Startup cleanup.** On **bot startup**, the bot deletes any session document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_SESSION_MAX_AGE_SECONDS` in `bot.py`.
