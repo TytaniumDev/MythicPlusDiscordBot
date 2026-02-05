@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.config import BOT_INVITE_PERMISSIONS
+from core.config import BOT_INVITE_PERMISSIONS, DISCORD_APPLICATION_ID
 from core.issues import GitHubIssueModal
 
 
@@ -30,7 +30,7 @@ class General(commands.Cog):
     @commands.command()
     async def invite(self, ctx: commands.Context[commands.Bot]) -> None:
         """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
-        app_id = self.bot.application_id or os.getenv("DISCORD_APPLICATION_ID")
+        app_id = self.bot.application_id or DISCORD_APPLICATION_ID
         if not app_id:
             await ctx.send(
                 "❌ Application ID not available. Set DISCORD_APPLICATION_ID in your environment."

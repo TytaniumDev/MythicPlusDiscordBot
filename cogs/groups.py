@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import os
 import urllib.parse
 from typing import cast
 
@@ -9,6 +8,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import config
 from core.issues import BadGroupIssueModal, report_bad_group
 from core.models import WoWGroup, WoWPlayer
 
@@ -113,7 +113,7 @@ class Groups(commands.Cog):
             # 3. Create Links
             if ctx.author.voice and ctx.author.voice.channel:
                 channel = ctx.author.voice.channel
-                app_id = os.getenv("DISCORD_APPLICATION_ID")
+                app_id = config.DISCORD_APPLICATION_ID
 
                 # Create Embedded Invite
                 invite_url = "N/A"
@@ -126,7 +126,7 @@ class Groups(commands.Cog):
                     invite_url = invite.url
 
                 # Create Direct Link (fallback/primary for data)
-                activity_url_base = os.getenv("ACTIVITY_URL")
+                activity_url_base = config.ACTIVITY_URL
 
                 msg = "🎮 **Join the Activity!**\n"
                 msg += f"**Voice Channel Activity:** {invite_url}\n"

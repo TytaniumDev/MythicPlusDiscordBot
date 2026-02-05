@@ -41,6 +41,14 @@ GITHUB_TOKEN = _github_token.strip() if _github_token else None
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev").strip()
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot").strip()
 
+# Activity Link
+ACTIVITY_URL = os.getenv(
+    "ACTIVITY_URL", "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+).strip()
+
+# Discord Application ID
+DISCORD_APPLICATION_ID = os.getenv("DISCORD_APPLICATION_ID")
+
 # Bot Token
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
