@@ -35,32 +35,32 @@ jobs:
           # 1. Construct the Source ID (Standard format: sources/github/owner/repo)
           SOURCE_ID="sources/github/$REPO_FULL_NAME"
 
-          # 2. Construct the Prompt securely
-          # We combine the title and body to give Jules full context
-          FULL_PROMPT="Please fix this issue: $ISSUE_TITLE. \n\nDetails: $ISSUE_BODY"
+          # # 2. Construct the Prompt securely
+          # # We combine the title and body to give Jules full context
+          # FULL_PROMPT="Please fix this issue: $ISSUE_TITLE. \n\nDetails: $ISSUE_BODY"
 
-          # 3. Build the JSON Payload using jq to ensure safe escaping of special characters
-          # We use a temporary file to store the payload to avoid shell quoting hell
-          jq -n \
-            --arg prompt "$FULL_PROMPT" \
-            --arg source "$SOURCE_ID" \
-            --arg branch "$DEFAULT_BRANCH" \
-            --arg title "Fix: $ISSUE_TITLE" \
-            '{
-              prompt: $prompt,
-              sourceContext: {
-                source: $source,
-                githubRepoContext: {
-                  startingBranch: $branch
-                }
-              },
-              title: $title,
-              automationMode: "AUTO_CREATE_PR"
-            }' > payload.json
+          # # 3. Build the JSON Payload using jq to ensure safe escaping of special characters
+          # # We use a temporary file to store the payload to avoid shell quoting hell
+          # jq -n \
+          #   --arg prompt "$FULL_PROMPT" \
+          #   --arg source "$SOURCE_ID" \
+          #   --arg branch "$DEFAULT_BRANCH" \
+          #   --arg title "Fix: $ISSUE_TITLE" \
+          #   '{
+          #     prompt: $prompt,
+          #     sourceContext: {
+          #       source: $source,
+          #       githubRepoContext: {
+          #         startingBranch: $branch
+          #       }
+          #     },
+          #     title: $title,
+          #     automationMode: "AUTO_CREATE_PR"
+          #   }' > payload.json
 
-          # 4. Send the Request
-          echo "Sending task to Jules..."
-          curl -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: $JULES_API_KEY" \
-            -d @payload.json
+          # # 4. Send the Request
+          # echo "Sending task to Jules..."
+          # curl -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+          #   -H "Content-Type: application/json" \
+          #   -H "X-Goog-Api-Key: $JULES_API_KEY" \
+          #   -d @payload.json
