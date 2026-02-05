@@ -59,7 +59,6 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
                 {"players": [], "groups": []},
                 "Title",
                 "Desc",
-                include_logs=True,
             )
             ctx.send.assert_called_with(
                 "✅ Bad group reported successfully: http://url", ephemeral=True

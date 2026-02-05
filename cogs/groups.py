@@ -159,7 +159,6 @@ class Groups(commands.Cog):
     @app_commands.describe(
         title="What's the issue? (e.g. Too many melee in Group 1)",
         description="Please explain why these groups are not ideal...",
-        include_logs="Whether to include detailed logs (default: True)",
     )
     async def badgroup(
         self,
@@ -167,9 +166,12 @@ class Groups(commands.Cog):
         title: str | None = None,
         *,
         description: str | None = None,
-        include_logs: bool = True,
     ):
-        """Report a bad set of groups to the developers."""
+        """
+        Report a bad set of groups to the developers.
+        NOTE: Bad group reports MUST ALWAYS include logs for debugging purposes.
+        Do not add a toggle to disable log inclusion for this command.
+        """
         if not hasattr(self.bot, "group_service"):
             await ctx.send("❌ GroupService not initialized.", ephemeral=True)
             return
@@ -201,9 +203,7 @@ class Groups(commands.Cog):
         # Process the report
         await ctx.defer(ephemeral=True)
         try:
-            issue = await report_bad_group(
-                ctx.author, last_results, title, description, include_logs=include_logs
-            )
+            issue = await report_bad_group(ctx.author, last_results, title, description)
             await ctx.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
                 ephemeral=True,

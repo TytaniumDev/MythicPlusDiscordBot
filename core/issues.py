@@ -158,9 +158,12 @@ async def report_bad_group(
     last_results: dict[str, Any],
     title: str,
     description: str,
-    include_logs: bool = True,
 ) -> dict[str, Any]:
-    """Helper function to format and create a GitHub issue for a bad group."""
+    """
+    Helper function to format and create a GitHub issue for a bad group.
+    NOTE: Bad group reports MUST ALWAYS include logs for debugging purposes.
+    Do not add a toggle to disable log inclusion for this function.
+    """
     formatted_title = f"[Bad Group] {title}"
 
     # Format reporter name safely
@@ -187,11 +190,10 @@ async def report_bad_group(
         f"{repro_info}"
     )
 
-    # Include recent logs as well
-    if include_logs:
-        last_lines = await _get_recent_logs()
-        if last_lines:
-            body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+    # Include recent logs as well (MANDATORY for bad groups)
+    last_lines = await _get_recent_logs()
+    if last_lines:
+        body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
 
     # Add labels for automation and categorization
     labels = ["bug", "bad-group"]
@@ -220,20 +222,8 @@ class BadGroupIssueModal(ui.Modal):
         )
         self.add_item(self.description)
 
-        self.include_logs = ui.TextInput(
-            label="Include Logs? (Type 'Yes' or 'No')",
-            default="Yes",
-            placeholder="Yes",
-            min_length=2,
-            max_length=3,
-            required=True,
-        )
-        self.add_item(self.include_logs)
-
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-
-        should_include_logs = self.include_logs.value.lower().startswith("y")
 
         try:
             issue = await report_bad_group(
@@ -241,7 +231,6 @@ class BadGroupIssueModal(ui.Modal):
                 self.last_results,
                 self.issue_title.value,
                 self.description.value,
-                include_logs=should_include_logs,
             )
             await interaction.followup.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
