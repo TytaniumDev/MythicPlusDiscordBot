@@ -24,7 +24,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         interaction.response = AsyncMock()
 
         with patch("cogs.groups.BadGroupIssueModal") as mock_modal_cls:
-            await cog.badgroup.callback(cog, interaction)
+            await cog.badgroup.callback(cog, interaction)  # type: ignore[reportCallIssue]
 
             mock_modal_cls.assert_called_once_with({"players": [], "groups": []})
             interaction.response.send_modal.assert_called_once()
@@ -40,7 +40,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         interaction.guild_id = 123
         interaction.response = AsyncMock()
 
-        await cog.badgroup.callback(cog, interaction)
+        await cog.badgroup.callback(cog, interaction)  # type: ignore[reportCallIssue]
 
         interaction.response.send_message.assert_called_once_with(
             "❌ No group creation data found for this server. Run /wheel first.",
