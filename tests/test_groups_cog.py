@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Add project root to sys.path to allow imports from core
@@ -24,7 +25,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx.interaction.response = AsyncMock()
 
         with patch("cogs.groups.BadGroupIssueModal") as mock_modal_cls:
-            await cog.badgroup.callback(cog, ctx, None, description=None)  # type: ignore
+            await cast(Any, Groups.badgroup.callback)(
+                cog, ctx, title=None, description=None
+            )
 
             mock_modal_cls.assert_called_once_with({"players": [], "groups": []})
             ctx.interaction.response.send_modal.assert_called_once()
@@ -47,10 +50,16 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ) as mock_report:
             mock_report.return_value = {"html_url": "http://url"}
 
-            await cog.badgroup.callback(cog, ctx, "Title", description="Desc")  # type: ignore
+            await cast(Any, Groups.badgroup.callback)(
+                cog, ctx, title="Title", description="Desc"
+            )
 
             mock_report.assert_called_once_with(
-                ctx.author, {"players": [], "groups": []}, "Title", "Desc"
+                ctx.author,
+                {"players": [], "groups": []},
+                "Title",
+                "Desc",
+                include_logs=True,
             )
             ctx.send.assert_called_with(
                 "✅ Bad group reported successfully: http://url", ephemeral=True
@@ -67,7 +76,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx = AsyncMock()
         ctx.guild.id = 123
 
-        await cog.badgroup.callback(cog, ctx, None, description=None)  # type: ignore
+        await cast(Any, Groups.badgroup.callback)(
+            cog, ctx, title=None, description=None
+        )
 
         ctx.send.assert_called_once_with(
             "❌ No group creation data found for this server. Run /wheel first.",

@@ -77,7 +77,11 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             await modal.on_submit(mock_interaction)
 
             mock_report.assert_called_once_with(
-                mock_interaction.user, self.last_results, "Bad Algo", "Too many melee"
+                mock_interaction.user,
+                self.last_results,
+                "Bad Algo",
+                "Too many melee",
+                include_logs=True,
             )
 
             mock_interaction.followup.send.assert_called_with(

@@ -19,6 +19,21 @@ class GitHubError(Exception):
     pass
 
 
+async def _get_recent_logs() -> str | None:
+    """Helper to read the last 50 lines of the log file."""
+    if os.path.exists(config.LOG_FILE):
+        try:
+
+            def read_last_logs():
+                with open(config.LOG_FILE, encoding="utf-8") as f:
+                    return "".join(deque(f, maxlen=50))
+
+            return await asyncio.to_thread(read_last_logs)
+        except Exception as e:
+            logger.error("Failed to read logs: %s", e)
+    return None
+
+
 async def create_github_issue(
     title: str, body: str, labels: list[str]
 ) -> dict[str, Any]:
@@ -50,7 +65,7 @@ async def create_github_issue(
 
 
 class GitHubIssueModal(ui.Modal):
-    def __init__(self, issue_type: str) -> None:
+    def __init__(self, issue_type: str, include_logs: bool = True) -> None:
         self.issue_type = issue_type
         modal_title = "Feature Request" if issue_type == "feature" else "Bug Report"
         super().__init__(title=modal_title)
@@ -84,6 +99,17 @@ class GitHubIssueModal(ui.Modal):
             )
         self.add_item(self.extra_info)
 
+        if issue_type == "bug":
+            self.include_logs = ui.TextInput(
+                label="Include Logs? (Yes/No)",
+                default="Yes" if include_logs else "No",
+                placeholder="Yes or No",
+                min_length=2,
+                max_length=3,
+                required=True,
+            )
+            self.add_item(self.include_logs)
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
@@ -103,17 +129,11 @@ class GitHubIssueModal(ui.Modal):
             body += f"\n**{section_title}:**\n{extra}\n"
 
         if self.issue_type == "bug":
-            if os.path.exists(config.LOG_FILE):
-                try:
-
-                    def read_last_logs():
-                        with open(config.LOG_FILE, encoding="utf-8") as f:
-                            return "".join(deque(f, maxlen=50))
-
-                    last_lines = await asyncio.to_thread(read_last_logs)
+            should_include_logs = self.include_logs.value.lower() == "yes"
+            if should_include_logs:
+                last_lines = await _get_recent_logs()
+                if last_lines:
                     body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
-                except Exception as e:
-                    logger.error("Failed to attach logs: %s", e)
 
         # Add Jules label for automation
         labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
@@ -138,6 +158,7 @@ async def report_bad_group(
     last_results: dict[str, Any],
     title: str,
     description: str,
+    include_logs: bool = True,
 ) -> dict[str, Any]:
     """Helper function to format and create a GitHub issue for a bad group."""
     formatted_title = f"[Bad Group] {title}"
@@ -167,17 +188,10 @@ async def report_bad_group(
     )
 
     # Include recent logs as well
-    if os.path.exists(config.LOG_FILE):
-        try:
-
-            def read_last_logs():
-                with open(config.LOG_FILE, encoding="utf-8") as f:
-                    return "".join(deque(f, maxlen=50))
-
-            last_lines = await asyncio.to_thread(read_last_logs)
+    if include_logs:
+        last_lines = await _get_recent_logs()
+        if last_lines:
             body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
-        except Exception as e:
-            logger.error("Failed to attach logs: %s", e)
 
     # Add labels for automation and categorization
     labels = ["bug", "bad-group"]
@@ -215,6 +229,7 @@ class BadGroupIssueModal(ui.Modal):
                 self.last_results,
                 self.issue_title.value,
                 self.description.value,
+                include_logs=True,
             )
             await interaction.followup.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
