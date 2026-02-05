@@ -1,7 +1,10 @@
 import os
 import sys
 import unittest
+from typing import cast
 from unittest.mock import MagicMock, patch
+
+import discord
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -31,7 +34,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(WoWName(member), "UserName")
 
     @patch("core.utils.get_player_preference")
-    def test_getPlayerList(self, mock_get_pref):
+    def test_getPlayerList(self, mock_get_pref: MagicMock):
         """Test that getPlayerList correctly creates WoWPlayer objects from members."""
         # Setup members
         role_everyone = MagicMock()
@@ -55,7 +58,7 @@ class TestUtils(unittest.TestCase):
         members = [member_saved, member_discord, member_invalid]
 
         # Setup mock preferences
-        def get_pref_side_effect(name):
+        def get_pref_side_effect(name: str):
             if name == "SavedPlayer":
                 return ["Tank"]
             return None
@@ -63,19 +66,19 @@ class TestUtils(unittest.TestCase):
         mock_get_pref.side_effect = get_pref_side_effect
 
         # Call function
-        players = getPlayerList(members)
+        players = getPlayerList(cast(list[discord.Member], members))
 
         # Assertions
         self.assertEqual(len(players), 2)
 
         # Verify SavedPlayer
         p1 = next((p for p in players if p.name == "SavedPlayer"), None)
-        self.assertIsNotNone(p1)
+        assert p1 is not None
         self.assertTrue(p1.tankMain)
 
         # Verify DiscordPlayer
         p2 = next((p for p in players if p.name == "DiscordPlayer"), None)
-        self.assertIsNotNone(p2)
+        assert p2 is not None
         self.assertTrue(p2.dpsMain)
 
         # Verify InvalidPlayer is skipped
