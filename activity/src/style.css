@@ -61,6 +61,28 @@ button:disabled {
     cursor: not-allowed;
 }
 
+/* Formed Groups Panel (during spin) */
+.formed-groups-panel {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.formed-groups-panel h3 {
+    margin-bottom: 10px;
+    color: #f1c40f;
+}
+
+#formed-groups-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#formed-groups-list .group-card {
+    min-width: 200px;
+}
+
 /* Wheels Container */
 .wheel-container {
     display: flex;

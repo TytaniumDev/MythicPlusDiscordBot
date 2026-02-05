@@ -110,6 +110,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot.group_service.last_results = {}
 
         cog = Groups(bot)
+        cog.session_service.create_session = AsyncMock(return_value="session-123")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -122,13 +123,13 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the default URL
+            # Check if the message contains the default URL with sessionId (Firebase flow)
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?data=" in msg:
+                if f"{default_url}?sessionId=" in msg:
                     found_url = True
                     break
             self.assertTrue(
@@ -161,6 +162,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot.group_service.last_results = {}
 
         cog = Groups(bot)
+        cog.session_service.create_session = AsyncMock(return_value="session-456")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -177,12 +179,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the custom URL
+            # Check if the message contains the custom URL with sessionId (Firebase flow)
             calls = ctx.send.call_args_list
             found_url = False
             for call in calls:
                 msg = call.args[0]
-                if f"{custom_url}?data=" in msg:
+                if f"{custom_url}?sessionId=" in msg:
                     found_url = True
                     break
             self.assertTrue(

@@ -113,6 +113,7 @@ jobs:
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
             export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
+            export FIREBASE_CREDENTIALS_JSON="${{ secrets.FIREBASE_CREDENTIALS_JSON }}"
 
             # Deploy
             echo "Pulling image..."

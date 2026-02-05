@@ -11,6 +11,9 @@ from core.utils import getPlayerList
 
 logger = logging.getLogger(__name__)
 
+# Delay (seconds) before removing a completed session and unsubscribing its listener.
+SESSION_CLEANUP_DELAY_SECONDS = 90
+
 
 class SessionService:
     def __init__(self, bot):
@@ -75,6 +78,9 @@ class SessionService:
             asyncio.run_coroutine_threadsafe(
                 self._announce_completion(channel_id, data), self.bot.loop
             )
+            asyncio.run_coroutine_threadsafe(
+                self._cleanup_session_after_delay(session_id), self.bot.loop
+            )
 
     async def _process_spin_request(self, session_id: str, channel_id: int, data: dict):
         """Calculates groups and updates Firestore."""
@@ -118,12 +124,31 @@ class SessionService:
         )
 
     async def _announce_completion(self, channel_id: int, data: dict):
-        """Announces results to the channel."""
+        """Announces results to the channel with an embed listing each group."""
         channel = self.bot.get_channel(channel_id)
-        if channel:
+        if not channel:
+            return
+
+        groups = data.get("groups") or []
+        if not groups:
             await channel.send(
                 "🎉 Groups have been formed! Check the Activity for details."
             )
+            return
+
+        embed = discord.Embed(
+            title="🎉 Groups Formed!",
+            description="Check the Activity for the full experience.",
+            color=discord.Color.gold(),
+        )
+        for i, g in enumerate(groups, 1):
+            tank = (g.get("tank") or {}).get("name") or "None"
+            healer = (g.get("healer") or {}).get("name") or "None"
+            dps_list = g.get("dps") or []
+            dps_names = ", ".join((p.get("name") or "?") for p in dps_list)
+            value = f"**Tank:** {tank}\n**Healer:** {healer}\n**DPS:** {dps_names}"
+            embed.add_field(name=f"Group {i}", value=value, inline=True)
+        await channel.send(embed=embed)
 
     async def update_lobby_players(
         self, channel_id: int, member_list: list[discord.Member]
@@ -139,3 +164,18 @@ class SessionService:
 
         players_data = [p.to_dict() for p in players]
         await self.firebase.update_session(session_id, {"players": players_data})
+
+    async def _cleanup_session_after_delay(self, session_id: str):
+        """Removes the session and unsubscribes its Firestore listener after a delay."""
+        await asyncio.sleep(SESSION_CLEANUP_DELAY_SECONDS)
+        channel_id = None
+        for ch_id, sess_id in list(self.active_sessions.items()):
+            if sess_id == session_id:
+                channel_id = ch_id
+                break
+        if channel_id is not None:
+            del self.active_sessions[channel_id]
+        watch = self.listeners.pop(session_id, None)
+        if watch is not None and hasattr(watch, "unsubscribe"):
+            watch.unsubscribe()
+        logger.debug("Cleaned up session %s", session_id)

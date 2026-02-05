@@ -13,6 +13,8 @@ const playerList = document.getElementById('player-list') as HTMLUListElement;
 const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
 const statusMsg = document.getElementById('status-message') as HTMLDivElement;
 const groupResults = document.getElementById('group-results') as HTMLDivElement;
+const formedGroupsPanel = document.getElementById('formed-groups-panel') as HTMLDivElement;
+const formedGroupsList = document.getElementById('formed-groups-list') as HTMLDivElement;
 
 // Wheels
 let wheelTank: Wheel | null = null;
@@ -23,6 +25,7 @@ let wheelDps: Wheel | null = null;
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
 let unsubscribe: (() => void) | null = null;
+let spinSequenceStarted = false;
 
 // Initialize
 function init() {
@@ -74,12 +77,9 @@ function handleSessionUpdate(data: Session) {
     case 'spinning':
       spinBtn.disabled = true;
       spinBtn.innerText = "Spinning...";
-      // Start Animation if not already started?
-      // We need a flag to prevent re-triggering animation on every update.
-      // Or we trigger it once when we detect the transition.
-      // For simplicity, we can check if groups exist and we haven't shown them yet.
-      if (data.groups && data.groups.length > 0) {
-          startSpinSequence(data.groups);
+      if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
+        spinSequenceStarted = true;
+        startSpinSequence(data.groups);
       }
       break;
     case 'completed':
@@ -114,6 +114,8 @@ function showLobby() {
   lobbyDiv.classList.remove('hidden');
   wheelDiv.classList.add('hidden');
   resultsDiv.classList.add('hidden');
+  formedGroupsPanel.classList.add('hidden');
+  formedGroupsList.innerHTML = '';
   spinBtn.disabled = false;
   spinBtn.innerText = "SPIN THE WHEEL!";
 }
@@ -127,10 +129,26 @@ async function requestSpin() {
   await updateDoc(docRef, { status: 'request_spin' });
 }
 
+function appendFormedGroupCard(group: WoWGroup, index: number) {
+  const div = document.createElement('div');
+  div.className = 'group-card';
+  div.innerHTML = `
+    <h3>Group ${index + 1}</h3>
+    <p><strong>Tank:</strong> ${group.tank?.name || 'None'}</p>
+    <p><strong>Healer:</strong> ${group.healer?.name || 'None'}</p>
+    <p><strong>DPS:</strong> ${group.dps.map((p) => p.name).join(', ')}</p>
+  `;
+  formedGroupsList.appendChild(div);
+}
+
 async function startSpinSequence(groups: WoWGroup[]) {
   // Switch to Wheel View
   lobbyDiv.classList.add('hidden');
   wheelDiv.classList.remove('hidden');
+
+  // Show and clear formed groups panel
+  formedGroupsList.innerHTML = '';
+  formedGroupsPanel.classList.remove('hidden');
 
   // Initialize Wheels with all candidates
   // We need to reconstruct the candidate pools from the full player list in the session
@@ -185,8 +203,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
         await new Promise(r => setTimeout(r, 1000));
     }
 
-    // Show Group Result (Briefly?)
+    // Show Group Result and add to formed groups panel
     statusMsg.innerText = `Group ${i + 1} Formed!`;
+    appendFormedGroupCard(group, i);
     await new Promise(r => setTimeout(r, 2000));
   }
 

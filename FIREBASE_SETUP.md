@@ -34,12 +34,15 @@ The bot needs a Service Account to write to Firestore with admin privileges.
    FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
    ```
 
-## 4. Firestore Rules
+## 4. Production Deploy (GitHub Actions)
+For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.yml`), set the repository secret `FIREBASE_CREDENTIALS_JSON` in GitHub (Settings → Secrets and variables → Actions). The deploy workflow passes it into the Pi environment so the container can use Firebase. Without this secret, the bot will run but Firebase features (e.g. `/activity` live lobby) will be disabled.
+
+## 5. Firestore Database and Rules
 1. Go to **Firestore Database** in the left sidebar.
 2. Click "Create Database".
-3. Start in **Production mode**.
-4. Go to the **Rules** tab.
-5. Update the rules to allow public read/write (since we handle security via obscurity/session IDs for this simple app, or you can implement Auth later).
+3. Choose **Standard** edition and select a location (e.g. your nearest region).
+4. After the database is created, open the **Rules** tab.
+5. Replace the default rules with the following so the Activity and bot can read/write sessions (we rely on opaque session IDs; you can add Auth or stricter rules later):
    ```
    rules_version = '2';
    service cloud.firestore {
