@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mythic+ Group Creator</title>
+</head>
+<body>
+    <div id="app">
+        <h1>Mythic+ Group Creator</h1>
+        <div id="status-message" style="color: #f39c12; margin-bottom: 10px; min-height: 1.5em;"></div>
+
+        <!-- Lobby View -->
+        <div id="lobby" class="hidden">
+            <h2>Lobby</h2>
+            <p>Waiting for players to join voice...</p>
+            <ul id="player-list"></ul>
+        </div>
+
+        <!-- Wheel View -->
+        <div id="wheel-container" class="hidden wheel-container">
+            <div id="tank-wrapper" class="wheel-wrapper">
+                <div class="role-label">TANKS</div>
+                <div class="arrow"></div>
+                <canvas id="wheel-tank" width="300" height="300"></canvas>
+                <div id="result-tank" class="result"></div>
+            </div>
+            <div id="healer-wrapper" class="wheel-wrapper">
+                <div class="role-label">HEALERS</div>
+                <div class="arrow"></div>
+                <canvas id="wheel-healer" width="300" height="300"></canvas>
+                <div id="result-healer" class="result"></div>
+            </div>
+            <div id="dps-wrapper" class="wheel-wrapper">
+                <div class="role-label">DPS</div>
+                <div class="arrow"></div>
+                <canvas id="wheel-dps" width="300" height="300"></canvas>
+                <div id="result-dps" class="result"></div>
+            </div>
+        </div>
+
+        <!-- Results View -->
+        <div id="results" class="hidden">
+            <h2>Final Groups</h2>
+            <div id="group-results"></div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls">
+            <button id="spin-btn" disabled>Loading...</button>
+        </div>
+    </div>
+    <script type="module" src="/main.ts"></script>
+</body>
+</html>

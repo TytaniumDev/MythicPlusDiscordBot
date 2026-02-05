@@ -64,3 +64,6 @@ PLACEHOLDER_CHAR = ":question:"
 
 # Logging
 LOG_FILE = "mythic_bot.log"
+
+# Firebase Credentials (JSON)
+FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON")
