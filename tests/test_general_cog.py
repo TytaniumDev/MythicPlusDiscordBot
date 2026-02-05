@@ -37,7 +37,7 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
                 # Assert
                 ctx.send.assert_called_once()
                 args, kwargs = ctx.send.call_args
-                embed = kwargs.get('embed') or args[0]
+                embed = kwargs.get("embed") or args[0]
 
                 self.assertIsInstance(embed, discord.Embed)
                 self.assertEqual(embed.title, "Bot Status")
@@ -60,7 +60,7 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
 
         # Scenario 1: Bot is the only one left -> Should disconnect
         voice_client = AsyncMock()
-        voice_client.channel.members = [bot] # Only one member
+        voice_client.channel.members = [bot]  # Only one member
         member.guild.voice_client = voice_client
 
         # Act
@@ -71,7 +71,7 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
 
         # Scenario 2: Bot is NOT the only one left -> Should NOT disconnect
         voice_client.reset_mock()
-        voice_client.channel.members = [bot, member] # Two members
+        voice_client.channel.members = [bot, member]  # Two members
 
         # Act
         await cog.on_voice_state_update(member, before, after)
