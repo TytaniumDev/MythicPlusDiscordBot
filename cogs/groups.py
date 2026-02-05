@@ -133,9 +133,7 @@ class Groups(commands.Cog):
         # Process the report
         await ctx.defer(ephemeral=True)
         try:
-            issue = await report_bad_group(
-                ctx.author, last_results, title, description
-            )
+            issue = await report_bad_group(ctx.author, last_results, title, description)
             await ctx.send(
                 f"✅ Bad group reported successfully: {issue['html_url']}",
                 ephemeral=True,

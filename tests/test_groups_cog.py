@@ -3,8 +3,6 @@ import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import discord
-
 # Add project root to sys.path to allow imports from core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -26,7 +24,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx.interaction.response = AsyncMock()
 
         with patch("cogs.groups.BadGroupIssueModal") as mock_modal_cls:
-            await cog.badgroup.callback(cog, ctx, title=None, description=None)
+            await cog.badgroup.callback(cog, ctx, None, description=None)  # type: ignore
 
             mock_modal_cls.assert_called_once_with({"players": [], "groups": []})
             ctx.interaction.response.send_modal.assert_called_once()
@@ -44,10 +42,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx.author = MagicMock()
         ctx.interaction = None  # Simulating prefix command call
 
-        with patch("cogs.groups.report_bad_group", new_callable=AsyncMock) as mock_report:
+        with patch(
+            "cogs.groups.report_bad_group", new_callable=AsyncMock
+        ) as mock_report:
             mock_report.return_value = {"html_url": "http://url"}
 
-            await cog.badgroup.callback(cog, ctx, title="Title", description="Desc")
+            await cog.badgroup.callback(cog, ctx, "Title", description="Desc")  # type: ignore
 
             mock_report.assert_called_once_with(
                 ctx.author, {"players": [], "groups": []}, "Title", "Desc"
@@ -67,7 +67,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ctx = AsyncMock()
         ctx.guild.id = 123
 
-        await cog.badgroup.callback(cog, ctx, title=None, description=None)
+        await cog.badgroup.callback(cog, ctx, None, description=None)  # type: ignore
 
         ctx.send.assert_called_once_with(
             "❌ No group creation data found for this server. Run /wheel first.",

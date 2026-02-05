@@ -22,7 +22,9 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         self.p5 = WoWPlayer.create("Player5", ["DPS"])
 
         self.players = [self.p1, self.p2, self.p3, self.p4, self.p5]
-        self.group = WoWGroup(tank=self.p1, healer=self.p2, dps=[self.p3, self.p4, self.p5])
+        self.group = WoWGroup(
+            tank=self.p1, healer=self.p2, dps=[self.p3, self.p4, self.p5]
+        )
 
         self.last_results = {"players": self.players, "groups": [self.group]}
 
