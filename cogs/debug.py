@@ -1,5 +1,9 @@
+import logging
+
 import discord
 from discord.ext import commands
+
+logger = logging.getLogger(__name__)
 
 
 class Debug(commands.Cog):
@@ -18,7 +22,7 @@ class Debug(commands.Cog):
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            print(f"Error in test command: {e}")
+            logger.error("Error in test command: %s", e)
 
     @commands.command()
     async def testcase(self, ctx: commands.Context[commands.Bot]) -> None:
@@ -28,7 +32,7 @@ class Debug(commands.Cog):
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            print(f"Error in testcase command: {e}")
+            logger.error("Error in testcase command: %s", e)
 
     async def _print_player_list(self, ctx: commands.Context[commands.Bot]) -> None:
         channel = ctx.channel

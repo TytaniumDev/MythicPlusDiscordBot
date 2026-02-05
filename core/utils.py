@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from typing import cast
 
@@ -7,6 +8,8 @@ from discord.ext import commands
 
 from core.models import WoWPlayer
 from core.storage import get_player_preference
+
+logger = logging.getLogger(__name__)
 
 
 def WoWName(member: discord.Member | discord.User, debug: bool | None = None) -> str:
@@ -17,15 +20,21 @@ def WoWName(member: discord.Member | discord.User, debug: bool | None = None) ->
     """
     nick = getattr(member, "nick", None)
     if debug:
-        print(f"WoWName - Member: {member}\nNick: {nick}\nGlobal: {member.global_name}")
-    rawName: str = (
-        nick
-        if nick is not None
-        else member.global_name
-        if member.global_name is not None
-        else str(member)
-    )
-    return rawName.replace(".", "")
+        logger.debug(
+            "WoWName - Member: %s\nNick: %s\nGlobal: %s",
+            member,
+            nick,
+            member.global_name,
+        )
+
+    if nick is not None:
+        raw_name = str(nick)
+    elif member.global_name is not None:
+        raw_name = member.global_name
+    else:
+        raw_name = str(member)
+
+    return raw_name.replace(".", "")
 
 
 async def showLongTyping(
@@ -76,7 +85,7 @@ async def play_sound(voice_client: discord.VoiceClient | None, sound_path: str) 
             voice_client.play(discord.FFmpegPCMAudio(sound_path))
             # We don't necessarily want to wait for the whole sound if it's a loop
         except Exception as e:
-            print(f"Error playing sound {sound_path}: {e}")
+            logger.error("Error playing sound %s: %s", sound_path, e)
 
 
 def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
@@ -88,12 +97,16 @@ def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
         saved_roles = get_player_preference(name)
 
         if saved_roles:
-            print(f"Creating WoWPlayer for {name} from SAVED roles: {saved_roles}")
+            logger.info(
+                "Creating WoWPlayer for %s from SAVED roles: %s", name, saved_roles
+            )
             player = WoWPlayer.create(name=name, roles=saved_roles)
             players.append(player)
         elif len(member.roles) > 1:
-            print(
-                f"Creating WoWPlayer for {name} from DISCORD roles: {[role.name for role in member.roles]}"
+            logger.info(
+                "Creating WoWPlayer for %s from DISCORD roles: %s",
+                name,
+                [role.name for role in member.roles],
             )
             player = WoWPlayer.create(
                 name=name, roles=[role.name for role in member.roles]
@@ -101,5 +114,5 @@ def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
             if player.hasRoles():
                 players.append(player)
             else:
-                print(f" - No valid roles found for {player}, skipping.")
+                logger.info(" - No valid roles found for %s, skipping.", name)
     return players

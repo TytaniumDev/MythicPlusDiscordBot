@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from collections import deque
 
@@ -7,6 +8,8 @@ import discord
 from discord import ui
 
 from . import config
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubError(Exception):
@@ -109,7 +112,7 @@ class GitHubIssueModal(ui.Modal):
                     last_lines = await asyncio.to_thread(read_last_logs)
                     body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
                 except Exception as e:
-                    print(f"Failed to attach logs: {e}")
+                    logger.error("Failed to attach logs: %s", e)
 
         # Add Jules label for automation
         labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
@@ -122,7 +125,7 @@ class GitHubIssueModal(ui.Modal):
             )
         except Exception as e:
             # Log the error for the admin/bot owner
-            print(f"Error creating GitHub issue: {e}")
+            logger.error("Error creating GitHub issue: %s", e)
             await interaction.followup.send(
                 f"❌ Failed to create issue: {e}",
                 ephemeral=True,

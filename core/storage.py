@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 from typing import cast
+
+logger = logging.getLogger(__name__)
 
 PREFERENCES_PATH: str | None = os.environ.get("PREFERENCES_PATH")
 DATA_DIR: str | None = os.environ.get("DATA_DIR")
@@ -36,7 +39,7 @@ def load_preferences() -> dict[str, list[str]]:
                     _preferences_cache = cast(dict[str, list[str]], raw)
                     return _preferences_cache.copy()
             except Exception as e:
-                print(f"Error loading preferences: {e}")
+                logger.error("Error loading preferences: %s", e)
                 _preferences_cache = {}
                 return _preferences_cache.copy()
 
@@ -53,7 +56,7 @@ def save_preferences(preferences: dict[str, list[str]]) -> None:
         with open(STORAGE_FILE, "w") as f:
             json.dump(preferences, f, indent=4)
     except Exception as e:
-        print(f"Error saving preferences: {e}")
+        logger.error("Error saving preferences: %s", e)
 
 
 def get_player_preference(player_name: str) -> list[str] | None:
