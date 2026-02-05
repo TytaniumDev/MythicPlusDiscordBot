@@ -8,3 +8,32 @@ venv/
 *.log
 activity/node_modules/
 activity/dist/
+
+# Project-specific
+data/
+assets/
+agent-plans/
+
+# Test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+*.cover
+*.py,cover
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+*.so
