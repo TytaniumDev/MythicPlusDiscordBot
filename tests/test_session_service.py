@@ -1,5 +1,6 @@
 """Unit tests for SessionService and FirebaseService (mocked)."""
 
+import asyncio
 import os
 import sys
 import unittest
@@ -233,9 +234,11 @@ class TestSessionServiceCompletionNoCleanup(unittest.IsolatedAsyncioTestCase):
         mock_cleanup: MagicMock,
     ) -> None:
         bot = MagicMock()
-        bot.loop = MagicMock()
+        bot.loop = asyncio.get_running_loop()
         service = SessionService(bot)
-        service._handle_update("session-123", 42, {"status": "completed", "groups": []})
+        # Intentionally call protected method to assert completion does not trigger cleanup
+        service._handle_update("session-123", 42, {"status": "completed", "groups": []})  # pyright: ignore[reportPrivateUsage]
+        await asyncio.sleep(0)  # let run_coroutine_threadsafe-scheduled coroutine run
         mock_cleanup.assert_not_called()
 
 
