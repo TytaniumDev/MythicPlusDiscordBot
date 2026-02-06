@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 import discord
 from discord import app_commands
@@ -7,7 +6,6 @@ from discord.ext import commands
 
 from core import config
 from core.issues import BadGroupIssueModal, report_bad_group
-from core.models import WoWPlayer
 from services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -88,7 +86,7 @@ class Groups(commands.Cog):
             if not result:
                 return  # Error message already sent
 
-            players = cast(list[WoWPlayer], result["players"])
+            players = result.players
 
             # Create Session in Firebase
             session_id = await self.session_service.create_session(ctx, players)

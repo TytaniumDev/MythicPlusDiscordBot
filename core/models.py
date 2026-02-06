@@ -192,3 +192,9 @@ class WoWGroup:
             "healer": self.healer.to_dict() if self.healer else None,
             "dps": [p.to_dict() for p in self.dps] if self.dps else [],
         }
+
+
+@dataclass
+class GroupCreationResult:
+    players: list[WoWPlayer]
+    groups: list[WoWGroup]

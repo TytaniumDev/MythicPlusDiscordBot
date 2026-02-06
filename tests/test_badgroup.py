@@ -9,7 +9,7 @@ import discord
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.issues import BadGroupIssueModal, report_bad_group  # noqa: E402, I001
-from core.models import WoWGroup, WoWPlayer  # noqa: E402, I001
+from core.models import GroupCreationResult, WoWGroup, WoWPlayer  # noqa: E402, I001
 
 
 class TestBadGroup(unittest.IsolatedAsyncioTestCase):
@@ -26,7 +26,9 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             tank=self.p1, healer=self.p2, dps=[self.p3, self.p4, self.p5]
         )
 
-        self.last_results = {"players": self.players, "groups": [self.group]}
+        self.last_results = GroupCreationResult(
+            players=self.players, groups=[self.group]
+        )
 
     async def test_report_bad_group_function(self):
         # Mock user

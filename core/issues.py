@@ -8,6 +8,8 @@ import aiohttp
 import discord
 from discord import ui
 
+from core.models import GroupCreationResult
+
 from . import config
 
 logger = logging.getLogger(__name__)
@@ -155,7 +157,7 @@ class GitHubIssueModal(ui.Modal):
 
 async def report_bad_group(
     user: discord.User | discord.Member,
-    last_results: dict[str, Any],
+    last_results: GroupCreationResult,
     title: str,
     description: str,
 ) -> dict[str, Any]:
@@ -169,8 +171,8 @@ async def report_bad_group(
     # Format reporter name safely
     reporter = user.global_name or user.name
 
-    players = last_results.get("players", [])
-    groups = last_results.get("groups", [])
+    players = last_results.players
+    groups = last_results.groups
 
     # Format the reproduction data
     repro_info = (
@@ -202,7 +204,7 @@ async def report_bad_group(
 
 
 class BadGroupIssueModal(ui.Modal):
-    def __init__(self, last_results: dict[str, Any]) -> None:
+    def __init__(self, last_results: GroupCreationResult) -> None:
         super().__init__(title="Bad Group Report")
         self.last_results = last_results
 

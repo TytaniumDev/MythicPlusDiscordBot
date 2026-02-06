@@ -8,13 +8,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from cogs.groups import Groups  # noqa: E402, I001
+from core.models import GroupCreationResult  # noqa: E402
 
 
 class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
     async def test_badgroup_command_modal_flow(self):
         bot = MagicMock()
         bot.group_service = MagicMock()
-        bot.group_service.last_results = {123: {"players": [], "groups": []}}
+        bot.group_service.last_results = {
+            123: GroupCreationResult(players=[], groups=[])
+        }
 
         cog = Groups(bot)
 
@@ -29,13 +32,15 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
                 cog, ctx, title=None, description=None
             )
 
-            mock_modal_cls.assert_called_once_with({"players": [], "groups": []})
+            mock_modal_cls.assert_called_once_with(bot.group_service.last_results[123])
             ctx.interaction.response.send_modal.assert_called_once()
 
     async def test_badgroup_command_direct_report(self):
         bot = MagicMock()
         bot.group_service = MagicMock()
-        bot.group_service.last_results = {123: {"players": [], "groups": []}}
+        bot.group_service.last_results = {
+            123: GroupCreationResult(players=[], groups=[])
+        }
 
         cog = Groups(bot)
 
@@ -56,7 +61,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
 
             mock_report.assert_called_once_with(
                 ctx.author,
-                {"players": [], "groups": []},
+                bot.group_service.last_results[123],
                 "Title",
                 "Desc",
             )
@@ -103,10 +108,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         group.healer = None
         group.dps = []
 
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
+        bot.group_service.get_groups_data.return_value = GroupCreationResult(
+            players=[player], groups=[group]
+        )
         bot.group_service.last_results = {}
 
         cog = Groups(bot)
@@ -155,10 +159,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         group.healer = None
         group.dps = []
 
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
+        bot.group_service.get_groups_data.return_value = GroupCreationResult(
+            players=[player], groups=[group]
+        )
         bot.group_service.last_results = {}
 
         cog = Groups(bot)
@@ -209,10 +212,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         group.healer = None
         group.dps = []
 
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
+        bot.group_service.get_groups_data.return_value = GroupCreationResult(
+            players=[player], groups=[group]
+        )
         bot.group_service.last_results = {}
 
         cog = Groups(bot)

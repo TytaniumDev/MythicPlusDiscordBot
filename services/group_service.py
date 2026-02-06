@@ -11,7 +11,7 @@ from core.config import (
     SPIN_SOUND,
     WHEEL_GIF,
 )
-from core.models import WoWGroup, WoWPlayer
+from core.models import GroupCreationResult, WoWGroup
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import (
     dashed,
@@ -25,8 +25,7 @@ from core.utils import (
 class GroupService:
     def __init__(self):
         # Store last results per-server (guild) to avoid race conditions
-        # Format: {guild_id: {"players": [...], "groups": [...]}}
-        self.last_results: dict[int, dict[str, list[WoWPlayer] | list[WoWGroup]]] = {}
+        self.last_results: dict[int, GroupCreationResult] = {}
 
         # Locks per server to prevent concurrent group creation
         # Format: {guild_id: asyncio.Lock}
@@ -36,10 +35,10 @@ class GroupService:
         self,
         ctx: commands.Context[commands.Bot],
         debug: bool = False,
-    ) -> dict[str, list[WoWPlayer] | list[WoWGroup]] | None:
+    ) -> GroupCreationResult | None:
         """
         Calculates groups without announcing them.
-        Returns a dict with 'players' and 'groups' keys, or None if validation fails.
+        Returns a GroupCreationResult object, or None if validation fails.
         Sends error messages to ctx if validation fails.
         """
         channel = ctx.channel
@@ -74,7 +73,7 @@ class GroupService:
 
         groups = create_mythic_plus_groups(players, debug=debug)
 
-        return {"players": list(players), "groups": list(groups)}
+        return GroupCreationResult(players=list(players), groups=list(groups))
 
     async def core_wheel(
         self,
@@ -126,7 +125,7 @@ class GroupService:
 
         # Store results per-server to avoid race conditions
         self.last_results[guild_id] = result
-        groups = cast(list[WoWGroup], result["groups"])
+        groups = result.groups
 
         for i, group in enumerate(groups, 1):
             await self._announce_group(
