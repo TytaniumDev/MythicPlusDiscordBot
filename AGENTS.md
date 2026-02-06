@@ -36,6 +36,14 @@ When adding or modifying `.github/workflows/*.yml`, follow these rules to preven
 
 See `scripts/check-workflow-secrets.py` and the workflow-lint job for automated checks.
 
+### 5. Logging and Secrets
+
+Log output may be included in bug reports (e.g. "Recent Logs" in GitHub issues). To avoid leaking secrets:
+
+- **Never log** `BOT_TOKEN`, `GITHUB_TOKEN`, `FIREBASE_CREDENTIALS_JSON`, or any env that could be secret.
+- **When logging exceptions from external APIs** (GitHub, Firebase, etc.), log only the exception type or HTTP status, not the full message or response body.
+- Assume all log output is effectively public when users attach logs to bug reports.
+
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
 2. **Environment:** Ensure the environment is set up and dependencies are installed (e.g., `pip install -r requirements.txt`).
