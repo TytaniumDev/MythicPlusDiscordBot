@@ -1,8 +1,9 @@
 # MythicPlusDiscordBot 💎
 
-[![Discord](https://img.shields.io/discord/1234567890?color=5865F2&label=Discord&logo=discord&logoColor=white)](https://github.com/TytaniumDev/MythicPlusDiscordBot)
-[![Build Status](https://github.com/TytaniumDev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/TytaniumDev/MythicPlusDiscordBot/actions)
-[![License](https://img.shields.io/github/license/TytaniumDev/MythicPlusDiscordBot)](LICENSE)
+[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Covered by Argos Visual Testing](https://argos-ci.com/badge.svg)](https://app.argos-ci.com/tytaniumdev/MythicPlusDiscordBot/reference)
+[Launch Activity](https://tytaniumdev.github.io/MythicPlusDiscordBot/) | [Documentation](ARCHITECTURE.md) | [Report Bug](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
 > Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with voice integration and interactive activities.
