@@ -191,6 +191,58 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
                 found_url, f"Custom ACTIVITY_URL {custom_url} not found in response"
             )
 
+    async def test_activitytest_command(self):
+        bot = MagicMock()
+        bot.group_service = AsyncMock()
+
+        player = MagicMock()
+        player.name = "TestPlayer"
+        player.tankMain = True
+        player.offtank = False
+        player.healerMain = False
+        player.offhealer = False
+        player.dpsMain = False
+        player.offdps = False
+
+        group = MagicMock()
+        group.tank = player
+        group.healer = None
+        group.dps = []
+
+        bot.group_service.get_groups_data.return_value = {
+            "players": [player],
+            "groups": [group],
+        }
+        bot.group_service.last_results = {}
+
+        cog = Groups(bot)
+        cog.session_service.create_session = AsyncMock(return_value="session-789")
+        ctx = AsyncMock()
+        ctx.guild.id = 123
+        ctx.author.voice.channel = MagicMock()
+        ctx.author.voice.channel.create_invite = AsyncMock()
+        ctx.author.voice.channel.create_invite.return_value.url = (
+            "http://discord.invite"
+        )
+
+        with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
+            # Call activitytest
+            await cog.activitytest.callback(cog, ctx)  # type: ignore
+
+            # Verify that get_groups_data was called with debug=True
+            bot.group_service.get_groups_data.assert_called_once_with(ctx, debug=True)
+
+            # Check if the message contains the default URL with sessionId
+            calls = ctx.send.call_args_list
+            found_url = False
+            default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            for call in calls:
+                msg = call.args[0]
+                if f"{default_url}?sessionId=" in msg:
+                    found_url = True
+                    break
+            self.assertTrue(found_url)
+
 
 if __name__ == "__main__":
     unittest.main()
