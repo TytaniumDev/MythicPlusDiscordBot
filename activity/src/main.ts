@@ -1,5 +1,4 @@
-import { doc, onSnapshot, updateDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { DiscordSDK } from "@discord/embedded-app-sdk";
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, WoWPlayer, WoWGroup } from './types';
 import { Wheel } from './wheel';
@@ -29,49 +28,14 @@ let unsubscribe: (() => void) | null = null;
 let spinSequenceStarted = false;
 
 // Initialize
-async function init() {
+function init() {
   const urlParams = new URLSearchParams(window.location.search);
   currentSessionId = urlParams.get('sessionId');
-
-  if (!currentSessionId) {
-    statusMsg.innerText = "Looking for active session...";
-
-    // Try to get from Discord SDK if we're in Discord
-    try {
-      const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
-      if (clientId) {
-        const discordSdk = new DiscordSDK(clientId);
-        await discordSdk.ready();
-
-        const channelId = discordSdk.channelId;
-        if (channelId) {
-          console.log("Searching for session in channel:", channelId);
-          // Query Firestore for the latest session in this channel
-          const q = query(
-            collection(db, 'sessions'),
-            where('channelId', '==', channelId),
-            orderBy('createdAt', 'desc'),
-            limit(1)
-          );
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            currentSessionId = querySnapshot.docs[0].id;
-            console.log("Found session ID:", currentSessionId);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to lookup session via Discord SDK:", e);
-    }
-  }
 
   if (!currentSessionId) {
     statusMsg.innerText = "No Session ID found. Please use the /activity command.";
     return;
   }
-
-  // Clear status message if we found a session
-  statusMsg.innerText = "";
 
   // Subscribe to Session
   const docRef = doc(db, 'sessions', currentSessionId);
@@ -282,4 +246,4 @@ function showResults(groups: WoWGroup[]) {
   });
 }
 
-init().catch(console.error);
+init();
