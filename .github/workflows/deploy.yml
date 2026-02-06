@@ -91,6 +91,15 @@ jobs:
           echo "Testing SSH connection to ${{ secrets.PI_HOST }}..."
           ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
             ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} "echo 'SSH connection successful!'"
+      - name: Encode Firebase credentials
+        id: firebase_b64
+        run: |
+          # Encode as single-line base64 so multiline JSON is not inlined in the deploy script
+          # (inlining would break bash and can leak secrets in error messages)
+          firebase_b64=$(echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" | base64 -w0)
+          echo "firebase_b64<<OUTPUT_EOF" >> $GITHUB_OUTPUT
+          echo "$firebase_b64" >> $GITHUB_OUTPUT
+          echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
       - name: Deploy to Raspberry Pi
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
@@ -107,13 +116,14 @@ jobs:
             echo "Updating repo..."
             git fetch origin && git reset --hard origin/${{ github.ref_name }}
 
-            # Set environment for docker compose
+            # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
             export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
             export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
             export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
-            export FIREBASE_CREDENTIALS_JSON="${{ secrets.FIREBASE_CREDENTIALS_JSON }}"
+            FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
+            export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
 
             # Deploy
             echo "Pulling image..."

@@ -99,6 +99,8 @@ Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
 Required for Firebase features: `FIREBASE_CREDENTIALS_JSON`
 Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, role name overrides (see `core/config.py`)
 
+When touching GitHub Actions workflows: read the **Secrets in workflows** section in [AGENTS.md](AGENTS.md). Never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
+
 ## Code Style
 
 - Ruff enforces formatting and linting (see `pyproject.toml` for rules)
