@@ -53,6 +53,17 @@ class Groups(commands.Cog):
     @commands.hybrid_command(name="activity")
     async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
         """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
+        await self._execute_activity(ctx, debug=False)
+
+    @commands.command(name="activitytest", hidden=True)
+    async def activitytest(self, ctx: commands.Context[commands.Bot]) -> None:
+        """Hidden prefix command to test the activity with debug data."""
+        await self._execute_activity(ctx, debug=True)
+
+    async def _execute_activity(
+        self, ctx: commands.Context[commands.Bot], debug: bool
+    ) -> None:
+        """Internal helper to execute the activity logic with optional debug data."""
         await ctx.defer()
         try:
             if not hasattr(self.bot, "group_service"):
@@ -68,8 +79,7 @@ class Groups(commands.Cog):
 
             # Use get_groups_data merely to validate and get initial players.
             # We don't need the groups calculated yet.
-            # debug is hardcoded to False for the Activity to ensure compatibility with Entry Point requirements.
-            result = await self.bot.group_service.get_groups_data(ctx, debug=False)
+            result = await self.bot.group_service.get_groups_data(ctx, debug=debug)
             if not result:
                 return  # Error message already sent
 
