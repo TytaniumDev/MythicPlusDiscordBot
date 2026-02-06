@@ -81,15 +81,23 @@ class MythicPlusBot(commands.Bot):
             synced = await self.tree.sync()
             logger.info("Synced %d commands.", len(synced))
         except discord.HTTPException as e:
-            if e.code == 50240:
+            # Check both e.code and the response text for the "Entry Point" error (50240)
+            if e.code == 50240 or "50240" in str(e):
+                registered_commands = [cmd.name for cmd in self.tree.get_commands()]
                 logger.error(
-                    "Failed to sync commands: Primary Entry Point command is missing from the tree. "
+                    "Failed to sync commands: Primary Entry Point command is missing from the tree (Error 50240). "
                     "If you have 'Primary Entry Point' enabled in the Discord Developer Portal, "
                     "you must include a command with the same name in your bot's tree, or disable "
-                    "Primary Entry Point if you are only using /activity manually."
+                    "Primary Entry Point if you are only using /activity manually.\n"
+                    f"Registered Global Commands: {registered_commands}"
                 )
             else:
-                logger.error("Failed to sync commands: %s", e)
+                logger.error(
+                    "Failed to sync commands: %s (Status: %d, Code: %s)",
+                    e,
+                    e.status,
+                    e.code,
+                )
         except Exception as e:
             logger.error("Failed to sync commands: %s", e)
 

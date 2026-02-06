@@ -46,7 +46,17 @@ class FirebaseService:
                 )
                 return
 
-            cred_dict = json.loads(config.FIREBASE_CREDENTIALS_JSON)
+            try:
+                cred_dict = json.loads(config.FIREBASE_CREDENTIALS_JSON)
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "Failed to parse FIREBASE_CREDENTIALS_JSON: %s. "
+                    "Ensure the JSON is valid and uses double quotes for all keys and string values.",
+                    e,
+                )
+                self.db = None
+                return
+
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
             self.db = firestore.client()

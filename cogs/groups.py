@@ -51,9 +51,7 @@ class Groups(commands.Cog):
             logger.error("Error in newwheel command: %s", e)
 
     @commands.hybrid_command(name="activity")
-    async def activity(
-        self, ctx: commands.Context[commands.Bot], debug: bool = False
-    ) -> None:
+    async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
         """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
         await ctx.defer()
         try:
@@ -70,7 +68,8 @@ class Groups(commands.Cog):
 
             # Use get_groups_data merely to validate and get initial players.
             # We don't need the groups calculated yet.
-            result = await self.bot.group_service.get_groups_data(ctx, debug=debug)
+            # debug is hardcoded to False for the Activity to ensure compatibility with Entry Point requirements.
+            result = await self.bot.group_service.get_groups_data(ctx, debug=False)
             if not result:
                 return  # Error message already sent
 
