@@ -89,8 +89,35 @@ jobs:
       - name: Test SSH connection
         run: |
           echo "Testing SSH connection to ${{ secrets.PI_HOST }}..."
-          ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
             ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} "echo 'SSH connection successful!'"
+      - name: Generate env file
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          GH_ISSUE_TOKEN: ${{ secrets.GH_ISSUE_TOKEN }}
+          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          python3 -c '
+          import os, json
+          env_vars = {
+              "BOT_TOKEN": os.environ["BOT_TOKEN"],
+              "DISCORD_APPLICATION_ID": os.environ["DISCORD_APPLICATION_ID"],
+              "GITHUB_TOKEN": os.environ["GH_ISSUE_TOKEN"],
+              "FIREBASE_CREDENTIALS_JSON": os.environ["FIREBASE_CREDENTIALS_JSON"],
+              "GHCR_TOKEN": os.environ["GHCR_TOKEN"],
+              "IMAGE_NAME": f"ghcr.io/{os.environ[\"GITHUB_REPOSITORY\"]}".lower(),
+              "IMAGE_TAG": os.environ["GITHUB_SHA"]
+          }
+          with open(".env", "w") as f:
+              for k, v in env_vars.items():
+                  f.write(f"{k}={json.dumps(v)}\n")
+          '
+      - name: Copy env file to Pi
+        run: |
+          scp -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+            .env ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }}:${{ secrets.PI_APP_DIR }}/.env
       - name: Deploy to Raspberry Pi
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
@@ -98,22 +125,20 @@ jobs:
             set -e
             echo "=== Deploy started ==="
 
-            # Login to GHCR
-            echo "Logging into GHCR..."
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-
             # Update repo
             cd ${{ secrets.PI_APP_DIR }}
+
+            # Load environment variables
+            set -a
+            source .env
+            set +a
+
+            # Login to GHCR
+            echo "Logging into GHCR..."
+            echo "\$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
             echo "Updating repo..."
             git fetch origin && git reset --hard origin/${{ github.ref_name }}
-
-            # Set environment for docker compose
-            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
-            export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
-            export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
-            export FIREBASE_CREDENTIALS_JSON="${{ secrets.FIREBASE_CREDENTIALS_JSON }}"
 
             # Deploy
             echo "Pulling image..."
