@@ -166,9 +166,18 @@ async function startSpinSequence(groups: WoWGroup[]) {
   // Let's iterate through groups.
 
   const players = currentSessionData?.players || [];
-  let poolTanks = players.filter(p => p.roles.tankMain || p.roles.offtank).map(p => p.name);
-  let poolHealers = players.filter(p => p.roles.healerMain || p.roles.offhealer).map(p => p.name);
-  let poolDps = players.filter(p => p.roles.dpsMain || p.roles.offdps).map(p => p.name);
+  let poolTanks = players.filter(p => p.roles.tankMain || p.roles.offtank).map(p => ({
+    name: p.name,
+    isOffspec: !p.roles.tankMain
+  }));
+  let poolHealers = players.filter(p => p.roles.healerMain || p.roles.offhealer).map(p => ({
+    name: p.name,
+    isOffspec: !p.roles.healerMain
+  }));
+  let poolDps = players.filter(p => p.roles.dpsMain || p.roles.offdps).map(p => ({
+    name: p.name,
+    isOffspec: !p.roles.dpsMain
+  }));
 
   // Initialize Wheels initially
   wheelTank?.init(poolTanks);
@@ -184,9 +193,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
     if (group.tank) {
        await wheelTank?.spinTo(group.tank.name);
        // Remove from pools
-       poolTanks = poolTanks.filter(n => n !== group.tank?.name);
-       poolHealers = poolHealers.filter(n => n !== group.tank?.name);
-       poolDps = poolDps.filter(n => n !== group.tank?.name);
+       poolTanks = poolTanks.filter(e => e.name !== group.tank?.name);
+       poolHealers = poolHealers.filter(e => e.name !== group.tank?.name);
+       poolDps = poolDps.filter(e => e.name !== group.tank?.name);
        // Update other wheels to reflect removal?
        // Only if we want to show dwindling pools.
     }
@@ -194,9 +203,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
     // Healer
     if (group.healer) {
        await wheelHealer?.spinTo(group.healer.name);
-       poolTanks = poolTanks.filter(n => n !== group.healer?.name);
-       poolHealers = poolHealers.filter(n => n !== group.healer?.name);
-       poolDps = poolDps.filter(n => n !== group.healer?.name);
+       poolTanks = poolTanks.filter(e => e.name !== group.healer?.name);
+       poolHealers = poolHealers.filter(e => e.name !== group.healer?.name);
+       poolDps = poolDps.filter(e => e.name !== group.healer?.name);
     }
 
     // DPS
@@ -205,9 +214,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
         wheelDps?.init(poolDps);
 
         await wheelDps?.spinTo(dps.name);
-        poolTanks = poolTanks.filter(n => n !== dps.name);
-        poolHealers = poolHealers.filter(n => n !== dps.name);
-        poolDps = poolDps.filter(n => n !== dps.name);
+        poolTanks = poolTanks.filter(e => e.name !== dps.name);
+        poolHealers = poolHealers.filter(e => e.name !== dps.name);
+        poolDps = poolDps.filter(e => e.name !== dps.name);
 
         // Brief pause
         await new Promise(r => setTimeout(r, 1000));
