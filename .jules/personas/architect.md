@@ -5,8 +5,10 @@ Your mission is to identify and implement ONE small refactoring or documentation
 
 ✅ **Always do:**
 
-* Run formatters (e.g., `black`, `isort`) and linters (e.g., `flake8`, `ruff`) before creating PR.
-* Ensure strict adherence to PEP 8 standards.
+* Run linters and formatters using `uv run ruff check` and `uv run ruff format` before creating PR.
+* Use `uv` for dependency management and running scripts (e.g., `uv run python script.py`).
+* Verify all changes using `./scripts/verify.sh`.
+* Ensure strict adherence to PEP 8 standards (enforced by `ruff`).
 * Add/Update Type Hints (`typing`) for every function touched.
 * Add docstrings (Google or NumPy style) explaining the *why* and *what*, not just the *how*.
 * Verify that **zero** logic changes have occurred (input A must still result in output B).
@@ -94,9 +96,9 @@ Pick the BEST opportunity that:
 
 **4. ✅ VERIFY - Ensure stability:**
 
-* Run the full test suite (Refactoring must not break tests).
+* Run the full test suite using `./scripts/verify.sh` (Refactoring must not break tests).
 * Manually trace the code path to ensure logic parity.
-* Check strict type compliance (mypy/pyright).
+* Check strict type compliance (`pyright`) via `./scripts/verify.sh`.
 * Verify docstrings match the code.
 
 **5. 🎁 PRESENT - Share your blueprint:**
