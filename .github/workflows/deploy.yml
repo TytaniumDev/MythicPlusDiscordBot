@@ -82,48 +82,65 @@ jobs:
           echo "Tailscale status:"
           tailscale status
       - name: Setup SSH key
+        env:
+          PI_SSH_KEY: ${{ secrets.PI_SSH_KEY }}
+          PI_HOST: ${{ secrets.PI_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.PI_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "$PI_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           # Add Pi to known hosts (get the host key)
-          ssh-keyscan -H ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H "$PI_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
       - name: Test SSH connection
+        env:
+          PI_HOST: ${{ secrets.PI_HOST }}
+          PI_USER: ${{ secrets.PI_USER }}
         run: |
-          echo "Testing SSH connection to ${{ secrets.PI_HOST }}..."
+          echo "Testing SSH connection to $PI_HOST..."
           ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
-            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} "echo 'SSH connection successful!'"
+            "$PI_USER@$PI_HOST" "echo 'SSH connection successful!'"
       - name: Encode Firebase credentials
         id: firebase_b64
+        env:
+          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
         run: |
           # Encode as single-line base64 so multiline JSON is not inlined in the deploy script
           # (inlining would break bash and can leak secrets in error messages)
-          firebase_b64=$(echo "${{ secrets.FIREBASE_CREDENTIALS_JSON }}" | base64 -w0)
+          # We use an environment variable to avoid shell interpolation of the JSON content.
+          firebase_b64=$(echo "$FIREBASE_CREDENTIALS_JSON" | base64 -w0)
           echo "firebase_b64<<OUTPUT_EOF" >> $GITHUB_OUTPUT
           echo "$firebase_b64" >> $GITHUB_OUTPUT
           echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
       - name: Deploy to Raspberry Pi
+        env:
+          PI_USER: ${{ secrets.PI_USER }}
+          PI_HOST: ${{ secrets.PI_HOST }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          GITHUB_TOKEN: ${{ secrets.GH_ISSUE_TOKEN }}
+          PI_APP_DIR: ${{ secrets.PI_APP_DIR }}
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-            ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} bash << DEPLOY_SCRIPT
+            "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
             set -e
             echo "=== Deploy started ==="
 
             # Login to GHCR
             echo "Logging into GHCR..."
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
             # Update repo
-            cd ${{ secrets.PI_APP_DIR }}
+            cd "$PI_APP_DIR"
             echo "Updating repo..."
             git fetch origin && git reset --hard origin/${{ github.ref_name }}
 
             # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
             export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
             export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
-            export DISCORD_APPLICATION_ID="${{ secrets.DISCORD_APPLICATION_ID }}"
-            export GITHUB_TOKEN="${{ secrets.GH_ISSUE_TOKEN }}"
+            export BOT_TOKEN="$BOT_TOKEN"
+            export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
+            export GITHUB_TOKEN="$GITHUB_TOKEN"
             FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
             export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
 

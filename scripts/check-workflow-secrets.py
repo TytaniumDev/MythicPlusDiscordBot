@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Check GitHub Actions workflow files for unsafe inline of multi-line secrets in heredocs.
+Check GitHub Actions workflow files for unsafe inline of multi-line secrets in run scripts and heredocs.
 
 Multi-line secrets (JSON, PEM keys) must never be inlined in run scripts or heredocs;
 they break bash and can leak in error messages. Use base64 encode on the runner and
@@ -16,10 +16,10 @@ import re
 import sys
 from pathlib import Path
 
-# Secrets known to be multi-line (JSON, PEM). Inlining these in heredocs is forbidden.
+# Secrets known to be multi-line (JSON, PEM). Inlining these in run scripts is forbidden.
 MULTILINE_SECRET_NAMES = frozenset({"FIREBASE_CREDENTIALS_JSON", "PI_SSH_KEY"})
 
-# Pattern for any secrets.X in workflow expressions (used inside heredocs).
+# Pattern for any secrets.X in workflow expressions.
 SECRET_INLINE_PATTERN = re.compile(r"\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}")
 
 
@@ -48,31 +48,42 @@ def check_file(file_path: Path) -> list[str]:
     content = file_path.read_text()
     lines = content.splitlines()
 
-    # Find all heredocs in the file (run blocks with << DELIMITER)
+    # Find all 'run:' blocks
     i = 0
     while i < len(lines):
         line = lines[i]
-        match = re.search(r"<<\s*([A-Za-z0-9_]+)\s*$", line)
-        if match:
-            delim = match.group(1)
-            heredoc_start = i + 1
-            i += 1
-            body_lines: list[str] = []
-            while i < len(lines):
-                if re.match(rf"^\s*{re.escape(delim)}\s*$", lines[i]):
-                    break
-                body_lines.append(lines[i])
+        # Match 'run:' followed by optional '|' or '>' or just the command
+        run_match = re.search(r"^\s*run:\s*([|>]-?)?.*$", line)
+        if run_match:
+            run_start_idx = i
+            indicator = run_match.group(1)
+            body_lines = []
+
+            if indicator:
+                # Multiline run block
+                indent = len(line) - len(line.lstrip())
                 i += 1
+                while i < len(lines):
+                    if lines[i].strip() and not lines[i].startswith(" " * (indent + 1)):
+                        break
+                    body_lines.append(lines[i])
+                    i += 1
+                i -= 1  # Step back so the outer loop doesn't skip the next line
+            else:
+                # Single line run block
+                body_lines.append(line.split("run:", 1)[1])
+
             body = "\n".join(body_lines)
             for m in SECRET_INLINE_PATTERN.finditer(body):
                 secret_name = m.group(1)
                 if is_multiline_secret(secret_name):
+                    # Estimate line number
                     line_offset = body[: m.start()].count("\n")
-                    file_line = heredoc_start + line_offset
+                    file_line = run_start_idx + line_offset + 1
                     errors.append(
                         f"{file_path}:{file_line}: "
-                        f"Multi-line secret '{secret_name}' must not be inlined in heredoc. "
-                        "Use base64 encode on the runner and decode on the remote (see AGENTS.md)."
+                        f"Multi-line secret '{secret_name}' must not be inlined in run script. "
+                        "Use an env: block and reference it as a shell variable (e.g. $VAR) instead."
                     )
         i += 1
 
