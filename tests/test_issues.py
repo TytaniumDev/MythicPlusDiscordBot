@@ -1,7 +1,12 @@
+import os
+import sys
 import unittest
 from unittest.mock import AsyncMock, mock_open, patch
 
 import discord
+
+# Add project root to sys.path to allow imports from core
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.issues import GitHubError, GitHubIssueModal, create_github_issue
 
@@ -58,9 +63,14 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
         modal.include_logs._value = "Yes"  # pyright: ignore[reportPrivateUsage]
 
         # Mock config and create_github_issue
-        with patch(
-            "core.issues.create_github_issue", new_callable=AsyncMock
-        ) as mock_create:
+        with (
+            patch(
+                "core.issues.create_github_issue", new_callable=AsyncMock
+            ) as mock_create,
+            patch("core.config.GIT_SHA", "abc123456"),
+            patch("core.config.GITHUB_REPO_OWNER", "owner"),
+            patch("core.config.GITHUB_REPO_NAME", "repo"),
+        ):
             mock_create.return_value = {"html_url": "http://url"}
 
             await modal.on_submit(mock_interaction)
@@ -73,6 +83,12 @@ class TestIssues(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Bug Description", body)
             self.assertIn("Steps", body)
             self.assertEqual(labels, ["bug", "jules"])
+
+            # Verify version string
+            expected_version = (
+                "[`abc1234`](https://github.com/owner/repo/commit/abc123456)"
+            )
+            self.assertIn(f"**Version:** {expected_version}", body)
 
             mock_interaction.followup.send.assert_called_with(
                 "✅ Issue created successfully: http://url", ephemeral=True
