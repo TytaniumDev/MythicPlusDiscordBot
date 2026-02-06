@@ -1,36 +1,72 @@
-# MythicPlusDiscordBot
-Handles Mythic+ groups for everyone in our guild.
+# 🛡️ MythicPlusDiscordBot
 
-This repo is deployed using Docker images and GitHub Actions CI/CD to a Raspberry Pi over Tailscale.
-Secrets are injected by GitHub Actions at deploy time, so there is no `.env` file on the Pi.
+[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[Launch Activity](https://tytaniumdev.github.io/MythicPlusDiscordBot/) | [Documentation](ARCHITECTURE.md) | [Report Bug](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues)
 
-## Quick start (CI/CD)
-1. Follow the Raspberry Pi bootstrap steps in `DEPLOYMENT.md`.
-2. Add the required GitHub Secrets (listed below).
-3. Push to `main`/`master` to trigger deployment.
+> Effortlessly form balanced Mythic+ groups in World of Warcraft, directly from your Discord voice channel with real-time visualization.
 
-## Required GitHub Secrets
-- `TS_AUTHKEY`: Tailscale auth key (reusable + ephemeral recommended).
-- `PI_HOST`: Tailscale hostname or IP (example: `pi.asdflasjd.ts.net`).
-- `PI_USER`: SSH user on the Pi (example: `pi` or `deploy`).
-- `PI_SSH_KEY`: Private SSH key contents for CI access.
-- `PI_APP_DIR`: Repo path on the Pi (example: `/home/pi/mythic-plus-bot`).
-- `GHCR_TOKEN`: GitHub PAT with `read:packages` (classic if fine-grained lacks Packages).
-- `BOT_TOKEN`: Discord bot token.
-- `DISCORD_APPLICATION_ID`: Discord app ID.
+## Hero Visual
 
-## Optional GitHub Secrets
-- `PI_SSH_PORT`: Defaults to 22 if omitted.
-- `DEPLOY_WEBHOOK_URL`: Discord webhook for deploy notifications.
+```mermaid
+flowchart LR
+    Discord[Discord Voice] -->|Sync Players| Bot[MythicPlusBot]
+    Bot -->|Calculated Groups| Firestore
+    Firestore <-->|Real-time Sync| Activity[Web/Discord Activity]
+    Activity -->|Visuals & Spin| User[User Screen]
+```
 
-## What the pipeline does
-1. Runs tests.
-2. Builds and pushes a multi-arch Docker image to GHCR.
-3. Connects to the Pi via Tailscale and runs `docker compose pull` + `up`.
-4. Verifies container health and restarts once if unhealthy.
+## Quick Start
 
-See `DEPLOYMENT.md` for detailed Raspberry Pi setup steps.
+### 🚀 Deployment (CI/CD)
+This repo is designed to deploy automatically to a Raspberry Pi via Docker & Tailscale.
 
-## Development
-- Install dev dependencies: `pip install -r requirements-dev.txt` (or `uv pip install -r requirements-dev.txt`).
-- **Git hook:** Run `pre-commit install` once to run Ruff lint and format automatically before each commit.
+1. **Bootstrap**: Follow the steps in `DEPLOYMENT.md`.
+2. **Secrets**: Configure GitHub Secrets (see below).
+3. **Push**: Commit to `main` to trigger the pipeline.
+
+### 💻 Local Development
+1. **Install uv**: `pip install uv` (or `brew install uv`).
+2. **Install Dependencies**: `uv sync`.
+3. **Run Bot**: `uv run python bot.py`.
+
+## Key Features
+
+- **🎙️ Voice Integration**: Automatically pulls player lists from your current Discord voice channel.
+- **⚖️ Smart Balancing**: Algorithmic group creation ensuring every group has a Tank, Healer, and 3 DPS.
+- **🎡 Interactive Wheel**: A rich visual "Wheel of Fortune" experience via Discord Activities (or web) to reveal groups.
+- **🔥 Real-time Sync**: Powered by Firebase Firestore, the bot and web UI stay perfectly in sync.
+- **☁️ Self-Hosted**: Runs entirely on your own infrastructure (Raspberry Pi/Docker) with no external SaaS costs (besides free-tier Firebase).
+
+## Documentation Map
+
+| Document | Purpose | Audience |
+|----------|---------|----------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | High-level system design & diagrams | Architects/Devs |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Raspberry Pi & Docker setup guide | DevOps |
+| [FIREBASE_SETUP.md](FIREBASE_SETUP.md) | Firestore & Service Account config | DevOps |
+| [ACTIVITY_SETUP.md](ACTIVITY_SETUP.md) | Frontend build & host details | Frontend Devs |
+| [AGENTS.md](AGENTS.md) | Instructions for AI Agents | Bots 🤖 |
+
+## Configuration (Secrets)
+
+The following secrets are required in GitHub Actions for the deployment pipeline:
+
+- `TS_AUTHKEY`: Tailscale auth key.
+- `PI_HOST`, `PI_USER`, `PI_SSH_KEY`: SSH connection details.
+- `PI_APP_DIR`: Target directory on the Pi.
+- `GHCR_TOKEN`: GitHub PAT for container registry.
+- `BOT_TOKEN`: Discord Bot Token.
+- `DISCORD_APPLICATION_ID`: App ID for Activity invites.
+- `FIREBASE_CREDENTIALS_JSON`: Minified Service Account JSON for Firestore.
+
+## Contributing
+
+We welcome contributions! Please follow these rules:
+
+1. **Agents**: Read `AGENTS.md` strictly.
+2. **Verification**: You **MUST** run `./scripts/verify.sh` before submitting any PR. This handles linting (Ruff) and tests.
+3. **Style**: We use `ruff` for formatting and linting.
+
+---
+*Last Updated: 2024-05-21*
