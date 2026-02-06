@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+ARG GIT_SHA=
+ENV GIT_SHA=${GIT_SHA}
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
