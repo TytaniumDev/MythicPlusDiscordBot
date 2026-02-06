@@ -6,7 +6,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.config import BOT_INVITE_PERMISSIONS, DISCORD_APPLICATION_ID
+from core.config import (
+    BOT_INVITE_PERMISSIONS,
+    DISCORD_APPLICATION_ID,
+    GIT_SHA,
+    GITHUB_REPO_NAME,
+    GITHUB_REPO_OWNER,
+)
 from core.issues import GitHubIssueModal
 
 
@@ -33,6 +39,22 @@ class General(commands.Cog):
     async def feature_request(self, interaction: discord.Interaction):
         """Request a new feature for the bot."""
         await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
+
+    @app_commands.command(
+        name="version",
+        description="Show the bot version and link to the source commit.",
+    )
+    async def version(self, interaction: discord.Interaction) -> None:
+        """Show the bot version and link to the source commit."""
+        if GIT_SHA and len(GIT_SHA) >= 7:
+            short_sha = GIT_SHA[:7]
+            commit_url = f"https://github.com/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/commit/{GIT_SHA}"
+            value = f"[`{short_sha}`]({commit_url})"
+        else:
+            value = "unknown"
+        embed = discord.Embed(title="Bot Version", color=discord.Color.blue())
+        embed.add_field(name="Commit", value=value, inline=False)
+        await interaction.response.send_message(embed=embed)
 
     @commands.command()
     async def invite(self, ctx: commands.Context[commands.Bot]) -> None:

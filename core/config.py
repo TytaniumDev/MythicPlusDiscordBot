@@ -41,6 +41,9 @@ GITHUB_TOKEN = _github_token.strip() if _github_token else None
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "TytaniumDev").strip()
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "MythicPlusDiscordBot").strip()
 
+# Container version (commit SHA baked in at build time)
+GIT_SHA = os.getenv("GIT_SHA", "").strip() or None
+
 # Activity Link
 ACTIVITY_URL = os.getenv(
     "ACTIVITY_URL", "https://tytaniumdev.github.io/MythicPlusDiscordBot/"

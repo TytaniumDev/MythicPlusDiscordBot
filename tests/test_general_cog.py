@@ -13,6 +13,51 @@ from cogs.general import General  # noqa: E402, I001
 
 
 class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
+    async def test_version_command_with_sha(self):
+        """When GIT_SHA is set, embed shows short SHA and commit link."""
+        with patch("cogs.general.GIT_SHA", "abc123456789"):
+            with patch("cogs.general.GITHUB_REPO_OWNER", "Owner"):
+                with patch("cogs.general.GITHUB_REPO_NAME", "Repo"):
+                    bot = MagicMock()
+                    cog = General(bot)
+                    interaction = AsyncMock(spec=discord.Interaction)
+                    interaction.response.send_message = AsyncMock()
+
+                    await cast(Any, General.version.callback)(cog, interaction)
+
+                    interaction.response.send_message.assert_called_once()
+                    args, kwargs = interaction.response.send_message.call_args
+                    embed = kwargs.get("embed") or (args[0] if args else None)
+                    self.assertIsInstance(embed, discord.Embed)
+                    assert embed is not None
+                    self.assertEqual(embed.title, "Bot Version")
+                    fields = {f.name: f.value for f in embed.fields}
+                    self.assertIn("Commit", fields)
+                    self.assertIn("abc1234", fields["Commit"])
+                    self.assertIn(
+                        "https://github.com/Owner/Repo/commit/abc123456789",
+                        fields["Commit"],
+                    )
+
+    async def test_version_command_without_sha(self):
+        """When GIT_SHA is unset, embed shows 'unknown'."""
+        with patch("cogs.general.GIT_SHA", None):
+            bot = MagicMock()
+            cog = General(bot)
+            interaction = AsyncMock(spec=discord.Interaction)
+            interaction.response.send_message = AsyncMock()
+
+            await cast(Any, General.version.callback)(cog, interaction)
+
+            interaction.response.send_message.assert_called_once()
+            args, kwargs = interaction.response.send_message.call_args
+            embed = kwargs.get("embed") or (args[0] if args else None)
+            self.assertIsInstance(embed, discord.Embed)
+            assert embed is not None
+            self.assertEqual(embed.title, "Bot Version")
+            fields = {f.name: f.value for f in embed.fields}
+            self.assertEqual(fields["Commit"], "unknown")
+
     async def test_status_command(self):
         # Arrange
         bot = MagicMock()
