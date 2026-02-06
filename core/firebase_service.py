@@ -69,7 +69,11 @@ class FirebaseService:
         return self.db is not None
 
     async def create_session(
-        self, guild_id: int, channel_id: int, players: list[dict[str, Any]]
+        self,
+        guild_id: int,
+        channel_id: int,
+        players: list[dict[str, Any]],
+        debug: bool = False,
     ) -> str:
         """
         Creates a new session document in Firestore.
@@ -88,6 +92,7 @@ class FirebaseService:
             "status": "lobby",  # lobby, spinning, completed
             "players": players,  # List of dicts
             "groups": [],  # Calculated groups
+            "isDebug": debug,
             "createdAt": firestore.SERVER_TIMESTAMP,
         }
 
