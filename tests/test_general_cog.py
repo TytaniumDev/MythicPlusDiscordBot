@@ -20,13 +20,13 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
                 with patch("cogs.general.GITHUB_REPO_NAME", "Repo"):
                     bot = MagicMock()
                     cog = General(bot)
-                    interaction = AsyncMock(spec=discord.Interaction)
-                    interaction.response.send_message = AsyncMock()
+                    ctx = AsyncMock()
+                    ctx.send = AsyncMock()
 
-                    await cast(Any, General.version.callback)(cog, interaction)
+                    await cast(Any, General.version.callback)(cog, ctx)
 
-                    interaction.response.send_message.assert_called_once()
-                    args, kwargs = interaction.response.send_message.call_args
+                    ctx.send.assert_called_once()
+                    args, kwargs = ctx.send.call_args
                     embed = kwargs.get("embed") or (args[0] if args else None)
                     self.assertIsInstance(embed, discord.Embed)
                     assert embed is not None
@@ -44,13 +44,13 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
         with patch("cogs.general.GIT_SHA", None):
             bot = MagicMock()
             cog = General(bot)
-            interaction = AsyncMock(spec=discord.Interaction)
-            interaction.response.send_message = AsyncMock()
+            ctx = AsyncMock()
+            ctx.send = AsyncMock()
 
-            await cast(Any, General.version.callback)(cog, interaction)
+            await cast(Any, General.version.callback)(cog, ctx)
 
-            interaction.response.send_message.assert_called_once()
-            args, kwargs = interaction.response.send_message.call_args
+            ctx.send.assert_called_once()
+            args, kwargs = ctx.send.call_args
             embed = kwargs.get("embed") or (args[0] if args else None)
             self.assertIsInstance(embed, discord.Embed)
             assert embed is not None

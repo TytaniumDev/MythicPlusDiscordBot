@@ -55,6 +55,11 @@ class Groups(commands.Cog):
         """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
         await self._execute_activity(ctx, debug=False)
 
+    @commands.hybrid_command(name="wheelson")
+    async def wheelson(self, ctx: commands.Context[commands.Bot]) -> None:
+        """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""
+        await self._execute_activity(ctx, debug=False)
+
     @commands.command(name="activitytest", hidden=True)
     async def activitytest(self, ctx: commands.Context[commands.Bot]) -> None:
         """Hidden prefix command to test the activity with debug data."""
