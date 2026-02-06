@@ -1,0 +1,35 @@
+name: Visual Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  visual-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd activity && npm ci
+
+      - name: Install Playwright Browsers
+        run: cd activity && npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: cd activity && npx playwright test
+
+      - name: Upload screenshots to Argos
+        uses: argos-ci/argos-upload-action@v3
+        with:
+          upload-directory: activity/screenshots
+          token: ${{ secrets.ARGOS_TOKEN }}
