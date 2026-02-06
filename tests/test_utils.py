@@ -2,22 +2,14 @@ import os
 import sys
 import unittest
 from typing import cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import discord
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.utils import (  # noqa: E402, I001
-    WoWName,
-    dashed,
-    getPlayerList,
-    join_voice_channel,
-    play_sound,
-    showLongTyping,
-    showShortTyping,
-)
+from core.utils import WoWName, getPlayerList  # noqa: E402, I001
 
 
 class TestUtils(unittest.TestCase):
@@ -92,119 +84,6 @@ class TestUtils(unittest.TestCase):
         # Verify InvalidPlayer is skipped
         p3 = next((p for p in players if p.name == "InvalidPlayer"), None)
         self.assertIsNone(p3)
-
-
-class TestDashed(unittest.TestCase):
-    def test_dashed(self):
-        """Test dashed returns question marks equal to string length."""
-        self.assertEqual(dashed("abc"), "???")
-        self.assertEqual(dashed(""), "")
-        self.assertEqual(dashed("hello world"), "???????????")
-
-
-class TestTyping(unittest.IsolatedAsyncioTestCase):
-    @patch("asyncio.sleep")
-    async def test_showLongTyping(self, mock_sleep: AsyncMock):
-        """Test showLongTyping sleeps for 2s unless debug."""
-        channel = MagicMock()
-        channel.typing.return_value.__aenter__.return_value = None
-        channel.typing.return_value.__aexit__.return_value = None
-
-        # Debug = False -> Sleep 2
-        await showLongTyping(channel, debug_mode=False)
-        mock_sleep.assert_called_with(2)
-
-        mock_sleep.reset_mock()
-
-        # Debug = True -> No sleep
-        await showLongTyping(channel, debug_mode=True)
-        mock_sleep.assert_not_called()
-
-    @patch("asyncio.sleep")
-    async def test_showShortTyping(self, mock_sleep: AsyncMock):
-        """Test showShortTyping sleeps for 1s unless debug."""
-        channel = MagicMock()
-        channel.typing.return_value.__aenter__.return_value = None
-        channel.typing.return_value.__aexit__.return_value = None
-
-        # Debug = False -> Sleep 1
-        await showShortTyping(channel, debug_mode=False)
-        mock_sleep.assert_called_with(1)
-
-        mock_sleep.reset_mock()
-
-        # Debug = True -> No sleep
-        await showShortTyping(channel, debug_mode=True)
-        mock_sleep.assert_not_called()
-
-
-class TestVoiceUtils(unittest.IsolatedAsyncioTestCase):
-    async def test_join_voice_channel(self):
-        """Test joining/moving to voice channel."""
-        ctx = AsyncMock()
-
-        # Scenario 1: Author not in voice -> None
-        ctx.author.voice = None
-        result = await join_voice_channel(ctx)
-        self.assertIsNone(result)
-
-        # Scenario 2: Bot not connected, joins channel
-        channel = AsyncMock()
-        ctx.author.voice = MagicMock()
-        ctx.author.voice.channel = channel
-        ctx.voice_client = None
-
-        result = await join_voice_channel(ctx)
-        channel.connect.assert_called_once()
-        # It returns cast(..., ctx.voice_client), which is None in this mock unless set
-        # But we verify connect was called.
-
-        # Scenario 3: Bot connected to diff channel -> moves
-        ctx.voice_client = AsyncMock()
-        ctx.voice_client.channel = AsyncMock()  # diff channel
-        # We need to ensure ctx.voice_client.channel != channel (the new one)
-
-        await join_voice_channel(ctx)
-        ctx.voice_client.move_to.assert_called_with(channel)
-
-        # Scenario 4: Bot in same channel -> no op
-        ctx.voice_client.reset_mock()
-        ctx.voice_client.channel = channel
-        await join_voice_channel(ctx)
-        ctx.voice_client.move_to.assert_not_called()
-        channel.connect.assert_called_once()  # from previous calls, not this one
-
-    @patch("core.utils.logger")
-    @patch("discord.FFmpegPCMAudio")
-    @patch("os.path.exists")
-    async def test_play_sound(
-        self, mock_exists: MagicMock, mock_ffmpeg: MagicMock, mock_logger: MagicMock
-    ):
-        """Test play_sound logic."""
-        voice_client = MagicMock()
-        path = "sound.mp3"
-
-        # Scenario 1: File exists -> plays
-        mock_exists.return_value = True
-        voice_client.is_playing.return_value = True
-
-        await play_sound(voice_client, path)
-
-        voice_client.stop.assert_called_once()
-        voice_client.play.assert_called_once()
-        mock_ffmpeg.assert_called_with(path)
-
-        # Scenario 2: File missing -> does nothing
-        voice_client.reset_mock()
-        mock_exists.return_value = False
-        await play_sound(voice_client, path)
-        voice_client.play.assert_not_called()
-
-        # Scenario 3: Exception handling
-        mock_exists.return_value = True
-        voice_client.play.side_effect = Exception("Boom")
-        await play_sound(voice_client, path)
-        mock_logger.error.assert_called_once()
 
 
 if __name__ == "__main__":

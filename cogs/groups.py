@@ -89,9 +89,7 @@ class Groups(commands.Cog):
             players = result.players
 
             # Create Session in Firebase
-            session_id = await self.session_service.create_session(
-                ctx, players, debug=debug
-            )
+            session_id = await self.session_service.create_session(ctx, players)
 
             if not session_id:
                 await ctx.send("❌ Failed to create session. Is Firebase configured?")

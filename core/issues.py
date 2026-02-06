@@ -37,15 +37,6 @@ async def _get_recent_logs() -> str | None:
     return None
 
 
-def _get_version_string() -> str:
-    """Helper to generate the version string matching the /version command."""
-    if config.GIT_SHA and len(config.GIT_SHA) >= 7:
-        short_sha = config.GIT_SHA[:7]
-        commit_url = f"https://github.com/{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}/commit/{config.GIT_SHA}"
-        return f"[`{short_sha}`]({commit_url})"
-    return "unknown"
-
-
 async def create_github_issue(
     title: str, body: str, labels: list[str]
 ) -> dict[str, Any]:
@@ -131,14 +122,7 @@ class GitHubIssueModal(ui.Modal):
         # Format reporter name safely
         reporter = interaction.user.global_name or interaction.user.name
 
-        # Get version string
-        version_str = _get_version_string()
-
-        body = (
-            f"**Reporter:** {reporter} (`{interaction.user.id}`)\n"
-            f"**Version:** {version_str}\n\n"
-            f"**Description:**\n{description}\n"
-        )
+        body = f"**Reporter:** {reporter} (`{interaction.user.id}`)\n\n**Description:**\n{description}\n"
 
         if extra:
             section_title = (
@@ -189,11 +173,6 @@ async def report_bad_group(
 
     players = last_results.players
     groups = last_results.groups
-    # Get version string
-    version_str = _get_version_string()
-
-    players = last_results.get("players", [])
-    groups = last_results.get("groups", [])
 
     # Format the reproduction data
     repro_info = (
@@ -208,8 +187,7 @@ async def report_bad_group(
     )
 
     body = (
-        f"**Reporter:** {reporter} (`{user.id}`)\n"
-        f"**Version:** {version_str}\n\n"
+        f"**Reporter:** {reporter} (`{user.id}`)\n\n"
         f"**Description:**\n{description}\n\n"
         f"{repro_info}"
     )

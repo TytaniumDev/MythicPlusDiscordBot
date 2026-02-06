@@ -2,7 +2,7 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, WoWPlayer, WoWGroup } from './types';
 import { Wheel } from './wheel';
-import './style.css';
+import './style.css'; // Assume we will move style.css here or import it
 
 // UI Elements
 const appDiv = document.getElementById('app') as HTMLDivElement;
@@ -30,27 +30,6 @@ let spinSequenceStarted = false;
 // Initialize
 function init() {
   const urlParams = new URLSearchParams(window.location.search);
-
-  // Setup Wheels
-  wheelTank = new Wheel('wheel-tank', 'result-tank', 'tank-wrapper');
-  wheelHealer = new Wheel('wheel-healer', 'result-healer', 'healer-wrapper');
-  wheelDps = new Wheel('wheel-dps', 'result-dps', 'dps-wrapper');
-
-  spinBtn.addEventListener('click', requestSpin);
-
-  // Check for Mock Data injection
-  const dataParam = urlParams.get('data');
-  if (dataParam) {
-    try {
-      const json = atob(dataParam);
-      const data = JSON.parse(json);
-      handleSessionUpdate(data);
-      return; // Bypass Firebase
-    } catch (e) {
-      console.error("Invalid data param", e);
-    }
-  }
-
   currentSessionId = urlParams.get('sessionId');
 
   if (!currentSessionId) {
@@ -81,6 +60,13 @@ function init() {
     console.error(error);
     statusMsg.innerText = "Activity ended.";
   });
+
+  // Setup Wheels
+  wheelTank = new Wheel('wheel-tank', 'result-tank', 'tank-wrapper');
+  wheelHealer = new Wheel('wheel-healer', 'result-healer', 'healer-wrapper');
+  wheelDps = new Wheel('wheel-dps', 'result-dps', 'dps-wrapper');
+
+  spinBtn.addEventListener('click', requestSpin);
 }
 
 function handleSessionUpdate(data: Session) {
@@ -101,16 +87,9 @@ function handleSessionUpdate(data: Session) {
     case 'spinning':
       spinBtn.disabled = true;
       spinBtn.innerText = "Spinning...";
-
-      // Check for static wheel mode (testing)
-      if ((data as any).staticWheel) {
-        prepareWheelView();
-        initWheelsForGroup(data.players);
-      } else {
-        if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
-          spinSequenceStarted = true;
-          startSpinSequence(data.groups);
-        }
+      if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
+        spinSequenceStarted = true;
+        startSpinSequence(data.groups);
       }
       break;
     case 'completed':
@@ -151,39 +130,6 @@ function showLobby() {
   spinBtn.innerText = "SPIN THE WHEEL!";
 }
 
-function prepareWheelView() {
-  // Switch to Wheel View
-  lobbyDiv.classList.add('hidden');
-  wheelDiv.classList.remove('hidden');
-
-  // Show and clear formed groups panel
-  formedGroupsList.innerHTML = '';
-  formedGroupsPanel.classList.remove('hidden');
-}
-
-function getPools(players: WoWPlayer[]) {
-  const poolTanks = players.filter(p => p.roles.tankMain || p.roles.offtank).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.tankMain
-  }));
-  const poolHealers = players.filter(p => p.roles.healerMain || p.roles.offhealer).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.healerMain
-  }));
-  const poolDps = players.filter(p => p.roles.dpsMain || p.roles.offdps).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.dpsMain
-  }));
-  return { poolTanks, poolHealers, poolDps };
-}
-
-function initWheelsForGroup(players: WoWPlayer[]) {
-  const { poolTanks, poolHealers, poolDps } = getPools(players);
-  wheelTank?.init(poolTanks);
-  wheelHealer?.init(poolHealers);
-  wheelDps?.init(poolDps);
-}
-
 async function requestSpin() {
   if (!currentSessionId) return;
   spinBtn.disabled = true;
@@ -206,11 +152,23 @@ function appendFormedGroupCard(group: WoWGroup, index: number) {
 }
 
 async function startSpinSequence(groups: WoWGroup[]) {
-  prepareWheelView();
+  // Switch to Wheel View
+  lobbyDiv.classList.add('hidden');
+  wheelDiv.classList.remove('hidden');
+
+  // Show and clear formed groups panel
+  formedGroupsList.innerHTML = '';
+  formedGroupsPanel.classList.remove('hidden');
 
   // Initialize Wheels with all candidates
+  // We need to reconstruct the candidate pools from the full player list in the session
+  // But wait, the wheel logic needs to remove winners as we go.
+  // Let's iterate through groups.
+
   const players = currentSessionData?.players || [];
-  let { poolTanks, poolHealers, poolDps } = getPools(players);
+  let poolTanks = players.filter(p => p.roles.tankMain || p.roles.offtank).map(p => p.name);
+  let poolHealers = players.filter(p => p.roles.healerMain || p.roles.offhealer).map(p => p.name);
+  let poolDps = players.filter(p => p.roles.dpsMain || p.roles.offdps).map(p => p.name);
 
   // Initialize Wheels initially
   wheelTank?.init(poolTanks);
@@ -226,17 +184,19 @@ async function startSpinSequence(groups: WoWGroup[]) {
     if (group.tank) {
        await wheelTank?.spinTo(group.tank.name);
        // Remove from pools
-       poolTanks = poolTanks.filter(e => e.name !== group.tank?.name);
-       poolHealers = poolHealers.filter(e => e.name !== group.tank?.name);
-       poolDps = poolDps.filter(e => e.name !== group.tank?.name);
+       poolTanks = poolTanks.filter(n => n !== group.tank?.name);
+       poolHealers = poolHealers.filter(n => n !== group.tank?.name);
+       poolDps = poolDps.filter(n => n !== group.tank?.name);
+       // Update other wheels to reflect removal?
+       // Only if we want to show dwindling pools.
     }
 
     // Healer
     if (group.healer) {
        await wheelHealer?.spinTo(group.healer.name);
-       poolTanks = poolTanks.filter(e => e.name !== group.healer?.name);
-       poolHealers = poolHealers.filter(e => e.name !== group.healer?.name);
-       poolDps = poolDps.filter(e => e.name !== group.healer?.name);
+       poolTanks = poolTanks.filter(n => n !== group.healer?.name);
+       poolHealers = poolHealers.filter(n => n !== group.healer?.name);
+       poolDps = poolDps.filter(n => n !== group.healer?.name);
     }
 
     // DPS
@@ -245,9 +205,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
         wheelDps?.init(poolDps);
 
         await wheelDps?.spinTo(dps.name);
-        poolTanks = poolTanks.filter(e => e.name !== dps.name);
-        poolHealers = poolHealers.filter(e => e.name !== dps.name);
-        poolDps = poolDps.filter(e => e.name !== dps.name);
+        poolTanks = poolTanks.filter(n => n !== dps.name);
+        poolHealers = poolHealers.filter(n => n !== dps.name);
+        poolDps = poolDps.filter(n => n !== dps.name);
 
         // Brief pause
         await new Promise(r => setTimeout(r, 1000));

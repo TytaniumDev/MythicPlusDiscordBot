@@ -37,8 +37,3 @@ dmypy.json
 dist/
 build/
 *.so
-
-# Visual Testing
-**/screenshots/*
-test-results/
-playwright-report/
