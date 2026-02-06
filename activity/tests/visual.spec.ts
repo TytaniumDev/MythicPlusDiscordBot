@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { argosScreenshot } from "@argos-ci/playwright";
 
 // Helper to encode data for URL
 const encodeData = (data: any) => Buffer.from(JSON.stringify(data)).toString('base64');
@@ -31,7 +32,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#player-list li')).toHaveCount(6);
 
     // Screenshot
-    await page.screenshot({ path: 'screenshots/lobby.png', fullPage: true });
+    await argosScreenshot(page, 'lobby');
   });
 
   test('Static Wheel View', async ({ page }) => {
@@ -46,7 +47,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
     // Screenshot
-    await page.screenshot({ path: 'screenshots/wheels.png', fullPage: true });
+    await argosScreenshot(page, 'wheels');
   });
 
   test('Results View', async ({ page }) => {
@@ -60,6 +61,6 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('.group-card')).toHaveCount(1);
 
     // Screenshot
-    await page.screenshot({ path: 'screenshots/results.png', fullPage: true });
+    await argosScreenshot(page, 'results');
   });
 });

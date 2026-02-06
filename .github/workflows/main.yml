@@ -27,9 +27,5 @@ jobs:
 
       - name: Run Playwright tests
         run: cd activity && npx playwright test
-
-      - name: Upload screenshots to Argos
-        uses: argos-ci/argos-upload-action@v3
-        with:
-          upload-directory: activity/screenshots
-          token: ${{ secrets.ARGOS_TOKEN }}
+        env:
+          ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { createArgosReporterOptions } from "@argos-ci/playwright/reporter";
 
 export default defineConfig({
   testDir: './tests',
@@ -6,7 +7,16 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: [
+    process.env.CI ? ["dot"] : ["list"],
+    [
+      "@argos-ci/playwright/reporter",
+      createArgosReporterOptions({
+        uploadToArgos: !!process.env.CI,
+        token: process.env.ARGOS_TOKEN,
+      }),
+    ],
+  ],
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
