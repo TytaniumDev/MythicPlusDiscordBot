@@ -35,7 +35,9 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         mock_user.id = 12345
 
         with (
-            patch("core.issues.create_github_issue", new_callable=AsyncMock) as mock_create,
+            patch(
+                "core.issues.create_github_issue", new_callable=AsyncMock
+            ) as mock_create,
             patch("core.config.GIT_SHA", "abc123456"),
             patch("core.config.GITHUB_REPO_OWNER", "owner"),
             patch("core.config.GITHUB_REPO_NAME", "repo"),
@@ -57,7 +59,9 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["html_url"], "http://url")
 
             # Verify version string
-            expected_version = "[`abc1234`](https://github.com/owner/repo/commit/abc123456)"
+            expected_version = (
+                "[`abc1234`](https://github.com/owner/repo/commit/abc123456)"
+            )
             self.assertIn(f"**Version:** {expected_version}", body)
 
     async def test_bad_group_modal_submission(self):
