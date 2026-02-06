@@ -144,6 +144,24 @@ class WoWPlayer:
             },
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WoWPlayer":
+        """Reconstructs a WoWPlayer from a Firestore dictionary."""
+        roles_data = data.get("roles", {})
+        return cls(
+            name=data["name"],
+            tankMain=roles_data.get("tankMain", False),
+            healerMain=roles_data.get("healerMain", False),
+            dpsMain=roles_data.get("dpsMain", False),
+            offtank=roles_data.get("offtank", False),
+            offhealer=roles_data.get("offhealer", False),
+            offdps=roles_data.get("offdps", False),
+            ranged=roles_data.get("ranged", False),
+            melee=roles_data.get("melee", False),
+            hasBrez=roles_data.get("hasBrez", False),
+            hasLust=roles_data.get("hasLust", False),
+        )
+
 
 @dataclass
 class WoWGroup:

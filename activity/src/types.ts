@@ -1,3 +1,8 @@
+export interface WheelEntry {
+  name: string;
+  isOffspec: boolean;
+}
+
 export interface WoWPlayer {
   name: string;
   roles: {

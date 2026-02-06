@@ -45,28 +45,37 @@ class GroupService:
 
         # Get the members of the channel we want to use to fill the roles
         if debug:
-            # Testing Code - guild is guaranteed to exist since guild_id was passed
-            if ctx.guild is None:
-                members = []
-            else:
-                testChannel = discord.utils.get(
-                    ctx.guild.channels, name="path-of-exile"
-                )
-                if testChannel is None or not hasattr(testChannel, "members"):
-                    members = []
-                else:
-                    members = [m for m in testChannel.members if not m.bot]
+            # Testing Code - use hardcoded players to ensure reliability
+            players = [
+                WoWPlayer.create(
+                    "Martz", ["Healer", "Tank Offspec", "DPS Offspec", "Brez"]
+                ),
+                WoWPlayer.create("KingofSkillz", ["DPS", "Ranged", "Lust"]),
+                WoWPlayer.create("chaoswaffles", ["DPS", "Tank Offspec"]),
+                WoWPlayer.create("Upartyhardy", ["DPS", "Ranged"]),
+                WoWPlayer.create("Pandemonium", ["Tank", "DPS Offspec", "Brez"]),
+                WoWPlayer.create("Will", ["DPS"]),
+                WoWPlayer.create(
+                    "Tytanium", ["DPS", "Healer Offspec", "Ranged", "Lust"]
+                ),
+                WoWPlayer.create("hammer13", ["DPS"]),
+                WoWPlayer.create("Ultra9", ["DPS", "Ranged", "Lust"]),
+                WoWPlayer.create("DrZoidberg", ["DPS", "Ranged"]),
+                WoWPlayer.create("Player1x", ["DPS", "Healer Offspec", "Lust"]),
+                WoWPlayer.create("lizardtotem", ["Healer", "DPS Offspec"]),
+                WoWPlayer.create("rorschach128", ["DPS"]),
+            ]
         else:
             members = cast(
                 list[discord.Member],
                 [m for m in channel.members if not m.bot],
             )
 
-        if not members:
-            await ctx.send("❌ No players found in the channel.")
-            return None
+            if not members:
+                await ctx.send("❌ No players found in the channel.")
+                return None
 
-        players = getPlayerList(members)
+            players = getPlayerList(members)
         if not players:
             await ctx.send("❌ No players with valid roles found.")
             return None

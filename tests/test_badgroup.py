@@ -36,9 +36,14 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         mock_user.global_name = "TestUser"
         mock_user.id = 12345
 
-        with patch(
-            "core.issues.create_github_issue", new_callable=AsyncMock
-        ) as mock_create:
+        with (
+            patch(
+                "core.issues.create_github_issue", new_callable=AsyncMock
+            ) as mock_create,
+            patch("core.config.GIT_SHA", "abc123456"),
+            patch("core.config.GITHUB_REPO_OWNER", "owner"),
+            patch("core.config.GITHUB_REPO_NAME", "repo"),
+        ):
             mock_create.return_value = {"html_url": "http://url"}
 
             result = await report_bad_group(
@@ -54,6 +59,12 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
             self.assertIn('WoWPlayer.create("Player1"', body)
             self.assertEqual(labels, ["bug", "bad-group"])
             self.assertEqual(result["html_url"], "http://url")
+
+            # Verify version string
+            expected_version = (
+                "[`abc1234`](https://github.com/owner/repo/commit/abc123456)"
+            )
+            self.assertIn(f"**Version:** {expected_version}", body)
 
     async def test_bad_group_modal_submission(self):
         # Mock interaction and user
