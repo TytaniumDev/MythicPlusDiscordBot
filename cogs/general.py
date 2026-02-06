@@ -21,30 +21,42 @@ class General(commands.Cog):
         self.bot = bot
         self.start_time = time.time()
 
-    @app_commands.command(name="bug", description="Report a bug to the developers.")
+    @commands.hybrid_command(name="bug", description="Report a bug to the developers.")
     @app_commands.describe(
         include_logs="Whether to include detailed logs (default: True)"
     )
-    async def bug_report(
-        self, interaction: discord.Interaction, *, include_logs: bool = True
+    async def bug(
+        self, ctx: commands.Context[commands.Bot], *, include_logs: bool = True
     ):
         """Report a bug to the developers."""
-        await interaction.response.send_modal(
-            GitHubIssueModal(issue_type="bug", include_logs=include_logs)
-        )
+        if ctx.interaction:
+            await ctx.interaction.response.send_modal(
+                GitHubIssueModal(issue_type="bug", include_logs=include_logs)
+            )
+        else:
+            await ctx.send(
+                "❌ Please use the slash command `/bug` to report a bug via a popup form."
+            )
 
-    @app_commands.command(
+    @commands.hybrid_command(
         name="featurerequest", description="Request a new feature for the bot."
     )
-    async def feature_request(self, interaction: discord.Interaction):
+    async def featurerequest(self, ctx: commands.Context[commands.Bot]):
         """Request a new feature for the bot."""
-        await interaction.response.send_modal(GitHubIssueModal(issue_type="feature"))
+        if ctx.interaction:
+            await ctx.interaction.response.send_modal(
+                GitHubIssueModal(issue_type="feature")
+            )
+        else:
+            await ctx.send(
+                "❌ Please use the slash command `/featurerequest` to request a feature via a popup form."
+            )
 
-    @app_commands.command(
+    @commands.hybrid_command(
         name="version",
         description="Show the bot version and link to the source commit.",
     )
-    async def version(self, interaction: discord.Interaction) -> None:
+    async def version(self, ctx: commands.Context[commands.Bot]) -> None:
         """Show the bot version and link to the source commit."""
         if GIT_SHA and len(GIT_SHA) >= 7:
             short_sha = GIT_SHA[:7]
@@ -54,7 +66,7 @@ class General(commands.Cog):
             value = "unknown"
         embed = discord.Embed(title="Bot Version", color=discord.Color.blue())
         embed.add_field(name="Commit", value=value, inline=False)
-        await interaction.response.send_message(embed=embed)
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def invite(self, ctx: commands.Context[commands.Bot]) -> None:
