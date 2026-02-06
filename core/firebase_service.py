@@ -48,11 +48,10 @@ class FirebaseService:
 
             try:
                 cred_dict = json.loads(config.FIREBASE_CREDENTIALS_JSON)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
                 logger.error(
-                    "Failed to parse FIREBASE_CREDENTIALS_JSON: %s. "
-                    "Ensure the JSON is valid and uses double quotes for all keys and string values.",
-                    e,
+                    "Failed to parse FIREBASE_CREDENTIALS_JSON. "
+                    "Ensure the JSON is valid and uses double quotes for all keys and string values."
                 )
                 self.db = None
                 return
