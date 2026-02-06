@@ -21,7 +21,10 @@ class SessionService:
         self.listeners: dict[str, Any] = {}  # session_id -> watch object
 
     async def create_session(
-        self, ctx: commands.Context[commands.Bot], players: list[WoWPlayer]
+        self,
+        ctx: commands.Context[commands.Bot],
+        players: list[WoWPlayer],
+        debug: bool = False,
     ) -> str | None:
         """Creates a session and sets up listeners."""
         if not self.firebase.is_available():
@@ -45,7 +48,7 @@ class SessionService:
         players_data = [p.to_dict() for p in players]
 
         session_id = await self.firebase.create_session(
-            guild_id, channel_id, players_data
+            guild_id, channel_id, players_data, debug=debug
         )
 
         self.active_sessions[channel_id] = session_id
@@ -100,22 +103,30 @@ class SessionService:
             logger.error(f"Channel {channel_id} not found.")
             return
 
-        # 1. Get Players from Channel
-        members = [m for m in channel.members if not m.bot]
-        if not members:
-            # Update status to error?
-            logger.warning("No players found in channel during spin request.")
-            return
+        is_debug = data.get("isDebug", False)
 
-        # 2. Parse Players (using existing util)
-        players = getPlayerList(cast(list[discord.Member], members))
+        if is_debug:
+            # For debug sessions, use players already stored in the session
+            players_data = data.get("players", [])
+            players = [WoWPlayer.from_dict(p) for p in players_data]
+            logger.info(f"Using {len(players)} debug players from session data.")
+        else:
+            # 1. Get Players from Channel
+            members = [m for m in channel.members if not m.bot]
+            if not members:
+                # Update status to error?
+                logger.warning("No players found in channel during spin request.")
+                return
+
+            # 2. Parse Players (using existing util)
+            players = getPlayerList(cast(list[discord.Member], members))
+
         if not players:
             logger.warning("No valid players found.")
             return
 
         # 3. Calculate Groups
-        # Note: We aren't handling "debug" mode here, assuming production for the Activity.
-        groups = create_mythic_plus_groups(players, debug=False)
+        groups = create_mythic_plus_groups(players, debug=is_debug)
 
         # 4. Save results to Bot's GroupService (for !badgroup support)
         if hasattr(self.bot, "group_service") and channel.guild:
