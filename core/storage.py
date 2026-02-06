@@ -39,7 +39,8 @@ def load_preferences() -> dict[str, list[str]]:
                     _preferences_cache = cast(dict[str, list[str]], raw)
                     return _preferences_cache.copy()
             except Exception as e:
-                logger.error("Error loading preferences: %s", e)
+                # Log type only to avoid leaking path or file content into logs.
+                logger.error("Error loading preferences: %s", type(e).__name__)
                 _preferences_cache = {}
                 return _preferences_cache.copy()
 
@@ -56,7 +57,8 @@ def save_preferences(preferences: dict[str, list[str]]) -> None:
         with open(STORAGE_FILE, "w") as f:
             json.dump(preferences, f, indent=4)
     except Exception as e:
-        logger.error("Error saving preferences: %s", e)
+        # Log type only to avoid leaking path or file content into logs.
+        logger.error("Error saving preferences: %s", type(e).__name__)
 
 
 def get_player_preference(player_name: str) -> list[str] | None:

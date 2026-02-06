@@ -222,4 +222,5 @@ if __name__ == "__main__":
     except discord.LoginFailure:
         logger.error("❌ Failed to login. Please check your BOT_TOKEN.")
     except Exception as e:
-        logger.fatal("❌ Fatal error starting bot: %s", e)
+        # Log exception type only; message may contain request/response data.
+        logger.fatal("❌ Fatal error starting bot: %s", type(e).__name__)

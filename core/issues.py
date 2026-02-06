@@ -30,7 +30,8 @@ async def _get_recent_logs() -> str | None:
 
             return await asyncio.to_thread(read_last_logs)
         except Exception as e:
-            logger.error("Failed to read logs: %s", e)
+            # Log type only to avoid leaking file paths into logs (bug-report safe).
+            logger.error("Failed to read logs: %s", type(e).__name__)
     return None
 
 
@@ -58,10 +59,9 @@ async def create_github_issue(
             if response.status == 201:
                 return await response.json()
             else:
-                error_text = await response.text()
-                raise GitHubError(
-                    f"Failed to create issue: {response.status} - {error_text}"
-                )
+                # Do not include response body in exception message; it may leak
+                # credentials or repo info into logs (e.g. when included in bug reports).
+                raise GitHubError(f"Failed to create issue: HTTP {response.status}")
 
 
 class GitHubIssueModal(ui.Modal):

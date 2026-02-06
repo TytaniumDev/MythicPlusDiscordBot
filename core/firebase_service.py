@@ -61,7 +61,8 @@ class FirebaseService:
             self.db = firestore.client()
             logger.info("Firebase initialized successfully.")
         except Exception as e:
-            logger.error("Failed to initialize Firebase: %s", e)
+            # Log type only; exception message may contain credential/project hints.
+            logger.error("Failed to initialize Firebase: %s", type(e).__name__)
             self.db = None
 
     def is_available(self) -> bool:
