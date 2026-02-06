@@ -91,7 +91,9 @@ class Groups(commands.Cog):
             players = cast(list[WoWPlayer], result["players"])
 
             # Create Session in Firebase
-            session_id = await self.session_service.create_session(ctx, players)
+            session_id = await self.session_service.create_session(
+                ctx, players, debug=debug
+            )
 
             if not session_id:
                 await ctx.send("❌ Failed to create session. Is Firebase configured?")
