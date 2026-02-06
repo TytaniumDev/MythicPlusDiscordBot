@@ -28,8 +28,8 @@ The bot needs a Service Account to write to Firestore with admin privileges.
 1. In Firebase Console > Project Settings > **Service accounts**.
 2. Click "Generate new private key".
 3. This will download a `.json` file containing your credentials.
-4. **Minify** this JSON (remove newlines) so it fits on one line. You can use an online tool or `jq -c . file.json`.
-5. Add this string as a GitHub Secret named `FIREBASE_CREDENTIALS_JSON` (if you run the bot via Actions) OR add it to your `.env` file for local development:
+3. **Minify** this JSON (optional but recommended for readability). You can use an online tool or `jq -c . file.json`.
+4. Add the JSON content as a GitHub Secret named `FIREBASE_CREDENTIALS_JSON`. The deployment pipeline handles both minified and multiline JSON safely. For local development, add it to your `.env` file:
    ```env
    FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
    ```
