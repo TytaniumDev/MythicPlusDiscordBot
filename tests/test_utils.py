@@ -10,40 +10,40 @@ import discord
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.utils import (  # noqa: E402, I001
-    WoWName,
-    dashed,
-    getPlayerList,
+    get_masked_name,
+    get_player_list,
+    get_wow_name,
     join_voice_channel,
     play_sound,
-    showLongTyping,
-    showShortTyping,
+    show_long_typing,
+    show_short_typing,
 )
 
 
 class TestUtils(unittest.TestCase):
-    def test_WoWName_priority(self):
-        """Test that WoWName prioritizes Nick > Global > Str and removes dots."""
+    def test_get_wow_name_priority(self):
+        """Test that get_wow_name prioritizes Nick > Global > Str and removes dots."""
         # Case 1: Nickname exists
         member = MagicMock()
         member.nick = "Nick.Name"
         # global_name should be ignored if nick is present
         member.global_name = "Global.Name"
-        self.assertEqual(WoWName(member), "NickName")
+        self.assertEqual(get_wow_name(member), "NickName")
 
         # Case 2: No nick, global name exists
         member.nick = None
         member.global_name = "Global.Name"
-        self.assertEqual(WoWName(member), "GlobalName")
+        self.assertEqual(get_wow_name(member), "GlobalName")
 
         # Case 3: No nick, no global name, fallback to string representation
         member.nick = None
         member.global_name = None
         member.__str__.return_value = "User.Name"
-        self.assertEqual(WoWName(member), "UserName")
+        self.assertEqual(get_wow_name(member), "UserName")
 
     @patch("core.utils.get_player_preference")
-    def test_getPlayerList(self, mock_get_pref: MagicMock):
-        """Test that getPlayerList correctly creates WoWPlayer objects from members."""
+    def test_get_player_list(self, mock_get_pref: MagicMock):
+        """Test that get_player_list correctly creates WoWPlayer objects from members."""
         # Setup members
         role_everyone = MagicMock()
         role_everyone.name = "@everyone"
@@ -74,7 +74,7 @@ class TestUtils(unittest.TestCase):
         mock_get_pref.side_effect = get_pref_side_effect
 
         # Call function
-        players = getPlayerList(cast(list[discord.Member], members))
+        players = get_player_list(cast(list[discord.Member], members))
 
         # Assertions
         self.assertEqual(len(players), 2)
@@ -94,47 +94,47 @@ class TestUtils(unittest.TestCase):
         self.assertIsNone(p3)
 
 
-class TestDashed(unittest.TestCase):
-    def test_dashed(self):
-        """Test dashed returns question marks equal to string length."""
-        self.assertEqual(dashed("abc"), "???")
-        self.assertEqual(dashed(""), "")
-        self.assertEqual(dashed("hello world"), "???????????")
+class TestMaskedName(unittest.TestCase):
+    def test_get_masked_name(self):
+        """Test get_masked_name returns question marks equal to string length."""
+        self.assertEqual(get_masked_name("abc"), "???")
+        self.assertEqual(get_masked_name(""), "")
+        self.assertEqual(get_masked_name("hello world"), "???????????")
 
 
 class TestTyping(unittest.IsolatedAsyncioTestCase):
     @patch("asyncio.sleep")
-    async def test_showLongTyping(self, mock_sleep: AsyncMock):
-        """Test showLongTyping sleeps for 2s unless debug."""
+    async def test_show_long_typing(self, mock_sleep: AsyncMock):
+        """Test show_long_typing sleeps for 2s unless debug."""
         channel = MagicMock()
         channel.typing.return_value.__aenter__.return_value = None
         channel.typing.return_value.__aexit__.return_value = None
 
         # Debug = False -> Sleep 2
-        await showLongTyping(channel, debug_mode=False)
+        await show_long_typing(channel, debug_mode=False)
         mock_sleep.assert_called_with(2)
 
         mock_sleep.reset_mock()
 
         # Debug = True -> No sleep
-        await showLongTyping(channel, debug_mode=True)
+        await show_long_typing(channel, debug_mode=True)
         mock_sleep.assert_not_called()
 
     @patch("asyncio.sleep")
-    async def test_showShortTyping(self, mock_sleep: AsyncMock):
-        """Test showShortTyping sleeps for 1s unless debug."""
+    async def test_show_short_typing(self, mock_sleep: AsyncMock):
+        """Test show_short_typing sleeps for 1s unless debug."""
         channel = MagicMock()
         channel.typing.return_value.__aenter__.return_value = None
         channel.typing.return_value.__aexit__.return_value = None
 
         # Debug = False -> Sleep 1
-        await showShortTyping(channel, debug_mode=False)
+        await show_short_typing(channel, debug_mode=False)
         mock_sleep.assert_called_with(1)
 
         mock_sleep.reset_mock()
 
         # Debug = True -> No sleep
-        await showShortTyping(channel, debug_mode=True)
+        await show_short_typing(channel, debug_mode=True)
         mock_sleep.assert_not_called()
 
 
@@ -176,7 +176,7 @@ class TestVoiceUtils(unittest.IsolatedAsyncioTestCase):
 
     @patch("core.utils.logger")
     @patch("discord.FFmpegPCMAudio")
-    @patch("os.path.exists")
+    @patch("pathlib.Path.exists")
     async def test_play_sound(
         self, mock_exists: MagicMock, mock_ffmpeg: MagicMock, mock_logger: MagicMock
     ):

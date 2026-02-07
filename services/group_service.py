@@ -14,11 +14,11 @@ from core.config import (
 from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import (
-    dashed,
-    getPlayerList,
+    get_masked_name,
+    get_player_list,
     join_voice_channel,
     play_sound,
-    showShortTyping,
+    show_short_typing,
 )
 
 
@@ -76,7 +76,7 @@ class GroupService:
                 await ctx.send("❌ No players found in the channel.")
                 return None
 
-            players = getPlayerList(members)
+            players = get_player_list(members)
         if not players:
             await ctx.send("❌ No players with valid roles found.")
             return None
@@ -192,49 +192,57 @@ class GroupService:
                 await play_sound(voice_client, SPIN_SOUND)
                 await asyncio.sleep(2)
 
-            embed.add_field(name="Tank", value=f"{dashed(tank_name)}").add_field(
-                name="Healer", value=f"{dashed(healer_name)}"
+            embed.add_field(
+                name="Tank", value=f"{get_masked_name(tank_name)}"
+            ).add_field(
+                name="Healer", value=f"{get_masked_name(healer_name)}"
             ).add_field(
                 name="DPS",
-                value=f"{dashed(dps1_name)}, {dashed(dps2_name)}, {dashed(dps3_name)}",
+                value=f"{get_masked_name(dps1_name)}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
             ).add_field(
-                name="Battle Res", value=f"{dashed(brez_player)}", inline=True
-            ).add_field(name="Bloodlust", value=f"{dashed(lust_player)}", inline=True)
+                name="Battle Res",
+                value=f"{get_masked_name(brez_player)}",
+                inline=True,
+            ).add_field(
+                name="Bloodlust",
+                value=f"{get_masked_name(lust_player)}",
+                inline=True,
+            )
 
             embedMessage = await ctx.send(embed=embed)
-            await showShortTyping(channel, debug_mode=debug)
+            await show_short_typing(channel, debug_mode=debug)
             if enhanced:
                 await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
             )
-            await showShortTyping(channel, debug_mode=debug)
+            await show_short_typing(channel, debug_mode=debug)
             if enhanced:
                 await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
             )
-            await showShortTyping(channel, debug_mode=debug)
+            await show_short_typing(channel, debug_mode=debug)
             if enhanced:
                 await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(
                     index=2,
                     name="DPS",
-                    value=f"{dps1_name}, {dashed(dps2_name)}, {dashed(dps3_name)}",
+                    value=f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
                 )
             )
-            await showShortTyping(channel, debug_mode=debug)
+            await show_short_typing(channel, debug_mode=debug)
             if enhanced:
                 await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(
                     index=2,
                     name="DPS",
-                    value=f"{dps1_name}, {dps2_name}, {dashed(dps3_name)}",
+                    value=f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
                 )
             )
-            await showShortTyping(channel, debug_mode=debug)
+            await show_short_typing(channel, debug_mode=debug)
             if enhanced:
                 await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
