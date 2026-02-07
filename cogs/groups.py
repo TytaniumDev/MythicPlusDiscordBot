@@ -33,23 +33,6 @@ class Groups(commands.Cog):
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             logger.error("Error in wheel command: %s", e)
 
-    @commands.hybrid_command(name="newwheel")
-    async def newwheel(self, ctx: commands.Context[commands.Bot]) -> None:
-        """Generates groups with an enhanced rolling reveal animation and sound effects."""
-        await ctx.defer()
-        try:
-            if hasattr(self.bot, "group_service"):
-                await self.bot.group_service.core_wheel(
-                    ctx, debug_value=False, enhanced=True
-                )
-            else:
-                await ctx.send("❌ GroupService not initialized.")
-        except discord.HTTPException as e:
-            await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
-        except Exception as e:
-            await ctx.send("❌ An unexpected error occurred. Please try again later.")
-            logger.error("Error in newwheel command: %s", e)
-
     @commands.hybrid_command(name="activity")
     async def activity(self, ctx: commands.Context[commands.Bot]) -> None:
         """Starts an enhanced wheel and creates a Discord Activity invite for the voice channel."""

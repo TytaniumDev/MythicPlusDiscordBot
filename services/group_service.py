@@ -7,17 +7,12 @@ from discord.ext import commands
 
 from core.config import (
     PLACEHOLDER_CHAR,
-    REVEAL_SOUND,
-    SPIN_SOUND,
-    WHEEL_GIF,
 )
 from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import (
     get_masked_name,
     get_player_list,
-    join_voice_channel,
-    play_sound,
     show_short_typing,
 )
 
@@ -89,7 +84,6 @@ class GroupService:
         self,
         ctx: commands.Context[commands.Bot],
         debug_value: bool | None = None,
-        enhanced: bool = False,
     ) -> None:
         debug = False if debug_value is None else debug_value
         channel = ctx.channel
@@ -114,7 +108,7 @@ class GroupService:
 
         # Acquire the lock and execute (only one command per server at a time)
         async with server_lock:
-            await self._execute_core_wheel(ctx, channel, guild_id, debug, enhanced)
+            await self._execute_core_wheel(ctx, channel, guild_id, debug)
 
     async def _execute_core_wheel(
         self,
@@ -122,13 +116,8 @@ class GroupService:
         channel: discord.abc.GuildChannel | discord.abc.Messageable,
         guild_id: int,
         debug: bool,
-        enhanced: bool = False,
     ) -> None:
         """Internal function that performs the actual group creation (called within lock)."""
-        voice_client: discord.VoiceClient | None = None
-        if enhanced:
-            voice_client = await join_voice_channel(ctx)
-
         result = await self.get_groups_data(ctx, debug)
         if not result:
             return
@@ -138,9 +127,7 @@ class GroupService:
         groups = cast(list[WoWGroup], result["groups"])
 
         for i, group in enumerate(groups, 1):
-            await self._announce_group(
-                ctx, channel, group, i, voice_client, debug, enhanced
-            )
+            await self._announce_group(ctx, channel, group, i, debug)
 
     async def _announce_group(
         self,
@@ -148,12 +135,10 @@ class GroupService:
         channel: discord.abc.GuildChannel | discord.abc.Messageable,
         group: WoWGroup,
         group_number: int,
-        voice_client: discord.VoiceClient | None,
         debug: bool,
-        enhanced: bool,
     ) -> None:
         """
-        Constructs and sends the group announcement embed, handling the reveal animation if enhanced.
+        Constructs and sends the group announcement embed.
         """
         # Print out the group in an embed to keep it tidy
         embed = discord.Embed(color=discord.Color.gold())
@@ -186,12 +171,6 @@ class GroupService:
             ).add_field(name="Bloodlust", value=f"{lust_player}", inline=True)
             await ctx.send(embed=embed)
         else:
-            if enhanced:
-                if os.path.exists(WHEEL_GIF):
-                    await ctx.send(file=discord.File(WHEEL_GIF))
-                await play_sound(voice_client, SPIN_SOUND)
-                await asyncio.sleep(2)
-
             embed.add_field(
                 name="Tank", value=f"{get_masked_name(tank_name)}"
             ).add_field(
@@ -211,20 +190,14 @@ class GroupService:
 
             embedMessage = await ctx.send(embed=embed)
             await show_short_typing(channel, debug_mode=debug)
-            if enhanced:
-                await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
             )
             await show_short_typing(channel, debug_mode=debug)
-            if enhanced:
-                await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
             )
             await show_short_typing(channel, debug_mode=debug)
-            if enhanced:
-                await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(
                     index=2,
@@ -233,8 +206,6 @@ class GroupService:
                 )
             )
             await show_short_typing(channel, debug_mode=debug)
-            if enhanced:
-                await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(
                     index=2,
@@ -243,8 +214,6 @@ class GroupService:
                 )
             )
             await show_short_typing(channel, debug_mode=debug)
-            if enhanced:
-                await play_sound(voice_client, REVEAL_SOUND)
             embedMessage = await embedMessage.edit(
                 embed=embed.set_field_at(
                     index=2,

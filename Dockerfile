@@ -17,7 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Ensure assets are prepared (download sounds and generate GIF)
-RUN python setup_assets.py
-
 CMD ["python", "bot.py"]
