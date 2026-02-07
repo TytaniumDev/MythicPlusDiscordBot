@@ -24,6 +24,7 @@ from .storage import (
     get_player_preference,
     set_player_preference,
 )
+from .utils import get_wow_name
 
 
 class RoleButton(discord.ui.Button["RoleSelectionView"]):
@@ -147,12 +148,7 @@ class RoleBoardView(discord.ui.View):
         button: discord.ui.Button[RoleBoardView],
     ):
         member = interaction.user
-        # Logic duplicated from bot.py WoWName to avoid circular imports
-        # User may be Member (has nick) or User (no nick) depending on context
-        nick = getattr(member, "nick", None)
-        global_name = getattr(member, "global_name", None)
-        name = nick if nick else global_name if global_name else member.name
-        name = name.replace(".", "")
+        name = get_wow_name(member)
 
         saved_roles = get_player_preference(name)
         board_message = interaction.message

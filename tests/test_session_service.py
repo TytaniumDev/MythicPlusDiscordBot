@@ -98,7 +98,7 @@ class TestSessionServiceUpdateLobbyPlayers(unittest.IsolatedAsyncioTestCase):
     """Tests for SessionService.update_lobby_players."""
 
     @patch("services.session_service.FirebaseService")
-    @patch("services.session_service.getPlayerList")
+    @patch("services.session_service.get_player_list")
     async def test_update_lobby_players_updates_firestore(
         self,
         mock_get_player_list: MagicMock,
@@ -144,7 +144,7 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
 
     @patch("services.session_service.FirebaseService")
     @patch("services.session_service.create_mythic_plus_groups")
-    @patch("services.session_service.getPlayerList")
+    @patch("services.session_service.get_player_list")
     async def test_process_spin_request_calculates_and_updates(
         self,
         mock_get_player_list: MagicMock,
