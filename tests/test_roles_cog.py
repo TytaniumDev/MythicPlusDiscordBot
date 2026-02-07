@@ -123,9 +123,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
     @patch("cogs.roles.clear_player_preference")
     @patch("cogs.roles.WoWName")
-    async def test_clearrole_self(
-        self, mock_wowname: MagicMock, mock_clear: MagicMock
-    ):
+    async def test_clearrole_self(self, mock_wowname: MagicMock, mock_clear: MagicMock):
         """Test clearing own roles."""
         ctx = AsyncMock()
         mock_wowname.return_value = "MyName"
