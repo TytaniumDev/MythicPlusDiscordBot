@@ -1,6 +1,7 @@
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, WoWPlayer, WoWGroup } from './types';
+import { mockSession } from './mockData';
 import { Wheel } from './wheel';
 import './style.css';
 
@@ -15,6 +16,8 @@ const statusMsg = document.getElementById('status-message') as HTMLDivElement;
 const groupResults = document.getElementById('group-results') as HTMLDivElement;
 const formedGroupsPanel = document.getElementById('formed-groups-panel') as HTMLDivElement;
 const formedGroupsList = document.getElementById('formed-groups-list') as HTMLDivElement;
+const demoControls = document.getElementById('demo-controls') as HTMLDivElement;
+const startDemoBtn = document.getElementById('start-demo-btn') as HTMLButtonElement;
 
 // Wheels
 let wheelTank: Wheel | null = null;
@@ -26,6 +29,7 @@ let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
 let unsubscribe: (() => void) | null = null;
 let spinSequenceStarted = false;
+let isDemoMode = false;
 
 // Initialize
 function init() {
@@ -37,6 +41,7 @@ function init() {
   wheelDps = new Wheel('wheel-dps', 'result-dps', 'dps-wrapper');
 
   spinBtn.addEventListener('click', requestSpin);
+  startDemoBtn.addEventListener('click', startDemo);
 
   // Check for Mock Data injection
   const dataParam = urlParams.get('data');
@@ -54,7 +59,8 @@ function init() {
   currentSessionId = urlParams.get('sessionId');
 
   if (!currentSessionId) {
-    statusMsg.innerText = "No Session ID found. Please use the /activity command.";
+    statusMsg.innerText = "No Session ID found. You can try the Demo below.";
+    demoControls.classList.remove('hidden');
     return;
   }
 
@@ -184,7 +190,31 @@ function initWheelsForGroup(players: WoWPlayer[]) {
   wheelDps?.init(poolDps);
 }
 
+function startDemo() {
+  isDemoMode = true;
+  demoControls.classList.add('hidden');
+  statusMsg.innerText = "";
+  handleSessionUpdate(mockSession);
+}
+
 async function requestSpin() {
+  if (isDemoMode && currentSessionData) {
+    spinBtn.disabled = true;
+
+    // Simulate server processing: request_spin
+    const calculatingData = { ...currentSessionData, status: 'request_spin' } as Session;
+    handleSessionUpdate(calculatingData);
+
+    // Simulate delay
+    setTimeout(() => {
+      // Transition to spinning
+      const spinningData = { ...calculatingData, status: 'spinning' } as Session;
+      handleSessionUpdate(spinningData);
+    }, 1500);
+
+    return;
+  }
+
   if (!currentSessionId) return;
   spinBtn.disabled = true;
 
@@ -263,6 +293,9 @@ async function startSpinSequence(groups: WoWGroup[]) {
   if (currentSessionId) {
       const docRef = doc(db, 'sessions', currentSessionId);
       await updateDoc(docRef, { status: 'completed' });
+  } else if (isDemoMode && currentSessionData) {
+      const completedData = { ...currentSessionData, status: 'completed' } as Session;
+      handleSessionUpdate(completedData);
   }
 }
 
