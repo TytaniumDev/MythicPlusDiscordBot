@@ -46,8 +46,8 @@ Log output may be included in bug reports (e.g. "Recent Logs" in GitHub issues).
 
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
-2. **Environment:** Ensure the environment is set up and dependencies are installed (e.g., `pip install -r requirements.txt`).
+2. **Environment:** Ensure the environment is set up and dependencies are installed using `uv sync`.
 3. **Develop:** Implement the requested changes.
 4. **Verify:** Execute `./scripts/verify.sh`.
-   - This script runs `ruff check --fix`, `ruff format`, and `python -m unittest discover tests`.
+   - This script runs `ruff check --fix`, `ruff format`, and `uv run python -m unittest discover tests`.
    - **Crucial:** You must use this script when the `pre_commit_instructions` tool asks you to "Run Relevant Tests".
