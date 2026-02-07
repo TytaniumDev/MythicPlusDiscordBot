@@ -37,18 +37,14 @@ Get up and running in less than 5 minutes.
 
 2.  **Install Dependencies**
     ```bash
-    # Using uv (recommended)
-    uv pip install -r requirements-dev.txt
-
-    # OR using standard pip
-    pip install -r requirements-dev.txt
+    uv sync
     ```
 
 3.  **Run the Bot**
     ```bash
     # Ensure you have your BOT_TOKEN set in your environment
     export BOT_TOKEN="your_token_here"
-    python bot.py
+    uv run python bot.py
     ```
 
 ## 🗺️ Documentation Map
