@@ -95,7 +95,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
         # Ensure Tank is in ALL_ROLES for the test context
         with patch("cogs.roles.ALL_ROLES", ["Tank"]):
-             await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
+            await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
 
         ctx.send.assert_called_once()
         call_args = ctx.send.call_args
@@ -147,6 +147,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name="Unknown")
 
         ctx.send.assert_called_with("❌ No saved roles found for **Unknown**.")
+
 
 if __name__ == "__main__":
     unittest.main()
