@@ -1,6 +1,6 @@
 import asyncio
 import logging
-import os
+import pathlib
 from typing import cast
 
 import discord
@@ -12,7 +12,9 @@ from core.storage import get_player_preference
 logger = logging.getLogger(__name__)
 
 
-def WoWName(member: discord.Member | discord.User, debug: bool | None = None) -> str:
+def get_wow_name(
+    member: discord.Member | discord.User, debug: bool | None = None
+) -> str:
     """
     Returns the member's nickname if it exists, or their normal Discord name if
     they don't have a nickname set.
@@ -21,7 +23,7 @@ def WoWName(member: discord.Member | discord.User, debug: bool | None = None) ->
     nick = getattr(member, "nick", None)
     if debug:
         logger.debug(
-            "WoWName - Member: %s\nNick: %s\nGlobal: %s",
+            "get_wow_name - Member: %s\nNick: %s\nGlobal: %s",
             member,
             nick,
             member.global_name,
@@ -37,7 +39,7 @@ def WoWName(member: discord.Member | discord.User, debug: bool | None = None) ->
     return raw_name.replace(".", "")
 
 
-async def showLongTyping(
+async def show_long_typing(
     channel: discord.abc.Messageable | discord.abc.GuildChannel,
     debug_mode: bool = False,
 ) -> None:
@@ -47,7 +49,7 @@ async def showLongTyping(
             await asyncio.sleep(2)
 
 
-async def showShortTyping(
+async def show_short_typing(
     channel: discord.abc.Messageable | discord.abc.GuildChannel,
     debug_mode: bool = False,
 ) -> None:
@@ -57,7 +59,11 @@ async def showShortTyping(
             await asyncio.sleep(1)
 
 
-def dashed(name: str) -> str:
+def get_masked_name(name: str) -> str:
+    """
+    Returns a masked string of '?' characters with the same length as the input name.
+    Used for creating suspense in UI elements.
+    """
     return "?" * len(name)
 
 
@@ -65,27 +71,35 @@ async def join_voice_channel(
     ctx: commands.Context[commands.Bot],
 ) -> discord.VoiceClient | None:
     """Joins the voice channel of the command author."""
-    if ctx.author.voice and ctx.author.voice.channel:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client:
-            if ctx.voice_client.channel != channel:
-                await ctx.voice_client.move_to(channel)
-        else:
-            await channel.connect()
-        return cast(discord.VoiceClient | None, ctx.voice_client)
-    return None
+    if not ctx.author.voice or not ctx.author.voice.channel:
+        return None
+
+    channel = ctx.author.voice.channel
+    if ctx.voice_client:
+        if ctx.voice_client.channel != channel:
+            await ctx.voice_client.move_to(channel)
+    else:
+        await channel.connect()
+    return cast(discord.VoiceClient | None, ctx.voice_client)
 
 
 async def play_sound(voice_client: discord.VoiceClient | None, sound_path: str) -> None:
     """Plays a sound file in the given voice client."""
-    if voice_client and os.path.exists(sound_path):
-        try:
-            if voice_client.is_playing():
-                voice_client.stop()
-            voice_client.play(discord.FFmpegPCMAudio(sound_path))
-            # We don't necessarily want to wait for the whole sound if it's a loop
-        except Exception as e:
-            logger.error("Error playing sound %s: %s", sound_path, e)
+    if not voice_client:
+        return
+
+    path = pathlib.Path(sound_path)
+    if not path.exists():
+        logger.warning("Sound file not found: %s", sound_path)
+        return
+
+    try:
+        if voice_client.is_playing():
+            voice_client.stop()
+        voice_client.play(discord.FFmpegPCMAudio(str(path)))
+        # We don't necessarily want to wait for the whole sound if it's a loop
+    except Exception as e:
+        logger.error("Error playing sound %s: %s", sound_path, e)
 
 
 def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
@@ -93,7 +107,7 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
     Creates a WoWPlayer instance from a Discord member.
     Prioritizes saved preferences over Discord roles.
     """
-    name = WoWName(member)
+    name = get_wow_name(member)
     # Check for persistent preferences first
     saved_roles = get_player_preference(name)
 
@@ -116,7 +130,7 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
     return None
 
 
-def getPlayerList(members: list[discord.Member]) -> list[WoWPlayer]:
+def get_player_list(members: list[discord.Member]) -> list[WoWPlayer]:
     """Gathers the player info from the discord and returns a list of WoWPlayer objects."""
     players = []
     for member in members:

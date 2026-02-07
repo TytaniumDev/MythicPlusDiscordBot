@@ -6,7 +6,7 @@ from discord.ext import commands
 from core.config import ALL_ROLES
 from core.role_ui import RoleBoardView, create_role_board_embed
 from core.storage import clear_player_preference, get_player_preference
-from core.utils import WoWName, getPlayerList
+from core.utils import get_player_list, get_wow_name
 
 
 class Roles(commands.Cog):
@@ -41,14 +41,14 @@ class Roles(commands.Cog):
                 return
 
             members = [m for m in channel.members if not m.bot]
-            players = getPlayerList(cast(list[discord.Member], members))
+            players = get_player_list(cast(list[discord.Member], members))
             embed = create_role_board_embed(players)
 
             await board_message.edit(embed=embed)
 
         # Initial render
         members = [m for m in target_channel.members if not m.bot]
-        players = getPlayerList(cast(list[discord.Member], members))
+        players = get_player_list(cast(list[discord.Member], members))
         embed = create_role_board_embed(players)
         view = RoleBoardView(update_callback=update_board)
 
@@ -79,7 +79,7 @@ class Roles(commands.Cog):
 
         found_any = False
         for member in members:
-            name = WoWName(cast(discord.Member, member))
+            name = get_wow_name(cast(discord.Member, member))
             saved_roles = get_player_preference(name)
             if saved_roles:
                 embed.add_field(name=name, value=", ".join(saved_roles), inline=False)
@@ -106,14 +106,14 @@ class Roles(commands.Cog):
     ) -> None:
         """Clear your saved roles, or a specific character's roles."""
         if name is None:
-            name = WoWName(ctx.author)
+            name = get_wow_name(ctx.author)
             success = clear_player_preference(name)
             if success:
                 await ctx.send(f"✅ Cleared your saved roles, **{name}**.")
             else:
                 await ctx.send(f"❌ You had no saved roles, **{name}**.")
         else:
-            # Check if user has permission to clear others? Assuming guild context for now.
+            # Check if they have permission to clear others? Assuming guild context for now.
             success = clear_player_preference(name)
             if success:
                 await ctx.send(f"✅ Cleared saved roles for **{name}**.")

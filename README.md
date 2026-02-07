@@ -3,23 +3,13 @@
 [![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Covered by Argos Visual Testing](https://argos-ci.com/badge.svg)](https://app.argos-ci.com/tytaniumdev/MythicPlusDiscordBot/reference)
-[Launch Activity](https://tytaniumdev.github.io/MythicPlusDiscordBot/) | [Documentation](ARCHITECTURE.md) | [Report Bug](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues)
+
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](ARCHITECTURE.md)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
 > Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with voice integration and interactive activities.
 
 ---
-
-### 🚀 [Launch App](https://tytaniumdev.github.io/MythicPlusDiscordBot/) | 📖 [Documentation](#-documentation-map) | 🐞 [Report Bug](https://github.com/TytaniumDev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
-
----
-
-## ✨ Key Features
-
-*   **Group Organization**: Automatically calculate balanced Mythic+ groups based on player roles and key levels.
-*   **Discord Activity**: Interactive "Wheel of Fate" for selecting keys or players, integrated directly into Discord voice channels.
-*   **Voice Integration**: The bot joins voice channels to announce results and play sound effects.
-*   **GitHub Integration**: Report bugs and request features directly from Discord using `/bug` and `/featurerequest`.
 
 ## 📸 Preview
 
@@ -36,6 +26,7 @@ Get up and running in less than 5 minutes.
     ```
 
 2.  **Install Dependencies**
+    We recommend using [uv](https://github.com/astral-sh/uv) for fast, reliable dependency management.
     ```bash
     uv sync
     ```
@@ -47,12 +38,20 @@ Get up and running in less than 5 minutes.
     uv run python bot.py
     ```
 
+## ✨ Key Features
+
+*   **Group Organization**: Automatically calculate balanced Mythic+ groups based on player roles and key levels.
+*   **Discord Activity**: Interactive "Wheel of Fate" for selecting keys or players, integrated directly into Discord voice channels.
+*   **Voice Integration**: The bot joins voice channels to announce results and play sound effects.
+*   **GitHub Integration**: Report bugs and request features directly from Discord using `/bug` and `/featurerequest`.
+
 ## 🗺️ Documentation Map
 
 *   **🏗️ Architecture**: [Read `ARCHITECTURE.md`](./ARCHITECTURE.md) - Understanding the core logic and services.
 *   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
 *   **🎮 Activity Setup**: [Read `ACTIVITY_SETUP.md`](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
 *   **🔥 Firebase Setup**: [Read `FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Database and Auth configuration.
+*   **👨‍💻 Contributing**: [Read `AGENTS.md`](./AGENTS.md) - Development standards and guidelines.
 
 ## 🤝 Contributing
 

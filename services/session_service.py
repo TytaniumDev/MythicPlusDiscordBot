@@ -8,7 +8,7 @@ from discord.ext import commands
 from core.firebase_service import FirebaseService
 from core.models import WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
-from core.utils import getPlayerList
+from core.utils import get_player_list
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class SessionService:
                 return
 
             # 2. Parse Players (using existing util)
-            players = getPlayerList(cast(list[discord.Member], members))
+            players = get_player_list(cast(list[discord.Member], members))
 
         if not players:
             logger.warning("No valid players found.")
@@ -179,7 +179,7 @@ class SessionService:
             return
 
         # Parse players
-        players = getPlayerList(member_list)
+        players = get_player_list(member_list)
         # Even if empty, we sync it so the UI shows empty lobby.
 
         players_data = [p.to_dict() for p in players]
