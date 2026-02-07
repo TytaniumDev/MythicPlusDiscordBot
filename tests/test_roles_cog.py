@@ -21,7 +21,10 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
     @patch("cogs.roles.create_role_board_embed")
     @patch("cogs.roles.getPlayerList")
     async def test_launch_role_board_success(
-        self, mock_get_players, mock_create_embed, mock_view
+        self,
+        mock_get_players: MagicMock,
+        mock_create_embed: MagicMock,
+        mock_view: MagicMock,
     ):
         """Test launching the role board successfully."""
         ctx = AsyncMock()
@@ -32,7 +35,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         mock_get_players.return_value = []
         mock_create_embed.return_value = discord.Embed(title="Test Board")
 
-        await self.cog._launch_role_board(ctx)
+        await self.cog._launch_role_board(ctx)  # pyright: ignore[reportPrivateUsage]
 
         mock_get_players.assert_called_once()
         mock_create_embed.assert_called_once()
@@ -51,13 +54,15 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         # AsyncMock creates attributes on access, so explicitly set interaction to None
         ctx.interaction = None
 
-        await self.cog._launch_role_board(ctx)
+        await self.cog._launch_role_board(ctx)  # pyright: ignore[reportPrivateUsage]
 
         ctx.send.assert_called_with("❌ This command can only be used in a server.")
 
     @patch("cogs.roles.WoWName")
     @patch("cogs.roles.get_player_preference")
-    async def test_rolecheck_with_saved_roles(self, mock_get_pref, mock_wowname):
+    async def test_rolecheck_with_saved_roles(
+        self, mock_get_pref: MagicMock, mock_wowname: MagicMock
+    ):
         """Test rolecheck with a user who has saved roles."""
         ctx = AsyncMock()
         member = MagicMock()
@@ -79,7 +84,9 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
     @patch("cogs.roles.WoWName")
     @patch("cogs.roles.get_player_preference")
-    async def test_rolecheck_discord_roles_only(self, mock_get_pref, mock_wowname):
+    async def test_rolecheck_discord_roles_only(
+        self, mock_get_pref: MagicMock, mock_wowname: MagicMock
+    ):
         """Test rolecheck with a user who has no saved roles but has Discord roles."""
         ctx = AsyncMock()
         member = MagicMock()
@@ -116,7 +123,9 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
     @patch("cogs.roles.clear_player_preference")
     @patch("cogs.roles.WoWName")
-    async def test_clearrole_self(self, mock_wowname, mock_clear):
+    async def test_clearrole_self(
+        self, mock_wowname: MagicMock, mock_clear: MagicMock
+    ):
         """Test clearing own roles."""
         ctx = AsyncMock()
         mock_wowname.return_value = "MyName"
@@ -128,7 +137,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         ctx.send.assert_called_with("✅ Cleared your saved roles, **MyName**.")
 
     @patch("cogs.roles.clear_player_preference")
-    async def test_clearrole_other(self, mock_clear):
+    async def test_clearrole_other(self, mock_clear: MagicMock):
         """Test clearing another player's roles."""
         ctx = AsyncMock()
         mock_clear.return_value = True
@@ -139,7 +148,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         ctx.send.assert_called_with("✅ Cleared saved roles for **OtherPlayer**.")
 
     @patch("cogs.roles.clear_player_preference")
-    async def test_clearrole_failure(self, mock_clear):
+    async def test_clearrole_failure(self, mock_clear: MagicMock):
         """Test clearing roles when none exist."""
         ctx = AsyncMock()
         mock_clear.return_value = False
