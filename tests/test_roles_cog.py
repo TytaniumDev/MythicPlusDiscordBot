@@ -19,7 +19,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
     @patch("cogs.roles.RoleBoardView")
     @patch("cogs.roles.create_role_board_embed")
-    @patch("cogs.roles.getPlayerList")
+    @patch("cogs.roles.get_player_list")
     async def test_launch_role_board_success(
         self,
         mock_get_players: MagicMock,
@@ -58,7 +58,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
         ctx.send.assert_called_with("❌ This command can only be used in a server.")
 
-    @patch("cogs.roles.WoWName")
+    @patch("cogs.roles.get_wow_name")
     @patch("cogs.roles.get_player_preference")
     async def test_rolecheck_with_saved_roles(
         self, mock_get_pref: MagicMock, mock_wowname: MagicMock
@@ -82,7 +82,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.fields[0].name, "TestPlayer")
         self.assertEqual(embed.fields[0].value, "Tank, Healer")
 
-    @patch("cogs.roles.WoWName")
+    @patch("cogs.roles.get_wow_name")
     @patch("cogs.roles.get_player_preference")
     async def test_rolecheck_discord_roles_only(
         self, mock_get_pref: MagicMock, mock_wowname: MagicMock
@@ -122,7 +122,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         ctx.send.assert_called_with("No members found in the channel.")
 
     @patch("cogs.roles.clear_player_preference")
-    @patch("cogs.roles.WoWName")
+    @patch("cogs.roles.get_wow_name")
     async def test_clearrole_self(self, mock_wowname: MagicMock, mock_clear: MagicMock):
         """Test clearing own roles."""
         ctx = AsyncMock()
