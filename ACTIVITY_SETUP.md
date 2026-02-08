@@ -36,7 +36,7 @@ We have added a GitHub Action to automatically deploy your activity files. You j
 
 1.  Start your bot.
 2.  Join a Voice Channel in Discord.
-3.  Run the command: `/activity` (or `!activity` if using prefixes).
+3.  Run the command: `/activity`.
 4.  The bot should reply with a "Join Activity" link.
 5.  Clicking the link will open your hosted Wheel of Names directly inside Discord!
 
