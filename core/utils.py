@@ -1,10 +1,7 @@
 import asyncio
 import logging
-import pathlib
-from typing import cast
 
 import discord
-from discord.ext import commands
 
 from core.models import WoWPlayer
 from core.storage import get_player_preference
@@ -65,41 +62,6 @@ def get_masked_name(name: str) -> str:
     Used for creating suspense in UI elements.
     """
     return "?" * len(name)
-
-
-async def join_voice_channel(
-    ctx: commands.Context[commands.Bot],
-) -> discord.VoiceClient | None:
-    """Joins the voice channel of the command author."""
-    if not ctx.author.voice or not ctx.author.voice.channel:
-        return None
-
-    channel = ctx.author.voice.channel
-    if ctx.voice_client:
-        if ctx.voice_client.channel != channel:
-            await ctx.voice_client.move_to(channel)
-    else:
-        await channel.connect()
-    return cast(discord.VoiceClient | None, ctx.voice_client)
-
-
-async def play_sound(voice_client: discord.VoiceClient | None, sound_path: str) -> None:
-    """Plays a sound file in the given voice client."""
-    if not voice_client:
-        return
-
-    path = pathlib.Path(sound_path)
-    if not path.exists():
-        logger.warning("Sound file not found: %s", sound_path)
-        return
-
-    try:
-        if voice_client.is_playing():
-            voice_client.stop()
-        voice_client.play(discord.FFmpegPCMAudio(str(path)))
-        # We don't necessarily want to wait for the whole sound if it's a loop
-    except Exception as e:
-        logger.error("Error playing sound %s: %s", sound_path, e)
 
 
 def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:

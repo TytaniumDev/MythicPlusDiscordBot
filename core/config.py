@@ -59,10 +59,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 DEVELOPER_ID = int(os.getenv("DEVELOPER_ID", "202184987469021184"))
 
 # Assets
-ASSETS_DIR = "assets"
-SPIN_SOUND = os.path.join(ASSETS_DIR, "spin.ogg")
-REVEAL_SOUND = os.path.join(ASSETS_DIR, "reveal.ogg")
-WHEEL_GIF = os.path.join(ASSETS_DIR, "wheel.gif")
 PLACEHOLDER_CHAR = ":question:"
 
 # Logging
