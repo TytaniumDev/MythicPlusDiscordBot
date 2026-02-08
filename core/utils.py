@@ -3,6 +3,17 @@ import logging
 
 import discord
 
+from core.config import (
+    ROLE_BREZ,
+    ROLE_DPS,
+    ROLE_DPS_OFFSPEC,
+    ROLE_HEALER,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_LUST,
+    ROLE_RANGED,
+    ROLE_TANK,
+    ROLE_TANK_OFFSPEC,
+)
 from core.models import WoWPlayer
 from core.storage import get_player_preference
 
@@ -100,3 +111,29 @@ def get_player_list(members: list[discord.Member]) -> list[WoWPlayer]:
         if player:
             players.append(player)
     return players
+
+
+def get_debug_players() -> list[WoWPlayer]:
+    """
+    Returns a list of hardcoded WoWPlayer objects for testing and debug purposes.
+    Ensures consistent data for verifying group creation logic.
+    """
+    return [
+        WoWPlayer.create(
+            "Martz", [ROLE_HEALER, ROLE_TANK_OFFSPEC, ROLE_DPS_OFFSPEC, ROLE_BREZ]
+        ),
+        WoWPlayer.create("KingofSkillz", [ROLE_DPS, ROLE_RANGED, ROLE_LUST]),
+        WoWPlayer.create("chaoswaffles", [ROLE_DPS, ROLE_TANK_OFFSPEC]),
+        WoWPlayer.create("Upartyhardy", [ROLE_DPS, ROLE_RANGED]),
+        WoWPlayer.create("Pandemonium", [ROLE_TANK, ROLE_DPS_OFFSPEC, ROLE_BREZ]),
+        WoWPlayer.create("Will", [ROLE_DPS]),
+        WoWPlayer.create(
+            "Tytanium", [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_RANGED, ROLE_LUST]
+        ),
+        WoWPlayer.create("hammer13", [ROLE_DPS]),
+        WoWPlayer.create("Ultra9", [ROLE_DPS, ROLE_RANGED, ROLE_LUST]),
+        WoWPlayer.create("DrZoidberg", [ROLE_DPS, ROLE_RANGED]),
+        WoWPlayer.create("Player1x", [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_LUST]),
+        WoWPlayer.create("lizardtotem", [ROLE_HEALER, ROLE_DPS_OFFSPEC]),
+        WoWPlayer.create("rorschach128", [ROLE_DPS]),
+    ]
