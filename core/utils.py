@@ -1,9 +1,7 @@
 import asyncio
 import logging
-from typing import cast
 
 import discord
-from discord.ext import commands
 
 from core.models import WoWPlayer
 from core.storage import get_player_preference
