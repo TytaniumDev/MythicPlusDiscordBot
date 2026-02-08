@@ -4,10 +4,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Covered by Argos Visual Testing](https://argos-ci.com/badge.svg)](https://app.argos-ci.com/tytaniumdev/MythicPlusDiscordBot/reference)
 
-### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](ARCHITECTURE.md)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
-> Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with voice integration and interactive activities.
+> Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with interactive activities.
 
 ---
 
@@ -31,10 +31,14 @@ Get up and running in less than 5 minutes.
     uv sync
     ```
 
-3.  **Run the Bot**
+3.  **Configure Environment**
+    Create a `.env` file in the root directory:
     ```bash
-    # Ensure you have your BOT_TOKEN set in your environment
-    export BOT_TOKEN="your_token_here"
+    echo "BOT_TOKEN=your_token_here" > .env
+    ```
+
+4.  **Run the Bot**
+    ```bash
     uv run python bot.py
     ```
 
@@ -42,10 +46,9 @@ Get up and running in less than 5 minutes.
 
 *   **Group Organization**: Automatically calculate balanced Mythic+ groups based on player roles and key levels.
 *   **Discord Activity**: Interactive "Wheel of Fate" for selecting keys or players, integrated directly into Discord voice channels.
-*   **Voice Integration**: The bot joins voice channels to announce results and play sound effects.
 *   **GitHub Integration**: Report bugs and request features directly from Discord using `/bug` and `/featurerequest`.
 
-## 🗺️ Documentation Map
+## 🗺️ Documentation Map <a id="documentation-map"></a>
 
 *   **🏗️ Architecture**: [Read `ARCHITECTURE.md`](./ARCHITECTURE.md) - Understanding the core logic and services.
 *   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
