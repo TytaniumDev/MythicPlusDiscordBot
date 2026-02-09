@@ -27,7 +27,6 @@ let wheelDps: Wheel | null = null;
 // State
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
-let unsubscribe: (() => void) | null = null;
 let spinSequenceStarted = false;
 let isDemoMode = false;
 
@@ -66,7 +65,7 @@ function init() {
 
   // Subscribe to Session
   const docRef = doc(db, 'sessions', currentSessionId);
-  unsubscribe = onSnapshot(docRef, (docSnap) => {
+  onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data() as Session;
       handleSessionUpdate(data);

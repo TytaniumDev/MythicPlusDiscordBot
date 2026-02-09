@@ -125,8 +125,8 @@ Configure the bot in the [Discord Developer Portal](https://discord.com/develope
 
 Enable these so the bot can read members and message content:
 
-- **Server Members Intent** — required for role-based player lists and nicknames (e.g. `!wheel`, `!rolecheck`).
-- **Message Content Intent** — required if the bot uses the message content of commands (e.g. `!wheel`).
+- **Server Members Intent** — required for role-based player lists and nicknames (e.g. `/wheel`).
+- **Message Content Intent** — required if the bot uses the message content of legacy prefix commands.
 
 Save changes after toggling intents.
 
@@ -166,7 +166,7 @@ The `!activity` command creates an embedded-application invite. Your app must be
 2. Create or link an Activity so Discord allows `target_type=embedded_application` invites.
 3. Set the **DISCORD_APPLICATION_ID** secret (and `DISCORD_APPLICATION_ID` in `.env` locally) to your application’s **Application ID** (Application → General Information).
 
-If Activities are not set up, `!activity` will fail; `!wheel` and `!newwheel` (voice + GIFs) still work with the permissions above.
+If Activities are not set up, `/activity` will fail; `/wheel` (voice + GIFs) still work with the permissions above.
 
 ## 4. First deploy
 
@@ -228,6 +228,8 @@ Look for:
 
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
 Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
+
+Note: The production Docker image is built using `requirements.txt`. If you add dependencies, ensure they are reflected there. Local development uses `uv` for dependency management.
 
 ## 7. GitHub Issues Integration
 

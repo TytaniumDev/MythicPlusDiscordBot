@@ -9,7 +9,7 @@ This document gives a high-level picture of how the **Discord bot**, **Firebase 
 **MythicPlusDiscordBot** helps a WoW guild form Mythic+ groups. It:
 
 1. Uses Discord roles to know who can tank, heal, or DPS.
-2. Can form balanced groups and show them in Discord (`/wheel`, `/newwheel`).
+2. Can form balanced groups and show them in Discord (`/wheel`).
 3. Can run an **Activity**: a shared lobby + “wheel” experience backed by Firebase. Someone runs `/activity` in a voice channel; others join via a Discord Activity or a browser link. The lobby stays in sync with who’s in voice; when someone clicks “Spin,” the bot computes groups and the frontend runs a wheel animation, then everyone sees the final groups.
 
 Firebase is the **real-time bridge** between the bot and the Activity frontend: both read and write the same “session” document, so the UI and Discord stay in sync without the frontend talking to the bot directly.
@@ -65,10 +65,12 @@ flowchart TB
 
 - **Entrypoint**: `bot.py` — creates `MythicPlusBot`, loads cogs, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
 - **Cogs** (in `cogs/`):
-  - **groups**: `/wheel`, `/newwheel`, `/activity`, `/badgroup`, and the `on_voice_state_update` listener that keeps the Activity lobby in sync with voice channel membership.
-  - **roles**, **general**, **debug**: other commands and utilities.
+  - **groups**: `/wheel`, `/activity`, `/badgroup`, and the `on_voice_state_update` listener that keeps the Activity lobby in sync with voice channel membership.
+  - **roles**: Role management commands.
+  - **general**: `/bug`, `/featurerequest`, `/version`, `/status`.
+  - **debug**: Debugging utilities.
 - **Services** (in `services/`):
-  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`create_mythic_plus_groups`), and handles the “wheel” and “newwheel” flows. For `/activity`, it only provides the initial player list; the actual “spin” is triggered later from the frontend via Firebase.
+  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`create_mythic_plus_groups`), and handles the “wheel” flows. For `/activity`, it only provides the initial player list; the actual “spin” is triggered later from the frontend via Firebase.
   - **SessionService**: creates a Firestore session when `/activity` is run, keeps a map of voice channel → session, subscribes to that session’s document, and reacts to status changes (`request_spin` → compute groups and write back; `completed` → post an embed to the Discord channel). Also updates the session’s player list when voice state changes.
 - **Core** (in `core/`):
   - **FirebaseService**: singleton; initializes the Firebase Admin SDK (using `FIREBASE_CREDENTIALS_JSON`), exposes create/update/delete session and a real-time listener for one session document. All Firestore access from the bot goes through here.
