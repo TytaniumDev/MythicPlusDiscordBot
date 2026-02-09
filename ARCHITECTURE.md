@@ -126,6 +126,24 @@ Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replac
 
 So the frontend is a **state machine** driven by the single session document in Firestore.
 
+#### Activity Frontend Modes
+The frontend is designed to handle multiple execution contexts, driven by URL parameters:
+
+1.  **Firebase Mode (Default)**:
+    -   Triggered when `?sessionId=...` is present.
+    -   Connects to Firestore to listen for session updates.
+    -   Used in production and live Discord activities.
+
+2.  **Demo Mode**:
+    -   Triggered when no parameters are present.
+    -   Simulates the "Spin" lifecycle locally using mock data and timeouts.
+    -   Allows users to preview the wheel animation without a backend session.
+
+3.  **Mock / Static Mode**:
+    -   Triggered when `?data=...` (base64 encoded JSON) is present.
+    -   Bypasses Firebase entirely and renders the provided state.
+    -   **Static Wheel**: If the data includes `staticWheel: true`, the wheel is rendered in a frozen state. This is critical for **visual regression testing** (Playwright) to ensure consistent snapshots.
+
 ---
 
 ## How an Activity Run Works (End-to-End)

@@ -47,3 +47,12 @@ Any future updates to README must preserve this skeleton.
 1. **Dependency Split:** Developers use `uv` for local dev/testing (`scripts/verify.sh`). Production (Docker) relies on `requirements.txt`.
    - *Implication:* Updates to dependencies must be synced to `requirements.txt` for production.
 2. **Command Standardization:** Documentation now prioritizes Slash Commands (`/activity`) as the primary interface. Prefix commands (`!activity`) are supported legacy features but should be deprioritized in docs.
+
+### [2024-05-22] Frontend Modes and Verification Silos
+**Context:** The `activity/` frontend was found to be a "Black Box" with undocumented operating modes and a verification script (`scripts/verify-activity.sh`) missing from the main `CONTRIBUTING.md`.
+**Learning:**
+1. **Frontend Modes:** The Activity frontend (`main.ts`) operates in three distinct modes:
+   - **Firebase Mode:** Default (when `sessionId` is present).
+   - **Demo Mode:** Interactive local simulation (when no params are present).
+   - **Mock/Static Mode:** Deterministic state injection via `data` param (used for Playwright visual tests).
+2. **Verification Silo:** The frontend has its own mandatory verification script (`scripts/verify-activity.sh`) which runs typechecks, builds, and E2E tests. This MUST be documented alongside the backend `verify.sh`.

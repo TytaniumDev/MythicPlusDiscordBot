@@ -4,45 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build, Lint, and Test Commands
 
+### Backend (Python)
 ```bash
 # Install dependencies
-pip install -r requirements.txt         # Runtime deps
-pip install -r requirements-dev.txt     # Dev deps (includes ruff, pyright, pre-commit)
+uv sync                                 # Creates venv and installs deps (requires uv)
 
 # Run the bot
+source .venv/bin/activate
 python bot.py
 
-# Linting & formatting (auto-fixes on save via pre-commit hook)
+# Verification (Lint, Format, Type Check, Test)
+./scripts/verify.sh                     # ALWAYS run this before committing
+
+# Manual commands (covered by verify.sh)
 ruff check . --fix                      # Lint
 ruff format .                           # Format
 pyright                                 # Type checking (strict mode)
+python -m unittest discover tests       # Run all tests
+```
 
-# Run all tests
-python -m unittest discover tests
+### Frontend (TypeScript/Vite)
+```bash
+# Install dependencies
+cd activity
+npm ci
 
-# Run a single test file
-python -m unittest tests/test_group_creator.py
+# Verification (Type Check, Build, Test)
+../scripts/verify-activity.sh           # ALWAYS run this before committing frontend changes
 
-# Run a single test case
-python -m unittest tests.test_group_creator.TestGroupCreator.test_basic_group_creation
-
-# Pre-commit hooks (run once after clone)
-pre-commit install
+# Manual commands
+npm run typecheck                       # TypeScript check
+npm run build                           # Vite build
+npx playwright test                     # End-to-End tests
 ```
 
 ## Architecture Overview
 
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
 
-1. **Discord-only** (`/wheel`, `/newwheel`): Bot computes groups and posts results directly in Discord
-2. **Activity mode** (`/activity`): Real-time lobby experience via Firebase, with an optional web frontend
+1. **Discord-only** (`/wheel`): Bot computes groups and posts results directly in Discord.
+2. **Activity mode** (`/activity`): Real-time lobby experience via Firebase and a TypeScript/Vite frontend.
 
 ### Key Components
 
 ```
 bot.py                    # Entry point, MythicPlusBot class, error handling, startup cleanup
 ├── cogs/
-│   ├── groups.py         # Main commands: /wheel, /newwheel, /activity, /badgroup
+│   ├── groups.py         # Main commands: /wheel, /activity, /badgroup
 │   │                     # Also handles on_voice_state_update for lobby sync
 │   ├── roles.py          # Role management commands
 │   ├── general.py        # General utility commands
@@ -56,6 +64,8 @@ bot.py                    # Entry point, MythicPlusBot class, error handling, st
 │   ├── models.py                  # WoWPlayer (frozen dataclass), WoWGroup
 │   └── config.py                  # All env vars and role constants
 └── activity/             # TypeScript/Vite frontend (separate from bot)
+    ├── src/main.ts       # Frontend state machine (Lobby -> Spin -> Results)
+    └── tests/            # Playwright visual regression tests
 ```
 
 ### Data Flow for `/activity`
@@ -69,6 +79,12 @@ bot.py                    # Entry point, MythicPlusBot class, error handling, st
 7. Bot detects change, runs `create_mythic_plus_groups()`, writes `groups` + status: `spinning`
 8. Frontend animates, then sets status: `completed`
 9. Bot posts embed to Discord channel
+
+### Activity Frontend Modes
+The frontend supports three modes (see `ARCHITECTURE.md` for details):
+1. **Firebase Mode**: Connected to live backend session.
+2. **Demo Mode**: Standalone local simulation.
+3. **Mock/Static Mode**: For visual regression testing (`staticWheel: true`).
 
 ### Domain Model
 

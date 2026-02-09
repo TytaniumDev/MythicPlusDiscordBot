@@ -15,7 +15,8 @@ This project uses **[uv](https://github.com/astral-sh/uv)** for fast Python pack
 
 ## Verification
 
-Before submitting a PR, you **must** run the verification script. This script handles linting, formatting, type checking, and testing.
+### Backend Verification (Python)
+Before submitting a PR affecting `core/`, `cogs/`, or `services/`, you **must** run the backend verification script.
 
 ```bash
 ./scripts/verify.sh
@@ -24,6 +25,18 @@ Before submitting a PR, you **must** run the verification script. This script ha
 -   **Linting/Formatting**: Uses `ruff` (automatically fixes issues).
 -   **Type Checking**: Uses `pyright`.
 -   **Tests**: Runs standard `unittest` discovery.
+
+### Frontend Verification (TypeScript/Vite)
+Before submitting a PR affecting `activity/`, you **must** run the frontend verification script.
+
+```bash
+./scripts/verify-activity.sh
+```
+
+-   **Dependencies**: Runs `npm ci` to ensure clean installs.
+-   **Type Checking**: Runs `npm run typecheck` (TypeScript).
+-   **Build**: Runs `npm run build` (Vite).
+-   **Tests**: Runs `npx playwright test` (End-to-End & Visual Regression).
 
 ## Project Structure
 
@@ -35,13 +48,13 @@ Before submitting a PR, you **must** run the verification script. This script ha
 
 ## Production vs. Development
 
--   **Development**: Uses `uv` and `pyproject.toml`.
+-   **Development (Local & CI)**: Uses `uv` and `pyproject.toml`. The `scripts/verify.sh` workflow relies on this.
 -   **Production (Docker)**: Uses `requirements.txt`.
-    -   *Note: If you add a dependency, ensure it is reflected in `requirements.txt` for the production build.*
+    -   *Crucial: If you add a dependency via `uv add`, you must manually update `requirements.txt` to ensure the Docker build works in production.*
 
 ## AI Agents
 
-If you are an AI agent, please refer to **[AGENTS.md](AGENTS.md)** for your specific operational directives.
+If you are an AI agent, **[AGENTS.md](AGENTS.md)** is your Single Source of Truth (SSOT). Refer to it for specific operational directives and mandatory checks.
 
 ## Command Style
 
