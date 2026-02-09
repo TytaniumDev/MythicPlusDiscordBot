@@ -12,8 +12,8 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
     @patch("services.group_service.create_mythic_plus_groups")
     @patch("services.group_service.get_player_list")
     async def test_get_groups_data_success(
-        self, mock_get_player_list, mock_create_groups
-    ):
+        self, mock_get_player_list: MagicMock, mock_create_groups: MagicMock
+    ) -> None:
         service = GroupService()
         ctx = AsyncMock()
         member = MagicMock()
