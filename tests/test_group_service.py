@@ -1,11 +1,12 @@
-import sys
 import os
+import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from services.group_service import GroupService
+from services.group_service import GroupService  # noqa: E402
+
 
 class TestGroupService(unittest.IsolatedAsyncioTestCase):
     @patch("services.group_service.create_mythic_plus_groups")
