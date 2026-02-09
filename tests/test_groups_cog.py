@@ -87,30 +87,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
     async def test_activity_command_default_url(self):
         bot = MagicMock()
         bot.group_service = AsyncMock()
-
-        # Mocking players and groups
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
+        # We don't need group service data anymore for activity
 
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-123")
+        cog.session_service.get_or_create_session = AsyncMock(
+            return_value="123"
+        )  # returns guildId
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -123,46 +105,27 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the default URL with sessionId (Firebase flow)
+            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            # Logic uses guildId now
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?sessionId=" in msg:
+                if f"{default_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(
-                found_url, f"Default ACTIVITY_URL {default_url} not found in response"
+                found_url,
+                f"Default ACTIVITY_URL {default_url} with guildId not found in response",
             )
 
     async def test_activity_command_override_url(self):
         bot = MagicMock()
         bot.group_service = AsyncMock()
 
-        # Mocking players and groups
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
-
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-456")
+        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -179,12 +142,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the custom URL with sessionId (Firebase flow)
+            # Check if the message contains the custom URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             for call in calls:
                 msg = call.args[0]
-                if f"{custom_url}?sessionId=" in msg:
+                if f"{custom_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(
@@ -195,28 +158,8 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot = MagicMock()
         bot.group_service = AsyncMock()
 
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
-
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-789")
+        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -229,16 +172,15 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             # Call activitytest
             await cog.activitytest.callback(cog, ctx)  # type: ignore
 
-            # Verify that get_groups_data was called with debug=True
-            bot.group_service.get_groups_data.assert_called_once_with(ctx, debug=True)
+            # We don't check get_groups_data anymore
 
-            # Check if the message contains the default URL with sessionId
+            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?sessionId=" in msg:
+                if f"{default_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(found_url)
