@@ -40,3 +40,10 @@
 8. **Contributing** (Link to AGENTS.md/CONTRIBUTING.md)
 
 Any future updates to README must preserve this skeleton.
+
+### [2024-05-22] Dependency Split and Command Standardization
+**Context:** Documentation was inconsistent regarding package management (`uv` vs `pip`) and command styles (Prefix vs Slash).
+**Learning:**
+1. **Dependency Split:** Developers use `uv` for local dev/testing (`scripts/verify.sh`). Production (Docker) relies on `requirements.txt`.
+   - *Implication:* Updates to dependencies must be synced to `requirements.txt` for production.
+2. **Command Standardization:** Documentation now prioritizes Slash Commands (`/activity`) as the primary interface. Prefix commands (`!activity`) are supported legacy features but should be deprioritized in docs.
