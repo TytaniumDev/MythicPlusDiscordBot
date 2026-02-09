@@ -6,7 +6,7 @@ import unittest
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import core.storage as storage
 from core.storage import (
@@ -94,6 +94,30 @@ class TestStorage(unittest.TestCase):
         self.assertEqual(len(all_prefs), 2)
         self.assertIn("P1", all_prefs)
         self.assertIn("P2", all_prefs)
+
+    @patch("os.path.exists", return_value=True)
+    def test_load_corrupt_file(self, mock_exists: MagicMock):
+        """Test that loading a corrupt JSON file returns empty dict and logs error."""
+        # Ensure cache is cleared so it actually reads the file
+        storage._preferences_cache = None  # pyright: ignore[reportPrivateUsage]
+
+        with patch("builtins.open", mock_open(read_data="{invalid json")):
+            with self.assertLogs("core.storage", level="ERROR") as cm:
+                prefs = load_preferences()
+                self.assertEqual(prefs, {})
+                self.assertTrue(
+                    any("Error loading preferences" in o for o in cm.output)
+                )
+
+    def test_save_error(self):
+        """Test that saving error is logged and caught."""
+        prefs = {"Test": ["Role"]}
+
+        # Patch open to raise PermissionError
+        with patch("builtins.open", side_effect=PermissionError("Mock perm error")):
+            with self.assertLogs("core.storage", level="ERROR") as cm:
+                save_preferences(prefs)
+                self.assertTrue(any("Error saving preferences" in o for o in cm.output))
 
 
 if __name__ == "__main__":
