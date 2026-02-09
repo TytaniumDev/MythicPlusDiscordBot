@@ -23,9 +23,5 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: uv sync --frozen
-      - name: Ruff (lint)
-        run: uv run ruff check .
-      - name: Ruff (format check)
-        run: uv run ruff format --check .
-      - name: Pyright (type check)
-        run: uv run pyright .
+      - name: Run Lint
+        run: ./scripts/lint.sh --ci

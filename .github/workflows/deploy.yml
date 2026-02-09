@@ -122,39 +122,16 @@ jobs:
           PI_APP_DIR: ${{ secrets.PI_APP_DIR }}
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-            "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
-            set -e
-            echo "=== Deploy started ==="
-
-            # Login to GHCR
-            echo "Logging into GHCR..."
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-
-            # Update repo
-            cd "$PI_APP_DIR"
-            echo "Updating repo..."
-            git fetch origin && git reset --hard origin/${{ github.ref_name }}
-
-            # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
-            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="$BOT_TOKEN"
-            export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
-            export GITHUB_TOKEN="$GITHUB_TOKEN"
-            FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
-            export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
-
-            # Deploy
-            echo "Pulling image..."
-            docker compose pull --quiet
-            echo "Starting containers..."
-            docker compose up -d --remove-orphans
-
-            # Verify container is running
-            echo "Verifying deployment..."
-            docker compose ps
-
-            # Cleanup
-            docker image prune -f > /dev/null
-            echo "=== Deploy finished ==="
-          DEPLOY_SCRIPT
+            "$PI_USER@$PI_HOST" \
+            "cd $PI_APP_DIR && \
+             export GHCR_TOKEN='$GHCR_TOKEN' && \
+             export GITHUB_REPOSITORY_OWNER='${{ github.repository_owner }}' && \
+             export GITHUB_REF_NAME='${{ github.ref_name }}' && \
+             export IMAGE_NAME='$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')' && \
+             export IMAGE_TAG='${{ github.sha }}' && \
+             export BOT_TOKEN='$BOT_TOKEN' && \
+             export DISCORD_APPLICATION_ID='$DISCORD_APPLICATION_ID' && \
+             export GITHUB_TOKEN='$GITHUB_TOKEN' && \
+             export FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}' && \
+             git fetch origin && git reset --hard origin/${{ github.ref_name }} && \
+             ./scripts/deploy-remote.sh"
