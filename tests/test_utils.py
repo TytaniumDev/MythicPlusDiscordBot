@@ -10,6 +10,7 @@ import discord
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.utils import (  # noqa: E402, I001
+    get_debug_players,
     get_masked_name,
     get_player_list,
     get_wow_name,
@@ -38,6 +39,14 @@ class TestUtils(unittest.TestCase):
         member.global_name = None
         member.__str__.return_value = "User.Name"
         self.assertEqual(get_wow_name(member), "UserName")
+
+    def test_get_debug_players(self):
+        """Test that get_debug_players returns a valid list of WoWPlayer objects."""
+        players = get_debug_players()
+        self.assertGreater(len(players), 0)
+        for player in players:
+            self.assertIsNotNone(player.name)
+            self.assertTrue(player.hasRoles())
 
     @patch("core.utils.get_player_preference")
     def test_get_player_list(self, mock_get_pref: MagicMock):

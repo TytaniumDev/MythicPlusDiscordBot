@@ -10,6 +10,7 @@ from core.config import (
 from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import (
+    get_debug_players,
     get_masked_name,
     get_player_list,
     show_short_typing,
@@ -41,25 +42,7 @@ class GroupService:
         # Get the members of the channel we want to use to fill the roles
         if debug:
             # Testing Code - use hardcoded players to ensure reliability
-            players = [
-                WoWPlayer.create(
-                    "Martz", ["Healer", "Tank Offspec", "DPS Offspec", "Brez"]
-                ),
-                WoWPlayer.create("KingofSkillz", ["DPS", "Ranged", "Lust"]),
-                WoWPlayer.create("chaoswaffles", ["DPS", "Tank Offspec"]),
-                WoWPlayer.create("Upartyhardy", ["DPS", "Ranged"]),
-                WoWPlayer.create("Pandemonium", ["Tank", "DPS Offspec", "Brez"]),
-                WoWPlayer.create("Will", ["DPS"]),
-                WoWPlayer.create(
-                    "Tytanium", ["DPS", "Healer Offspec", "Ranged", "Lust"]
-                ),
-                WoWPlayer.create("hammer13", ["DPS"]),
-                WoWPlayer.create("Ultra9", ["DPS", "Ranged", "Lust"]),
-                WoWPlayer.create("DrZoidberg", ["DPS", "Ranged"]),
-                WoWPlayer.create("Player1x", ["DPS", "Healer Offspec", "Lust"]),
-                WoWPlayer.create("lizardtotem", ["Healer", "DPS Offspec"]),
-                WoWPlayer.create("rorschach128", ["DPS"]),
-            ]
+            players = get_debug_players()
         else:
             members = cast(
                 list[discord.Member],
