@@ -243,6 +243,57 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
                     break
             self.assertTrue(found_url)
 
+    async def test_on_voice_state_update_performance_optimization(self):
+        """Test that voice state updates without channel changes (e.g. mute) do not trigger DB writes."""
+        bot = MagicMock()
+
+        # We need to mock SessionService inside Groups cog
+        with patch('cogs.groups.SessionService') as MockSessionService:
+             cog = Groups(bot)
+             mock_service_instance = MockSessionService.return_value
+
+             # Simulate active session in channel 123
+             mock_service_instance.active_sessions = {123: "session_id"}
+             mock_service_instance.update_lobby_players = AsyncMock()
+
+             # Mock Member
+             member = MagicMock()
+             member.bot = False
+
+             # Case 1: Channel Change (Should update)
+             before = MagicMock()
+             before.channel = MagicMock()
+             before.channel.id = 999
+
+             after = MagicMock()
+             after.channel = MagicMock()
+             after.channel.id = 123
+             after.channel.members = [member]
+
+             await cog.on_voice_state_update(member, before, after)
+
+             # Verify update called
+             mock_service_instance.update_lobby_players.assert_called_with(123, [member])
+             mock_service_instance.update_lobby_players.reset_mock()
+
+             # Case 2: No Channel Change (e.g. Mute)
+             # Expected behavior: NO update.
+
+             channel_obj = MagicMock()
+             channel_obj.id = 123
+             channel_obj.members = [member]
+
+             before_mute = MagicMock()
+             before_mute.channel = channel_obj
+
+             after_mute = MagicMock()
+             after_mute.channel = channel_obj
+
+             await cog.on_voice_state_update(member, before_mute, after_mute)
+
+             # Assert call count is 0
+             self.assertEqual(mock_service_instance.update_lobby_players.call_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

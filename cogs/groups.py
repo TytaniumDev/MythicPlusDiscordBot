@@ -131,6 +131,9 @@ class Groups(commands.Cog):
         if not channel:
             return
 
+        if before.channel == after.channel:
+            return
+
         # Check if we have a session for this channel
         if channel.id in self.session_service.active_sessions:
             members = [m for m in channel.members if not m.bot]
