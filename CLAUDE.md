@@ -93,10 +93,6 @@ The bot owns transitions to `spinning` (with computed groups). The frontend owns
 - Call `clear()` from `parallel_group_creator` in test `setUp()` to reset state between tests
 - Mock Discord interactions using standard `unittest.mock` patterns
 
-### Activity frontend (visual tests)
-
-Playwright visual baselines live under `activity/tests/visual-baselines/`. When you change activity UI in ways that affect visuals (layout, styles, copy), run `cd activity && npx playwright test --update-snapshots` and commit the updated baseline images so CI passes.
-
 ## Environment Variables
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`

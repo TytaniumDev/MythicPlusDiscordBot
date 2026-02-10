@@ -1,10 +1,8 @@
 """Unit tests for SessionService and FirebaseService (mocked)."""
 
-import asyncio
 import os
 import sys
 import unittest
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -20,15 +18,20 @@ from tests.prebuilt_classes import (  # noqa: E402
 )
 
 
-class TestSessionServiceCreateSession(unittest.IsolatedAsyncioTestCase):
-    """Tests for SessionService.create_session."""
+class TestSessionServiceGetOrCreateSession(unittest.IsolatedAsyncioTestCase):
+    """Tests for SessionService.get_or_create_session."""
 
     @patch("services.session_service.FirebaseService")
-    async def test_create_session_success(self, mock_firebase_cls: MagicMock) -> None:
+    async def test_get_or_create_session_success(
+        self, mock_firebase_cls: MagicMock
+    ) -> None:
         mock_firebase = MagicMock()
         mock_firebase.is_available.return_value = True
-        mock_firebase.create_session = AsyncMock(return_value="session-123")
+        mock_firebase.get_or_create_session = AsyncMock(
+            return_value="1"
+        )  # guild_id as string
         mock_firebase.listen_to_session.return_value = None
+        mock_firebase.update_session = AsyncMock()
         mock_firebase_cls.return_value = mock_firebase
 
         bot = MagicMock()
@@ -36,25 +39,21 @@ class TestSessionServiceCreateSession(unittest.IsolatedAsyncioTestCase):
 
         ctx = MagicMock()
         ctx.guild.id = 1
-        ctx.author.voice.channel.id = 2
-        players = [TankPaladin("Tank"), HealerPriest("Healer"), Warrior("Dps")]
+        ctx.guild.voice_channels = []  # Mock voice channels for initial sync
 
         service = SessionService(bot)
-        result = await service.create_session(ctx, players)
+        result = await service.get_or_create_session(ctx)
 
-        self.assertEqual(result, "session-123")
-        self.assertEqual(service.active_sessions[2], "session-123")
-        mock_firebase.create_session.assert_called_once()
-        call_args = mock_firebase.create_session.call_args[0]
-        self.assertEqual(call_args[0], 1)
-        self.assertEqual(call_args[1], 2)
-        self.assertEqual(len(call_args[2]), 3)
+        self.assertEqual(result, "1")
+        self.assertEqual(service.active_sessions[1], "1")
+        mock_firebase.get_or_create_session.assert_called_once_with(1, debug=False)
+
         mock_firebase.listen_to_session.assert_called_once()
         listen_args = mock_firebase.listen_to_session.call_args[0]
-        self.assertEqual(listen_args[0], "session-123")
+        self.assertEqual(listen_args[0], "1")
 
     @patch("services.session_service.FirebaseService")
-    async def test_create_session_firebase_unavailable(
+    async def test_get_or_create_session_firebase_unavailable(
         self, mock_firebase_cls: MagicMock
     ) -> None:
         mock_firebase = MagicMock()
@@ -64,42 +63,20 @@ class TestSessionServiceCreateSession(unittest.IsolatedAsyncioTestCase):
         bot = MagicMock()
         ctx = MagicMock()
         ctx.guild.id = 1
-        ctx.author.voice.channel.id = 2
-        players = [TankPaladin("Tank")]
 
         service = SessionService(bot)
-        result = await service.create_session(ctx, players)
+        result = await service.get_or_create_session(ctx)
 
         self.assertIsNone(result)
-        mock_firebase.create_session.assert_not_called()
-
-    @patch("services.session_service.FirebaseService")
-    async def test_create_session_no_voice_channel(
-        self, mock_firebase_cls: MagicMock
-    ) -> None:
-        mock_firebase = MagicMock()
-        mock_firebase.is_available.return_value = True
-        mock_firebase_cls.return_value = mock_firebase
-
-        bot = MagicMock()
-        ctx = MagicMock()
-        ctx.guild.id = 1
-        ctx.author.voice = None
-        players = [TankPaladin("Tank")]
-
-        service = SessionService(bot)
-        result = await service.create_session(ctx, players)
-
-        self.assertIsNone(result)
-        mock_firebase.create_session.assert_not_called()
+        mock_firebase.get_or_create_session.assert_not_called()
 
 
-class TestSessionServiceUpdateLobbyPlayers(unittest.IsolatedAsyncioTestCase):
-    """Tests for SessionService.update_lobby_players."""
+class TestSessionServiceUpdateGuildVoiceStates(unittest.IsolatedAsyncioTestCase):
+    """Tests for SessionService.update_guild_voice_states."""
 
     @patch("services.session_service.FirebaseService")
     @patch("services.session_service.get_player_list")
-    async def test_update_lobby_players_updates_firestore(
+    async def test_update_guild_voice_states_updates_firestore(
         self,
         mock_get_player_list: MagicMock,
         mock_firebase_cls: MagicMock,
@@ -110,33 +87,46 @@ class TestSessionServiceUpdateLobbyPlayers(unittest.IsolatedAsyncioTestCase):
 
         bot = MagicMock()
         service = SessionService(bot)
-        service.active_sessions[42] = "session-abc"
+        service.active_sessions[1] = "1"
+        service.guild_states[1] = {"selectedChannelId": "42"}
 
-        players = [TankPaladin("Tank"), HealerPriest("Healer")]
+        guild = MagicMock()
+        guild.id = 1
+
+        import discord
+
+        vc1 = MagicMock(spec=discord.VoiceChannel)
+        vc1.id = 42
+        vc1.name = "VC1"
+        member1 = MagicMock()
+        member1.bot = False
+        vc1.members = [member1]
+
+        vc2 = MagicMock(spec=discord.VoiceChannel)
+        vc2.id = 43
+        vc2.name = "VC2"
+        vc2.members = []
+
+        guild.voice_channels = [vc1, vc2]
+        guild.get_channel.return_value = vc1
+
+        players = [TankPaladin("Tank")]
         mock_get_player_list.return_value = players
-        members: list[Any] = [MagicMock(), MagicMock()]
 
-        await service.update_lobby_players(42, members)  # type: ignore[arg-type]
+        await service.update_guild_voice_states(guild)
 
-        mock_get_player_list.assert_called_once_with(members)
-        mock_firebase.update_session.assert_called_once_with(
-            "session-abc", {"players": [p.to_dict() for p in players]}
-        )
+        # check update_session call
+        mock_firebase.update_session.assert_called_once()
+        call_args = mock_firebase.update_session.call_args
+        self.assertEqual(call_args[0][0], "1")
+        data = call_args[0][1]
 
-    @patch("services.session_service.FirebaseService")
-    async def test_update_lobby_players_no_session(
-        self, mock_firebase_cls: MagicMock
-    ) -> None:
-        mock_firebase = MagicMock()
-        mock_firebase_cls.return_value = mock_firebase
+        self.assertEqual(len(data["voiceChannels"]), 1)  # Only VC1 has users
+        self.assertEqual(data["voiceChannels"][0]["id"], "42")
+        self.assertEqual(data["voiceChannels"][0]["userCount"], 1)
 
-        bot = MagicMock()
-        service = SessionService(bot)
-        service.active_sessions.clear()
-
-        await service.update_lobby_players(999, [])
-
-        mock_firebase.update_session.assert_not_called()
+        self.assertIn("players", data)  # Because selectedChannelId is set
+        self.assertEqual(len(data["players"]), 1)
 
 
 class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
@@ -156,19 +146,23 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
         mock_firebase_cls.return_value = mock_firebase
 
         bot = MagicMock()
-        channel = MagicMock()
+        guild = MagicMock()
+        guild.id = 1
+        bot.get_guild.return_value = guild
+
+        import discord
+
+        channel = MagicMock(spec=discord.VoiceChannel)
         channel.id = 42
-        channel.guild = MagicMock()
-        channel.guild.id = 1
         member1 = MagicMock()
         member1.bot = False
-        member2 = MagicMock()
-        member2.bot = False
-        channel.members = [member1, member2]
-        bot.get_channel.return_value = channel
+        channel.members = [member1]
+
+        # Mock get_channel to return our channel when asked for selectedChannelId
+        guild.get_channel.return_value = channel
 
         service = SessionService(bot)
-        service.active_sessions[42] = "session-xyz"
+        # service.active_sessions is not strictly needed for this internal method but good to have context
 
         players = [
             TankPaladin("Tank"),
@@ -188,11 +182,13 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
         bot.group_service.last_results = {}
 
         await service._process_spin_request(  # pyright: ignore[reportPrivateUsage]
-            "session-xyz", 42, {"status": "request_spin"}
+            "session-xyz", 1, {"status": "request_spin", "selectedChannelId": "42"}
         )
 
+        guild.get_channel.assert_called_with(42)
         mock_get_player_list.assert_called_once()
         mock_create_groups.assert_called_once_with(players, debug=False)
+
         mock_firebase.update_session.assert_called_once()
         update_args = mock_firebase.update_session.call_args[0]
         self.assertEqual(update_args[0], "session-xyz")
@@ -201,78 +197,22 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(update_data["groups"]), 1)
 
     @patch("services.session_service.FirebaseService")
-    async def test_process_spin_request_channel_not_found(
+    async def test_process_spin_request_no_selected_channel(
         self, mock_firebase_cls: MagicMock
     ) -> None:
         mock_firebase = MagicMock()
         mock_firebase_cls.return_value = mock_firebase
 
         bot = MagicMock()
-        bot.get_channel.return_value = None
+        guild = MagicMock()
+        bot.get_guild.return_value = guild
 
         service = SessionService(bot)
-        service.active_sessions[42] = "session-xyz"
 
         await service._process_spin_request(  # pyright: ignore[reportPrivateUsage]
-            "session-xyz", 42, {"status": "request_spin"}
+            "session-xyz",
+            1,
+            {"status": "request_spin"},  # missing selectedChannelId
         )
 
         mock_firebase.update_session.assert_not_called()
-
-
-class TestSessionServiceCompletionNoCleanup(unittest.IsolatedAsyncioTestCase):
-    """When status is 'completed', only announce; do not run cleanup."""
-
-    @patch("services.session_service.SessionService._cleanup_session_immediately")
-    @patch(
-        "services.session_service.SessionService._announce_completion",
-        new_callable=AsyncMock,
-    )
-    async def test_handle_update_completed_does_not_cleanup(
-        self,
-        mock_announce: AsyncMock,
-        mock_cleanup: MagicMock,
-    ) -> None:
-        bot = MagicMock()
-        bot.loop = asyncio.get_running_loop()
-        service = SessionService(bot)
-        # Intentionally call protected method to assert completion does not trigger cleanup
-        service._handle_update("session-123", 42, {"status": "completed", "groups": []})  # pyright: ignore[reportPrivateUsage]
-        await asyncio.sleep(0)  # let run_coroutine_threadsafe-scheduled coroutine run
-        mock_cleanup.assert_not_called()
-
-
-class TestSessionServiceReplacePreviousSession(unittest.IsolatedAsyncioTestCase):
-    """When create_session is called for a channel that already has a session, clean up the old one first."""
-
-    @patch("services.session_service.FirebaseService")
-    async def test_create_session_replaces_previous_in_same_channel(
-        self, mock_firebase_cls: MagicMock
-    ) -> None:
-        mock_firebase = MagicMock()
-        mock_firebase.is_available.return_value = True
-        mock_firebase.create_session = AsyncMock(return_value="new-session-456")
-        mock_firebase.delete_session = AsyncMock()
-        mock_firebase.listen_to_session.return_value = None
-        mock_firebase_cls.return_value = mock_firebase
-
-        bot = MagicMock()
-        bot.loop = MagicMock()
-
-        ctx = MagicMock()
-        ctx.guild.id = 1
-        ctx.author.voice.channel.id = 2
-        players = [TankPaladin("Tank"), HealerPriest("Healer")]
-
-        service = SessionService(bot)
-        service.active_sessions[2] = "old-session-123"
-        service.listeners["old-session-123"] = MagicMock()
-
-        result = await service.create_session(ctx, players)
-
-        self.assertEqual(result, "new-session-456")
-        mock_firebase.delete_session.assert_called_once_with("old-session-123")
-        mock_firebase.create_session.assert_called_once()
-        self.assertEqual(service.active_sessions[2], "new-session-456")
-        self.assertNotIn("old-session-123", service.active_sessions)
-        self.assertNotIn("old-session-123", service.listeners)

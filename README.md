@@ -1,10 +1,7 @@
 # MythicPlusDiscordBot 💎
 
 [![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
-[![Lint](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/lint.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/lint.yml)
-[![Tests](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/test.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/test.yml)
-[![Activity](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/verify-activity.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/verify-activity.yml)
-[![Covered by Argos Visual Testing](https://argos-ci.com/badge.svg)](https://app.argos-ci.com/tytaniumdev/MythicPlusDiscordBot/reference)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
@@ -56,11 +53,11 @@ Get up and running in less than 5 minutes.
 *   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
 *   **🎮 Activity Setup**: [Read `ACTIVITY_SETUP.md`](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
 *   **🔥 Firebase Setup**: [Read `FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Database and Auth configuration.
-*   **👨‍💻 Contributing**: [Read `CONTRIBUTING.md`](./CONTRIBUTING.md) - Setup and guidelines.
+*   **👨‍💻 Contributing**: [Read `AGENTS.md`](./AGENTS.md) - Development standards and guidelines.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check `CONTRIBUTING.md` for setup instructions and `AGENTS.md` for development standards.
+We welcome contributions! Please check `AGENTS.md` for development standards and guidelines.
 
 1.  **Install Pre-commit Hooks**
     ```bash
@@ -70,7 +67,6 @@ We welcome contributions! Please check `CONTRIBUTING.md` for setup instructions 
     ```bash
     ./scripts/verify.sh
     ```
-3.  **Activity visual changes:** If you change the activity frontend in ways that affect how pages look, run `cd activity && npx playwright test --update-snapshots` and commit any updated files under `activity/tests/visual-baselines/`.
 
 ---
 
