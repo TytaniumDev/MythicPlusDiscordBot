@@ -51,7 +51,13 @@ class Groups(commands.Cog):
     async def _execute_activity(
         self, ctx: commands.Context[commands.Bot], debug: bool
     ) -> None:
-        """Internal helper to execute the activity logic with optional debug data."""
+        """
+        Internal helper to execute the activity logic with optional debug data.
+
+        Args:
+            ctx: The command context.
+            debug: Whether to use debug data.
+        """
         await ctx.defer()
         try:
             if not hasattr(self.bot, "group_service"):
@@ -82,39 +88,54 @@ class Groups(commands.Cog):
                 await ctx.send("❌ Failed to create session. Is Firebase configured?")
                 return
 
-            # Create Links
-            channel = ctx.author.voice.channel
-            app_id = config.DISCORD_APPLICATION_ID
-
-            # Create Embedded Invite
-            invite_url = "N/A"
-            if app_id:
-                invite = await channel.create_invite(
-                    target_type=discord.InviteTarget.embedded_application,
-                    target_application_id=int(app_id),
-                    max_age=300,  # 5 minutes
-                )
-                invite_url = invite.url
-
-            # Create Direct Link
-            activity_url_base = config.ACTIVITY_URL
-
-            msg = "🎮 **Join the Activity!**\n"
-            msg += f"**Voice Channel Activity:** {invite_url}\n"
-
-            if activity_url_base:
-                direct_link = f"{activity_url_base}?sessionId={session_id}"
-                msg += f"**Browser Link:** [Click Here]({direct_link})\n"
-            else:
-                msg += "⚠️ `ACTIVITY_URL` not set in .env."
-
-            await ctx.send(msg)
+            await self._send_activity_invite(ctx, session_id)
 
         except discord.HTTPException as e:
             await ctx.send(f"❌ Discord API Error: {e.status} - {e.text}")
         except Exception as e:
             await ctx.send("❌ An unexpected error occurred. Please try again later.")
             logger.error("Error in activity command: %s", e)
+
+    async def _send_activity_invite(
+        self, ctx: commands.Context[commands.Bot], session_id: str
+    ) -> None:
+        """
+        Generates and sends the activity invite and direct link.
+
+        Args:
+            ctx: The command context.
+            session_id: The ID of the created session.
+        """
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            return
+
+        # Create Links
+        channel = ctx.author.voice.channel
+        app_id = config.DISCORD_APPLICATION_ID
+
+        # Create Embedded Invite
+        invite_url = "N/A"
+        if app_id:
+            invite = await channel.create_invite(
+                target_type=discord.InviteTarget.embedded_application,
+                target_application_id=int(app_id),
+                max_age=300,  # 5 minutes
+            )
+            invite_url = invite.url
+
+        # Create Direct Link
+        activity_url_base = config.ACTIVITY_URL
+
+        msg = "🎮 **Join the Activity!**\n"
+        msg += f"**Voice Channel Activity:** {invite_url}\n"
+
+        if activity_url_base:
+            direct_link = f"{activity_url_base}?sessionId={session_id}"
+            msg += f"**Browser Link:** [Click Here]({direct_link})\n"
+        else:
+            msg += "⚠️ `ACTIVITY_URL` not set in .env."
+
+        await ctx.send(msg)
 
     @commands.Cog.listener()
     async def on_voice_state_update(
