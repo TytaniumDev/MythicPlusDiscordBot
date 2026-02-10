@@ -15,8 +15,9 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#lobby')).toBeVisible();
     await expect(page.locator('#player-list li')).toHaveCount(mockSession.players.length);
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'lobby');
+    await expect(page).toHaveScreenshot('lobby.png');
   });
 
   test('Static Wheel View', async ({ page }) => {
@@ -29,8 +30,9 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#wheel-container')).toBeVisible();
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'wheels');
+    await expect(page).toHaveScreenshot('wheels.png');
   });
 
   test('Results View', async ({ page }) => {
@@ -42,7 +44,8 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#results')).toBeVisible();
     await expect(page.locator('.group-card')).toHaveCount(mockSession.groups.length);
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'results');
+    await expect(page).toHaveScreenshot('results.png');
   });
 });
