@@ -234,9 +234,14 @@ export const mockGroups: WoWGroup[] = [
 
 export const mockSession: Session = {
   guildId: 'demo-guild',
-  channelId: 'demo-channel',
   status: 'lobby',
-  players: mockPlayers,
-  groups: mockGroups,
+  players: [], // Initially empty until channel selected
+  groups: [], // Initially empty
+  voiceChannels: [
+    { id: 'vc-1', name: 'Mythic+ Lobby', userCount: 13 },
+    { id: 'vc-2', name: 'Raid Voice', userCount: 5 },
+    { id: 'vc-3', name: 'AFK', userCount: 1 },
+  ],
+  selectedChannelId: null, // Start with picker
   createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 }
 };

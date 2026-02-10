@@ -25,11 +25,19 @@ export interface WoWGroup {
   dps: WoWPlayer[];
 }
 
+export interface VoiceChannel {
+  id: string;
+  name: string;
+  userCount: number;
+}
+
 export interface Session {
   guildId: string;
-  channelId: string;
+  channelId?: string; // Legacy/Optional
   status: 'lobby' | 'request_spin' | 'spinning' | 'completed';
   players: WoWPlayer[];
   groups: WoWGroup[];
+  voiceChannels?: VoiceChannel[];
+  selectedChannelId?: string | null;
   createdAt: any; // Firestore Timestamp
 }

@@ -22,6 +22,6 @@ echo "3. Running Build..."
 npm run build
 
 echo "4. Running Tests..."
-npx playwright test --update-snapshots
+npx playwright test
 
 echo "✅ Frontend Verification Complete!"

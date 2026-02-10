@@ -1,5 +1,4 @@
 import logging
-from typing import cast
 
 import discord
 from discord import app_commands
@@ -7,7 +6,6 @@ from discord.ext import commands
 
 from core import config
 from core.issues import BadGroupIssueModal, report_bad_group
-from core.models import WoWPlayer
 from services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -65,21 +63,18 @@ class Groups(commands.Cog):
                 )
                 return
 
-            # Use get_groups_data merely to validate and get initial players.
-            # We don't need the groups calculated yet.
-            result = await self.bot.group_service.get_groups_data(ctx, debug=debug)
-            if not result:
-                return  # Error message already sent
+            # We don't need to get players upfront anymore. The activity starts with a channel picker.
 
-            players = cast(list[WoWPlayer], result["players"])
-
-            # Create Session in Firebase
-            session_id = await self.session_service.create_session(
-                ctx, players, debug=debug
+            # Create Session in Firebase (or get existing)
+            # This ensures the listener is attached and we are tracking this guild.
+            session_id = await self.session_service.get_or_create_session(
+                ctx, debug=debug
             )
 
             if not session_id:
-                await ctx.send("❌ Failed to create session. Is Firebase configured?")
+                await ctx.send(
+                    "❌ Failed to create/get session. Is Firebase configured?"
+                )
                 return
 
             # Create Links
@@ -89,12 +84,15 @@ class Groups(commands.Cog):
             # Create Embedded Invite
             invite_url = "N/A"
             if app_id:
-                invite = await channel.create_invite(
-                    target_type=discord.InviteTarget.embedded_application,
-                    target_application_id=int(app_id),
-                    max_age=300,  # 5 minutes
-                )
-                invite_url = invite.url
+                try:
+                    invite = await channel.create_invite(
+                        target_type=discord.InviteTarget.embedded_application,
+                        target_application_id=int(app_id),
+                        max_age=300,  # 5 minutes
+                    )
+                    invite_url = invite.url
+                except Exception as e:
+                    logger.warning(f"Failed to create embedded invite: {e}")
 
             # Create Direct Link
             activity_url_base = config.ACTIVITY_URL
@@ -103,7 +101,11 @@ class Groups(commands.Cog):
             msg += f"**Voice Channel Activity:** {invite_url}\n"
 
             if activity_url_base:
-                direct_link = f"{activity_url_base}?sessionId={session_id}"
+                # We use guildId as the key now, but for backward compatibility/simplicity,
+                # let's just use sessionId=guildId (since session_id IS guild_id).
+                # The frontend will look for guildId query param as per plan,
+                # but session_service.get_or_create_session returns the guild ID.
+                direct_link = f"{activity_url_base}?guildId={session_id}"
                 msg += f"**Browser Link:** [Click Here]({direct_link})\n"
             else:
                 msg += "⚠️ `ACTIVITY_URL` not set in .env."
@@ -126,7 +128,7 @@ class Groups(commands.Cog):
         """
         Listen for voice state updates to sync the lobby.
         """
-        # We only care if someone joined or left a channel that has an active session
+        # We only care if someone joined or left a channel
         channel = after.channel or before.channel
         if not channel:
             return
