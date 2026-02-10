@@ -19,9 +19,11 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://localhost:5173',
+    viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
+  snapshotDir: './tests/visual-baselines',
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
