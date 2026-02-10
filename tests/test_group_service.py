@@ -32,6 +32,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         result = await self.service.get_groups_data(self.ctx, debug=True)
 
         self.assertIsNotNone(result)
+        assert result is not None
         mock_debug_players.assert_called_once()
         mock_create_groups.assert_called_once()
         self.assertEqual(len(result["players"]), 1)
@@ -82,12 +83,12 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
     async def test_core_wheel_locking(self):
         """Test that core_wheel acquires a lock."""
         # Mock _execute_core_wheel to verify it's called
-        self.service._execute_core_wheel = AsyncMock()
+        self.service._execute_core_wheel = AsyncMock()  # pyright: ignore[reportPrivateUsage]
 
         await self.service.core_wheel(self.ctx, debug_value=False)
 
         self.assertIn(12345, self.service.server_locks)
-        self.service._execute_core_wheel.assert_called_once()
+        self.service._execute_core_wheel.assert_called_once()  # pyright: ignore[reportPrivateUsage]
 
     async def test_core_wheel_already_locked(self):
         """Test that core_wheel respects existing lock."""
@@ -97,11 +98,11 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         self.service.server_locks[12345] = asyncio.Lock()
         await self.service.server_locks[12345].acquire()
 
-        self.service._execute_core_wheel = AsyncMock()
+        self.service._execute_core_wheel = AsyncMock()  # pyright: ignore[reportPrivateUsage]
 
         await self.service.core_wheel(self.ctx, debug_value=False)
 
-        self.service._execute_core_wheel.assert_not_called()
+        self.service._execute_core_wheel.assert_not_called()  # pyright: ignore[reportPrivateUsage]
         self.ctx.send.assert_called_with(
             "⏳ Another group creation is already in progress for this server. Please wait for it to complete."
         )
@@ -110,7 +111,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
     @patch("services.group_service.get_masked_name")
     async def test_announce_group(self, mock_masked: MagicMock, mock_typing: AsyncMock):
         """Test announcement sequence."""
-        mock_masked.side_effect = lambda x: f"Masked({x})"
+        mock_masked.side_effect = lambda x: f"Masked({x})"  # pyright: ignore[reportUnknownLambdaType]
 
         group = MagicMock(spec=WoWGroup)
         group.tank = MagicMock()
@@ -152,7 +153,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         # The code iterates over [tank, healer] + dps and checks hasBrez/hasLust
         # Since we set attributes on the mocks, it should work.
 
-        await self.service._announce_group(
+        await self.service._announce_group(  # pyright: ignore[reportPrivateUsage]
             self.ctx, self.ctx.channel, group, 1, debug=False
         )
 
