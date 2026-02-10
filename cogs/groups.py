@@ -133,9 +133,14 @@ class Groups(commands.Cog):
         if not channel:
             return
 
-        # Check if we have a session for this guild
-        if channel.guild.id in self.session_service.active_sessions:
-            await self.session_service.update_guild_voice_states(channel.guild)
+        if before.channel == after.channel:
+            return
+
+        # Check if we have a session for this channel
+        if channel.id in self.session_service.active_sessions:
+            members = [m for m in channel.members if not m.bot]
+            # Update lobby
+            await self.session_service.update_lobby_players(channel.id, members)
 
     @commands.hybrid_command(
         name="badgroup", description="Report a bad set of groups to the developers."
