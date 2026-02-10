@@ -157,8 +157,18 @@ class FirebaseService:
             refs = list(
                 db.collection("sessions").where("createdAt", "<", cutoff).stream()
             )
+            batch = db.batch()
+            count = 0
             for doc in refs:
-                doc.reference.delete()
+                batch.delete(doc.reference)
+                count += 1
+                if count % 500 == 0:
+                    batch.commit()
+                    batch = db.batch()
+
+            if count % 500 != 0:
+                batch.commit()
+
             return len(refs)
 
         deleted = await asyncio.to_thread(_run)
