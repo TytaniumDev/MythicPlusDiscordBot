@@ -68,7 +68,10 @@ class General(commands.Cog):
         embed.add_field(name="Commit", value=value, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command(
+        name="invite",
+        description="Get the bot invite URL with the configured permissions.",
+    )
     async def invite(self, ctx: commands.Context[commands.Bot]) -> None:
         """Get the bot invite URL with the configured permissions (for adding the bot to a server)."""
         app_id = self.bot.application_id or DISCORD_APPLICATION_ID
