@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { argosScreenshot } from "@argos-ci/playwright";
 import { mockSession, mockPlayers, mockGroups } from '../src/mockData';
 
 // Helper to encode data for URL
@@ -18,8 +17,7 @@ test.describe('Visual Regression Tests', () => {
     // Should show channel list (3 items)
     await expect(page.locator('#player-list li')).toHaveCount(mockSession.voiceChannels?.length || 0);
 
-    // Screenshot (Argos + Playwright native)
-    await argosScreenshot(page, 'channel-picker');
+    // Screenshot
     await expect(page).toHaveScreenshot('channel-picker.png');
   });
 
@@ -36,8 +34,7 @@ test.describe('Visual Regression Tests', () => {
     // Should show player list (13 items)
     await expect(page.locator('#player-list li')).toHaveCount(mockPlayers.length);
 
-    // Screenshot (Argos + Playwright native)
-    await argosScreenshot(page, 'lobby');
+    // Screenshot
     await expect(page).toHaveScreenshot('lobby.png');
   });
 
@@ -54,8 +51,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#wheel-container')).toBeVisible();
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
-    // Screenshot (Argos + Playwright native)
-    await argosScreenshot(page, 'wheels');
+    // Screenshot
     await expect(page).toHaveScreenshot('wheels.png');
   });
 
@@ -72,8 +68,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#results')).toBeVisible();
     await expect(page.locator('.group-card')).toHaveCount(mockGroups.length);
 
-    // Screenshot (Argos + Playwright native)
-    await argosScreenshot(page, 'results');
+    // Screenshot
     await expect(page).toHaveScreenshot('results.png');
   });
 });
