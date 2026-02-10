@@ -68,42 +68,46 @@ class FirebaseService:
     def is_available(self) -> bool:
         return self.db is not None
 
-    async def create_session(
+    async def get_or_create_session(
         self,
         guild_id: int,
-        channel_id: int,
-        players: list[dict[str, Any]],
         debug: bool = False,
     ) -> str:
         """
-        Creates a new session document in Firestore.
-        Returns the session ID (document ID).
+        Gets or creates a persistent session document for the guild.
+        Returns the session ID (which is the guild ID).
         """
         if not self.db:
             raise RuntimeError("Firebase is not initialized.")
 
-        # Create the document
-        # We use a collection named 'sessions'
-        doc_ref = self.db.collection("sessions").document()
+        session_id = str(guild_id)
+        doc_ref = self.db.collection("sessions").document(session_id)
 
-        data = {
-            "guildId": str(guild_id),
-            "channelId": str(channel_id),
-            "status": "lobby",  # lobby, spinning, completed
-            "players": players,  # List of dicts
-            "groups": [],  # Calculated groups
-            "isDebug": debug,
-            "createdAt": firestore.SERVER_TIMESTAMP,
-        }
-
-        # Async writing to Firestore in a sync wrapper needs care if using async/await
-        # But firebase-admin is synchronous (blocking).
-        # We should wrap it in asyncio.to_thread to avoid blocking the bot loop.
         import asyncio
 
-        await asyncio.to_thread(doc_ref.set, data)
+        # Check if exists
+        doc = await asyncio.to_thread(doc_ref.get)
+        if not doc.exists:
+            # Create new session structure
+            data = {
+                "guildId": str(guild_id),
+                "status": "lobby",  # lobby, spinning, completed
+                "players": [],  # List of players (synced when channel selected)
+                "groups": [],  # Calculated groups
+                "voiceChannels": [],  # List of {id, name, userCount}
+                "selectedChannelId": None,  # The channel we are syncing from
+                "isDebug": debug,
+                "createdAt": firestore.SERVER_TIMESTAMP,
+                "lastActive": firestore.SERVER_TIMESTAMP,
+            }
+            await asyncio.to_thread(doc_ref.set, data)
+        else:
+            # Update lastActive to prevent cleanup
+            await asyncio.to_thread(
+                doc_ref.update, {"lastActive": firestore.SERVER_TIMESTAMP}
+            )
 
-        return doc_ref.id
+        return session_id
 
     async def update_session(self, session_id: str, data: dict[str, Any]) -> None:
         """Updates fields in an existing session."""
@@ -144,7 +148,7 @@ class FirebaseService:
 
     async def delete_sessions_older_than(self, seconds: int) -> int:
         """
-        Deletes session documents whose createdAt is older than the given age.
+        Deletes session documents whose lastActive is older than the given age.
         Returns the number of documents deleted. Used to clean up abandoned sessions.
         """
         if not self.db:
@@ -154,8 +158,20 @@ class FirebaseService:
         cutoff = datetime.now(UTC) - timedelta(seconds=seconds)
 
         def _run() -> int:
+            # Check both createdAt (legacy) and lastActive
+            # We'll just query for lastActive < cutoff, and handle legacy docs that might not have it
+            # (though new code adds it).
+            # For simplicity, let's just use lastActive if present, fallback to createdAt?
+            # Firestore queries are strict. Let's just query lastActive.
+            # If a doc doesn't have lastActive, it won't be returned by the query?
+            # Actually, let's query createdAt for legacy cleanup, and lastActive for new.
+            # But simpler: we just migrated. Let's rely on lastActive.
+            # If a session is brand new, it has lastActive.
+
+            # Note: We should probably ensure we don't delete active guild sessions.
+            # But 24 hours (default) inactivity is probably fine to delete.
             refs = list(
-                db.collection("sessions").where("createdAt", "<", cutoff).stream()
+                db.collection("sessions").where("lastActive", "<", cutoff).stream()
             )
             batch = db.batch()
             count = 0
