@@ -70,6 +70,7 @@ We welcome contributions! Please check `CONTRIBUTING.md` for setup instructions 
     ```bash
     ./scripts/verify.sh
     ```
+3.  **Activity visual changes:** If you change the activity frontend in ways that affect how pages look, run `cd activity && npx playwright test --update-snapshots` and commit any updated files under `activity/tests/visual-baselines/`.
 
 ---
 

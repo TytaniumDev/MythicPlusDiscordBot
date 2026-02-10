@@ -16,6 +16,13 @@ To maintain consistency and prevent CI failures, you **MUST** run the appropriat
   - Runs `npm run typecheck` (TypeScript), `npm run build` (Build), and `npx playwright test` (E2E Tests).
 - **Verification:** Do not submit code unless the relevant script passes successfully.
 
+### 1.1 Activity visual changes (Playwright baselines)
+
+When changing activity frontend code that affects how pages look (layout, styles, copy, components), you **MUST**:
+
+1. Run from repo root: `cd activity && npx playwright test --update-snapshots`
+2. Commit any new or changed files under `activity/tests/visual-baselines/` in the same PR so CI passes.
+
 ### 2. Python Conventions
 - Use Python type hints for all function arguments and return values.
 - Follow PEP 8 guidelines for naming conventions and structure.
