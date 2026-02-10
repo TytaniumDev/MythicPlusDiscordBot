@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { argosScreenshot } from "@argos-ci/playwright";
-import { mockSession, mockPlayers } from '../src/mockData';
+import { mockSession, mockPlayers, mockGroups } from '../src/mockData';
 
 // Helper to encode data for URL
 const encodeData = (data: any) => Buffer.from(JSON.stringify(data)).toString('base64');
@@ -18,8 +18,9 @@ test.describe('Visual Regression Tests', () => {
     // Should show channel list (3 items)
     await expect(page.locator('#player-list li')).toHaveCount(mockSession.voiceChannels?.length || 0);
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'channel-picker');
+    await expect(page).toHaveScreenshot('channel-picker.png');
   });
 
   // 2. Lobby with Players
@@ -35,8 +36,9 @@ test.describe('Visual Regression Tests', () => {
     // Should show player list (13 items)
     await expect(page.locator('#player-list li')).toHaveCount(mockPlayers.length);
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'lobby');
+    await expect(page).toHaveScreenshot('lobby.png');
   });
 
   // 3. Wheel
@@ -52,8 +54,9 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#wheel-container')).toBeVisible();
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'wheels');
+    await expect(page).toHaveScreenshot('wheels.png');
   });
 
   // 4. Results
@@ -63,12 +66,14 @@ test.describe('Visual Regression Tests', () => {
       status: 'completed',
       selectedChannelId: 'vc-1',
       players: mockPlayers,
+      groups: mockGroups, // Inject groups!
     };
     await page.goto(`/?data=${encodeData(data)}`);
     await expect(page.locator('#results')).toBeVisible();
-    await expect(page.locator('.group-card')).toHaveCount(mockSession.groups.length);
+    await expect(page.locator('.group-card')).toHaveCount(mockGroups.length);
 
-    // Screenshot
+    // Screenshot (Argos + Playwright native)
     await argosScreenshot(page, 'results');
+    await expect(page).toHaveScreenshot('results.png');
   });
 });
