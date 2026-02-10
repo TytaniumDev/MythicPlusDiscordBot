@@ -30,14 +30,20 @@ flowchart TB
         GroupService[GroupService]
         SessionService[SessionService]
         FirebaseService[FirebaseService]
+        Core[Core: models, issues, storage]
         Cogs --> GroupService
         Cogs --> SessionService
+        Cogs --> Core
         SessionService --> FirebaseService
         SessionService --> GroupService
     end
 
     subgraph Firebase["Firebase Firestore"]
         Sessions[Collection: sessions]
+    end
+
+    subgraph LocalStorage["Local Storage"]
+        Preferences[player_preferences.json]
     end
 
     subgraph Frontend["Activity Frontend (TypeScript/Vite)"]
@@ -48,6 +54,7 @@ flowchart TB
     User -->|/activity, /wheel, voice join/leave| Channel
     Channel -->|commands, events| Bot
     Bot -->|read/write, real-time listener| Sessions
+    Bot -->|read/write| Preferences
     FirestoreClient -->|read/write, onSnapshot| Sessions
     User -->|open link with sessionId| UI
 ```
@@ -55,6 +62,7 @@ flowchart TB
 - **Discord**: users run commands and join voice; the bot reacts to commands and voice state.
 - **Bot**: handles commands, builds groups, and owns the “session” lifecycle; it talks to Firestore via `FirebaseService` and `SessionService`.
 - **Firestore**: single source of truth for each Activity session (players, status, groups). Bot and frontend both connect to the same project.
+- **Local Storage**: persist user role preferences (Tank/Healer/DPS) in a local JSON file.
 - **Activity frontend**: a web app (Discord Activity or standalone URL) that subscribes to one session document and drives the lobby → wheel → results flow.
 
 ---
@@ -65,20 +73,37 @@ flowchart TB
 
 - **Entrypoint**: `bot.py` — creates `MythicPlusBot`, loads cogs, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
 - **Cogs** (in `cogs/`):
-  - **groups**: `/wheel`, `/activity`, `/badgroup`, and the `on_voice_state_update` listener that keeps the Activity lobby in sync with voice channel membership.
-  - **roles**: Role management commands.
-  - **general**: `/bug`, `/featurerequest`, `/version`, `/status`.
+  - **groups**: `/wheel` (text groups), `/activity` (interactive wheel), `/badgroup` (report bad logic), and `on_voice_state_update` (lobby sync).
+  - **roles**: `/roles` (interactive Role Board), `/readycheck`, `/rolecheck` (audit saved roles). Uses `role_ui.py` for interactive elements.
+  - **general**: `/bug` & `/featurerequest` (GitHub integration), `/version`, `/status`, `/invite`.
   - **debug**: Debugging utilities.
 - **Services** (in `services/`):
-  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`create_mythic_plus_groups`), and handles the “wheel” flows. For `/activity`, it only provides the initial player list; the actual “spin” is triggered later from the frontend via Firebase.
-  - **SessionService**: creates a Firestore session when `/activity` is run, keeps a map of voice channel → session, subscribes to that session’s document, and reacts to status changes (`request_spin` → compute groups and write back; `completed` → post an embed to the Discord channel). Also updates the session’s player list when voice state changes.
+  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`create_mythic_plus_groups`), and handles the “wheel” flows.
+  - **SessionService**: creates a Firestore session when `/activity` is run, keeps a map of voice channel → session, subscribes to that session’s document, and reacts to status changes.
 - **Core** (in `core/`):
-  - **FirebaseService**: singleton; initializes the Firebase Admin SDK (using `FIREBASE_CREDENTIALS_JSON`), exposes create/update/delete session and a real-time listener for one session document. All Firestore access from the bot goes through here.
-  - **parallel_group_creator**, **models**, **utils**, **config**, etc.: group algorithm, `WoWPlayer`/`WoWGroup`, and app config.
+  - **FirebaseService**: singleton; initializes the Firebase Admin SDK, exposes session management.
+  - **issues.py**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
+  - **role_ui.py**: **UI Components**. Contains the Discord Views, Buttons, and Modals for the interactive Role Board.
+  - **storage.py**: **Persistence**. Manages local JSON storage (`player_preferences.json`) for user role preferences.
+  - **parallel_group_creator**, **models**, **utils**, **config**: group algorithm, `WoWPlayer`/`WoWGroup`, and app config.
 
 The bot does **not** serve the Activity UI; it only creates sessions, reacts to Firestore updates, and posts messages/embeds in Discord.
 
-### 2. Firebase (Firestore)
+### 2. Data Persistence (Hybrid Model)
+
+The system uses a **Hybrid Persistence** model:
+
+1.  **Firebase Firestore (Cloud)**:
+    *   **Purpose**: Real-time synchronization of "Activity Sessions" between the Python Bot and the TypeScript Frontend.
+    *   **Scope**: Ephemeral. Sessions are created on demand and cleaned up after 24 hours.
+    *   **Collection**: `sessions`.
+
+2.  **Local JSON (Disk)**:
+    *   **Purpose**: Long-term storage of user role preferences (e.g., "Player A prefers Tank").
+    *   **Scope**: Persistent across restarts (volume mounted in Docker).
+    *   **File**: `player_preferences.json` (managed by `core/storage.py`).
+
+### 3. Firebase (Firestore)
 
 - **Role**: Real-time sync between the bot and the Activity frontend. No direct HTTP API between frontend and bot.
 - **Data**: One collection, `sessions`. Each document is one Activity instance.
@@ -112,7 +137,7 @@ erDiagram
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
 
-### 3. Activity Frontend (TypeScript / Vite)
+### 4. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
 - **Entry**: `activity/src/main.ts`. On load it reads `sessionId` from the query string (`?sessionId=...`). If missing, it shows a message like “Use /activity in Discord.”
@@ -179,14 +204,15 @@ sequenceDiagram
 
 | Concern | Where it lives |
 |--------|-----------------|
-| Slash commands (`/activity`, `/wheel`, etc.) | `cogs/groups.py` |
+| Slash commands (`/activity`, `/wheel`) | `cogs/groups.py` |
+| Role Board / Saved Roles | `cogs/roles.py`, `core/role_ui.py`, `core/storage.py` |
+| GitHub Issues (`/bug`, `/badgroup`) | `core/issues.py`, `cogs/general.py`, `cogs/groups.py` |
 | Voice → lobby sync | `cogs/groups.py` (`on_voice_state_update`) → `SessionService.update_lobby_players` |
 | Session create/listen/update | `SessionService` + `FirebaseService` |
 | Group algorithm | `core/parallel_group_creator.py` |
-| “Spin” handling (compute groups, write to Firestore) | `SessionService._process_spin_request` |
-| Announcing groups in Discord | `SessionService._announce_completion` |
+| “Spin” handling | `SessionService._process_spin_request` |
 | Activity UI and wheel | `activity/src/main.ts`, `activity/src/wheel.ts` |
-| Session cleanup (old docs, replace on new /activity) | `bot.py` (startup), `SessionService._cleanup_session_immediately` |
+| Session cleanup | `bot.py` (startup), `SessionService._cleanup_session_immediately` |
 
 ---
 
@@ -196,6 +222,7 @@ sequenceDiagram
 - **Frontend ↔ Firebase**: `VITE_FIREBASE_*` (apiKey, authDomain, projectId, etc.) in the Activity build.
 - **Activity link**: Bot builds the browser link as `ACTIVITY_URL?sessionId={sessionId}` (e.g. `ACTIVITY_URL` from env or default GitHub Pages URL).
 - **Discord Activity**: `DISCORD_APPLICATION_ID` is used when creating the embedded application invite for the voice channel.
+- **GitHub Integration**: `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME` are required for `/bug` and `/featurerequest` to work.
 
 For step-by-step Firebase and env setup, see `FIREBASE_SETUP.md` and `README.md`.
 
@@ -209,12 +236,15 @@ flowchart LR
         Cmd["/activity"]
         Voice["Voice join/leave"]
         Click["Click Spin"]
+        Role["Role Selection"]
     end
 
     subgraph Bot
         GS[GroupService]
         SS[SessionService]
         FS[FirebaseService]
+        Store[Storage (JSON)]
+        Issues[GitHub Issues]
     end
 
     subgraph Firestore
@@ -234,10 +264,14 @@ flowchart LR
     Click --> UI
     UI --> S
     SS --> S
+    Role --> Store
+    Cmd --> Issues
 ```
 
 - **Bot**: commands and voice events → GroupService + SessionService → FirebaseService → Firestore.
 - **Firestore**: shared session state.
 - **Activity**: URL with `sessionId` → subscribe to session → user clicks Spin → write status → read updates and drive UI.
+- **Storage**: User role preferences are saved locally.
+- **Issues**: Bug reports are sent to GitHub.
 
 This should be enough to get a clear mental model of how the bot, Firebase, and Activity frontend work together. For implementation details, use this doc as a map and then open the referenced files.

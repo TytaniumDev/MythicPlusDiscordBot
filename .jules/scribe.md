@@ -47,3 +47,13 @@ Any future updates to README must preserve this skeleton.
 1. **Dependency Split:** Developers use `uv` for local dev/testing (`scripts/verify.sh`). Production (Docker) relies on `requirements.txt`.
    - *Implication:* Updates to dependencies must be synced to `requirements.txt` for production.
 2. **Command Standardization:** Documentation now prioritizes Slash Commands (`/activity`) as the primary interface. Prefix commands (`!activity`) are supported legacy features but should be deprioritized in docs.
+
+### [2024-05-23] Hybrid Persistence and GitHub Integration
+**Context:** Discovered undocumented core components handling local storage and external API integrations.
+**Learning:**
+1. **Hybrid Persistence:** The bot uses a dual-persistence strategy.
+   - **Firestore (Cloud):** For ephemeral, real-time "Activity Sessions" synced with the frontend.
+   - **Local JSON (Disk):** For persistent, long-term user preferences (Roles).
+   - *Implication:* Documentation must clearly distinguish between these two stores to avoid confusion about where data lives.
+2. **GitHub Integration:** The bot uses `core/issues.py` to bridge Discord Modals directly to GitHub Issues.
+   - *Implication:* This is a critical hidden dependency. The bot requires GitHub credentials (`GITHUB_TOKEN`, etc.) not just for CI/CD, but for runtime functionality (`/bug`, `/featurerequest`).
