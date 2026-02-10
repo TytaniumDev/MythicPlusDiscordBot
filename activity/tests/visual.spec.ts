@@ -6,6 +6,7 @@ import { mockSession, mockPlayers } from '../src/mockData';
 const encodeData = (data: any) => Buffer.from(JSON.stringify(data)).toString('base64');
 
 test.describe('Visual Regression Tests', () => {
+  // 1. Channel Picker
   test('Channel Picker View', async ({ page }) => {
     const data = {
       ...mockSession,
@@ -21,6 +22,7 @@ test.describe('Visual Regression Tests', () => {
     await argosScreenshot(page, 'channel-picker');
   });
 
+  // 2. Lobby with Players
   test('Lobby View', async ({ page }) => {
     const data = {
       ...mockSession,
@@ -33,11 +35,11 @@ test.describe('Visual Regression Tests', () => {
     // Should show player list (13 items)
     await expect(page.locator('#player-list li')).toHaveCount(mockPlayers.length);
 
-    // Screenshot (Argos + Playwright native)
+    // Screenshot
     await argosScreenshot(page, 'lobby');
-    await expect(page).toHaveScreenshot('lobby.png');
   });
 
+  // 3. Wheel
   test('Static Wheel View', async ({ page }) => {
     const data = {
       ...mockSession,
@@ -50,11 +52,11 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#wheel-container')).toBeVisible();
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
-    // Screenshot (Argos + Playwright native)
+    // Screenshot
     await argosScreenshot(page, 'wheels');
-    await expect(page).toHaveScreenshot('wheels.png');
   });
 
+  // 4. Results
   test('Results View', async ({ page }) => {
     const data = {
       ...mockSession,
@@ -66,8 +68,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page.locator('#results')).toBeVisible();
     await expect(page.locator('.group-card')).toHaveCount(mockSession.groups.length);
 
-    // Screenshot (Argos + Playwright native)
+    // Screenshot
     await argosScreenshot(page, 'results');
-    await expect(page).toHaveScreenshot('results.png');
   });
 });

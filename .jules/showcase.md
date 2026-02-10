@@ -3,7 +3,6 @@
 ## Critical Learnings
 - **[2024-05-22]** Initial audit revealed `README.md` was functional but lacked "Curb Appeal". It missed critical link arrays, visual hooks, and a clear documentation map. Refactoring to follow the "Golden Template".
 - **[2024-05-22]** Standardized "Quick Start" on `uv` to align with CI and modern Python standards. Removing legacy `pip` instructions reduces decision fatigue and support requests for environment issues.
-- **[2024-05-23]** Identified "Build Status" badge was too generic. Expanded badge array to include "Lint", "Tests", and "Activity" for better transparency, while removing "License" to stay within the 5-badge limit. Created missing `bug_report.md` template to ensure the "Report Bug" link functions correctly.
 
 ## Showcase's Philosophy
 - The README is not documentation; it is a Landing Page.
