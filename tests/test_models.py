@@ -5,19 +5,20 @@ import unittest
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.models import WoWPlayer, WoWGroup
 from core.config import (
-    ROLE_TANK,
-    ROLE_HEALER,
-    ROLE_DPS,
-    ROLE_RANGED,
-    ROLE_MELEE,
-    ROLE_TANK_OFFSPEC,
-    ROLE_HEALER_OFFSPEC,
-    ROLE_DPS_OFFSPEC,
     ROLE_BREZ,
+    ROLE_DPS,
+    ROLE_DPS_OFFSPEC,
+    ROLE_HEALER,
+    ROLE_HEALER_OFFSPEC,
     ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+    ROLE_TANK_OFFSPEC,
 )
+from core.models import WoWGroup, WoWPlayer
+
 
 class TestWoWPlayer(unittest.TestCase):
     def test_create_tank(self):
