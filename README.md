@@ -1,6 +1,9 @@
 # MythicPlusDiscordBot 💎
 
-[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
+[![Deploy](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
+[![Lint](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/lint.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/lint.yml)
+[![Test](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/test.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/test.yml)
+[![Verify Activity](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/verify-activity.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/verify-activity.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
@@ -12,7 +15,7 @@
 
 ## 📸 Preview
 
-![Hero Visual](https://placehold.co/600x400?text=App+Screenshot+Coming+Soon)
+![Hero Visual](./readme_assets/hero_visual.png)
 
 ## ⚡ Quick Start (Local Development)
 
