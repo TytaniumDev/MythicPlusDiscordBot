@@ -51,7 +51,9 @@ class TestWoWPlayer(unittest.TestCase):
         self.assertFalse(p3.ranged)
 
     def test_create_offspecs(self):
-        player = WoWPlayer.create("OffspecPlayer", [ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC])
+        player = WoWPlayer.create(
+            "OffspecPlayer", [ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_DPS_OFFSPEC]
+        )
         self.assertTrue(player.offtank)
         self.assertTrue(player.offhealer)
         self.assertTrue(player.offdps)
@@ -81,22 +83,25 @@ class TestWoWPlayer(unittest.TestCase):
         self.assertEqual(original.hasBrez, restored.hasBrez)
         self.assertEqual(original, restored)
 
+
 class TestWoWGroup(unittest.TestCase):
     def setUp(self):
         self.tank = WoWPlayer.create("Tank", [ROLE_TANK])
         self.healer = WoWPlayer.create("Healer", [ROLE_HEALER])
         self.dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
-        self.dps2 = WoWPlayer.create("DPS2", [ROLE_RANGED]) # Ranged
-        self.dps3 = WoWPlayer.create("DPS3", [ROLE_MELEE, ROLE_BREZ]) # Melee + Brez
+        self.dps2 = WoWPlayer.create("DPS2", [ROLE_RANGED])  # Ranged
+        self.dps3 = WoWPlayer.create("DPS3", [ROLE_MELEE, ROLE_BREZ])  # Melee + Brez
         self.lust_player = WoWPlayer.create("LustPlayer", [ROLE_DPS, ROLE_LUST])
 
     def test_group_properties(self):
-        group = WoWGroup(tank=self.tank, healer=self.healer, dps=[self.dps1, self.dps2, self.dps3])
+        group = WoWGroup(
+            tank=self.tank, healer=self.healer, dps=[self.dps1, self.dps2, self.dps3]
+        )
 
         self.assertTrue(group.is_complete)
         self.assertEqual(group.size, 5)
-        self.assertTrue(group.has_brez) # from dps3
-        self.assertTrue(group.has_ranged) # from dps2
+        self.assertTrue(group.has_brez)  # from dps3
+        self.assertTrue(group.has_ranged)  # from dps2
         self.assertFalse(group.has_lust)
 
     def test_group_incomplete(self):
@@ -105,7 +110,11 @@ class TestWoWGroup(unittest.TestCase):
         self.assertEqual(group.size, 3)
 
     def test_group_lust(self):
-        group = WoWGroup(tank=self.tank, healer=self.healer, dps=[self.dps1, self.dps2, self.lust_player])
+        group = WoWGroup(
+            tank=self.tank,
+            healer=self.healer,
+            dps=[self.dps1, self.dps2, self.lust_player],
+        )
         self.assertTrue(group.has_lust)
 
     def test_serialization(self):
@@ -116,6 +125,7 @@ class TestWoWGroup(unittest.TestCase):
         self.assertEqual(data["healer"]["name"], "Healer")
         self.assertEqual(len(data["dps"]), 1)
         self.assertEqual(data["dps"][0]["name"], "DPS1")
+
 
 if __name__ == "__main__":
     unittest.main()
