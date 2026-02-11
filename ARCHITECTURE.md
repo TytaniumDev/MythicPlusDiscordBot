@@ -112,6 +112,20 @@ erDiagram
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
 
+### 2.5 Data Persistence (Hybrid Model)
+
+The project uses a **Hybrid Persistence** strategy to balance real-time performance with long-term storage needs.
+
+-   **Firestore (Ephemeral):** Used for **active sessions** only.
+    -   Stores the current state of a lobby/wheel spin.
+    -   Data is transient; sessions are cleaned up automatically after 24 hours.
+    -   *Source of Truth:* `sessions` collection in Firestore.
+
+-   **Local JSON (Long-Term):** Used for **user preferences**.
+    -   Stores persistent data like a player's preferred roles (Tank/Healer/DPS) across sessions.
+    -   Implemented via `core/storage.py`, which reads/writes to `player_preferences.json` (locally or in a Docker volume).
+    -   *Why?* Avoids unnecessary database reads/writes for static user config and keeps the bot self-contained for small deployments.
+
 ### 3. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
@@ -125,6 +139,19 @@ Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replac
   5. **Completed**: Show final groups; if the document is deleted (e.g. new `/activity` in same channel), show “Activity ended.”
 
 So the frontend is a **state machine** driven by the single session document in Firestore.
+
+#### Frontend Modes
+The Activity frontend (`activity/src/main.ts`) operates in three distinct modes to support production, demos, and testing:
+
+1.  **Firebase Mode (Production):**
+    -   Triggered when a `?sessionId=...` or `?guildId=...` query parameter is present.
+    -   Connects to live Firestore to sync with the Discord bot.
+2.  **Demo Mode (Standalone):**
+    -   Triggered by clicking "Start Demo" in the UI (when no session ID is found).
+    -   Uses `mockSession` data purely in-memory. Allows users to "test drive" the UI without a Discord bot.
+3.  **Mock/Static Mode (Testing):**
+    -   Triggered by injecting a base64-encoded JSON object via the `?data=...` query parameter.
+    -   Used by **automated tests** (Playwright) to force the UI into specific states (e.g., displaying results) without needing a backend.
 
 ---
 
