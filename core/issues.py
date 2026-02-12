@@ -8,6 +8,8 @@ import aiohttp
 import discord
 from discord import ui
 
+from core.security import sanitize_logs
+
 from . import config
 
 logger = logging.getLogger(__name__)
@@ -28,7 +30,8 @@ async def _get_recent_logs() -> str | None:
                 with open(config.LOG_FILE, encoding="utf-8") as f:
                     return "".join(deque(f, maxlen=50))
 
-            return await asyncio.to_thread(read_last_logs)
+            raw_logs = await asyncio.to_thread(read_last_logs)
+            return sanitize_logs(raw_logs)
         except Exception as e:
             # Log type only to avoid leaking file paths into logs (bug-report safe).
             logger.error("Failed to read logs: %s", type(e).__name__)
