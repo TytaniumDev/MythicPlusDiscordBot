@@ -132,7 +132,6 @@ def create_mythic_plus_groups(
     ) -> WoWPlayer | None:
         # Filter out players that were in the same group as any of the current group members last time
         teammates = group.players
-        filteredList = []
 
         # Pre-check: Find all players that are ineligible due to previous grouping
         ineligible_players = set()
@@ -140,37 +139,42 @@ def create_mythic_plus_groups(
             if teammate.name in last_groups_dict:
                 ineligible_players.update(last_groups_dict[teammate.name])
 
+        first_fallback = None
+
         for p in availablePlayers:
+            if p in usedPlayers:
+                continue
+
             if p.name in ineligible_players:
                 # Find which teammate they were with for the log
-                teammate_match = next(
-                    (
-                        t.name
-                        for t in teammates
-                        if t.name in last_groups_dict
-                        and p.name in last_groups_dict[t.name]
-                    ),
-                    "someone",
-                )
-                logger.debug(
-                    "Removing %s because they were in a previous group with %s",
-                    p.name,
-                    teammate_match,
-                )
+                if debug and logger.isEnabledFor(logging.DEBUG):
+                    teammate_match = next(
+                        (
+                            t.name
+                            for t in teammates
+                            if t.name in last_groups_dict
+                            and p.name in last_groups_dict[t.name]
+                        ),
+                        "someone",
+                    )
+                    logger.debug(
+                        "Skipping %s (fallback candidate) because they were in a previous group with %s",
+                        p.name,
+                        teammate_match,
+                    )
+
+                if first_fallback is None:
+                    first_fallback = p
                 continue
-            filteredList.append(p)
 
-        # Try to grab a player from the filtered list first
-        for player in filteredList:
-            if player not in usedPlayers:
-                removePlayer(player)
-                return player
+            # Found a valid player who is not ineligible!
+            removePlayer(p)
+            return p
 
-        # The fallback if we can't find a player who hasn't played with this group before
-        for player in availablePlayers:
-            if player not in usedPlayers:
-                removePlayer(player)
-                return player
+        # If we found no "perfect" candidate, use the first fallback if available
+        if first_fallback:
+            removePlayer(first_fallback)
+            return first_fallback
 
         return None
 
