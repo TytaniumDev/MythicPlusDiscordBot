@@ -8,7 +8,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import discord
 
-from core.config import ROLE_HEALER, ROLE_TANK
+from core.config import (
+    ROLE_BREZ,
+    ROLE_DPS,
+    ROLE_HEALER,
+    ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+)
+from core.models import WoWPlayer
 from core.role_ui import (
     RoleBoardView,
     RoleButton,
@@ -26,6 +35,51 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.title, "Mythic+ Role Board")
         self.assertEqual(embed.description, "Current channel roster")
         self.assertEqual(embed.color, discord.Color.gold())
+
+    def test_create_role_board_embed_with_players(self):
+        # Create players with various roles
+        tank = WoWPlayer.create("TankPlayer", [ROLE_TANK, ROLE_BREZ])
+        healer = WoWPlayer.create("HealerPlayer", [ROLE_HEALER, ROLE_LUST])
+        melee = WoWPlayer.create("MeleePlayer", [ROLE_DPS, ROLE_MELEE])
+        ranged = WoWPlayer.create("RangedPlayer", [ROLE_DPS, ROLE_RANGED])
+        # Generic DPS
+        generic_dps = WoWPlayer.create("GenericDPS", [ROLE_DPS])
+
+        players = [tank, healer, melee, ranged, generic_dps]
+
+        embed = create_role_board_embed(players)
+
+        # Helper to find field by name part
+        def get_field_value(name_part):
+            field = next((f for f in embed.fields if name_part in f.name), None)
+            return field.value if field else None
+
+        # Assertions
+        tank_val = get_field_value("Tank")
+        self.assertIsNotNone(tank_val)
+        self.assertIn("TankPlayer", tank_val)
+        self.assertIn("⚰️", tank_val)  # Has Brez
+
+        healer_val = get_field_value("Healer")
+        self.assertIsNotNone(healer_val)
+        self.assertIn("HealerPlayer", healer_val)
+        self.assertIn("🎺", healer_val)  # Has Lust
+
+        melee_val = get_field_value("Melee")
+        self.assertIsNotNone(melee_val)
+        self.assertIn("MeleePlayer", melee_val)
+
+        ranged_val = get_field_value("Ranged")
+        self.assertIsNotNone(ranged_val)
+        self.assertIn("RangedPlayer", ranged_val)
+
+        dps_val = get_field_value("DPS")
+        self.assertIsNotNone(dps_val)
+        self.assertIn("GenericDPS", dps_val)
+
+        # Footer
+        self.assertIn("1 Brez", embed.footer.text)
+        self.assertIn("1 Lust", embed.footer.text)
 
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
