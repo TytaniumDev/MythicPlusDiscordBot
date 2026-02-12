@@ -47,3 +47,15 @@ Any future updates to README must preserve this skeleton.
 1. **Dependency Split:** Developers use `uv` for local dev/testing (`scripts/verify.sh`). Production (Docker) relies on `requirements.txt`.
    - *Implication:* Updates to dependencies must be synced to `requirements.txt` for production.
 2. **Command Standardization:** Documentation now prioritizes Slash Commands (`/activity`) as the primary interface. Prefix commands (`!activity`) are supported legacy features but should be deprioritized in docs.
+
+### [2024-05-23] Hybrid Persistence and Frontend Workflow
+**Context:** Documentation was missing details on how data is stored and how the frontend is verified.
+**Learning:**
+1.  **Hybrid Persistence:** The system uses a split model:
+    -   **Firestore:** Real-time, ephemeral session state.
+    -   **Local JSON (`core/storage.py`):** Long-term user preferences (roles), kept local to the bot container.
+2.  **Frontend Modes:** The Activity UI (`activity/`) has three distinct modes:
+    -   **Firebase Mode:** Production sync.
+    -   **Demo Mode:** Standalone in-memory mock.
+    -   **Mock/Static Mode:** Automated testing injection.
+3.  **Visual Verification:** Frontend changes require running `scripts/verify-activity.sh`. Visual regression tests (Playwright) enforce UI consistency via committed snapshots in `activity/tests/visual.spec.ts-snapshots`.
