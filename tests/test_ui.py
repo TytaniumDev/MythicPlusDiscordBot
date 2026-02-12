@@ -51,7 +51,9 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
         # Helper to find field by name part
         def get_field_value(name_part: str) -> str | None:
-            field = next((f for f in embed.fields if f.name and name_part in f.name), None)
+            field = next(
+                (f for f in embed.fields if f.name and name_part in f.name), None
+            )
             return field.value if field else None
 
         # Assertions
