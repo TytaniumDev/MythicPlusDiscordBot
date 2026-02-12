@@ -270,3 +270,13 @@ To enable automatic fix attempts by Jules:
 3.  **GitHub Secret:** Go to your repository **Settings > Secrets and variables > Actions** and create a new Repository Secret named `JULES_API_KEY` with your key.
 
 The bot automatically adds the `jules` label to new issues, which triggers the `.github/workflows/jules-issue-fix.yml` workflow to send the issue to Jules for an automated fix attempt.
+
+## 8. Activity Frontend Deployment
+
+The Activity Frontend (the "Wheel" UI) is deployed separately from the bot:
+
+-   **Hosting**: It is hosted on **GitHub Pages**.
+-   **Workflow**: The `.github/workflows/deploy-activity.yml` workflow builds and deploys the frontend automatically on every push to `main`.
+-   **Configuration**: Requires setting `DISCORD_APPLICATION_ID` and Firebase keys.
+
+For full details on setting up the frontend and linking it to your Discord Application, please see [**ACTIVITY_SETUP.md**](ACTIVITY_SETUP.md).

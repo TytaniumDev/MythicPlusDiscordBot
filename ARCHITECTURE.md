@@ -83,6 +83,7 @@ flowchart TB
 - **Core** (in `core/`):
   - **FirebaseService**: singleton; initializes the Firebase Admin SDK, exposes session management.
   - **issues.py**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
+  - **group_ui.py**: **UI Components**. Handles group announcement embeds and animations.
   - **role_ui.py**: **UI Components**. Contains the Discord Views, Buttons, and Modals for the interactive Role Board.
   - **storage.py**: **Persistence**. Manages local JSON storage (`player_preferences.json`) for user role preferences.
   - **parallel_group_creator**, **models**, **utils**, **config**: group algorithm, `WoWPlayer`/`WoWGroup`, and app config.
@@ -140,6 +141,7 @@ Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replac
 ### 4. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
+- **Deployment**: Deployed to GitHub Pages via the `deploy-activity.yml` workflow (see `ACTIVITY_SETUP.md`).
 - **Entry**: `activity/src/main.ts`. On load it reads `sessionId` from the query string (`?sessionId=...`). If missing, it shows a message like “Use /activity in Discord.”
 - **Firebase**: Uses the Firebase JS SDK (see `activity/src/firebase.ts`) with config from `VITE_FIREBASE_*` env vars. It uses Firestore only (no Auth in the minimal setup).
 - **Flow**:

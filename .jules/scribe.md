@@ -59,3 +59,17 @@ Any future updates to README must preserve this skeleton.
     -   **Demo Mode:** Standalone in-memory mock.
     -   **Mock/Static Mode:** Automated testing injection.
 3.  **Visual Verification:** Frontend changes require running `scripts/verify-activity.sh`. Visual regression tests (Playwright) enforce UI consistency via committed snapshots in `activity/tests/visual.spec.ts-snapshots`.
+
+### [2024-05-24] Dual Deployment Pipelines
+**Context:** The `ARCHITECTURE.md` and `DEPLOYMENT.md` were disconnected regarding the frontend deployment, which happens via GitHub Pages, while the backend runs on a Raspberry Pi/Docker.
+**Learning:**
+1.  **Split Deployment:** The system uses two separate deployment pipelines:
+    -   **Bot/Backend:** Deployed to a Raspberry Pi via SSH/Docker (handled by `deploy.yml`).
+    -   **Activity Frontend:** Deployed to GitHub Pages (handled by `deploy-activity.yml`).
+2.  **Cross-Referencing:** Documentation must explicitly link these two processes. `DEPLOYMENT.md` now references `ACTIVITY_SETUP.md` to ensure developers don't miss the frontend setup.
+
+### [2024-05-24] Documentation Map Drift
+**Context:** The `README.md` links the "Contributing" section to `AGENTS.md` instead of `CONTRIBUTING.md`, deviating from standard open-source practices (where `CONTRIBUTING.md` is the entry point).
+**Learning:**
+-   **Showcase Domain:** `README.md` is owned by Showcase and cannot be edited by Scribe.
+-   **Drift Note:** While `CONTRIBUTING.md` is the technically correct guide for developers, the `README.md` directs them to `AGENTS.md`. This quirk is noted here to avoid confusion during audits. Future PRs by Showcase should address this alignment.

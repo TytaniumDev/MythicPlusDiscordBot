@@ -45,12 +45,21 @@ The project uses Playwright for visual regression testing.
 -   **Rule:** If your changes affect the UI, you must update and commit the new snapshots.
 -   **CI:** Tests run automatically in CI and will fail if snapshots do not match.
 
+## Coding Standards
+
+### Python (Backend)
+-   **Type Hints:** Use Python type hints for all function arguments and return values.
+-   **Docstrings:** All functions and classes must use **Google-style docstrings** (including `Args:` and `Returns:` sections).
+-   **Style:** Follow PEP 8 guidelines (enforced by `ruff`).
+-   **Tests:** Ensure all new features or logic changes are accompanied by basic unit tests.
+
 ## Project Structure
 
 -   `core/`: Core business logic (Group algorithm, models, configuration).
 -   `cogs/`: Discord bot commands and event listeners.
 -   `services/`: Bridges between Cogs, Core logic, and Firebase.
 -   `activity/`: Frontend code for the Discord Activity (TypeScript/Vite).
+-   `tests/`: Unit and integration tests for backend components.
 -   `scripts/`: Utility scripts for verification and deployment.
 
 ## Production vs. Development
