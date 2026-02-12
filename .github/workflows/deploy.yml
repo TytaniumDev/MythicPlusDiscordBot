@@ -8,14 +8,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    uses: ./.github/workflows/lint.yml
-
-  test:
-    uses: ./.github/workflows/test.yml
+  verify:
+    uses: ./.github/workflows/verify-backend.yml
 
   build-and-push:
-    needs: [lint, test]
+    needs: [verify]
     runs-on: ubuntu-latest
     permissions:
       contents: read

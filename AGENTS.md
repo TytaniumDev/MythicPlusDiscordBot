@@ -8,17 +8,17 @@ This file provides the necessary context and operational standards for AI agents
 ## Mandatory Development Standards
 
 ### 1. Code Quality & Verification
-To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes:
+To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes. These scripts are the Single Source of Truth for CI parity.
 
-- **Backend (`core/`, `cogs/`):** Run `./scripts/verify.sh`.
-  - Runs `ruff check --fix` (Lint), `ruff format` (Format), `pyright` (Type Check), and `unittest` (Tests).
-- **Frontend (`activity/`):** Run `./scripts/verify-activity.sh`.
-  - Runs `npm run typecheck` (TypeScript), `npm run build` (Build), and `npx playwright test` (E2E Tests).
+- **Backend (`core/`, `cogs/`):** Run `./scripts/verify.sh`
+  - Runs `ruff` (Lint/Format), `pyright` (Types), and `unittest` (Tests).
+- **Frontend (`activity/`):** Run `./scripts/verify-activity.sh`
+  - Runs `tsc` (Types), `vite build` (Build), and `playwright` (E2E Tests).
 - **Verification:** Do not submit code unless the relevant script passes successfully.
 
 ### 2. Python Conventions
 - Use Python type hints for all function arguments and return values.
-- Follow PEP 8 guidelines for naming conventions and structure.
+- Follow PEP 8 guidelines via `ruff`.
 - Ensure all new features or logic changes are accompanied by basic unit tests.
 
 ### 3. Discord.py Implementation
