@@ -50,34 +50,42 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         embed = create_role_board_embed(players)
 
         # Helper to find field by name part
-        def get_field_value(name_part):
-            field = next((f for f in embed.fields if name_part in f.name), None)
+        def get_field_value(name_part: str) -> str | None:
+            field = next((f for f in embed.fields if f.name and name_part in f.name), None)
             return field.value if field else None
 
         # Assertions
         tank_val = get_field_value("Tank")
         self.assertIsNotNone(tank_val)
+        # We checked isNotNone above, but pyright might still complain in assertIn if not cast,
+        # however standard unittest.assertIsNotNone usually doesn't narrow types for pyright.
+        assert tank_val is not None
         self.assertIn("TankPlayer", tank_val)
         self.assertIn("⚰️", tank_val)  # Has Brez
 
         healer_val = get_field_value("Healer")
         self.assertIsNotNone(healer_val)
+        assert healer_val is not None
         self.assertIn("HealerPlayer", healer_val)
         self.assertIn("🎺", healer_val)  # Has Lust
 
         melee_val = get_field_value("Melee")
         self.assertIsNotNone(melee_val)
+        assert melee_val is not None
         self.assertIn("MeleePlayer", melee_val)
 
         ranged_val = get_field_value("Ranged")
         self.assertIsNotNone(ranged_val)
+        assert ranged_val is not None
         self.assertIn("RangedPlayer", ranged_val)
 
         dps_val = get_field_value("DPS")
         self.assertIsNotNone(dps_val)
+        assert dps_val is not None
         self.assertIn("GenericDPS", dps_val)
 
         # Footer
+        assert embed.footer.text is not None
         self.assertIn("1 Brez", embed.footer.text)
         self.assertIn("1 Lust", embed.footer.text)
 
