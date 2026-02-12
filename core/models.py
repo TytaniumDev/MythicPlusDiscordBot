@@ -183,7 +183,7 @@ class WoWGroup:
 
     @property
     def is_complete(self):
-        return all(p is not None for p in [self.tank, self.healer] + self.dps)
+        return self.tank is not None and self.healer is not None and len(self.dps) == 3
 
     @property
     def size(self):
