@@ -8,7 +8,7 @@
 <body>
     <div id="app">
         <h1>Mythic+ Group Creator</h1>
-        <div id="status-message" style="color: #f39c12; margin-bottom: 10px; min-height: 1.5em;"></div>
+        <div id="status-message" aria-live="polite" style="color: #f39c12; margin-bottom: 10px; min-height: 1.5em;"></div>
 
         <!-- Demo Mode Controls -->
         <div id="demo-controls" class="hidden" style="margin: 20px 0; text-align: center;">
@@ -26,25 +26,25 @@
         <div id="wheel-container" class="hidden wheel-container">
             <div id="formed-groups-panel" class="formed-groups-panel hidden">
                 <h3>Formed Groups</h3>
-                <div id="formed-groups-list"></div>
+                <div id="formed-groups-list" aria-live="polite"></div>
             </div>
             <div id="tank-wrapper" class="wheel-wrapper">
                 <div class="role-label">TANKS</div>
-                <div class="arrow"></div>
-                <canvas id="wheel-tank" width="300" height="300"></canvas>
-                <div id="result-tank" class="result"></div>
+                <div class="arrow" aria-hidden="true"></div>
+                <canvas id="wheel-tank" width="300" height="300" role="img" aria-label="Tank Selection Wheel"></canvas>
+                <div id="result-tank" class="result" aria-live="polite" aria-atomic="true"></div>
             </div>
             <div id="healer-wrapper" class="wheel-wrapper">
                 <div class="role-label">HEALERS</div>
-                <div class="arrow"></div>
-                <canvas id="wheel-healer" width="300" height="300"></canvas>
-                <div id="result-healer" class="result"></div>
+                <div class="arrow" aria-hidden="true"></div>
+                <canvas id="wheel-healer" width="300" height="300" role="img" aria-label="Healer Selection Wheel"></canvas>
+                <div id="result-healer" class="result" aria-live="polite" aria-atomic="true"></div>
             </div>
             <div id="dps-wrapper" class="wheel-wrapper">
                 <div class="role-label">DPS</div>
-                <div class="arrow"></div>
-                <canvas id="wheel-dps" width="300" height="300"></canvas>
-                <div id="result-dps" class="result"></div>
+                <div class="arrow" aria-hidden="true"></div>
+                <canvas id="wheel-dps" width="300" height="300" role="img" aria-label="DPS Selection Wheel"></canvas>
+                <div id="result-dps" class="result" aria-live="polite" aria-atomic="true"></div>
             </div>
         </div>
 
