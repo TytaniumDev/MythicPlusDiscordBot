@@ -1,9 +1,35 @@
 import discord
 from discord.ext import commands
 
+from core import config
 from core.config import PLACEHOLDER_CHAR
 from core.models import WoWGroup
 from core.utils import get_masked_name, show_short_typing
+
+
+def create_activity_message(invite_url: str, session_id: str | int) -> str:
+    """
+    Creates the formatted message for the activity command.
+
+    Args:
+        invite_url: The URL for the Discord activity invite.
+        session_id: The session ID (usually guild ID) to append to the URL.
+
+    Returns:
+        The formatted message string.
+    """
+    activity_url_base = config.ACTIVITY_URL
+
+    msg = "🎮 **Join the Activity!**\n"
+    msg += f"**Voice Channel Activity:** {invite_url}\n"
+
+    if activity_url_base:
+        direct_link = f"{activity_url_base}?guildId={session_id}"
+        msg += f"**Browser Link:** [Click Here]({direct_link})\n"
+    else:
+        msg += "⚠️ `ACTIVITY_URL` not set in .env."
+
+    return msg
 
 
 async def announce_group(

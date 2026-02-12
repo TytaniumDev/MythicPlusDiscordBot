@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import config
+from core.group_ui import create_activity_message
 from core.issues import BadGroupIssueModal, report_bad_group
 from services.session_service import SessionService
 
@@ -94,22 +95,7 @@ class Groups(commands.Cog):
                 except Exception as e:
                     logger.warning(f"Failed to create embedded invite: {e}")
 
-            # Create Direct Link
-            activity_url_base = config.ACTIVITY_URL
-
-            msg = "🎮 **Join the Activity!**\n"
-            msg += f"**Voice Channel Activity:** {invite_url}\n"
-
-            if activity_url_base:
-                # We use guildId as the key now, but for backward compatibility/simplicity,
-                # let's just use sessionId=guildId (since session_id IS guild_id).
-                # The frontend will look for guildId query param as per plan,
-                # but session_service.get_or_create_session returns the guild ID.
-                direct_link = f"{activity_url_base}?guildId={session_id}"
-                msg += f"**Browser Link:** [Click Here]({direct_link})\n"
-            else:
-                msg += "⚠️ `ACTIVITY_URL` not set in .env."
-
+            msg = create_activity_message(invite_url, session_id)
             await ctx.send(msg)
 
         except discord.HTTPException as e:
