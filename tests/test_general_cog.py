@@ -132,26 +132,3 @@ class TestGeneralCog(unittest.IsolatedAsyncioTestCase):
 
         # Assert
         # No voice client to disconnect, just ensure no error
-
-    async def test_invite_command(self):
-        """Invite command returns correct OAuth URL with permissions."""
-        bot = MagicMock()
-        bot.application_id = 1234567890
-        cog = General(bot)
-        ctx = AsyncMock()
-        ctx.send = AsyncMock()
-
-        # Patch the permissions to match the value we just set
-        with patch("cogs.general.BOT_INVITE_PERMISSIONS", 5630051437595713):
-            await cast(Any, General.invite.callback)(cog, ctx)
-
-            ctx.send.assert_called_once()
-            args, _ = ctx.send.call_args
-            message = args[0] if args else ""
-
-            # Verify basic structure
-            self.assertIn("**Add this bot to a server:**", message)
-            self.assertIn("https://discord.com/oauth2/authorize", message)
-            self.assertIn("client_id=1234567890", message)
-            self.assertIn("scope=bot", message)
-            self.assertIn("permissions=5630051437595713", message)

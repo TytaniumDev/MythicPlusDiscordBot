@@ -25,6 +25,26 @@ Before submitting a PR, you **must** run the verification script. This script ha
 -   **Type Checking**: Uses `pyright`.
 -   **Tests**: Runs standard `unittest` discovery.
 
+## Frontend Verification
+
+If your changes affect the `activity/` directory (the frontend app), you **must** also run the frontend verification script:
+
+```bash
+./scripts/verify-activity.sh
+```
+
+This script handles:
+-   **Dependencies**: `npm ci`
+-   **Type Checking**: `npm run typecheck`
+-   **Build**: `npm run build`
+-   **E2E Tests**: `npx playwright test`
+
+### Visual Regression Tests
+The project uses Playwright for visual regression testing.
+-   Snapshots are stored in `activity/tests/visual.spec.ts-snapshots`.
+-   **Rule:** If your changes affect the UI, you must update and commit the new snapshots.
+-   **CI:** Tests run automatically in CI and will fail if snapshots do not match.
+
 ## Project Structure
 
 -   `core/`: Core business logic (Group algorithm, models, configuration).

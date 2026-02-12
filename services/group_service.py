@@ -4,16 +4,12 @@ from typing import cast
 import discord
 from discord.ext import commands
 
-from core.config import (
-    PLACEHOLDER_CHAR,
-)
+from core.group_ui import announce_group
 from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import (
     get_debug_players,
-    get_masked_name,
     get_player_list,
-    show_short_typing,
 )
 
 
@@ -109,107 +105,4 @@ class GroupService:
         groups = cast(list[WoWGroup], result["groups"])
 
         for i, group in enumerate(groups, 1):
-            await self._announce_group(ctx, channel, group, i, debug)
-
-    async def _announce_group(
-        self,
-        ctx: commands.Context[commands.Bot],
-        channel: discord.abc.GuildChannel | discord.abc.Messageable,
-        group: WoWGroup,
-        group_number: int,
-        debug: bool,
-    ) -> None:
-        """
-        Constructs and sends the group announcement embed.
-        """
-        # Print out the group in an embed to keep it tidy
-        embed = discord.Embed(color=discord.Color.gold())
-        embed.title = f"Group {group_number}"
-
-        # Get player names or placeholders
-        tank_name = group.tank.name if group.tank else PLACEHOLDER_CHAR
-        healer_name = group.healer.name if group.healer else PLACEHOLDER_CHAR
-        dps1_name = group.dps[0].name if len(group.dps) > 0 else PLACEHOLDER_CHAR
-        dps2_name = group.dps[1].name if len(group.dps) > 1 else PLACEHOLDER_CHAR
-        dps3_name = group.dps[2].name if len(group.dps) > 2 else PLACEHOLDER_CHAR
-
-        # Find players with utilities
-        brez_player = next(
-            (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasBrez),
-            "None",
-        )
-        lust_player = next(
-            (p.name for p in [group.tank, group.healer] + group.dps if p and p.hasLust),
-            "None",
-        )
-
-        if debug:
-            embed.add_field(name="Tank", value=f"{tank_name}").add_field(
-                name="Healer", value=f"{healer_name}"
-            ).add_field(
-                name="DPS", value=f"{dps1_name}, {dps2_name}, {dps3_name}"
-            ).add_field(
-                name="Battle Res", value=f"{brez_player}", inline=True
-            ).add_field(name="Bloodlust", value=f"{lust_player}", inline=True)
-            await ctx.send(embed=embed)
-        else:
-            embed.add_field(
-                name="Tank", value=f"{get_masked_name(tank_name)}"
-            ).add_field(
-                name="Healer", value=f"{get_masked_name(healer_name)}"
-            ).add_field(
-                name="DPS",
-                value=f"{get_masked_name(dps1_name)}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
-            ).add_field(
-                name="Battle Res",
-                value=f"{get_masked_name(brez_player)}",
-                inline=True,
-            ).add_field(
-                name="Bloodlust",
-                value=f"{get_masked_name(lust_player)}",
-                inline=True,
-            )
-
-            embedMessage = await ctx.send(embed=embed)
-            await show_short_typing(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
-            )
-            await show_short_typing(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
-            )
-            await show_short_typing(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(
-                    index=2,
-                    name="DPS",
-                    value=f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
-                )
-            )
-            await show_short_typing(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(
-                    index=2,
-                    name="DPS",
-                    value=f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
-                )
-            )
-            await show_short_typing(channel, debug_mode=debug)
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(
-                    index=2,
-                    name="DPS",
-                    value=f"{dps1_name}, {dps2_name}, {dps3_name}",
-                )
-            )
-            embedMessage = await embedMessage.edit(
-                embed=embed.set_field_at(
-                    index=3, name="Battle Res", value=f"{brez_player}"
-                )
-            )
-            await embedMessage.edit(
-                embed=embed.set_field_at(
-                    index=4, name="Bloodlust", value=f"{lust_player}"
-                )
-            )
+            await announce_group(ctx, channel, group, i, debug)

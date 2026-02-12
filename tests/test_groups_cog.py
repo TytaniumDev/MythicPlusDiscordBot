@@ -87,30 +87,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
     async def test_activity_command_default_url(self):
         bot = MagicMock()
         bot.group_service = AsyncMock()
-
-        # Mocking players and groups
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
+        # We don't need group service data anymore for activity
 
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-123")
+        cog.session_service.get_or_create_session = AsyncMock(
+            return_value="123"
+        )  # returns guildId
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -123,46 +105,27 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the default URL with sessionId (Firebase flow)
+            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            # Logic uses guildId now
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?sessionId=" in msg:
+                if f"{default_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(
-                found_url, f"Default ACTIVITY_URL {default_url} not found in response"
+                found_url,
+                f"Default ACTIVITY_URL {default_url} with guildId not found in response",
             )
 
     async def test_activity_command_override_url(self):
         bot = MagicMock()
         bot.group_service = AsyncMock()
 
-        # Mocking players and groups
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
-
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-456")
+        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -179,12 +142,12 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the custom URL with sessionId (Firebase flow)
+            # Check if the message contains the custom URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             for call in calls:
                 msg = call.args[0]
-                if f"{custom_url}?sessionId=" in msg:
+                if f"{custom_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(
@@ -195,28 +158,8 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot = MagicMock()
         bot.group_service = AsyncMock()
 
-        player = MagicMock()
-        player.name = "TestPlayer"
-        player.tankMain = True
-        player.offtank = False
-        player.healerMain = False
-        player.offhealer = False
-        player.dpsMain = False
-        player.offdps = False
-
-        group = MagicMock()
-        group.tank = player
-        group.healer = None
-        group.dps = []
-
-        bot.group_service.get_groups_data.return_value = {
-            "players": [player],
-            "groups": [group],
-        }
-        bot.group_service.last_results = {}
-
         cog = Groups(bot)
-        cog.session_service.create_session = AsyncMock(return_value="session-789")
+        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -229,19 +172,82 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             # Call activitytest
             await cog.activitytest.callback(cog, ctx)  # type: ignore
 
-            # Verify that get_groups_data was called with debug=True
-            bot.group_service.get_groups_data.assert_called_once_with(ctx, debug=True)
+            # We don't check get_groups_data anymore
 
-            # Check if the message contains the default URL with sessionId
+            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?sessionId=" in msg:
+                if f"{default_url}?guildId=123" in msg:
                     found_url = True
                     break
             self.assertTrue(found_url)
+
+    async def test_on_voice_state_update_performance_optimization(self):
+        """Test that voice state updates without channel changes (e.g. mute) do not trigger DB writes."""
+        bot = MagicMock()
+
+        # We need to mock SessionService inside Groups cog
+        with patch("cogs.groups.SessionService") as MockSessionService:
+            cog = Groups(bot)
+            mock_service_instance = MockSessionService.return_value
+
+            # Simulate active session in channel 123
+            mock_service_instance.active_sessions = {123: "session_id"}
+            mock_service_instance.update_lobby_players = AsyncMock()
+
+            # Mock Member
+            member = MagicMock()
+            member.bot = False
+
+            # Case 1: Channel Change (Join/Move) - Should update
+            before = MagicMock()
+            before.channel = MagicMock()
+            before.channel.id = 999
+
+            after = MagicMock()
+            after.channel = MagicMock()
+            after.channel.id = 123
+            after.channel.members = [member]
+
+            await cog.on_voice_state_update(member, before, after)
+
+            # Verify update called
+            mock_service_instance.update_lobby_players.assert_called_with(123, [member])
+            mock_service_instance.update_lobby_players.reset_mock()
+
+            # Case 2: Channel Change (Leave) - Should update
+            before_leave = MagicMock()
+            before_leave.channel = MagicMock()
+            before_leave.channel.id = 123
+            before_leave.channel.members = []  # No one left
+
+            after_leave = MagicMock()
+            after_leave.channel = None  # Leaving to no voice
+
+            await cog.on_voice_state_update(member, before_leave, after_leave)
+
+            # Verify update called
+            mock_service_instance.update_lobby_players.assert_called_with(123, [])
+            mock_service_instance.update_lobby_players.reset_mock()
+
+            # Case 3: No Channel Change (e.g. Mute) - Should NOT update
+            channel_obj = MagicMock()
+            channel_obj.id = 123
+            channel_obj.members = [member]
+
+            before_mute = MagicMock()
+            before_mute.channel = channel_obj
+
+            after_mute = MagicMock()
+            after_mute.channel = channel_obj
+
+            await cog.on_voice_state_update(member, before_mute, after_mute)
+
+            # Assert call count is 0
+            self.assertEqual(mock_service_instance.update_lobby_players.call_count, 0)
 
 
 if __name__ == "__main__":

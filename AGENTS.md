@@ -25,24 +25,11 @@ To maintain consistency and prevent CI failures, you **MUST** run the appropriat
 - All bot commands, events, and API interactions must be implemented using `async/await` syntax.
 - Maintain proper error handling for Discord API interactions to ensure bot stability.
 
-### 4. Secrets in Workflows (GitHub Actions)
+### 4. CI/CD & Security Standards
+Detailed guidelines for writing GitHub Actions workflows and handling secrets are available in:
+- [**docs/CI_STANDARDS.md**](docs/CI_STANDARDS.md)
 
-When adding or modifying `.github/workflows/*.yml`, follow these rules to prevent secret leaks:
-
-- **Never inline multi-line secrets** (e.g. JSON keys, PEM keys) in `run:` scripts or heredocs. Multi-line values break bash and can be echoed in error messages, leaking secrets in CI logs.
-- **Safe pattern for multi-line secrets** passed to remote scripts (e.g. SSH heredocs): encode on the runner (e.g. base64), pass a single-line value via step output or env, decode on the remote.
-- **Never echo or log** variables that may contain secrets: do not use `set -x` in steps that use secrets; do not `echo $SECRET_VAR`.
-- **Prefer writing secrets to files** on the runner when possible (e.g. `echo "${{ secrets.PI_SSH_KEY }}" > file`), and only pass single-line or base64-encoded values into remote heredocs.
-
-See `scripts/check-workflow-secrets.py` and the workflow-lint job for automated checks.
-
-### 5. Logging and Secrets
-
-Log output may be included in bug reports (e.g. "Recent Logs" in GitHub issues). To avoid leaking secrets:
-
-- **Never log** `BOT_TOKEN`, `GITHUB_TOKEN`, `FIREBASE_CREDENTIALS_JSON`, or any env that could be secret.
-- **When logging exceptions from external APIs** (GitHub, Firebase, etc.), log only the exception type or HTTP status, not the full message or response body.
-- Assume all log output is effectively public when users attach logs to bug reports.
+**Key Rule:** Never log secrets or inline multi-line secrets in workflows.
 
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
@@ -52,3 +39,6 @@ Log output may be included in bug reports (e.g. "Recent Logs" in GitHub issues).
    - **Backend:** `./scripts/verify.sh`
    - **Frontend:** `./scripts/verify-activity.sh`
    - **Crucial:** You must use these scripts when the `pre_commit_instructions` tool asks you to "Run Relevant Tests".
+
+## Self-Correction
+If you notice a tool or command in this file is outdated (e.g., `uv` replaced `pip`), you **MUST** update this file immediately to reflect the current technical reality.

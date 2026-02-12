@@ -1,7 +1,7 @@
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Session, WoWPlayer, WoWGroup } from './types';
-import { mockSession } from './mockData';
+import { Session, WoWPlayer, WoWGroup, VoiceChannel } from './types';
+import { mockSession, mockPlayers, mockGroups } from './mockData';
 import { Wheel } from './wheel';
 import './style.css';
 
@@ -18,6 +18,7 @@ const formedGroupsPanel = document.getElementById('formed-groups-panel') as HTML
 const formedGroupsList = document.getElementById('formed-groups-list') as HTMLDivElement;
 const demoControls = document.getElementById('demo-controls') as HTMLDivElement;
 const startDemoBtn = document.getElementById('start-demo-btn') as HTMLButtonElement;
+const newRoundBtn = document.getElementById('new-round-btn') as HTMLButtonElement;
 
 // Wheels
 let wheelTank: Wheel | null = null;
@@ -41,6 +42,7 @@ function init() {
 
   spinBtn.addEventListener('click', requestSpin);
   startDemoBtn.addEventListener('click', startDemo);
+  newRoundBtn.addEventListener('click', startNewRound);
 
   // Check for Mock Data injection
   const dataParam = urlParams.get('data');
@@ -55,10 +57,11 @@ function init() {
     }
   }
 
-  currentSessionId = urlParams.get('sessionId');
+  // Support both guildId (new) and sessionId (legacy/alias)
+  currentSessionId = urlParams.get('guildId') || urlParams.get('sessionId');
 
   if (!currentSessionId) {
-    statusMsg.innerText = "No Session ID found. You can try the Demo below.";
+    statusMsg.innerText = "No Guild/Session ID found. You can try the Demo below.";
     demoControls.classList.remove('hidden');
     return;
   }
@@ -91,8 +94,8 @@ function init() {
 function handleSessionUpdate(data: Session) {
   currentSessionData = data;
 
-  // 1. Render Lobby (Always show who is here)
-  renderLobby(data.players);
+  // 1. Render Lobby or Channel Picker
+  renderLobby(data);
 
   // 2. Handle State
   switch (data.status) {
@@ -124,11 +127,91 @@ function handleSessionUpdate(data: Session) {
   }
 }
 
-function renderLobby(players: WoWPlayer[]) {
+function renderChannelPicker(channels: VoiceChannel[]) {
+    playerList.innerHTML = '';
+
+    if (!channels || channels.length === 0) {
+        playerList.innerHTML = '<li>No voice channels found with users.</li>';
+        return;
+    }
+
+    channels.forEach(ch => {
+        const li = document.createElement('li');
+        li.className = 'channel-picker-item';
+        li.innerHTML = `
+            <span>${ch.name}</span>
+            <span class="channel-count">${ch.userCount} users</span>
+        `;
+        li.onclick = () => selectChannel(ch.id);
+        playerList.appendChild(li);
+    });
+}
+
+async function selectChannel(channelId: string) {
+    if (isDemoMode && currentSessionData) {
+        // Mock update
+        const newData = { ...currentSessionData, selectedChannelId: channelId, players: mockPlayers } as Session;
+        handleSessionUpdate(newData);
+        return;
+    }
+
+    if (!currentSessionId) return;
+
+    const docRef = doc(db, 'sessions', currentSessionId);
+    await updateDoc(docRef, { selectedChannelId: channelId });
+}
+
+async function startNewRound() {
+    if (isDemoMode && currentSessionData) {
+        // Mock Reset
+        const newData = {
+            ...currentSessionData,
+            status: 'lobby',
+            selectedChannelId: null,
+            groups: [],
+            players: []
+        } as Session;
+        spinSequenceStarted = false;
+        handleSessionUpdate(newData);
+        return;
+    }
+
+    if (!currentSessionId) return;
+
+    const docRef = doc(db, 'sessions', currentSessionId);
+    await updateDoc(docRef, {
+        status: 'lobby',
+        selectedChannelId: null,
+        groups: [],
+        players: []
+    });
+    spinSequenceStarted = false;
+}
+
+function renderLobby(session: Session) {
+  // If no channel selected, show picker
+  if (!session.selectedChannelId) {
+    renderChannelPicker(session.voiceChannels || []);
+    spinBtn.disabled = true;
+    spinBtn.innerText = "Select Channel";
+    return;
+  }
+
+  const players = session.players;
   playerList.innerHTML = '';
   if (!players || players.length === 0) {
     playerList.innerHTML = '<li>Waiting for players...</li>';
+    spinBtn.disabled = true; // Cannot spin without players
     return;
+  } else {
+     spinBtn.disabled = false;
+     spinBtn.innerText = "SPIN THE WHEEL!";
+  }
+
+  // If request_spin, override button text/state
+  if (session.status === 'request_spin') {
+      spinBtn.disabled = true;
+      spinBtn.innerText = "Calculating...";
   }
 
   players.forEach(p => {
@@ -152,8 +235,9 @@ function showLobby() {
   resultsDiv.classList.add('hidden');
   formedGroupsPanel.classList.add('hidden');
   formedGroupsList.innerHTML = '';
-  spinBtn.disabled = false;
-  spinBtn.innerText = "SPIN THE WHEEL!";
+  statusMsg.innerText = "";
+
+  // Spin button state is handled in renderLobby based on player count/channel selection
 }
 
 function prepareWheelView() {
@@ -206,8 +290,12 @@ async function requestSpin() {
 
     // Simulate delay
     setTimeout(() => {
-      // Transition to spinning
-      const spinningData = { ...calculatingData, status: 'spinning' } as Session;
+      // Transition to spinning, injecting mock groups
+      const spinningData = {
+          ...calculatingData,
+          status: 'spinning',
+          groups: mockGroups
+      } as Session;
       handleSessionUpdate(spinningData);
     }, 1500);
 

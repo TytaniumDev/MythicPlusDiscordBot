@@ -151,6 +151,19 @@ Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replac
 
 So the frontend is a **state machine** driven by the single session document in Firestore.
 
+#### Frontend Modes
+The Activity frontend (`activity/src/main.ts`) operates in three distinct modes to support production, demos, and testing:
+
+1.  **Firebase Mode (Production):**
+    -   Triggered when a `?sessionId=...` or `?guildId=...` query parameter is present.
+    -   Connects to live Firestore to sync with the Discord bot.
+2.  **Demo Mode (Standalone):**
+    -   Triggered by clicking "Start Demo" in the UI (when no session ID is found).
+    -   Uses `mockSession` data purely in-memory. Allows users to "test drive" the UI without a Discord bot.
+3.  **Mock/Static Mode (Testing):**
+    -   Triggered by injecting a base64-encoded JSON object via the `?data=...` query parameter.
+    -   Used by **automated tests** (Playwright) to force the UI into specific states (e.g., displaying results) without needing a backend.
+
 ---
 
 ## How an Activity Run Works (End-to-End)

@@ -48,12 +48,14 @@ Any future updates to README must preserve this skeleton.
    - *Implication:* Updates to dependencies must be synced to `requirements.txt` for production.
 2. **Command Standardization:** Documentation now prioritizes Slash Commands (`/activity`) as the primary interface. Prefix commands (`!activity`) are supported legacy features but should be deprioritized in docs.
 
-### [2024-05-23] Hybrid Persistence and GitHub Integration
-**Context:** Discovered undocumented core components handling local storage and external API integrations.
+### [2024-05-23] Hybrid Persistence and Frontend Workflow
+**Context:** Documentation was missing details on how data is stored and how the frontend is verified.
 **Learning:**
-1. **Hybrid Persistence:** The bot uses a dual-persistence strategy.
-   - **Firestore (Cloud):** For ephemeral, real-time "Activity Sessions" synced with the frontend.
-   - **Local JSON (Disk):** For persistent, long-term user preferences (Roles).
-   - *Implication:* Documentation must clearly distinguish between these two stores to avoid confusion about where data lives.
-2. **GitHub Integration:** The bot uses `core/issues.py` to bridge Discord Modals directly to GitHub Issues.
-   - *Implication:* This is a critical hidden dependency. The bot requires GitHub credentials (`GITHUB_TOKEN`, etc.) not just for CI/CD, but for runtime functionality (`/bug`, `/featurerequest`).
+1.  **Hybrid Persistence:** The system uses a split model:
+    -   **Firestore:** Real-time, ephemeral session state.
+    -   **Local JSON (`core/storage.py`):** Long-term user preferences (roles), kept local to the bot container.
+2.  **Frontend Modes:** The Activity UI (`activity/`) has three distinct modes:
+    -   **Firebase Mode:** Production sync.
+    -   **Demo Mode:** Standalone in-memory mock.
+    -   **Mock/Static Mode:** Automated testing injection.
+3.  **Visual Verification:** Frontend changes require running `scripts/verify-activity.sh`. Visual regression tests (Playwright) enforce UI consistency via committed snapshots in `activity/tests/visual.spec.ts-snapshots`.
