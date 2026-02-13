@@ -173,3 +173,50 @@ canvas {
     margin-top: 0;
     color: #f1c40f;
 }
+
+/* Accessibility & Utility Classes */
+.status-message {
+    color: #f39c12;
+    margin-bottom: 10px;
+    min-height: 1.5em;
+}
+
+.demo-controls {
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Button Variants */
+.btn-success {
+    background-color: #2ecc71;
+    padding: 10px 20px; /* Overriding global padding for smaller button */
+}
+.btn-success:hover {
+    background-color: #27ae60;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    margin-top: 20px;
+}
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+/* Dynamic Hint */
+.activity-ended-hint {
+    margin-top: 10px;
+    color: #aaa;
+}
+
+/* Accessibility Focus States */
+button:focus-visible,
+.channel-picker-item:focus-visible {
+    outline: 3px solid #f1c40f;
+    outline-offset: 2px;
+}
+
+button[aria-busy="true"] {
+    cursor: wait;
+    opacity: 0.7;
+}

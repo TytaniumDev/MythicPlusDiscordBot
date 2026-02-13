@@ -78,8 +78,6 @@ function init() {
         const hint = document.createElement('p');
         hint.className = 'activity-ended-hint';
         hint.innerText = "Use /activity in Discord to start a new one.";
-        hint.style.marginTop = "10px";
-        hint.style.color = "#aaa";
         if (!appDiv.querySelector('.activity-ended-hint')) {
           appDiv.appendChild(hint);
         }
@@ -104,10 +102,12 @@ function handleSessionUpdate(data: Session) {
       break;
     case 'request_spin':
       spinBtn.disabled = true;
+      spinBtn.setAttribute('aria-busy', 'true');
       spinBtn.innerText = "Calculating...";
       break;
     case 'spinning':
       spinBtn.disabled = true;
+      spinBtn.setAttribute('aria-busy', 'true');
       spinBtn.innerText = "Spinning...";
 
       // Check for static wheel mode (testing)
@@ -202,15 +202,18 @@ function renderLobby(session: Session) {
   if (!players || players.length === 0) {
     playerList.innerHTML = '<li>Waiting for players...</li>';
     spinBtn.disabled = true; // Cannot spin without players
+    spinBtn.setAttribute('aria-busy', 'false');
     return;
   } else {
      spinBtn.disabled = false;
+     spinBtn.setAttribute('aria-busy', 'false');
      spinBtn.innerText = "SPIN THE WHEEL!";
   }
 
   // If request_spin, override button text/state
   if (session.status === 'request_spin') {
       spinBtn.disabled = true;
+      spinBtn.setAttribute('aria-busy', 'true');
       spinBtn.innerText = "Calculating...";
   }
 
@@ -283,6 +286,7 @@ function startDemo() {
 async function requestSpin() {
   if (isDemoMode && currentSessionData) {
     spinBtn.disabled = true;
+    spinBtn.setAttribute('aria-busy', 'true');
 
     // Simulate server processing: request_spin
     const calculatingData = { ...currentSessionData, status: 'request_spin' } as Session;
@@ -304,6 +308,7 @@ async function requestSpin() {
 
   if (!currentSessionId) return;
   spinBtn.disabled = true;
+  spinBtn.setAttribute('aria-busy', 'true');
 
   // Update status to request_spin
   const docRef = doc(db, 'sessions', currentSessionId);
