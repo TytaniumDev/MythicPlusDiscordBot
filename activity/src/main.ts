@@ -236,6 +236,7 @@ function showLobby() {
   formedGroupsPanel.classList.add('hidden');
   formedGroupsList.innerHTML = '';
   statusMsg.innerText = "";
+  (document.querySelector('#lobby h2') as HTMLElement)?.focus();
 
   // Spin button state is handled in renderLobby based on player count/channel selection
 }
@@ -248,6 +249,7 @@ function prepareWheelView() {
   // Show and clear formed groups panel
   formedGroupsList.innerHTML = '';
   formedGroupsPanel.classList.remove('hidden');
+  (document.querySelector('#formed-groups-panel h3') as HTMLElement)?.focus();
 }
 
 function getPools(players: WoWPlayer[]) {
@@ -391,6 +393,7 @@ function showResults(groups: WoWGroup[]) {
   resultsDiv.classList.remove('hidden');
   spinBtn.classList.add('hidden'); // Hide button
   statusMsg.innerText = "All Groups Formed!";
+  (document.querySelector('#results h2') as HTMLElement)?.focus();
 
   groupResults.innerHTML = '';
   groups.forEach((g, i) => {

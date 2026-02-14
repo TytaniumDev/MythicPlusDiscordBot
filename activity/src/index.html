@@ -8,7 +8,7 @@
 <body>
     <div id="app">
         <h1>Mythic+ Group Creator</h1>
-        <div id="status-message" style="color: #f39c12; margin-bottom: 10px; min-height: 1.5em;"></div>
+        <div id="status-message" style="color: #f39c12; margin-bottom: 10px; min-height: 1.5em;" role="status" aria-live="polite"></div>
 
         <!-- Demo Mode Controls -->
         <div id="demo-controls" class="hidden" style="margin: 20px 0; text-align: center;">
@@ -17,41 +17,41 @@
 
         <!-- Lobby View -->
         <div id="lobby" class="hidden">
-            <h2>Lobby</h2>
+            <h2 tabindex="-1" style="outline: none;">Lobby</h2>
             <p>Waiting for players to join voice...</p>
-            <ul id="player-list"></ul>
+            <ul id="player-list" aria-live="polite"></ul>
         </div>
 
         <!-- Wheel View -->
         <div id="wheel-container" class="hidden wheel-container">
             <div id="formed-groups-panel" class="formed-groups-panel hidden">
-                <h3>Formed Groups</h3>
-                <div id="formed-groups-list"></div>
+                <h3 tabindex="-1" style="outline: none;">Formed Groups</h3>
+                <div id="formed-groups-list" aria-live="polite"></div>
             </div>
             <div id="tank-wrapper" class="wheel-wrapper">
                 <div class="role-label">TANKS</div>
                 <div class="arrow"></div>
-                <canvas id="wheel-tank" width="300" height="300"></canvas>
-                <div id="result-tank" class="result"></div>
+                <canvas id="wheel-tank" width="300" height="300" role="img" aria-label="Tank Wheel"></canvas>
+                <div id="result-tank" class="result" aria-live="polite"></div>
             </div>
             <div id="healer-wrapper" class="wheel-wrapper">
                 <div class="role-label">HEALERS</div>
                 <div class="arrow"></div>
-                <canvas id="wheel-healer" width="300" height="300"></canvas>
-                <div id="result-healer" class="result"></div>
+                <canvas id="wheel-healer" width="300" height="300" role="img" aria-label="Healer Wheel"></canvas>
+                <div id="result-healer" class="result" aria-live="polite"></div>
             </div>
             <div id="dps-wrapper" class="wheel-wrapper">
                 <div class="role-label">DPS</div>
                 <div class="arrow"></div>
-                <canvas id="wheel-dps" width="300" height="300"></canvas>
-                <div id="result-dps" class="result"></div>
+                <canvas id="wheel-dps" width="300" height="300" role="img" aria-label="DPS Wheel"></canvas>
+                <div id="result-dps" class="result" aria-live="polite"></div>
             </div>
         </div>
 
         <!-- Results View -->
         <div id="results" class="hidden">
-            <h2>Final Groups</h2>
-            <div id="group-results"></div>
+            <h2 tabindex="-1" style="outline: none;">Final Groups</h2>
+            <div id="group-results" aria-live="polite"></div>
             <button id="new-round-btn" style="margin-top: 20px; background-color: #3498db;">Start New Round</button>
         </div>
 
