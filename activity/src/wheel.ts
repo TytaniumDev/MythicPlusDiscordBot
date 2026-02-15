@@ -39,6 +39,12 @@ export class Wheel {
   /** Set up the wheel with a new list of candidates */
   init(entries: WheelEntry[]) {
     this.entries = entries;
+
+    // Accessibility: Update label with candidate count
+    const baseLabel = this.canvas.getAttribute('aria-label') || 'Wheel';
+    const labelPrefix = baseLabel.split(' with ')[0];
+    this.canvas.setAttribute('aria-label', `${labelPrefix} with ${entries.length} candidates`);
+
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.resultEl.textContent = '';
     this.resultEl.className = 'wheel-result';
