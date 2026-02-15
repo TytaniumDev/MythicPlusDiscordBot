@@ -13,9 +13,9 @@ test.describe('Visual Regression Tests', () => {
       selectedChannelId: null, // Ensure picker
     };
     await page.goto(`/?data=${encodeData(data)}`);
-    await expect(page.locator('#lobby')).toBeVisible();
-    // Should show channel list (3 items)
-    await expect(page.locator('#player-list li')).toHaveCount(mockSession.voiceChannels?.length || 0);
+    await expect(page.locator('#view-channels')).toBeVisible();
+    // Should show channel cards (3 items)
+    await expect(page.locator('.channel-card')).toHaveCount(mockSession.voiceChannels?.length || 0);
 
     // Screenshot
     await expect(page).toHaveScreenshot('channel-picker.png');
@@ -30,9 +30,9 @@ test.describe('Visual Regression Tests', () => {
       players: mockPlayers, // Inject players
     };
     await page.goto(`/?data=${encodeData(data)}`);
-    await expect(page.locator('#lobby')).toBeVisible();
-    // Should show player list (13 items)
-    await expect(page.locator('#player-list li')).toHaveCount(mockPlayers.length);
+    await expect(page.locator('#view-lobby')).toBeVisible();
+    // Should show player chips (13 items)
+    await expect(page.locator('.player-chip')).toHaveCount(mockPlayers.length);
 
     // Screenshot
     await expect(page).toHaveScreenshot('lobby.png');
@@ -48,7 +48,7 @@ test.describe('Visual Regression Tests', () => {
       players: mockPlayers,
     };
     await page.goto(`/?data=${encodeData(data)}`);
-    await expect(page.locator('#wheel-container')).toBeVisible();
+    await expect(page.locator('#view-wheels')).toBeVisible();
     await expect(page.locator('#wheel-tank')).toBeVisible();
 
     // Screenshot
@@ -65,7 +65,7 @@ test.describe('Visual Regression Tests', () => {
       groups: mockGroups, // Inject groups!
     };
     await page.goto(`/?data=${encodeData(data)}`);
-    await expect(page.locator('#results')).toBeVisible();
+    await expect(page.locator('#view-results')).toBeVisible();
     await expect(page.locator('.group-card')).toHaveCount(mockGroups.length);
 
     // Screenshot
