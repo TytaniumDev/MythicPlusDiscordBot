@@ -1,409 +1,517 @@
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Session, WoWPlayer, WoWGroup, VoiceChannel } from './types';
+import { Session, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
 import { Wheel } from './wheel';
+import { audio } from './audio';
 import './style.css';
 
-// UI Elements
-const appDiv = document.getElementById('app') as HTMLDivElement;
-const lobbyDiv = document.getElementById('lobby') as HTMLDivElement;
-const wheelDiv = document.getElementById('wheel-container') as HTMLDivElement;
-const resultsDiv = document.getElementById('results') as HTMLDivElement;
-const playerList = document.getElementById('player-list') as HTMLUListElement;
-const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+// ── UI Elements ──────────────────────────────────────────────
 const statusMsg = document.getElementById('status-message') as HTMLDivElement;
-const groupResults = document.getElementById('group-results') as HTMLDivElement;
-const formedGroupsPanel = document.getElementById('formed-groups-panel') as HTMLDivElement;
-const formedGroupsList = document.getElementById('formed-groups-list') as HTMLDivElement;
 const demoControls = document.getElementById('demo-controls') as HTMLDivElement;
 const startDemoBtn = document.getElementById('start-demo-btn') as HTMLButtonElement;
-const newRoundBtn = document.getElementById('new-round-btn') as HTMLButtonElement;
+
+// Views
+const viewChannels = document.getElementById('view-channels') as HTMLElement;
+const viewLobby = document.getElementById('view-lobby') as HTMLElement;
+const viewWheels = document.getElementById('view-wheels') as HTMLElement;
+const viewResults = document.getElementById('view-results') as HTMLElement;
+
+// Channel picker
+const channelList = document.getElementById('channel-list') as HTMLDivElement;
+
+// Lobby
+const playerList = document.getElementById('player-list') as HTMLDivElement;
+const playerCount = document.getElementById('player-count') as HTMLSpanElement;
+const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
 
 // Wheels
+const wheelStatus = document.getElementById('wheel-status') as HTMLDivElement;
+const nextBtn = document.getElementById('next-btn') as HTMLButtonElement;
+
+// Side panel
+const sidePanel = document.getElementById('side-panel') as HTMLElement;
+const groupsList = document.getElementById('groups-list') as HTMLDivElement;
+
+// Results
+const finalGroups = document.getElementById('final-groups') as HTMLDivElement;
+const newRoundBtn = document.getElementById('new-round-btn') as HTMLButtonElement;
+
+// ── Wheels (5 total) ─────────────────────────────────────────
 let wheelTank: Wheel | null = null;
 let wheelHealer: Wheel | null = null;
-let wheelDps: Wheel | null = null;
+let wheelDps1: Wheel | null = null;
+let wheelDps2: Wheel | null = null;
+let wheelDps3: Wheel | null = null;
 
-// State
+// ── State ────────────────────────────────────────────────────
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
-let spinSequenceStarted = false;
 let isDemoMode = false;
 
-// Initialize
+// Spin sequence state
+let groups: WoWGroup[] = [];
+let currentGroupIndex = 0;
+let isAnimating = false;
+let spinSequenceStarted = false;
+
+// Candidate pools (filtered between groups)
+let poolTanks: WheelEntry[] = [];
+let poolHealers: WheelEntry[] = [];
+let poolDps: WheelEntry[] = [];
+
+// ── Initialization ───────────────────────────────────────────
 function init() {
   const urlParams = new URLSearchParams(window.location.search);
 
-  // Setup Wheels
-  wheelTank = new Wheel('wheel-tank', 'result-tank', 'tank-wrapper');
-  wheelHealer = new Wheel('wheel-healer', 'result-healer', 'healer-wrapper');
-  wheelDps = new Wheel('wheel-dps', 'result-dps', 'dps-wrapper');
+  // Initialize wheels
+  wheelTank = new Wheel('wheel-tank', 'result-tank');
+  wheelHealer = new Wheel('wheel-healer', 'result-healer');
+  wheelDps1 = new Wheel('wheel-dps1', 'result-dps1');
+  wheelDps2 = new Wheel('wheel-dps2', 'result-dps2');
+  wheelDps3 = new Wheel('wheel-dps3', 'result-dps3');
 
+  // Event listeners
   spinBtn.addEventListener('click', requestSpin);
+  nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
 
-  // Check for Mock Data injection
+  // Check for injected mock data (testing)
   const dataParam = urlParams.get('data');
   if (dataParam) {
     try {
       const json = atob(dataParam);
       const data = JSON.parse(json);
       handleSessionUpdate(data);
-      return; // Bypass Firebase
+      return;
     } catch (e) {
-      console.error("Invalid data param", e);
+      console.error('Invalid data param', e);
     }
   }
 
-  // Support both guildId (new) and sessionId (legacy/alias)
+  // Subscribe to Firebase
   currentSessionId = urlParams.get('guildId') || urlParams.get('sessionId');
 
   if (!currentSessionId) {
-    statusMsg.innerText = "No Guild/Session ID found. You can try the Demo below.";
+    statusMsg.textContent = 'No Guild/Session ID found. Try the Demo below.';
     demoControls.classList.remove('hidden');
     return;
   }
 
-  // Subscribe to Session
   const docRef = doc(db, 'sessions', currentSessionId);
-  onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data() as Session;
-      handleSessionUpdate(data);
-    } else {
-      statusMsg.innerText = "Activity ended.";
-      if (appDiv) {
-        const hint = document.createElement('p');
-        hint.className = 'activity-ended-hint';
-        hint.innerText = "Use /activity in Discord to start a new one.";
-        hint.style.marginTop = "10px";
-        hint.style.color = "#aaa";
-        if (!appDiv.querySelector('.activity-ended-hint')) {
-          appDiv.appendChild(hint);
-        }
+  onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        handleSessionUpdate(docSnap.data() as Session);
+      } else {
+        statusMsg.textContent = 'Activity ended.';
       }
+    },
+    (error) => {
+      console.error(error);
+      statusMsg.textContent = 'Activity ended.';
     }
-  }, (error) => {
-    console.error(error);
-    statusMsg.innerText = "Activity ended.";
-  });
+  );
 }
 
+// ── Session State Handler ────────────────────────────────────
 function handleSessionUpdate(data: Session) {
   currentSessionData = data;
 
-  // 1. Render Lobby or Channel Picker
-  renderLobby(data);
-
-  // 2. Handle State
   switch (data.status) {
     case 'lobby':
-      showLobby();
-      break;
-    case 'request_spin':
-      spinBtn.disabled = true;
-      spinBtn.innerText = "Calculating...";
-      break;
-    case 'spinning':
-      spinBtn.disabled = true;
-      spinBtn.innerText = "Spinning...";
-
-      // Check for static wheel mode (testing)
-      if ((data as any).staticWheel) {
-        prepareWheelView();
-        initWheelsForGroup(data.players);
+      if (!data.selectedChannelId) {
+        showView('channels');
+        renderChannelPicker(data.voiceChannels || []);
       } else {
-        if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
-          spinSequenceStarted = true;
-          startSpinSequence(data.groups);
-        }
+        showView('lobby');
+        renderLobby(data.players);
       }
       break;
+
+    case 'request_spin':
+      // Stay on lobby view, disable button
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Calculating...';
+      break;
+
+    case 'spinning':
+      if ((data as unknown as Record<string, unknown>).staticWheel) {
+        // Static wheel mode for visual testing
+        showView('wheels');
+        sidePanel.classList.remove('hidden');
+        initPools(data.players);
+        initAllWheels();
+        wheelStatus.textContent = 'Static preview';
+        nextBtn.classList.add('hidden');
+      } else if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
+        spinSequenceStarted = true;
+        startSpinSequence(data.groups, data.players);
+      }
+      break;
+
     case 'completed':
       showResults(data.groups);
       break;
   }
 }
 
+// ── View Management ──────────────────────────────────────────
+function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
+  viewChannels.classList.add('hidden');
+  viewLobby.classList.add('hidden');
+  viewWheels.classList.add('hidden');
+  viewResults.classList.add('hidden');
+  sidePanel.classList.add('hidden');
+  statusMsg.textContent = '';
+
+  switch (view) {
+    case 'channels':
+      viewChannels.classList.remove('hidden');
+      break;
+    case 'lobby':
+      viewLobby.classList.remove('hidden');
+      break;
+    case 'wheels':
+      viewWheels.classList.remove('hidden');
+      break;
+    case 'results':
+      viewResults.classList.remove('hidden');
+      break;
+  }
+}
+
+// ── Channel Picker ───────────────────────────────────────────
 function renderChannelPicker(channels: VoiceChannel[]) {
-    playerList.innerHTML = '';
+  channelList.innerHTML = '';
 
-    if (!channels || channels.length === 0) {
-        playerList.innerHTML = '<li>No voice channels found with users.</li>';
-        return;
-    }
-
-    channels.forEach(ch => {
-        const li = document.createElement('li');
-        li.className = 'channel-picker-item';
-        li.innerHTML = `
-            <span>${ch.name}</span>
-            <span class="channel-count">${ch.userCount} users</span>
-        `;
-        li.onclick = () => selectChannel(ch.id);
-        playerList.appendChild(li);
-    });
-}
-
-async function selectChannel(channelId: string) {
-    if (isDemoMode && currentSessionData) {
-        // Mock update
-        const newData = { ...currentSessionData, selectedChannelId: channelId, players: mockPlayers } as Session;
-        handleSessionUpdate(newData);
-        return;
-    }
-
-    if (!currentSessionId) return;
-
-    const docRef = doc(db, 'sessions', currentSessionId);
-    await updateDoc(docRef, { selectedChannelId: channelId });
-}
-
-async function startNewRound() {
-    if (isDemoMode && currentSessionData) {
-        // Mock Reset
-        const newData = {
-            ...currentSessionData,
-            status: 'lobby',
-            selectedChannelId: null,
-            groups: [],
-            players: []
-        } as Session;
-        spinSequenceStarted = false;
-        handleSessionUpdate(newData);
-        return;
-    }
-
-    if (!currentSessionId) return;
-
-    const docRef = doc(db, 'sessions', currentSessionId);
-    await updateDoc(docRef, {
-        status: 'lobby',
-        selectedChannelId: null,
-        groups: [],
-        players: []
-    });
-    spinSequenceStarted = false;
-}
-
-function renderLobby(session: Session) {
-  // If no channel selected, show picker
-  if (!session.selectedChannelId) {
-    renderChannelPicker(session.voiceChannels || []);
-    spinBtn.disabled = true;
-    spinBtn.innerText = "Select Channel";
+  if (!channels || channels.length === 0) {
+    channelList.innerHTML =
+      '<div style="text-align:center;color:var(--text-secondary)">No voice channels found with users.</div>';
     return;
   }
 
-  const players = session.players;
-  playerList.innerHTML = '';
-  if (!players || players.length === 0) {
-    playerList.innerHTML = '<li>Waiting for players...</li>';
-    spinBtn.disabled = true; // Cannot spin without players
-    return;
-  } else {
-     spinBtn.disabled = false;
-     spinBtn.innerText = "SPIN THE WHEEL!";
-  }
-
-  // If request_spin, override button text/state
-  if (session.status === 'request_spin') {
-      spinBtn.disabled = true;
-      spinBtn.innerText = "Calculating...";
-  }
-
-  players.forEach(p => {
-    const li = document.createElement('li');
-    li.textContent = `${p.name} (${getRoleString(p)})`;
-    playerList.appendChild(li);
+  channels.forEach((ch) => {
+    const card = document.createElement('div');
+    card.className = 'channel-card';
+    card.innerHTML = `
+      <span class="channel-name">${escapeHtml(ch.name)}</span>
+      <span class="channel-count">${ch.userCount} users</span>
+    `;
+    card.onclick = () => selectChannel(ch.id);
+    channelList.appendChild(card);
   });
 }
 
-function getRoleString(p: WoWPlayer) {
-  const roles = [];
-  if (p.roles.tankMain) roles.push("Tank");
-  if (p.roles.healerMain) roles.push("Healer");
-  if (p.roles.dpsMain) roles.push("DPS");
-  return roles.join(", ");
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
-function showLobby() {
-  lobbyDiv.classList.remove('hidden');
-  wheelDiv.classList.add('hidden');
-  resultsDiv.classList.add('hidden');
-  formedGroupsPanel.classList.add('hidden');
-  formedGroupsList.innerHTML = '';
-  statusMsg.innerText = "";
+async function selectChannel(channelId: string) {
+  if (isDemoMode && currentSessionData) {
+    handleSessionUpdate({
+      ...currentSessionData,
+      selectedChannelId: channelId,
+      players: mockPlayers,
+    } as Session);
+    return;
+  }
 
-  // Spin button state is handled in renderLobby based on player count/channel selection
+  if (!currentSessionId) return;
+  const docRef = doc(db, 'sessions', currentSessionId);
+  await updateDoc(docRef, { selectedChannelId: channelId });
 }
 
-function prepareWheelView() {
-  // Switch to Wheel View
-  lobbyDiv.classList.add('hidden');
-  wheelDiv.classList.remove('hidden');
+// ── Lobby ────────────────────────────────────────────────────
+function renderLobby(players: WoWPlayer[]) {
+  playerList.innerHTML = '';
 
-  // Show and clear formed groups panel
-  formedGroupsList.innerHTML = '';
-  formedGroupsPanel.classList.remove('hidden');
+  if (!players || players.length === 0) {
+    playerList.innerHTML =
+      '<div style="color:var(--text-secondary)">Waiting for players to join voice...</div>';
+    playerCount.textContent = '';
+    spinBtn.disabled = true;
+    spinBtn.textContent = 'Waiting for players...';
+    return;
+  }
+
+  playerCount.textContent = `${players.length} players`;
+  spinBtn.disabled = false;
+  spinBtn.textContent = 'SPIN THE WHEEL!';
+
+  // Override if request_spin
+  if (currentSessionData?.status === 'request_spin') {
+    spinBtn.disabled = true;
+    spinBtn.textContent = 'Calculating...';
+  }
+
+  players.forEach((p) => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip';
+
+    const roleClass = getPrimaryRole(p);
+    chip.innerHTML = `
+      <span class="role-dot ${roleClass}"></span>
+      <span>${escapeHtml(p.name)}</span>
+    `;
+    playerList.appendChild(chip);
+  });
 }
 
-function getPools(players: WoWPlayer[]) {
-  const poolTanks = players.filter(p => p.roles.tankMain || p.roles.offtank).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.tankMain
-  }));
-  const poolHealers = players.filter(p => p.roles.healerMain || p.roles.offhealer).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.healerMain
-  }));
-  const poolDps = players.filter(p => p.roles.dpsMain || p.roles.offdps).map(p => ({
-    name: p.name,
-    isOffspec: !p.roles.dpsMain
-  }));
-  return { poolTanks, poolHealers, poolDps };
+function getPrimaryRole(p: WoWPlayer): string {
+  if (p.roles.tankMain) return 'tank';
+  if (p.roles.healerMain) return 'healer';
+  return 'dps';
 }
 
-function initWheelsForGroup(players: WoWPlayer[]) {
-  const { poolTanks, poolHealers, poolDps } = getPools(players);
-  wheelTank?.init(poolTanks);
-  wheelHealer?.init(poolHealers);
-  wheelDps?.init(poolDps);
-}
-
-function startDemo() {
-  isDemoMode = true;
-  demoControls.classList.add('hidden');
-  statusMsg.innerText = "";
-  handleSessionUpdate(mockSession);
-}
-
+// ── Spin Request ─────────────────────────────────────────────
 async function requestSpin() {
   if (isDemoMode && currentSessionData) {
     spinBtn.disabled = true;
-
-    // Simulate server processing: request_spin
     const calculatingData = { ...currentSessionData, status: 'request_spin' } as Session;
     handleSessionUpdate(calculatingData);
 
-    // Simulate delay
+    // Simulate bot processing
     setTimeout(() => {
-      // Transition to spinning, injecting mock groups
-      const spinningData = {
-          ...calculatingData,
-          status: 'spinning',
-          groups: mockGroups
-      } as Session;
-      handleSessionUpdate(spinningData);
+      handleSessionUpdate({
+        ...calculatingData,
+        status: 'spinning',
+        groups: mockGroups,
+      } as Session);
     }, 1500);
-
     return;
   }
 
   if (!currentSessionId) return;
   spinBtn.disabled = true;
-
-  // Update status to request_spin
   const docRef = doc(db, 'sessions', currentSessionId);
   await updateDoc(docRef, { status: 'request_spin' });
 }
 
-function appendFormedGroupCard(group: WoWGroup, index: number) {
-  const div = document.createElement('div');
-  div.className = 'group-card';
-  div.innerHTML = `
-    <h3>Group ${index + 1}</h3>
-    <p><strong>Tank:</strong> ${group.tank?.name || 'None'}</p>
-    <p><strong>Healer:</strong> ${group.healer?.name || 'None'}</p>
-    <p><strong>DPS:</strong> ${group.dps.map((p) => p.name).join(', ')}</p>
-  `;
-  formedGroupsList.appendChild(div);
+// ── Spin Sequence ────────────────────────────────────────────
+function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
+  groups = sessionGroups;
+  currentGroupIndex = 0;
+  isAnimating = false;
+
+  showView('wheels');
+  sidePanel.classList.remove('hidden');
+  groupsList.innerHTML = '';
+
+  // Build candidate pools
+  initPools(players);
+  initAllWheels();
+
+  // Set up button for first group
+  updateNextButton();
 }
 
-async function startSpinSequence(groups: WoWGroup[]) {
-  prepareWheelView();
+function initPools(players: WoWPlayer[]) {
+  poolTanks = players
+    .filter((p) => p.roles.tankMain || p.roles.offtank)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.tankMain }));
 
-  // Initialize Wheels with all candidates
-  const players = currentSessionData?.players || [];
-  let { poolTanks, poolHealers, poolDps } = getPools(players);
+  poolHealers = players
+    .filter((p) => p.roles.healerMain || p.roles.offhealer)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.healerMain }));
 
-  // Initialize Wheels initially
+  poolDps = players
+    .filter((p) => p.roles.dpsMain || p.roles.offdps)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.dpsMain }));
+}
+
+function initAllWheels() {
   wheelTank?.init(poolTanks);
   wheelHealer?.init(poolHealers);
-  wheelDps?.init(poolDps);
+  wheelDps1?.init(poolDps);
+  wheelDps2?.init(poolDps);
+  wheelDps3?.init(poolDps);
+}
 
-  // Animate Group by Group
-  for (let i = 0; i < groups.length; i++) {
-    const group = groups[i];
-    statusMsg.innerText = `Spinning for Group ${i + 1}...`;
+function updateNextButton() {
+  nextBtn.classList.remove('hidden');
 
-    // Tank
-    if (group.tank) {
-       await wheelTank?.spinTo(group.tank.name);
-       // Remove from pools
-       poolTanks = poolTanks.filter(e => e.name !== group.tank?.name);
-       poolHealers = poolHealers.filter(e => e.name !== group.tank?.name);
-       poolDps = poolDps.filter(e => e.name !== group.tank?.name);
-    }
-
-    // Healer
-    if (group.healer) {
-       await wheelHealer?.spinTo(group.healer.name);
-       poolTanks = poolTanks.filter(e => e.name !== group.healer?.name);
-       poolHealers = poolHealers.filter(e => e.name !== group.healer?.name);
-       poolDps = poolDps.filter(e => e.name !== group.healer?.name);
-    }
-
-    // DPS
-    for (const dps of group.dps) {
-        // Re-init DPS wheel to ensure taken players are gone?
-        wheelDps?.init(poolDps);
-
-        await wheelDps?.spinTo(dps.name);
-        poolTanks = poolTanks.filter(e => e.name !== dps.name);
-        poolHealers = poolHealers.filter(e => e.name !== dps.name);
-        poolDps = poolDps.filter(e => e.name !== dps.name);
-
-        // Brief pause
-        await new Promise(r => setTimeout(r, 1000));
-    }
-
-    // Show Group Result and add to formed groups panel
-    statusMsg.innerText = `Group ${i + 1} Formed!`;
-    appendFormedGroupCard(group, i);
-    await new Promise(r => setTimeout(r, 2000));
+  if (currentGroupIndex >= groups.length) {
+    nextBtn.textContent = 'Finish';
+    nextBtn.disabled = false;
+    nextBtn.onclick = finishSpinSequence;
+    return;
   }
 
-  // Done
+  nextBtn.textContent = `Spin for Group ${currentGroupIndex + 1}`;
+  nextBtn.disabled = false;
+  nextBtn.onclick = spinForCurrentGroup;
+}
+
+async function spinForCurrentGroup() {
+  if (isAnimating || currentGroupIndex >= groups.length) return;
+
+  isAnimating = true;
+  nextBtn.disabled = true;
+  const group = groups[currentGroupIndex];
+  wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
+
+  // Add spinning class for glow animation
+  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.add('spinning'));
+
+  // Clear previous results
+  wheelTank?.clearResult();
+  wheelHealer?.clearResult();
+  wheelDps1?.clearResult();
+  wheelDps2?.clearResult();
+  wheelDps3?.clearResult();
+
+  // Re-init wheels with current pools
+  wheelTank?.init(poolTanks);
+  wheelHealer?.init(poolHealers);
+  wheelDps1?.init(poolDps);
+  wheelDps2?.init(poolDps);
+  wheelDps3?.init(poolDps);
+
+  // Spin all 5 wheels simultaneously with slightly staggered stop times
+  const spinPromises: Promise<string>[] = [];
+
+  if (group.tank) {
+    spinPromises.push(wheelTank!.spinTo(group.tank.name, 4000));
+  }
+  if (group.healer) {
+    spinPromises.push(wheelHealer!.spinTo(group.healer.name, 4000));
+  }
+
+  // DPS wheels with staggered durations for visual variety
+  const dpsDurations = [4000, 4300, 4600];
+  group.dps.forEach((dpsPlayer, i) => {
+    const wheel = [wheelDps1, wheelDps2, wheelDps3][i];
+    if (wheel) {
+      spinPromises.push(wheel.spinTo(dpsPlayer.name, dpsDurations[i]));
+    }
+  });
+
+  // Wait for all wheels to finish
+  await Promise.all(spinPromises);
+
+  // Remove spinning class
+  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.remove('spinning'));
+
+  // Victory sound
+  audio.victory();
+
+  // Show group result
+  wheelStatus.textContent = `Group ${currentGroupIndex + 1} Formed!`;
+  appendGroupCard(group, currentGroupIndex);
+
+  // Remove picked players from pools
+  const pickedNames = new Set<string>();
+  if (group.tank) pickedNames.add(group.tank.name);
+  if (group.healer) pickedNames.add(group.healer.name);
+  group.dps.forEach((d) => pickedNames.add(d.name));
+
+  poolTanks = poolTanks.filter((e) => !pickedNames.has(e.name));
+  poolHealers = poolHealers.filter((e) => !pickedNames.has(e.name));
+  poolDps = poolDps.filter((e) => !pickedNames.has(e.name));
+
+  // Advance to next group
+  currentGroupIndex++;
+  isAnimating = false;
+  updateNextButton();
+}
+
+async function finishSpinSequence() {
   if (currentSessionId) {
-      const docRef = doc(db, 'sessions', currentSessionId);
-      await updateDoc(docRef, { status: 'completed' });
+    const docRef = doc(db, 'sessions', currentSessionId);
+    await updateDoc(docRef, { status: 'completed' });
   } else if (isDemoMode && currentSessionData) {
-      const completedData = { ...currentSessionData, status: 'completed' } as Session;
-      handleSessionUpdate(completedData);
+    handleSessionUpdate({ ...currentSessionData, status: 'completed' } as Session);
   }
 }
 
-function showResults(groups: WoWGroup[]) {
-  wheelDiv.classList.add('hidden');
-  resultsDiv.classList.remove('hidden');
-  spinBtn.classList.add('hidden'); // Hide button
-  statusMsg.innerText = "All Groups Formed!";
+// ── Group Card Rendering ─────────────────────────────────────
+function appendGroupCard(group: WoWGroup, index: number) {
+  const card = createGroupCard(group, index);
+  groupsList.appendChild(card);
+}
 
-  groupResults.innerHTML = '';
-  groups.forEach((g, i) => {
-    const div = document.createElement('div');
-    div.className = 'group-card';
-    div.innerHTML = `
-      <h3>Group ${i + 1}</h3>
-      <p><strong>Tank:</strong> ${g.tank?.name || 'None'}</p>
-      <p><strong>Healer:</strong> ${g.healer?.name || 'None'}</p>
-      <p><strong>DPS:</strong> ${g.dps.map(p => p.name).join(', ')}</p>
-    `;
-    groupResults.appendChild(div);
+function createGroupCard(group: WoWGroup, index: number): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = 'group-card';
+
+  const dpsHtml = group.dps
+    .map(
+      (d) => `
+    <div class="group-role">
+      <span class="role-indicator" style="background:var(--color-dps)"></span>
+      <span class="role-label">DPS</span>
+      <span class="role-name">${escapeHtml(d.name)}</span>
+    </div>`
+    )
+    .join('');
+
+  div.innerHTML = `
+    <h4>Group ${index + 1}</h4>
+    <div class="group-role">
+      <span class="role-indicator" style="background:var(--color-tank)"></span>
+      <span class="role-label">Tank</span>
+      <span class="role-name">${group.tank ? escapeHtml(group.tank.name) : 'None'}</span>
+    </div>
+    <div class="group-role">
+      <span class="role-indicator" style="background:var(--color-healer)"></span>
+      <span class="role-label">Healer</span>
+      <span class="role-name">${group.healer ? escapeHtml(group.healer.name) : 'None'}</span>
+    </div>
+    ${dpsHtml}
+  `;
+  return div;
+}
+
+// ── Results View ─────────────────────────────────────────────
+function showResults(sessionGroups: WoWGroup[]) {
+  showView('results');
+  finalGroups.innerHTML = '';
+
+  sessionGroups.forEach((g, i) => {
+    finalGroups.appendChild(createGroupCard(g, i));
   });
 }
 
+// ── New Round ────────────────────────────────────────────────
+async function startNewRound() {
+  spinSequenceStarted = false;
+  groups = [];
+  currentGroupIndex = 0;
+  isAnimating = false;
+
+  if (isDemoMode && currentSessionData) {
+    handleSessionUpdate({
+      ...currentSessionData,
+      status: 'lobby',
+      selectedChannelId: null,
+      groups: [],
+      players: [],
+    } as Session);
+    return;
+  }
+
+  if (!currentSessionId) return;
+  const docRef = doc(db, 'sessions', currentSessionId);
+  await updateDoc(docRef, {
+    status: 'lobby',
+    selectedChannelId: null,
+    groups: [],
+    players: [],
+  });
+}
+
+// ── Demo Mode ────────────────────────────────────────────────
+function startDemo() {
+  isDemoMode = true;
+  demoControls.classList.add('hidden');
+  statusMsg.textContent = '';
+  handleSessionUpdate(mockSession);
+}
+
+// ── Start ────────────────────────────────────────────────────
 init();
