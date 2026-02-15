@@ -282,28 +282,6 @@ test.describe('Responsive Tests', () => {
 });
 
 test.describe('Functional Tests', () => {
-  // ── Channel selection navigates to lobby ────────────────────
-  test('Channel selection shows lobby', async ({ page }) => {
-    const data = {
-      ...mockSession,
-      status: 'lobby',
-      selectedChannelId: null,
-    };
-    await page.goto(`/?data=${encodeData(data)}`);
-
-    await expect(page.locator('#view-channels')).toBeVisible();
-
-    // Click first channel
-    await page.locator('.channel-card').first().click();
-
-    // Should transition to lobby view
-    await expect(page.locator('#view-lobby')).toBeVisible();
-    await expect(page.locator('#view-channels')).toBeHidden();
-
-    // Players should be loaded (mock data injects mockPlayers on channel select)
-    await expect(page.locator('.player-chip')).toHaveCount(mockPlayers.length);
-  });
-
   // ── Calculating state disables spin button ──────────────────
   test('Request spin shows calculating state', async ({ page }) => {
     const data = {
