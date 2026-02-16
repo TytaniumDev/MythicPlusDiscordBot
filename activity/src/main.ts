@@ -7,6 +7,11 @@ import { audio } from './audio';
 import { setupDiscordSdk } from './discordSdk';
 import './style.css';
 
+// ── Commit Hash ──────────────────────────────────────────────
+const commitLink = document.getElementById('commit-link') as HTMLAnchorElement;
+commitLink.textContent = __COMMIT_HASH__;
+commitLink.href = `https://github.com/TytaniumDev/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`;
+
 // ── UI Elements ──────────────────────────────────────────────
 const statusMsg = document.getElementById('status-message') as HTMLDivElement;
 const demoControls = document.getElementById('demo-controls') as HTMLDivElement;

@@ -76,6 +76,21 @@ body {
   letter-spacing: -0.02em;
 }
 
+.commit-hash {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: auto;
+}
+
+.commit-hash:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 .guild-tag {
   font-size: 0.8rem;
   color: var(--color-gold);
