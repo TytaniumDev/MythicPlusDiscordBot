@@ -29,11 +29,13 @@ export class Wheel {
   private entries: WheelEntry[] = [];
   private rotation = 0;
   private animationFrame: number | null = null;
+  private initialLabel: string;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
     this.resultEl = document.getElementById(resultId) as HTMLElement;
+    this.initialLabel = this.canvas.getAttribute('aria-label') || 'Wheel';
   }
 
   /** Set up the wheel with a new list of candidates */
@@ -42,6 +44,10 @@ export class Wheel {
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.resultEl.textContent = '';
     this.resultEl.className = 'wheel-result';
+
+    // Accessibility: Update label with count
+    this.canvas.setAttribute('aria-label', `${this.initialLabel} with ${this.entries.length} candidates`);
+
     this.resizeCanvas();
     this.draw();
   }
