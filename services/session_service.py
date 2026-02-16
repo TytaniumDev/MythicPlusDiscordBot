@@ -38,16 +38,30 @@ class SessionService:
 
         guild_id = ctx.guild.id
 
-        # Get or create the session
-        session_id = await self.firebase.get_or_create_session(guild_id, debug=debug)
+        # Determine the voice channel to pre-select
+        voice_channel_id: str | None = None
+        if ctx.author.voice and ctx.author.voice.channel:
+            voice_channel_id = str(ctx.author.voice.channel.id)
+
+        # Get or create the session with the selected channel
+        session_id = await self.firebase.get_or_create_session(
+            guild_id, debug=debug, selected_channel_id=voice_channel_id
+        )
 
         self.active_sessions[guild_id] = session_id
+
+        # Pre-populate guild state so the initial sync knows which channel to use
+        if voice_channel_id:
+            if guild_id not in self.guild_states:
+                self.guild_states[guild_id] = {}
+            self.guild_states[guild_id]["selectedChannelId"] = voice_channel_id
 
         # Start listening if not already
         if session_id not in self.listeners:
             self._start_listening(session_id, guild_id)
-            # Initial sync of voice states
-            await self.update_guild_voice_states(ctx.guild)
+
+        # Always sync voice states (populates players for the selected channel)
+        await self.update_guild_voice_states(ctx.guild)
 
         return session_id
 

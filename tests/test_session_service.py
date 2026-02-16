@@ -40,13 +40,16 @@ class TestSessionServiceGetOrCreateSession(unittest.IsolatedAsyncioTestCase):
         ctx = MagicMock()
         ctx.guild.id = 1
         ctx.guild.voice_channels = []  # Mock voice channels for initial sync
+        ctx.author.voice.channel.id = 99  # Voice channel the user is in
 
         service = SessionService(bot)
         result = await service.get_or_create_session(ctx)
 
         self.assertEqual(result, "1")
         self.assertEqual(service.active_sessions[1], "1")
-        mock_firebase.get_or_create_session.assert_called_once_with(1, debug=False)
+        mock_firebase.get_or_create_session.assert_called_once_with(
+            1, debug=False, selected_channel_id="99"
+        )
 
         mock_firebase.listen_to_session.assert_called_once()
         listen_args = mock_firebase.listen_to_session.call_args[0]

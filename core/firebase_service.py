@@ -72,6 +72,7 @@ class FirebaseService:
         self,
         guild_id: int,
         debug: bool = False,
+        selected_channel_id: str | None = None,
     ) -> str:
         """
         Gets or creates a persistent session document for the guild.
@@ -95,17 +96,18 @@ class FirebaseService:
                 "players": [],  # List of players (synced when channel selected)
                 "groups": [],  # Calculated groups
                 "voiceChannels": [],  # List of {id, name, userCount}
-                "selectedChannelId": None,  # The channel we are syncing from
+                "selectedChannelId": selected_channel_id,
                 "isDebug": debug,
                 "createdAt": firestore.SERVER_TIMESTAMP,
                 "lastActive": firestore.SERVER_TIMESTAMP,
             }
             await asyncio.to_thread(doc_ref.set, data)
         else:
-            # Update lastActive to prevent cleanup
-            await asyncio.to_thread(
-                doc_ref.update, {"lastActive": firestore.SERVER_TIMESTAMP}
-            )
+            # Update lastActive and selected channel
+            update: dict[str, Any] = {"lastActive": firestore.SERVER_TIMESTAMP}
+            if selected_channel_id:
+                update["selectedChannelId"] = selected_channel_id
+            await asyncio.to_thread(doc_ref.update, update)
 
         return session_id
 
