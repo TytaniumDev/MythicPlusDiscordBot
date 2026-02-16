@@ -1,8 +1,8 @@
-# Deployment Guide (Docker + GitHub Actions over Tailscale)
+# Deployment Guide (Docker + Watchtower)
 
-This guide documents the only supported deployment flow for this project:
-Docker images built by GitHub Actions and deployed to a Raspberry Pi over Tailscale.
-There are no `.env` files on the Pi; secrets are injected at deploy time.
+This guide documents the deployment flow for this project:
+Docker images are built by GitHub Actions and pushed to GHCR.
+The Raspberry Pi runs **Watchtower**, which automatically pulls new images and restarts the bot.
 
 ## 1. Raspberry Pi bootstrap (new device)
 
@@ -24,98 +24,40 @@ sudo usermod -aG docker deploy
 ```
 Log out and back in (or run `newgrp docker`) for group changes to apply.
 
-### 1.3 Install and enable Tailscale
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-sudo systemctl enable --now tailscaled
-```
-Find the Tailscale hostname or IP:
-```bash
-tailscale status
-tailscale ip -4
-```
-Use this value for the `PI_HOST` secret (example: `pi.something.ts.net`).
+## 2. Configuration
 
-### 1.4 Install SSH server and add deploy key
-```bash
-sudo apt-get install -y openssh-server
-sudo systemctl enable --now ssh
-```
+Create a `.env` file in the directory where you will run the bot (e.g., `~/mythic-plus-bot/.env`).
+This file will store all secrets and configuration.
 
-Generate a deploy key (do this on the Pi or your local machine):
 ```bash
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions_ed25519
-```
+# Discord Bot Token
+BOT_TOKEN=your_bot_token_here
 
-Add the public key to the deploy user on the Pi:
-```bash
-sudo -u deploy mkdir -p /home/deploy/.ssh
-sudo -u deploy chmod 700 /home/deploy/.ssh
-cat ~/.ssh/github_actions_ed25519.pub | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys >/dev/null
-sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
-```
+# Discord Application ID (for !activity)
+DISCORD_APPLICATION_ID=your_app_id_here
 
-Save the private key for the `PI_SSH_KEY` secret:
-```bash
-cat ~/.ssh/github_actions_ed25519
+# GitHub Container Registry (GHCR) Credentials
+# Used by Watchtower to pull updates from the private registry.
+# User is your GitHub username. Token is a PAT with `read:packages`.
+GHCR_USER=your_github_username
+GHCR_TOKEN=your_github_pat
+
+# Image Name
+# Must match the image built by CI (ghcr.io/owner/repo:latest)
+IMAGE_NAME=ghcr.io/tytaniumdev/mythicplusdiscordbot
+IMAGE_TAG=latest
+
+# GitHub Token for Issue Integration
+# Required for /bug and /featurerequest commands.
+# Needs 'repo' scope (Classic) or 'Issues: Read/Write' (Fine-grained).
+GITHUB_TOKEN=your_github_pat
+
+# Firebase Credentials (JSON)
+# Required for Activity features. Minify the JSON to a single line.
+FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
 ```
 
-### 1.5 Lock down SSH (Tailscale-only)
-```bash
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-sudo tee /etc/ssh/sshd_config.d/99-tailscale.conf >/dev/null <<'EOF'
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin no
-PubkeyAuthentication yes
-AuthenticationMethods publickey
-AllowTcpForwarding no
-X11Forwarding no
-EOF
-sudo apt-get update && sudo apt-get install -y ufw
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow in on tailscale0 to any port 22
-sudo ufw enable
-sudo sshd -t
-sudo systemctl restart ssh
-```
-Keep your current SSH session open while testing new settings.
-
-### 1.6 Clone the repo on the Pi
-```bash
-sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
-```
-Use this path for the `PI_APP_DIR` secret.
-
-## 2. GitHub Secrets for CI/CD
-
-Go to GitHub repo -> Settings -> Secrets and variables -> Actions.
-Click New repository secret for each:
-
-### Required
-- `TS_AUTHKEY`: Tailscale auth key (reusable + ephemeral recommended).
-- `PI_HOST`: Tailscale hostname or IP (example: `pi.something.ts.net`).
-- `PI_USER`: SSH user on the Pi (example: `deploy`).
-- `PI_SSH_KEY`: Private SSH key contents from step 1.4.
-- `PI_APP_DIR`: Repo path on the Pi (example: `/home/deploy/mythic-plus-bot`).
-- `GHCR_TOKEN`: GitHub PAT with `read:packages`.
-  If fine-grained tokens do not show Packages, use a classic PAT with `read:packages`
-  (and `repo` if the repo is private).
-- `BOT_TOKEN`: Discord bot token.
-- `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `!activity` invite).
-- `GH_ISSUE_TOKEN`: GitHub PAT with `repo` scope for creating issues.
-
-### Optional
-- `PI_SSH_PORT`: Defaults to 22 if omitted.
-- `DEPLOY_WEBHOOK_URL`: Discord webhook for deploy notifications.
-
-### Create a Tailscale auth key
-In the Tailscale admin console: Settings -> Keys -> Generate auth key.
-Recommended settings:
-- Reusable: on
-- Ephemeral: on
+**Note:** For `FIREBASE_CREDENTIALS_JSON`, ensure the JSON string is valid and enclosed in single quotes `'` to prevent shell parsing issues.
 
 ## 3. Discord Developer Portal (bot permissions)
 
@@ -147,97 +89,66 @@ When inviting the bot or generating an invite URL, include at least these **scop
 
 Use **Bot** scope and the permissions above; add **applications.commands** if you use slash commands.
 
-To update an already-invited bot: use a new invite URL with the same permissions and re-invite (or re-authorize when Discord prompts). Role/position of the bot in the server can affect whether it can create invites or speak in voice.
-
-### 3.3 Permissions integer in code
-
-If you copy the **permissions integer** from the Discord Developer Portal (OAuth2 → URL Generator, shown at the bottom when you select permissions), you can use it in this project so the bot generates invite URLs with those permissions:
-
-1. **Config / env:** Set `BOT_INVITE_PERMISSIONS` to that integer (e.g. `3263489`). In `config.py` it defaults to `3263489`; override with the `BOT_INVITE_PERMISSIONS` environment variable (e.g. in `.env` or GitHub Secrets) if you use a different value.
-2. **Invite URL in Discord:** Run `!invite` in any channel where the bot can reply. The bot will post an “Add this bot to a server” link that uses the configured permissions. Use that link to add the bot to a server or to re-invite with updated permissions.
-
-The permissions integer is only used when generating the OAuth2 invite URL; it does not change the bot’s behavior inside a server. Server admins still grant permissions when they complete the invite flow.
-
-### 3.4 Activity (optional, for `!activity`)
+### 3.3 Activity (optional, for `!activity`)
 
 The `!activity` command creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
 
 1. In the Developer Portal: your application → **Activities** (or **Rich Presence** / app type).
 2. Create or link an Activity so Discord allows `target_type=embedded_application` invites.
-3. Set the **DISCORD_APPLICATION_ID** secret (and `DISCORD_APPLICATION_ID` in `.env` locally) to your application’s **Application ID** (Application → General Information).
-
-If Activities are not set up, `/activity` will fail; `/wheel` (voice + GIFs) still work with the permissions above.
+3. Set `DISCORD_APPLICATION_ID` in your `.env` file to your application’s **Application ID**.
 
 ## 4. First deploy
 
-1. Push to `main`/`master`.
-2. Watch the GitHub Actions workflow run.
-3. On the Pi, confirm the container is running:
-   ```bash
-   docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
-   ```
+1.  **Clone the repo on the Pi**
+    ```bash
+    git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git ~/mythic-plus-bot
+    cd ~/mythic-plus-bot
+    ```
+
+2.  **Create and Populate `.env`**
+    Create the `.env` file as described in Section 2.
+
+3.  **Start the Stack**
+    ```bash
+    docker compose up -d
+    ```
+
+4.  **Verify**
+    ```bash
+    docker compose ps
+    ```
+    You should see both `mythic-plus-bot` and `watchtower` running.
 
 ### 4.1 Data Persistence
 
-The bot now stores player preferences (roles) in a `data/` directory inside the repository folder on the Pi (`/home/deploy/mythic-plus-bot/data`).
+The bot stores player preferences (roles) in a `data/` directory inside the repository folder on the Pi (`~/mythic-plus-bot/data`).
 - This directory is created automatically by Docker when the container starts.
-- It is ignored by git (via `.gitignore`), so your data survives deployments and `git reset`.
-- You can back up this file manually: `cp /home/deploy/mythic-plus-bot/data/player_preferences.json ~/.backup_prefs.json`.
+- It is ignored by git, so your data survives deployments.
 
-## 5. Verification checklist
+## 5. Updates (Automatic)
 
-Run these checks if a deploy fails or you want to validate the setup.
+**Watchtower** is configured to check for new images every 5 minutes.
+When a new image is pushed to GHCR by the GitHub Actions workflow, Watchtower will:
+1.  Detect the new image.
+2.  Gracefully stop the bot container.
+3.  Restart the bot with the new image and the same configuration (environment variables).
 
-### 5.1 Tailscale connectivity
-On your local machine (or another device on your tailnet):
+You do not need to do anything for code updates.
+
+### Manual Updates (Configuration Changes)
+If you change `docker-compose.yml` or the `.env` file (e.g., rotating tokens), you must manually apply the changes:
 ```bash
-ping -c 3 pi.something.ts.net
-ssh deploy@pi.something.ts.net
+cd ~/mythic-plus-bot
+git pull
+docker compose up -d
 ```
+This recreates the containers with the new configuration.
 
-### 5.2 SSH access and permissions
-On the Pi:
-```bash
-whoami
-groups
-docker ps
-```
-You should see your user in the `docker` group.
+## 6. GitHub Issues Integration
 
-### 5.3 Repo path and compose config
-```bash
-ls -la /home/deploy/mythic-plus-bot
-docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
-```
+To enable the `/bug` and `/featurerequest` commands, you need a Personal Access Token (PAT).
 
-### 5.4 Container health
-```bash
-docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
-docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
-```
-
-### 5.5 GitHub Actions logs
-In GitHub:
-**Actions → CI and Deploy → deploy job**
-Look for:
-- Successful Tailscale connection
-- SSH step completed
-- `docker compose pull` and `up` succeeded
-
-## 6. Updates
-
-Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
-Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
-
-Note: The production Docker image is built using `requirements.txt`. If you add dependencies, ensure they are reflected there. Local development uses `uv` for dependency management.
-
-## 7. GitHub Issues Integration
-
-To enable the `/bug` and `/featurerequest` commands, you need to configure the bot to interact with GitHub.
-
-### 7.1 Create a Personal Access Token (PAT)
-
-You can use either a **Classic** or **Fine-grained** Personal Access Token.
+### 6.1 Create a PAT
 
 **Option A: Classic Token (Easier)**
 1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Tokens (classic)**.
@@ -245,28 +156,10 @@ You can use either a **Classic** or **Fine-grained** Personal Access Token.
 3. Select the **repo** scope (Full control of private repositories).
 4. Copy the generated token.
 
-**Option B: Fine-grained Token (More Secure)**
+**Option B: Fine-grained Token**
 1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
 2. Generate a new token and select your repository.
 3. Under **Repository permissions**, grant **Issues** access: **Read and Write**.
-   *(Note: **Metadata** read-only access is usually included by default, which is sufficient).*
-4. Copy the generated token.
 
-### 7.2 Add GitHub Secret
-
-Go to your repository **Settings** -> **Secrets and variables** -> **Actions**.
-Create a new repository secret:
-- Name: `GH_ISSUE_TOKEN`
-- Value: (The token you copied in the previous step)
-
-This token will be injected into the container at runtime.
-
-### 7.3 Jules Automation
-
-To enable automatic fix attempts by Jules:
-
-1.  **Jules GitHub App:** Ensure the Jules app is installed on your repository (via `jules.google`).
-2.  **API Key:** Generate a Jules API Key from your [Jules Settings](https://jules.google/settings).
-3.  **GitHub Secret:** Go to your repository **Settings > Secrets and variables > Actions** and create a new Repository Secret named `JULES_API_KEY` with your key.
-
-The bot automatically adds the `jules` label to new issues, which triggers the `.github/workflows/jules-issue-fix.yml` workflow to send the issue to Jules for an automated fix attempt.
+### 6.2 Configure
+Add the token to your `.env` file as `GITHUB_TOKEN`.
