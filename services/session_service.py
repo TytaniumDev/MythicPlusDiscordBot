@@ -22,6 +22,7 @@ class SessionService:
         self.guild_states: dict[
             int, dict[str, Any]
         ] = {}  # guild_id -> local cache of session state
+        self._collection_watch: Any = None
 
     async def get_or_create_session(
         self,
@@ -49,6 +50,56 @@ class SessionService:
             await self.update_guild_voice_states(ctx.guild)
 
         return session_id
+
+    def start_collection_listener(self) -> None:
+        """Watches the sessions collection for new docs created by the frontend."""
+        if self._collection_watch is not None:
+            return
+        if not self.firebase.is_available():
+            return
+
+        def on_collection_snapshot(
+            col_snapshot: Any, changes: Any, read_time: Any
+        ) -> None:
+            for change in changes:
+                if change.type.name != "ADDED":
+                    continue
+
+                doc = change.document
+                data = doc.to_dict()
+                session_id = doc.id
+                guild_id_str = data.get("guildId")
+                if not guild_id_str:
+                    continue
+
+                try:
+                    guild_id = int(guild_id_str)
+                except (ValueError, TypeError):
+                    continue
+
+                # Skip if already tracked
+                if guild_id in self.active_sessions:
+                    continue
+
+                # Validate that the bot is in this guild
+                guild = self.bot.get_guild(guild_id)
+                if not guild:
+                    continue
+
+                logger.info(
+                    "Auto-discovered session %s for guild %s", session_id, guild_id
+                )
+                self.active_sessions[guild_id] = session_id
+                self._start_listening(session_id, guild_id)
+
+                # Sync voice states on the bot's event loop
+                asyncio.run_coroutine_threadsafe(
+                    self.update_guild_voice_states(guild), self.bot.loop
+                )
+
+        self._collection_watch = self.firebase.listen_to_collection(
+            "sessions", on_collection_snapshot
+        )
 
     def _start_listening(self, session_id: str, guild_id: int) -> None:
         """Internal method to attach the Firestore listener."""

@@ -119,6 +119,11 @@ class Groups(commands.Cog):
             logger.error("Error in activity command: %s", e)
 
     @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        """Start watching the sessions collection for frontend-created sessions."""
+        self.session_service.start_collection_listener()
+
+    @commands.Cog.listener()
     async def on_voice_state_update(
         self,
         member: discord.Member,
@@ -128,19 +133,12 @@ class Groups(commands.Cog):
         """
         Listen for voice state updates to sync the lobby.
         """
-        # We only care if someone joined or left a channel
-        channel = after.channel or before.channel
-        if not channel:
-            return
-
         if before.channel == after.channel:
             return
 
-        # Check if we have a session for this channel
-        if channel.id in self.session_service.active_sessions:
-            members = [m for m in channel.members if not m.bot]
-            # Update lobby
-            await self.session_service.update_lobby_players(channel.id, members)
+        # Check if we have an active session for this member's guild
+        if member.guild.id in self.session_service.active_sessions:
+            await self.session_service.update_guild_voice_states(member.guild)
 
     @commands.hybrid_command(
         name="badgroup", description="Report a bad set of groups to the developers."

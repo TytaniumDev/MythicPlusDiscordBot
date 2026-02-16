@@ -1,4 +1,4 @@
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
@@ -11,6 +11,7 @@ import './style.css';
 const statusMsg = document.getElementById('status-message') as HTMLDivElement;
 const demoControls = document.getElementById('demo-controls') as HTMLDivElement;
 const startDemoBtn = document.getElementById('start-demo-btn') as HTMLButtonElement;
+const startSessionBtn = document.getElementById('start-session-btn') as HTMLButtonElement;
 
 // Views
 const viewChannels = document.getElementById('view-channels') as HTMLElement;
@@ -49,6 +50,7 @@ let wheelDps3: Wheel | null = null;
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
 let isDemoMode = false;
+let discordChannelId: string | null = null;
 
 // Spin sequence state
 let groups: WoWGroup[] = [];
@@ -77,6 +79,7 @@ async function init() {
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
+  startSessionBtn.addEventListener('click', createSession);
 
   // Check for injected mock data (testing)
   const dataParam = urlParams.get('data');
@@ -95,9 +98,10 @@ async function init() {
   currentSessionId = urlParams.get('guildId') || urlParams.get('sessionId');
 
   if (!currentSessionId) {
-    const guildId = await setupDiscordSdk();
-    if (guildId) {
-      currentSessionId = guildId;
+    const discordContext = await setupDiscordSdk();
+    if (discordContext) {
+      currentSessionId = discordContext.guildId;
+      discordChannelId = discordContext.channelId;
     }
   }
 
@@ -112,9 +116,11 @@ async function init() {
     docRef,
     (docSnap) => {
       if (docSnap.exists()) {
+        startSessionBtn.classList.add('hidden');
         handleSessionUpdate(docSnap.data() as Session);
       } else {
-        statusMsg.textContent = 'Activity ended.';
+        statusMsg.textContent = 'No active session found.';
+        startSessionBtn.classList.remove('hidden');
       }
     },
     (error) => {
@@ -511,6 +517,31 @@ async function startNewRound() {
     groups: [],
     players: [],
   });
+}
+
+// ── Session Creation ─────────────────────────────────────────
+async function createSession() {
+  if (!currentSessionId) return;
+
+  startSessionBtn.disabled = true;
+  startSessionBtn.textContent = 'Creating...';
+
+  const docRef = doc(db, 'sessions', currentSessionId);
+  await setDoc(docRef, {
+    guildId: currentSessionId,
+    status: 'lobby',
+    players: [],
+    groups: [],
+    voiceChannels: [],
+    selectedChannelId: discordChannelId,
+    isDebug: false,
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp(),
+  });
+
+  // onSnapshot will pick up the new doc and hide the button
+  startSessionBtn.disabled = false;
+  startSessionBtn.textContent = 'Start Session';
 }
 
 // ── Demo Mode ────────────────────────────────────────────────

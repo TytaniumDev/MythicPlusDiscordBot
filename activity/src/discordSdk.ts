@@ -1,11 +1,16 @@
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 
+export interface DiscordContext {
+  guildId: string;
+  channelId: string | null;
+}
+
 /**
- * Initialize the Discord Embedded App SDK and return the guild ID.
+ * Initialize the Discord Embedded App SDK and return the guild/channel context.
  * Only works when the app is running inside a Discord activity iframe.
  * Returns null if not embedded or on any failure.
  */
-export async function setupDiscordSdk(): Promise<string | null> {
+export async function setupDiscordSdk(): Promise<DiscordContext | null> {
   // Check if we're inside an iframe (Discord activities always load in an iframe)
   let isEmbedded = false;
   try {
@@ -26,7 +31,13 @@ export async function setupDiscordSdk(): Promise<string | null> {
   try {
     const discordSdk = new DiscordSDK(clientId);
     await discordSdk.ready();
-    return discordSdk.guildId;
+
+    if (!discordSdk.guildId) return null;
+
+    return {
+      guildId: discordSdk.guildId,
+      channelId: discordSdk.channelId,
+    };
   } catch (e) {
     console.error('Discord SDK init failed', e);
     return null;

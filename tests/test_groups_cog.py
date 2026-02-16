@@ -194,13 +194,15 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             cog = Groups(bot)
             mock_service_instance = MockSessionService.return_value
 
-            # Simulate active session in channel 123
-            mock_service_instance.active_sessions = {123: "session_id"}
-            mock_service_instance.update_lobby_players = AsyncMock()
+            # Simulate active session keyed by guild_id
+            mock_service_instance.active_sessions = {456: "session_id"}
+            mock_service_instance.update_guild_voice_states = AsyncMock()
 
-            # Mock Member
+            # Mock Member with guild
             member = MagicMock()
             member.bot = False
+            member.guild = MagicMock()
+            member.guild.id = 456
 
             # Case 1: Channel Change (Join/Move) - Should update
             before = MagicMock()
@@ -210,19 +212,19 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             after = MagicMock()
             after.channel = MagicMock()
             after.channel.id = 123
-            after.channel.members = [member]
 
             await cog.on_voice_state_update(member, before, after)
 
-            # Verify update called
-            mock_service_instance.update_lobby_players.assert_called_with(123, [member])
-            mock_service_instance.update_lobby_players.reset_mock()
+            # Verify update called with the guild
+            mock_service_instance.update_guild_voice_states.assert_called_with(
+                member.guild
+            )
+            mock_service_instance.update_guild_voice_states.reset_mock()
 
             # Case 2: Channel Change (Leave) - Should update
             before_leave = MagicMock()
             before_leave.channel = MagicMock()
             before_leave.channel.id = 123
-            before_leave.channel.members = []  # No one left
 
             after_leave = MagicMock()
             after_leave.channel = None  # Leaving to no voice
@@ -230,13 +232,14 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             await cog.on_voice_state_update(member, before_leave, after_leave)
 
             # Verify update called
-            mock_service_instance.update_lobby_players.assert_called_with(123, [])
-            mock_service_instance.update_lobby_players.reset_mock()
+            mock_service_instance.update_guild_voice_states.assert_called_with(
+                member.guild
+            )
+            mock_service_instance.update_guild_voice_states.reset_mock()
 
             # Case 3: No Channel Change (e.g. Mute) - Should NOT update
             channel_obj = MagicMock()
             channel_obj.id = 123
-            channel_obj.members = [member]
 
             before_mute = MagicMock()
             before_mute.channel = channel_obj
@@ -247,7 +250,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             await cog.on_voice_state_update(member, before_mute, after_mute)
 
             # Assert call count is 0
-            self.assertEqual(mock_service_instance.update_lobby_players.call_count, 0)
+            self.assertEqual(
+                mock_service_instance.update_guild_voice_states.call_count, 0
+            )
 
 
 if __name__ == "__main__":

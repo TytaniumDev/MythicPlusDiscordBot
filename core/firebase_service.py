@@ -137,6 +137,18 @@ class FirebaseService:
         watch = doc_ref.on_snapshot(callback)
         return watch
 
+    def listen_to_collection(
+        self,
+        collection_name: str,
+        callback: Callable[..., None],
+    ) -> object | None:
+        """Sets up a real-time listener for an entire collection."""
+        if not self.db:
+            return None
+
+        col_ref = self.db.collection(collection_name)
+        return col_ref.on_snapshot(callback)
+
     async def delete_session(self, session_id: str) -> None:
         """Deletes a session document from Firestore."""
         if not self.db:
