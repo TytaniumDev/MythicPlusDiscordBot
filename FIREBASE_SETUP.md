@@ -35,14 +35,9 @@ The bot needs a Service Account to write to Firestore with admin privileges.
    ```
 
 ## 4. Production Deploy
-For the main bot deploy (e.g. to a Raspberry Pi), add the `FIREBASE_CREDENTIALS_JSON` environment variable to your `.env` file on the Pi.
-Ensure the JSON string is **minified to a single line** and enclosed in single quotes `'` to avoid shell parsing issues.
+For the main bot deploy (e.g. to a Raspberry Pi), set the **FIREBASE_CREDENTIALS_JSON** repository secret (GitHub → Settings → Secrets → Actions). The Provision step (when you run the Deploy workflow manually) writes it into the Pi’s `.env` file. You do not need to manually create or edit `.env` on the Pi.
 
-```bash
-FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
-```
-
-Without this variable, the bot will run but Firebase features (e.g. `/activity` live lobby) will be disabled.
+Without this secret (and after Provision has run), the bot will run but Firebase features (e.g. `/activity` live lobby) will be disabled.
 
 ## 5. Firestore Database and Rules
 1. Go to **Firestore Database** in the left sidebar.

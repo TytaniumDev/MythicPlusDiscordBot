@@ -1,4 +1,4 @@
-name: Build and Publish
+name: Deploy
 
 on:
   push:
@@ -48,3 +48,92 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Provisions the bot server: writes .env from GitHub Secrets and runs docker compose.
+  # Run this workflow manually (Actions → Deploy → Run workflow) after cloning the repo on the Pi
+  # and configuring Tailscale + SSH. No need to manually create .env on the server.
+  provision:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Connect to Tailscale
+        id: tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci-runner
+      - name: Verify Tailscale connection
+        run: |
+          if [ "${{ steps.tailscale.outcome }}" != "success" ]; then
+            echo "::error::Tailscale connection failed. Check TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET."
+            exit 1
+          fi
+          echo "Tailscale connected successfully"
+      - name: Setup SSH key
+        env:
+          PI_SSH_KEY: ${{ secrets.PI_SSH_KEY }}
+          PI_HOST: ${{ secrets.PI_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$PI_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$PI_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Test SSH connection
+        env:
+          PI_HOST: ${{ secrets.PI_HOST }}
+          PI_USER: ${{ secrets.PI_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+            "$PI_USER@$PI_HOST" "echo 'SSH OK'"
+      - name: Encode Firebase credentials
+        id: firebase_b64
+        env:
+          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
+        run: |
+          firebase_b64=$(echo "$FIREBASE_CREDENTIALS_JSON" | base64 -w0)
+          echo "firebase_b64<<OUTPUT_EOF" >> $GITHUB_OUTPUT
+          echo "$firebase_b64" >> $GITHUB_OUTPUT
+          echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
+      - name: Provision .env and start stack on Pi
+        env:
+          PI_USER: ${{ secrets.PI_USER }}
+          PI_HOST: ${{ secrets.PI_HOST }}
+          PI_APP_DIR: ${{ secrets.PI_APP_DIR }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          GITHUB_TOKEN: ${{ secrets.GH_ISSUE_TOKEN }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
+            "$PI_USER@$PI_HOST" bash << REMOTE_SCRIPT
+          set -e
+          PI_APP_DIR='${{ secrets.PI_APP_DIR }}'
+          GHCR_USER='${{ secrets.GHCR_USER }}'
+          GHCR_TOKEN='${{ secrets.GHCR_TOKEN }}'
+          BOT_TOKEN='${{ secrets.BOT_TOKEN }}'
+          DISCORD_APPLICATION_ID='${{ secrets.DISCORD_APPLICATION_ID }}'
+          GITHUB_TOKEN='${{ secrets.GH_ISSUE_TOKEN }}'
+          FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
+          IMAGE_NAME='ghcr.io/tytaniumdev/mythicplusdiscordbot'
+          IMAGE_TAG='latest'
+
+          cd "\$PI_APP_DIR"
+          FIREBASE_JSON=\$(echo "\$FIREBASE_B64" | base64 -d | tr -d '\\n' | sed 's/"/\\\\"/g')
+          cat > .env << ENVEOF
+          BOT_TOKEN=\${BOT_TOKEN}
+          DISCORD_APPLICATION_ID=\${DISCORD_APPLICATION_ID}
+          GHCR_USER=\${GHCR_USER}
+          GHCR_TOKEN=\${GHCR_TOKEN}
+          IMAGE_NAME=\${IMAGE_NAME}
+          IMAGE_TAG=\${IMAGE_TAG}
+          GITHUB_TOKEN=\${GITHUB_TOKEN}
+          FIREBASE_CREDENTIALS_JSON="\${FIREBASE_JSON}"
+          ENVEOF
+          chmod 600 .env
+          docker compose up -d --remove-orphans
+          docker compose ps
+          REMOTE_SCRIPT

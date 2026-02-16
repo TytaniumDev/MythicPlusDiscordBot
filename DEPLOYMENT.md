@@ -3,6 +3,7 @@
 This guide documents the deployment flow for this project:
 Docker images are built by GitHub Actions and pushed to GHCR.
 The Raspberry Pi runs **Watchtower**, which automatically pulls new images and restarts the bot.
+The **.env** file on the Pi is created automatically by the **Provision** step when you run the Deploy workflow manually (no need to create it by hand).
 
 ## 1. Raspberry Pi bootstrap (new device)
 
@@ -24,40 +25,59 @@ sudo usermod -aG docker deploy
 ```
 Log out and back in (or run `newgrp docker`) for group changes to apply.
 
-## 2. Configuration
-
-Create a `.env` file in the directory where you will run the bot (e.g., `~/mythic-plus-bot/.env`).
-This file will store all secrets and configuration.
-
+### 1.3 Install and enable Tailscale
 ```bash
-# Discord Bot Token
-BOT_TOKEN=your_bot_token_here
-
-# Discord Application ID (for !activity)
-DISCORD_APPLICATION_ID=your_app_id_here
-
-# GitHub Container Registry (GHCR) Credentials
-# Used by Watchtower to pull updates from the private registry.
-# User is your GitHub username. Token is a PAT with `read:packages`.
-GHCR_USER=your_github_username
-GHCR_TOKEN=your_github_pat
-
-# Image Name
-# Must match the image built by CI (ghcr.io/owner/repo:latest)
-IMAGE_NAME=ghcr.io/tytaniumdev/mythicplusdiscordbot
-IMAGE_TAG=latest
-
-# GitHub Token for Issue Integration
-# Required for /bug and /featurerequest commands.
-# Needs 'repo' scope (Classic) or 'Issues: Read/Write' (Fine-grained).
-GITHUB_TOKEN=your_github_pat
-
-# Firebase Credentials (JSON)
-# Required for Activity features. Minify the JSON to a single line.
-FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+sudo systemctl enable --now tailscaled
 ```
+Find the Tailscale hostname or IP for the **PI_HOST** secret:
+```bash
+tailscale status
+tailscale ip -4
+```
+Use this value (e.g. `pi.something.ts.net`) when configuring GitHub Secrets.
 
-**Note:** For `FIREBASE_CREDENTIALS_JSON`, ensure the JSON string is valid and enclosed in single quotes `'` to prevent shell parsing issues.
+### 1.4 Install SSH server and add deploy key
+```bash
+sudo apt-get install -y openssh-server
+sudo systemctl enable --now ssh
+```
+Generate a deploy key (on the Pi or your machine):
+```bash
+ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions_ed25519
+```
+Add the public key to the deploy user on the Pi:
+```bash
+sudo -u deploy mkdir -p /home/deploy/.ssh
+sudo -u deploy chmod 700 /home/deploy/.ssh
+cat ~/.ssh/github_actions_ed25519.pub | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys >/dev/null
+sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
+```
+Save the **private** key contents for the **PI_SSH_KEY** secret.
+
+## 2. GitHub Secrets (for Provision)
+
+The Provision step (run when you trigger the Deploy workflow manually) writes `.env` on the Pi from these repository secrets. No manual `.env` file on the server is required.
+
+Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
+
+| Secret | Description |
+|--------|-------------|
+| **PI_HOST** | Tailscale hostname or IP of the Pi (e.g. `pi.something.ts.net`). |
+| **PI_USER** | SSH user on the Pi (e.g. `deploy`). |
+| **PI_SSH_KEY** | Private SSH key contents (from step 1.4). |
+| **PI_APP_DIR** | Repo path on the Pi (e.g. `/home/deploy/mythic-plus-bot`). |
+| **TS_OAUTH_CLIENT_ID** | Tailscale OAuth client ID (Admin Console → Settings → OAuth clients). |
+| **TS_OAUTH_SECRET** | Tailscale OAuth secret. |
+| **GHCR_USER** | GitHub username for GHCR (used by Watchtower to pull images). |
+| **GHCR_TOKEN** | GitHub PAT with `read:packages`. |
+| **BOT_TOKEN** | Discord bot token. |
+| **DISCORD_APPLICATION_ID** | Discord Application ID (for `/activity`). |
+| **GH_ISSUE_TOKEN** | GitHub PAT with `repo` scope (for `/bug` and `/featurerequest`). |
+| **FIREBASE_CREDENTIALS_JSON** | Firebase service account JSON (full key). |
+
+Create a Tailscale OAuth client in the Tailscale admin console with **devices:write** scope so the Actions runner can join your tailnet.
 
 ## 3. Discord Developer Portal (bot permissions)
 
@@ -101,21 +121,23 @@ The `!activity` command creates an embedded-application invite. Your app must be
 
 1.  **Clone the repo on the Pi**
     ```bash
-    git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git ~/mythic-plus-bot
-    cd ~/mythic-plus-bot
+    sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
     ```
+    Use the same path for the **PI_APP_DIR** secret (e.g. `/home/deploy/mythic-plus-bot`).
 
-2.  **Create and Populate `.env`**
-    Create the `.env` file as described in Section 2.
+2.  **Ensure GitHub Secrets are set** (Section 2).
 
-3.  **Start the Stack**
+3.  **Run the Deploy workflow (manual trigger)**  
+    In GitHub: **Actions → Deploy → Run workflow** (choose branch, then Run).  
+    This will:
+    - Build and push the Docker image to GHCR.
+    - Connect to the Pi via Tailscale and SSH.
+    - Write `.env` on the Pi from your secrets (GHCR_USER, GHCR_TOKEN, BOT_TOKEN, etc.).
+    - Run `docker compose up -d` on the Pi.
+
+4.  **Verify on the Pi**
     ```bash
-    docker compose up -d
-    ```
-
-4.  **Verify**
-    ```bash
-    docker compose ps
+    docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
     ```
     You should see both `mythic-plus-bot` and `watchtower` running.
 
@@ -136,13 +158,8 @@ When a new image is pushed to GHCR by the GitHub Actions workflow, Watchtower wi
 You do not need to do anything for code updates.
 
 ### Manual Updates (Configuration Changes)
-If you change `docker-compose.yml` or the `.env` file (e.g., rotating tokens), you must manually apply the changes:
-```bash
-cd ~/mythic-plus-bot
-git pull
-docker compose up -d
-```
-This recreates the containers with the new configuration.
+- **Rotating secrets (BOT_TOKEN, GHCR_TOKEN, etc.):** Update the values in **GitHub → Settings → Secrets**, then run **Actions → Deploy → Run workflow** again. The Provision step will overwrite `.env` on the Pi and restart the stack.
+- **Changing `docker-compose.yml`:** On the Pi, `git pull` then `docker compose up -d` in the app directory.
 
 ## 6. GitHub Issues Integration
 
@@ -162,4 +179,4 @@ To enable the `/bug` and `/featurerequest` commands, you need a Personal Access 
 3. Under **Repository permissions**, grant **Issues** access: **Read and Write**.
 
 ### 6.2 Configure
-Add the token to your `.env` file as `GITHUB_TOKEN`.
+Add the token as the **GH_ISSUE_TOKEN** repository secret. The Provision step writes it to `.env` as `GITHUB_TOKEN` on the Pi.
