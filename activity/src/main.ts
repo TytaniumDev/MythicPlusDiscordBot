@@ -4,6 +4,7 @@ import { Session, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types'
 import { mockSession, mockPlayers, mockGroups } from './mockData';
 import { Wheel } from './wheel';
 import { audio } from './audio';
+import { setupDiscordSdk } from './discordSdk';
 import './style.css';
 
 // ── UI Elements ──────────────────────────────────────────────
@@ -61,7 +62,7 @@ let poolHealers: WheelEntry[] = [];
 let poolDps: WheelEntry[] = [];
 
 // ── Initialization ───────────────────────────────────────────
-function init() {
+async function init() {
   const urlParams = new URLSearchParams(window.location.search);
 
   // Initialize wheels
@@ -90,8 +91,15 @@ function init() {
     }
   }
 
-  // Subscribe to Firebase
+  // Resolve session ID: URL params first, then Discord SDK for embedded activities
   currentSessionId = urlParams.get('guildId') || urlParams.get('sessionId');
+
+  if (!currentSessionId) {
+    const guildId = await setupDiscordSdk();
+    if (guildId) {
+      currentSessionId = guildId;
+    }
+  }
 
   if (!currentSessionId) {
     statusMsg.textContent = 'No Guild/Session ID found. Try the Demo below.';
@@ -514,4 +522,4 @@ function startDemo() {
 }
 
 // ── Start ────────────────────────────────────────────────────
-init();
+init().catch(console.error);
