@@ -239,7 +239,7 @@ body {
 .channel-card:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-accent);
-  transform: translateX(4px);
+  padding-left: 22px;
 }
 
 .channel-card .channel-name {
