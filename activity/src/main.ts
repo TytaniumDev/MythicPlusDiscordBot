@@ -1,10 +1,12 @@
+// Discord SDK must be imported first — it patches fetch/WebSocket for the
+// embedded activity proxy before Firebase opens any connections.
+import { setupDiscordSdk } from './discordSdk';
 import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
 import { Wheel } from './wheel';
 import { audio } from './audio';
-import { setupDiscordSdk } from './discordSdk';
 import './style.css';
 
 // ── Commit Hash ──────────────────────────────────────────────

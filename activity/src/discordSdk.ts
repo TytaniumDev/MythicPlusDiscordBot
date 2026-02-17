@@ -1,9 +1,28 @@
-import { DiscordSDK } from '@discord/embedded-app-sdk';
+import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 
 export interface DiscordContext {
   guildId: string;
   channelId: string | null;
 }
+
+// Detect embedded mode early and patch network URLs before Firebase initializes.
+// Discord's activity proxy blocks direct requests to external domains — all
+// traffic must go through URL mappings configured in the Developer Portal.
+let _isEmbedded = false;
+try {
+  _isEmbedded = window.self !== window.top;
+} catch {
+  _isEmbedded = true;
+}
+
+if (_isEmbedded) {
+  patchUrlMappings([
+    { prefix: '/firebase', target: 'firestore.googleapis.com' },
+  ]);
+  console.log('[DiscordSDK] Patched URL mappings for embedded mode');
+}
+
+export const isEmbedded = _isEmbedded;
 
 /**
  * Initialize the Discord Embedded App SDK and return the guild/channel context.
@@ -11,16 +30,7 @@ export interface DiscordContext {
  * Returns null if not embedded or on any failure.
  */
 export async function setupDiscordSdk(): Promise<DiscordContext | null> {
-  // Check if we're inside an iframe (Discord activities always load in an iframe)
-  let isEmbedded = false;
-  try {
-    isEmbedded = window.self !== window.top;
-  } catch {
-    // Cross-origin iframe — we're embedded
-    isEmbedded = true;
-  }
-
-  if (!isEmbedded) return null;
+  if (!_isEmbedded) return null;
 
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID as string | undefined;
   if (!clientId) {
