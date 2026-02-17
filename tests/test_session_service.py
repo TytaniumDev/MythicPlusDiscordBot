@@ -880,3 +880,143 @@ class TestNewRoundPlayerSync(unittest.IsolatedAsyncioTestCase):
         self.assertIn("players", update_data)
         self.assertEqual(len(update_data["players"]), 1)
         self.assertEqual(update_data["players"][0]["name"], "Tank1")
+
+
+class TestAnnounceCompletion(unittest.IsolatedAsyncioTestCase):
+    """Tests for SessionService._announce_completion."""
+
+    def _make_service(self) -> tuple[SessionService, MagicMock]:
+        mock_firebase = MagicMock()
+        with patch(
+            "services.session_service.FirebaseService", return_value=mock_firebase
+        ):
+            bot = MagicMock()
+            service = SessionService(bot)
+        return service, bot
+
+    def _make_voice_channel(self) -> MagicMock:
+        vc = MagicMock(spec=discord.VoiceChannel)
+        vc.name = "Raid"
+        vc.send = AsyncMock()
+        return vc
+
+    @patch("services.session_service.build_group_embed")
+    async def test_announce_uses_last_results(self, mock_build: MagicMock) -> None:
+        """When last_results has groups, use them directly."""
+        service, bot = self._make_service()
+
+        tank = TankPaladin("Tank1")
+        healer = HealerPriest("Healer1")
+        dps = [Warrior("D1"), Mage("D2"), Rogue("D3")]
+        group = WoWGroup(tank=tank, healer=healer, dps=dps)
+
+        bot.group_service.last_results = {1: {"players": [], "groups": [group]}}
+
+        vc = self._make_voice_channel()
+        guild = MagicMock()
+        guild.get_channel.return_value = vc
+        bot.get_guild.return_value = guild
+
+        mock_embed = MagicMock()
+        mock_build.return_value = mock_embed
+
+        await service._announce_completion(  # pyright: ignore[reportPrivateUsage]
+            1, {"selectedChannelId": "42", "groups": []}
+        )
+
+        mock_build.assert_called_once_with(group, 1)
+        vc.send.assert_called_once_with(embed=mock_embed)
+
+    @patch("services.session_service.build_group_embed")
+    async def test_announce_falls_back_to_firestore_data(
+        self, mock_build: MagicMock
+    ) -> None:
+        """When last_results is empty, reconstruct from Firestore dict data."""
+        service, bot = self._make_service()
+
+        # No last_results
+        bot.group_service.last_results = {}
+
+        tank = TankPaladin("Tank1")
+        healer = HealerPriest("Healer1")
+        group = WoWGroup(tank=tank, healer=healer, dps=[Warrior("D1")])
+        group_dict = group.to_dict()
+
+        vc = self._make_voice_channel()
+        guild = MagicMock()
+        guild.get_channel.return_value = vc
+        bot.get_guild.return_value = guild
+
+        mock_embed = MagicMock()
+        mock_build.return_value = mock_embed
+
+        await service._announce_completion(  # pyright: ignore[reportPrivateUsage]
+            1, {"selectedChannelId": "42", "groups": [group_dict]}
+        )
+
+        mock_build.assert_called_once()
+        # Verify the reconstructed group has the right tank
+        reconstructed = mock_build.call_args[0][0]
+        self.assertIsNotNone(reconstructed.tank)
+        self.assertEqual(reconstructed.tank.name, "Tank1")
+        vc.send.assert_called_once()
+
+    async def test_announce_empty_groups_sends_fallback(self) -> None:
+        """When no groups exist, send a plain text fallback."""
+        service, bot = self._make_service()
+
+        bot.group_service.last_results = {}
+
+        vc = self._make_voice_channel()
+        guild = MagicMock()
+        guild.get_channel.return_value = vc
+        bot.get_guild.return_value = guild
+
+        await service._announce_completion(  # pyright: ignore[reportPrivateUsage]
+            1, {"selectedChannelId": "42", "groups": []}
+        )
+
+        vc.send.assert_called_once_with("No groups were formed this round.")
+
+    async def test_announce_no_selected_channel_skips(self) -> None:
+        """When no selectedChannelId, nothing is sent."""
+        service, bot = self._make_service()
+
+        await service._announce_completion(  # pyright: ignore[reportPrivateUsage]
+            1, {"groups": []}
+        )
+
+        bot.get_guild.assert_not_called()
+
+    @patch("services.session_service.build_group_embed")
+    async def test_announce_multiple_groups(self, mock_build: MagicMock) -> None:
+        """Multiple groups each get their own embed."""
+        service, bot = self._make_service()
+
+        group1 = WoWGroup(
+            tank=TankPaladin("T1"), healer=HealerPriest("H1"), dps=[Warrior("D1")]
+        )
+        group2 = WoWGroup(
+            tank=TankPaladin("T2"), healer=HealerPriest("H2"), dps=[Mage("D2")]
+        )
+
+        bot.group_service.last_results = {
+            1: {"players": [], "groups": [group1, group2]}
+        }
+
+        vc = self._make_voice_channel()
+        guild = MagicMock()
+        guild.get_channel.return_value = vc
+        bot.get_guild.return_value = guild
+
+        mock_embed = MagicMock()
+        mock_build.return_value = mock_embed
+
+        await service._announce_completion(  # pyright: ignore[reportPrivateUsage]
+            1, {"selectedChannelId": "42", "groups": []}
+        )
+
+        self.assertEqual(mock_build.call_count, 2)
+        mock_build.assert_any_call(group1, 1)
+        mock_build.assert_any_call(group2, 2)
+        self.assertEqual(vc.send.call_count, 2)

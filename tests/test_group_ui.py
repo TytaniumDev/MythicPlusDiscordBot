@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.config import ROLE_DPS, ROLE_HEALER, ROLE_TANK
-from core.group_ui import announce_group
+from core.config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_TANK
+from core.group_ui import announce_group, build_group_embed
 from core.models import WoWGroup, WoWPlayer
 
 
@@ -83,6 +83,38 @@ class TestGroupUI(unittest.IsolatedAsyncioTestCase):
         # 6. Edit Brez
         # 7. Edit Lust
         self.assertEqual(message_mock.edit.call_count, 7)
+
+
+class TestBuildGroupEmbed(unittest.TestCase):
+    def test_build_group_embed_has_all_fields(self):
+        tank = WoWPlayer.create("TankPlayer", [ROLE_TANK, ROLE_BREZ])
+        healer = WoWPlayer.create("HealerPlayer", [ROLE_HEALER, ROLE_LUST])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
+        dps2 = WoWPlayer.create("DPS2", [ROLE_DPS])
+        dps3 = WoWPlayer.create("DPS3", [ROLE_DPS])
+
+        group = WoWGroup(tank=tank, healer=healer, dps=[dps1, dps2, dps3])
+        embed = build_group_embed(group, 1)
+
+        self.assertEqual(embed.title, "Group 1")
+        fields = {f.name: f.value for f in embed.fields}
+        self.assertEqual(fields["Tank"], "TankPlayer")
+        self.assertEqual(fields["Healer"], "HealerPlayer")
+        self.assertEqual(fields["DPS"], "DPS1, DPS2, DPS3")
+        self.assertEqual(fields["Battle Res"], "TankPlayer")
+        self.assertEqual(fields["Bloodlust"], "HealerPlayer")
+
+    def test_build_group_embed_no_utilities(self):
+        tank = WoWPlayer.create("Tank", [ROLE_TANK])
+        healer = WoWPlayer.create("Healer", [ROLE_HEALER])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
+
+        group = WoWGroup(tank=tank, healer=healer, dps=[dps1])
+        embed = build_group_embed(group, 2)
+
+        fields = {f.name: f.value for f in embed.fields}
+        self.assertEqual(fields["Battle Res"], "None")
+        self.assertEqual(fields["Bloodlust"], "None")
 
 
 if __name__ == "__main__":

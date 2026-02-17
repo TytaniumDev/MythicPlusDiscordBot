@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from typing import Any
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -125,6 +126,30 @@ class TestWoWGroup(unittest.TestCase):
         self.assertEqual(data["healer"]["name"], "Healer")
         self.assertEqual(len(data["dps"]), 1)
         self.assertEqual(data["dps"][0]["name"], "DPS1")
+
+    def test_round_trip_serialization(self):
+        group = WoWGroup(
+            tank=self.tank, healer=self.healer, dps=[self.dps1, self.dps2, self.dps3]
+        )
+        data = group.to_dict()
+        restored = WoWGroup.from_dict(data)
+
+        self.assertEqual(restored.tank, group.tank)
+        self.assertEqual(restored.healer, group.healer)
+        self.assertEqual(len(restored.dps), 3)
+        for orig, rest in zip(group.dps, restored.dps, strict=True):
+            self.assertEqual(orig, rest)
+        self.assertEqual(restored.has_brez, group.has_brez)
+        self.assertEqual(restored.has_lust, group.has_lust)
+
+    def test_from_dict_missing_roles(self):
+        """from_dict handles None tank/healer and empty dps."""
+        data: dict[str, Any] = {"tank": None, "healer": None, "dps": []}
+        restored = WoWGroup.from_dict(data)
+
+        self.assertIsNone(restored.tank)
+        self.assertIsNone(restored.healer)
+        self.assertEqual(restored.dps, [])
 
 
 if __name__ == "__main__":

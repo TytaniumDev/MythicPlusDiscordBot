@@ -6,7 +6,8 @@ import discord
 from discord.ext import commands
 
 from core.firebase_service import FirebaseService
-from core.models import WoWPlayer
+from core.group_ui import build_group_embed
+from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
 from core.utils import get_player_list
 
@@ -260,17 +261,7 @@ class SessionService:
         )
 
     async def _announce_completion(self, guild_id: int, data: dict[str, Any]) -> None:
-        """Announces results to the 'selected' channel's text chat (if possible) or the last context?"""
-        # We don't have the original ctx here.
-        # But we can try to find the voice channel and send to its associated text channel if it exists?
-        # Or we can just log it. The requirement said "Silently happen and update the UI".
-        # But the old code announced it.
-        # "Does that mean the bot can't just pre-determine all groups... The frontend somehow needs to ask the bot for the groups on demand and spin the wheels to show that result."
-        # The user said: "Silently happen and update the UI" regarding channel switching.
-        # But for completion, the bot used to post an Embed.
-        # I'll keep the embed behavior if I can find a channel to post to.
-        # If we can't determine a channel, we skip.
-
+        """Announces results to the selected voice channel using per-group embeds."""
         selected_channel_id = data.get("selectedChannelId")
         if not selected_channel_id:
             return
@@ -280,38 +271,30 @@ class SessionService:
             return
 
         channel = guild.get_channel(int(selected_channel_id))
-        if not channel:
+        if not channel or not isinstance(channel, discord.VoiceChannel):
             return
 
-        # Attempt to find a place to send.
-        # If it's a voice channel, we can send to it (modern Discord).
-        if isinstance(channel, discord.VoiceChannel):
-            target_channel = channel
-        else:
-            return
-
-        groups = data.get("groups") or []
-        if not groups:
-            await target_channel.send(
-                "🎉 Groups have been formed! Check the Activity for details."
-            )
-            return
-
-        embed = discord.Embed(
-            title="🎉 Groups Formed!",
-            description="Check the Activity for the full experience.",
-            color=discord.Color.gold(),
+        # Try cached WoWGroup objects from last spin, fall back to Firestore dicts
+        groups: list[WoWGroup] = []
+        last = (
+            self.bot.group_service.last_results.get(guild_id)
+            if hasattr(self.bot, "group_service")
+            else None
         )
-        for i, g in enumerate(groups, 1):
-            tank = (g.get("tank") or {}).get("name") or "None"
-            healer = (g.get("healer") or {}).get("name") or "None"
-            dps_list = g.get("dps") or []
-            dps_names = ", ".join((p.get("name") or "?") for p in dps_list)
-            value = f"**Tank:** {tank}\n**Healer:** {healer}\n**DPS:** {dps_names}"
-            embed.add_field(name=f"Group {i}", value=value, inline=True)
+        if last and last.get("groups"):
+            groups = list(last["groups"])
+        else:
+            groups_data = data.get("groups") or []
+            groups = [WoWGroup.from_dict(g) for g in groups_data]
+
+        if not groups:
+            await channel.send("No groups were formed this round.")
+            return
 
         try:
-            await target_channel.send(embed=embed)
+            for i, group in enumerate(groups, 1):
+                embed = build_group_embed(group, i)
+                await channel.send(embed=embed)
         except Exception as e:
             logger.warning(
                 f"Could not send completion embed to channel {channel.name}: {e}"

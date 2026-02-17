@@ -210,3 +210,15 @@ class WoWGroup:
             "healer": self.healer.to_dict() if self.healer else None,
             "dps": [p.to_dict() for p in self.dps] if self.dps else [],
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "WoWGroup":
+        """Reconstructs a WoWGroup from a Firestore dictionary."""
+        tank_data = data.get("tank")
+        healer_data = data.get("healer")
+        dps_data = data.get("dps", [])
+        return cls(
+            tank=WoWPlayer.from_dict(tank_data) if tank_data else None,
+            healer=WoWPlayer.from_dict(healer_data) if healer_data else None,
+            dps=[WoWPlayer.from_dict(p) for p in dps_data],
+        )
