@@ -752,6 +752,7 @@ class TestDetectPlayersAlreadyInChannel(unittest.IsolatedAsyncioTestCase):
             "session-1",
             1,
             {"selectedChannelId": None, "status": "lobby"},
+            is_initial=True,
         )
 
         self.assertEqual(
@@ -759,3 +760,123 @@ class TestDetectPlayersAlreadyInChannel(unittest.IsolatedAsyncioTestCase):
             "42",
             "_handle_update overwrote non-None selectedChannelId with None",
         )
+
+
+class TestNewRoundPlayerSync(unittest.IsolatedAsyncioTestCase):
+    """Tests for 'New Round' flow where frontend clears selectedChannelId."""
+
+    @patch("services.session_service.FirebaseService")
+    def test_new_round_clears_selected_channel(
+        self, mock_firebase_cls: MagicMock
+    ) -> None:
+        """MODIFIED event with selectedChannelId: None clears guild_states."""
+        mock_firebase = MagicMock()
+        mock_firebase_cls.return_value = mock_firebase
+
+        bot = MagicMock()
+        bot.loop = MagicMock()
+
+        service = SessionService(bot)
+        service.guild_states[1] = {"selectedChannelId": "42"}
+
+        service._handle_update(  # pyright: ignore[reportPrivateUsage]
+            "session-1",
+            1,
+            {"selectedChannelId": None, "status": "lobby"},
+            is_initial=False,
+        )
+
+        self.assertIsNone(
+            service.guild_states[1]["selectedChannelId"],
+            "MODIFIED event should clear selectedChannelId to None",
+        )
+
+    @patch("services.session_service.asyncio.run_coroutine_threadsafe")
+    @patch("services.session_service.FirebaseService")
+    def test_new_round_reselect_same_channel_triggers_sync(
+        self, mock_firebase_cls: MagicMock, mock_run_coro: MagicMock
+    ) -> None:
+        """After clearing, re-selecting same channel triggers player sync."""
+        mock_firebase = MagicMock()
+        mock_firebase_cls.return_value = mock_firebase
+
+        bot = MagicMock()
+        bot.loop = MagicMock()
+
+        service = SessionService(bot)
+        service.guild_states[1] = {"selectedChannelId": "42"}
+
+        # Step 1: "New Round" clears the channel (MODIFIED)
+        service._handle_update(  # pyright: ignore[reportPrivateUsage]
+            "session-1",
+            1,
+            {"selectedChannelId": None, "status": "lobby"},
+            is_initial=False,
+        )
+        self.assertIsNone(service.guild_states[1]["selectedChannelId"])
+        mock_run_coro.reset_mock()
+
+        # Step 2: User re-selects channel "42" (MODIFIED)
+        service._handle_update(  # pyright: ignore[reportPrivateUsage]
+            "session-1",
+            1,
+            {"selectedChannelId": "42", "status": "lobby"},
+            is_initial=False,
+        )
+
+        self.assertEqual(service.guild_states[1]["selectedChannelId"], "42")
+        # Since old was None and new is "42", sync should be triggered
+        mock_run_coro.assert_called_once()
+
+    @patch("services.session_service.get_player_list")
+    @patch("services.session_service.FirebaseService")
+    async def test_new_round_full_flow_resyncs_players(
+        self, mock_firebase_cls: MagicMock, mock_get_player_list: MagicMock
+    ) -> None:
+        """Integration: clear -> re-select -> update_guild_voice_states has players."""
+        mock_firebase = MagicMock()
+        mock_firebase.update_session = AsyncMock()
+        mock_firebase_cls.return_value = mock_firebase
+
+        bot = MagicMock()
+        bot.loop = MagicMock()
+
+        service = SessionService(bot)
+        service.active_sessions[1] = "session-1"
+        service.guild_states[1] = {"selectedChannelId": "42"}
+
+        # Step 1: "New Round" clears state (MODIFIED)
+        service._handle_update(  # pyright: ignore[reportPrivateUsage]
+            "session-1",
+            1,
+            {"selectedChannelId": None, "status": "lobby", "players": [], "groups": []},
+            is_initial=False,
+        )
+        self.assertIsNone(service.guild_states[1]["selectedChannelId"])
+
+        # Step 2: Re-select channel "42"
+        service.guild_states[1]["selectedChannelId"] = "42"
+
+        # Step 3: Sync voice states
+        member = MagicMock(spec=discord.Member)
+        member.bot = False
+        member.name = "Tank1"
+
+        vc = MagicMock(spec=discord.VoiceChannel)
+        vc.id = 42
+        vc.name = "Raid"
+        vc.members = [member]
+
+        guild = MagicMock()
+        guild.id = 1
+        guild.voice_channels = [vc]
+        guild.get_channel.return_value = vc
+
+        mock_get_player_list.return_value = [TankPaladin("Tank1")]
+
+        await service.update_guild_voice_states(guild)
+
+        update_data = mock_firebase.update_session.call_args[0][1]
+        self.assertIn("players", update_data)
+        self.assertEqual(len(update_data["players"]), 1)
+        self.assertEqual(update_data["players"][0]["name"], "Tank1")

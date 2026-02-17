@@ -124,13 +124,21 @@ class SessionService:
                 if change.type.name == "MODIFIED" or change.type.name == "ADDED":
                     doc = change.document
                     data = doc.to_dict()
-                    self._handle_update(session_id, guild_id, data)
+                    is_initial = change.type.name == "ADDED"
+                    self._handle_update(
+                        session_id, guild_id, data, is_initial=is_initial
+                    )
 
         watch = self.firebase.listen_to_session(session_id, on_snapshot)
         self.listeners[session_id] = watch
 
     def _handle_update(
-        self, session_id: str, guild_id: int, data: dict[str, Any]
+        self,
+        session_id: str,
+        guild_id: int,
+        data: dict[str, Any],
+        *,
+        is_initial: bool = False,
     ) -> None:
         """
         Handles updates from Firestore.
@@ -142,8 +150,13 @@ class SessionService:
 
         old_selected = self.guild_states[guild_id].get("selectedChannelId")
         new_selected = data.get("selectedChannelId")
-        # Only overwrite if we have a real value, or there's nothing to preserve
-        if new_selected is not None or old_selected is None:
+        # During initial ADDED snapshot, don't let a stale None clobber a
+        # locally-set value (race condition with get_or_create_session).
+        # During real MODIFIED updates (e.g. "new round"), always trust Firestore.
+        if is_initial:
+            if new_selected is not None or old_selected is None:
+                self.guild_states[guild_id]["selectedChannelId"] = new_selected
+        else:
             self.guild_states[guild_id]["selectedChannelId"] = new_selected
 
         status = data.get("status")
