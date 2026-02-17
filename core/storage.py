@@ -20,32 +20,36 @@ file_lock = threading.RLock()
 _preferences_cache: dict[str, list[str]] | None = None
 
 
-def load_preferences() -> dict[str, list[str]]:
+def _ensure_loaded() -> None:
+    """Ensures the preferences cache is loaded from disk if necessary."""
     global _preferences_cache
 
-    # Return a copy to ensure thread safety for readers
     if _preferences_cache is not None:
-        return _preferences_cache.copy()
+        return
 
-    # If cache miss, lock to prevent race conditions during load
     with file_lock:
         if _preferences_cache is not None:
-            return _preferences_cache.copy()
+            return
 
         if os.path.exists(STORAGE_FILE):
             try:
                 with open(STORAGE_FILE) as f:
                     raw = json.load(f)
                     _preferences_cache = cast(dict[str, list[str]], raw)
-                    return _preferences_cache.copy()
             except Exception as e:
                 # Log type only to avoid leaking path or file content into logs.
                 logger.error("Error loading preferences: %s", type(e).__name__)
                 _preferences_cache = {}
-                return _preferences_cache.copy()
+        else:
+            _preferences_cache = {}
 
-        _preferences_cache = {}
-        return _preferences_cache.copy()
+
+def load_preferences() -> dict[str, list[str]]:
+    _ensure_loaded()
+    # At this point _preferences_cache is guaranteed to be a dict (even if empty)
+    assert _preferences_cache is not None
+    # Return a copy to ensure thread safety for readers
+    return _preferences_cache.copy()
 
 
 def save_preferences(preferences: dict[str, list[str]]) -> None:
@@ -62,8 +66,9 @@ def save_preferences(preferences: dict[str, list[str]]) -> None:
 
 
 def get_player_preference(player_name: str) -> list[str] | None:
-    prefs = load_preferences()
-    return prefs.get(player_name)
+    _ensure_loaded()
+    assert _preferences_cache is not None
+    return _preferences_cache.get(player_name)
 
 
 def set_player_preference(player_name: str, roles: list[str]) -> None:
