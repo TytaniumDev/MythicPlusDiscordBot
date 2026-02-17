@@ -51,11 +51,15 @@ export class Wheel {
   private animationFrame: number | null = null;
   private resizeObserver: ResizeObserver;
   private pendingResize = false;
+  private baseLabel: string;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
     this.resultEl = document.getElementById(resultId) as HTMLElement;
+
+    this.baseLabel = this.canvas.getAttribute('aria-label') || 'Wheel';
+    this.canvas.setAttribute('role', 'img');
 
     // Watch for size changes on the wheel-frame parent
     const frame = this.canvas.closest('.wheel-frame');
@@ -82,6 +86,7 @@ export class Wheel {
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.resultEl.textContent = '';
     this.resultEl.className = 'wheel-result';
+    this.canvas.setAttribute('aria-label', `${this.baseLabel}. ${this.entries.length} candidates.`);
     this.resizeCanvas();
     this.draw();
   }
@@ -228,6 +233,7 @@ export class Wheel {
 
   /** Animate the wheel to land on a specific winner */
   spinTo(winnerName: string, duration = 4000): Promise<string> {
+    this.canvas.setAttribute('aria-label', `${this.baseLabel}. Spinning...`);
     return new Promise((resolve) => {
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame);
@@ -284,6 +290,7 @@ export class Wheel {
           // Show result with animation class
           this.resultEl.textContent = winnerName;
           this.resultEl.classList.add('revealed');
+          this.canvas.setAttribute('aria-label', `${this.baseLabel}. Result: ${winnerName}`);
           resolve(winnerName);
         }
       };
