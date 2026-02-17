@@ -29,8 +29,10 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
   }
 
   try {
+    console.log('[DiscordSDK] Initializing with clientId:', clientId);
     const discordSdk = new DiscordSDK(clientId);
     await discordSdk.ready();
+    console.log('[DiscordSDK] Ready. guildId:', discordSdk.guildId, 'channelId:', discordSdk.channelId);
 
     if (!discordSdk.guildId) return null;
 

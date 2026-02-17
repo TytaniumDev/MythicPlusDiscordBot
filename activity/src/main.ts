@@ -107,8 +107,13 @@ async function init() {
     if (discordContext) {
       currentSessionId = discordContext.guildId;
       discordChannelId = discordContext.channelId;
+      console.log('[Activity] Discord SDK context:', discordContext);
+    } else {
+      console.warn('[Activity] Discord SDK returned null context');
     }
   }
+
+  console.log('[Activity] Resolved sessionId:', currentSessionId);
 
   if (!currentSessionId) {
     statusMsg.textContent = 'No Guild/Session ID found. Try the Demo below.';
@@ -124,12 +129,13 @@ async function init() {
         startSessionBtn.classList.add('hidden');
         handleSessionUpdate(docSnap.data() as Session);
       } else {
-        statusMsg.textContent = 'No active session found.';
+        console.warn('[Activity] No doc at sessions/' + currentSessionId);
+        statusMsg.textContent = `No active session found. (ID: ${currentSessionId})`;
         startSessionBtn.classList.remove('hidden');
       }
     },
     (error) => {
-      console.error(error);
+      console.error('[Activity] Firestore error:', error);
       statusMsg.textContent = 'Activity ended.';
     }
   );
