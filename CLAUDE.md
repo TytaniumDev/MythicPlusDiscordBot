@@ -6,25 +6,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt         # Runtime deps
-pip install -r requirements-dev.txt     # Dev deps (includes ruff, pyright, pre-commit)
+uv sync                                 # Install all deps (runtime + dev)
 
 # Run the bot
-python bot.py
+uv run python bot.py
+
+# Verify everything (preferred over running tools individually)
+./scripts/verify.sh                     # Backend: lint + format + typecheck + tests
+./scripts/verify-activity.sh            # Frontend: typecheck + build + Playwright tests
 
 # Linting & formatting (auto-fixes on save via pre-commit hook)
-ruff check . --fix                      # Lint
-ruff format .                           # Format
-pyright                                 # Type checking (strict mode)
+uv run ruff check . --fix               # Lint
+uv run ruff format .                    # Format
+uv run pyright                          # Type checking (strict mode)
 
 # Run all tests
-python -m unittest discover tests
+uv run python -m unittest discover tests
 
 # Run a single test file
-python -m unittest tests/test_group_creator.py
+uv run python -m unittest tests/test_group_creator.py
 
 # Run a single test case
-python -m unittest tests.test_group_creator.TestGroupCreator.test_basic_group_creation
+uv run python -m unittest tests.test_group_creator.TestGroupCreator.test_basic_group_creation
+
+# Frontend (activity/)
+cd activity && npm ci                   # Install frontend deps
+npm run dev                             # Dev server
+npm run build                           # Production build
+npm run typecheck                       # TypeScript check
+npx playwright test                     # E2E tests
 
 # Pre-commit hooks (run once after clone)
 pre-commit install
@@ -34,15 +44,15 @@ pre-commit install
 
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
 
-1. **Discord-only** (`/wheel`, `/newwheel`): Bot computes groups and posts results directly in Discord
-2. **Activity mode** (`/activity`): Real-time lobby experience via Firebase, with an optional web frontend
+1. **Discord-only** (`/wheel`): Bot computes groups and posts results directly in Discord
+2. **Activity mode** (`/activity`, `/wheelson`): Real-time lobby experience via Firebase, with an optional web frontend
 
 ### Key Components
 
 ```
 bot.py                    # Entry point, MythicPlusBot class, error handling, startup cleanup
 ├── cogs/
-│   ├── groups.py         # Main commands: /wheel, /newwheel, /activity, /badgroup
+│   ├── groups.py         # Main commands: /wheel, /activity, /wheelson, /badgroup
 │   │                     # Also handles on_voice_state_update for lobby sync
 │   ├── roles.py          # Role management commands
 │   ├── general.py        # General utility commands
@@ -54,7 +64,12 @@ bot.py                    # Entry point, MythicPlusBot class, error handling, st
 │   ├── parallel_group_creator.py  # Group formation algorithm (Tank/Healer/DPS balancing)
 │   ├── firebase_service.py        # Firestore CRUD, singleton pattern
 │   ├── models.py                  # WoWPlayer (frozen dataclass), WoWGroup
-│   └── config.py                  # All env vars and role constants
+│   ├── config.py                  # All env vars and role constants
+│   ├── group_ui.py                # Group display/embed formatting
+│   ├── role_ui.py                 # Role management UI components
+│   ├── issues.py                  # GitHub issue modals (bug reports, bad group reports)
+│   ├── storage.py                 # Persistent player role preferences (JSON, thread-safe)
+│   └── utils.py                   # Player list building, typing indicators, name masking
 └── activity/             # TypeScript/Vite frontend (separate from bot)
 ```
 
