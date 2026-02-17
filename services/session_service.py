@@ -50,15 +50,16 @@ class SessionService:
 
         self.active_sessions[guild_id] = session_id
 
-        # Pre-populate guild state so the initial sync knows which channel to use
+        # Start listening if not already
+        if session_id not in self.listeners:
+            self._start_listening(session_id, guild_id)
+
+        # Set guild state AFTER attaching the listener so the initial snapshot
+        # callback cannot clobber the value we're about to set
         if voice_channel_id:
             if guild_id not in self.guild_states:
                 self.guild_states[guild_id] = {}
             self.guild_states[guild_id]["selectedChannelId"] = voice_channel_id
-
-        # Start listening if not already
-        if session_id not in self.listeners:
-            self._start_listening(session_id, guild_id)
 
         # Always sync voice states (populates players for the selected channel)
         await self.update_guild_voice_states(ctx.guild)
@@ -141,7 +142,9 @@ class SessionService:
 
         old_selected = self.guild_states[guild_id].get("selectedChannelId")
         new_selected = data.get("selectedChannelId")
-        self.guild_states[guild_id]["selectedChannelId"] = new_selected
+        # Only overwrite if we have a real value, or there's nothing to preserve
+        if new_selected is not None or old_selected is None:
+            self.guild_states[guild_id]["selectedChannelId"] = new_selected
 
         status = data.get("status")
 
