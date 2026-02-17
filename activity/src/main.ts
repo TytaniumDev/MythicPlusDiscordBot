@@ -600,18 +600,8 @@ async function spinForCurrentGroupCarousel() {
   advanceAfterSpin(group);
 }
 
-function advanceAfterSpin(group: WoWGroup) {
-  // Remove picked players from pools
-  const pickedNames = new Set<string>();
-  if (group.tank) pickedNames.add(group.tank.name);
-  if (group.healer) pickedNames.add(group.healer.name);
-  group.dps.forEach((d) => pickedNames.add(d.name));
-
-  poolTanks = poolTanks.filter((e) => !pickedNames.has(e.name));
-  poolHealers = poolHealers.filter((e) => !pickedNames.has(e.name));
-  poolDps = poolDps.filter((e) => !pickedNames.has(e.name));
-
-  // Advance to next group
+function advanceAfterSpin(_group: WoWGroup) {
+  // Advance to next group (pools are kept intact so all players remain in wheels)
   currentGroupIndex++;
   isAnimating = false;
   updateNextButton();
@@ -628,6 +618,15 @@ async function finishSpinSequence() {
   } else if (isDemoMode && currentSessionData) {
     handleSessionUpdate({ ...currentSessionData, status: 'completed' } as Session);
   }
+}
+
+// ── Utility Icons ────────────────────────────────────────────
+function utilityIcons(player?: WoWPlayer | null): string {
+  if (!player) return '';
+  let icons = '';
+  if (player.roles.hasBrez) icons += ' \u26B0\uFE0F';
+  if (player.roles.hasLust) icons += ' \uD83C\uDFBA';
+  return icons;
 }
 
 // ── Group Card Rendering ─────────────────────────────────────
@@ -652,18 +651,25 @@ function createGroupCard(group: WoWGroup, index: number): HTMLDivElement {
   div.appendChild(h4);
 
   // Tank role
-  div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None'));
+  div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None', group.tank));
   // Healer role
-  div.appendChild(createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None'));
+  div.appendChild(
+    createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None', group.healer),
+  );
   // DPS roles
   group.dps.forEach((d) => {
-    div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name));
+    div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name, d));
   });
 
   return div;
 }
 
-function createRoleRow(color: string, label: string, name: string): HTMLDivElement {
+function createRoleRow(
+  color: string,
+  label: string,
+  name: string,
+  player?: WoWPlayer | null,
+): HTMLDivElement {
   const row = document.createElement('div');
   row.className = 'group-role';
 
@@ -677,7 +683,7 @@ function createRoleRow(color: string, label: string, name: string): HTMLDivEleme
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'role-name';
-  nameSpan.textContent = name;
+  nameSpan.textContent = name + utilityIcons(player);
 
   row.appendChild(indicator);
   row.appendChild(labelSpan);
@@ -693,19 +699,27 @@ function createCompactGroupCard(group: WoWGroup, index: number): HTMLDivElement 
   h4.textContent = `Group ${index + 1}`;
   div.appendChild(h4);
 
-  const roles: { color: string; name: string }[] = [];
-  roles.push({ color: 'var(--color-tank)', name: group.tank?.name || 'None' });
-  roles.push({ color: 'var(--color-healer)', name: group.healer?.name || 'None' });
-  group.dps.forEach((d) => roles.push({ color: 'var(--color-dps)', name: d.name }));
+  const roles: { color: string; name: string; player?: WoWPlayer | null }[] = [];
+  roles.push({ color: 'var(--color-tank)', name: group.tank?.name || 'None', player: group.tank });
+  roles.push({
+    color: 'var(--color-healer)',
+    name: group.healer?.name || 'None',
+    player: group.healer,
+  });
+  group.dps.forEach((d) => roles.push({ color: 'var(--color-dps)', name: d.name, player: d }));
 
   roles.forEach((r) => {
-    div.appendChild(createCompactRoleRow(r.color, r.name));
+    div.appendChild(createCompactRoleRow(r.color, r.name, r.player));
   });
 
   return div;
 }
 
-function createCompactRoleRow(color: string, name: string): HTMLDivElement {
+function createCompactRoleRow(
+  color: string,
+  name: string,
+  player?: WoWPlayer | null,
+): HTMLDivElement {
   const row = document.createElement('div');
   row.className = 'compact-role';
 
@@ -715,7 +729,7 @@ function createCompactRoleRow(color: string, name: string): HTMLDivElement {
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'role-name';
-  nameSpan.textContent = name;
+  nameSpan.textContent = name + utilityIcons(player);
 
   row.appendChild(indicator);
   row.appendChild(nameSpan);
