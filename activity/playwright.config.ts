@@ -11,7 +11,8 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   expect: {
     toHaveScreenshot: {
-      // Allow small pixel differences across environments
+      // Tests seed Math.random for deterministic canvas rendering.
+      // Small tolerance for font/subpixel differences across environments.
       maxDiffPixelRatio: 0.01,
     },
   },

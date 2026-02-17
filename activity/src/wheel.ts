@@ -18,6 +18,26 @@ function desaturate(hex: string, amount = 0.6): string {
   return `rgb(${nr},${ng},${nb})`;
 }
 
+function darken(hex: string, amount = 0.3): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const nr = Math.round(r * (1 - amount));
+  const ng = Math.round(g * (1 - amount));
+  const nb = Math.round(b * (1 - amount));
+  return `rgb(${nr},${ng},${nb})`;
+}
+
+function lighten(hex: string, amount = 0.3): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const nr = Math.round(r + (255 - r) * amount);
+  const ng = Math.round(g + (255 - g) * amount);
+  const nb = Math.round(b + (255 - b) * amount);
+  return `rgb(${nr},${ng},${nb})`;
+}
+
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
@@ -29,11 +49,31 @@ export class Wheel {
   private entries: WheelEntry[] = [];
   private rotation = 0;
   private animationFrame: number | null = null;
+  private resizeObserver: ResizeObserver;
+  private pendingResize = false;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
     this.resultEl = document.getElementById(resultId) as HTMLElement;
+
+    // Watch for size changes on the wheel-frame parent
+    const frame = this.canvas.closest('.wheel-frame');
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.pendingResize) return;
+      this.pendingResize = true;
+      requestAnimationFrame(() => {
+        this.pendingResize = false;
+        this.resizeCanvas();
+        // Only redraw if not currently animating (animation drives its own render loop)
+        if (!this.animationFrame) {
+          this.draw();
+        }
+      });
+    });
+    if (frame) {
+      this.resizeObserver.observe(frame);
+    }
   }
 
   /** Set up the wheel with a new list of candidates */
@@ -52,11 +92,18 @@ export class Wheel {
     this.resultEl.className = 'wheel-result';
   }
 
+  /** Force a redraw (call after layout transitions) */
+  forceRedraw() {
+    this.resizeCanvas();
+    this.draw();
+  }
+
   /** Match canvas internal size to its CSS display size for sharp rendering */
   private resizeCanvas() {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     const size = Math.round(rect.width);
+    if (size === 0) return; // Not visible yet
     this.canvas.width = size * dpr;
     this.canvas.height = size * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -65,6 +112,7 @@ export class Wheel {
   /** Draw the current state of the wheel */
   draw() {
     const size = this.canvas.getBoundingClientRect().width;
+    if (size === 0) return;
     const cx = size / 2;
     const cy = size / 2;
     const radius = cx - 6;
@@ -97,12 +145,16 @@ export class Wheel {
       const endAngle = startAngle + sliceAngle;
       const color = COLORS[i % COLORS.length];
 
-      // Segment fill
+      // Segment fill with radial gradient
+      const grad = this.ctx.createRadialGradient(cx, cy, radius * 0.15, cx, cy, radius);
+      grad.addColorStop(0, lighten(color, 0.2));
+      grad.addColorStop(1, entry.isOffspec ? desaturate(color) : darken(color, 0.15));
+
       this.ctx.beginPath();
       this.ctx.moveTo(cx, cy);
       this.ctx.arc(cx, cy, radius, startAngle, endAngle);
       this.ctx.closePath();
-      this.ctx.fillStyle = entry.isOffspec ? desaturate(color) : color;
+      this.ctx.fillStyle = grad;
       this.ctx.fill();
 
       // Segment border
@@ -117,8 +169,10 @@ export class Wheel {
       this.ctx.textAlign = 'right';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillStyle = 'white';
-      this.ctx.shadowColor = 'rgba(0,0,0,0.7)';
-      this.ctx.shadowBlur = 3;
+      this.ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      this.ctx.shadowOffsetX = 1;
+      this.ctx.shadowOffsetY = 1;
+      this.ctx.shadowBlur = 4;
 
       const fontSize = Math.max(10, Math.min(14, Math.round(size * 0.055)));
       this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
@@ -130,24 +184,46 @@ export class Wheel {
       this.ctx.restore();
     });
 
-    // Outer ring glow
+    // Reset shadow before ring drawing
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
+
+    // Double-stroke outer ring: dark base + gold accent with glow
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    this.ctx.strokeStyle = '#1a1a2e';
+    this.ctx.lineWidth = 5;
+    this.ctx.stroke();
+
     this.ctx.beginPath();
     this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     this.ctx.strokeStyle = '#f59e0b';
-    this.ctx.lineWidth = 3;
-    this.ctx.shadowColor = 'rgba(245,158,11,0.4)';
-    this.ctx.shadowBlur = 8;
+    this.ctx.lineWidth = 2.5;
+    this.ctx.shadowColor = 'rgba(245,158,11,0.5)';
+    this.ctx.shadowBlur = 10;
     this.ctx.stroke();
     this.ctx.shadowBlur = 0;
+    this.ctx.shadowColor = 'transparent';
 
-    // Center hub
+    // Center hub with radial gradient
+    const hubRadius = Math.max(12, size * 0.06);
+    const hubGrad = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, hubRadius);
+    hubGrad.addColorStop(0, '#2d1b69');
+    hubGrad.addColorStop(1, '#0d0d1a');
+
     this.ctx.beginPath();
-    this.ctx.arc(cx, cy, Math.max(12, size * 0.06), 0, Math.PI * 2);
-    this.ctx.fillStyle = '#16162a';
+    this.ctx.arc(cx, cy, hubRadius, 0, Math.PI * 2);
+    this.ctx.fillStyle = hubGrad;
     this.ctx.fill();
     this.ctx.strokeStyle = '#f59e0b';
     this.ctx.lineWidth = 2.5;
+    this.ctx.shadowColor = 'rgba(245,158,11,0.4)';
+    this.ctx.shadowBlur = 6;
     this.ctx.stroke();
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowColor = 'transparent';
   }
 
   /** Animate the wheel to land on a specific winner */

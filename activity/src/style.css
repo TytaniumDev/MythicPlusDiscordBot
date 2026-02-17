@@ -26,7 +26,8 @@
   --radius-md: 10px;
   --radius-lg: 16px;
 
-  --wheel-size: min(220px, 28vw);
+  --groups-panel-width: 240px;
+  --wheel-size: min(220px, calc((100vw - var(--groups-panel-width) - 48px) / 3), calc((100dvh - 160px) / 2));
 }
 
 /* ============================================
@@ -38,13 +39,16 @@
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: var(--bg-primary);
   background-image: radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
   color: var(--text-primary);
   font-family: var(--font-family);
-  min-height: 100vh;
-  overflow-x: hidden;
 }
 
 .hidden {
@@ -52,21 +56,26 @@ body {
 }
 
 /* ============================================
-   App Layout
+   App Layout — Viewport-Filling
    ============================================ */
 #app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: 8px 12px;
+  overflow: hidden;
 }
 
 .app-header {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  padding-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .app-header h1 {
@@ -105,27 +114,28 @@ body {
   color: var(--color-gold);
   text-align: center;
   min-height: 1.4em;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 #status-message:empty {
   display: none;
 }
 
-/* Main two-panel layout */
+/* Main layout fills remaining space */
 .main-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-.main-layout:has(.side-panel:not(.hidden)) {
-  grid-template-columns: 1fr 260px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-area {
-  min-width: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============================================
@@ -198,6 +208,7 @@ body {
 #view-channels {
   max-width: 500px;
   margin: 0 auto;
+  overflow-y: auto;
 }
 
 #view-channels h2 {
@@ -265,6 +276,7 @@ body {
   max-width: 600px;
   margin: 0 auto;
   text-align: center;
+  overflow-y: auto;
 }
 
 .lobby-header {
@@ -325,9 +337,13 @@ body {
 }
 
 /* ============================================
-   View: Wheels
+   View: Wheels — Flex Column Fill
    ============================================ */
 #view-wheels {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   text-align: center;
 }
 
@@ -335,23 +351,53 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-gold);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   min-height: 1.4em;
+  flex-shrink: 0;
 }
 
-.wheels-row {
+/* Wheels content: wheels area + groups panel side by side */
+.wheels-content {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  flex-direction: row;
+  gap: 12px;
 }
+
+.wheels-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* ── Grid Mode (≥600px) — 6-column centered 2+3 ── */
+.wheels-container {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  justify-items: center;
+  align-content: center;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+#slot-tank   { grid-column: 2 / 4; }
+#slot-healer { grid-column: 4 / 6; }
+#slot-dps1   { grid-column: 1 / 3; }
+#slot-dps2   { grid-column: 3 / 5; }
+#slot-dps3   { grid-column: 5 / 7; }
 
 .wheel-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .wheel-label {
@@ -398,10 +444,10 @@ body {
 }
 
 .wheel-result {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--color-gold);
-  min-height: 1.4em;
+  min-height: 1.2em;
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 0.3s, transform 0.3s;
@@ -412,35 +458,69 @@ body {
   transform: translateY(0);
 }
 
+/* Carousel dots — hidden by default (grid mode) */
+.carousel-dots {
+  display: none;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.carousel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--dot-color, var(--text-secondary));
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.carousel-dot.active {
+  background: var(--dot-color, var(--text-secondary));
+  transform: scale(1.25);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--dot-color, var(--text-secondary)) 50%, transparent);
+}
+
+.carousel-dot.completed {
+  background: var(--dot-color, var(--text-secondary));
+  opacity: 0.6;
+}
+
+/* Next/Spin button pinned at bottom */
 #view-wheels .btn {
   margin-top: 8px;
+  flex-shrink: 0;
 }
 
 /* ============================================
-   Side Panel
+   Side Panel — Vertical Groups
    ============================================ */
 .side-panel {
+  width: var(--groups-panel-width);
+  flex-shrink: 0;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 16px;
-  height: fit-content;
-  position: sticky;
-  top: 16px;
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .side-panel h3 {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-heading);
-  margin-bottom: 12px;
-  padding-bottom: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 #groups-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 /* ============================================
@@ -450,7 +530,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px;
   text-align: left;
   animation: fadeSlideIn 0.4s ease-out;
 }
@@ -458,7 +538,7 @@ body {
 .group-card h4 {
   font-size: 0.8rem;
   color: var(--color-gold);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -488,6 +568,47 @@ body {
   color: var(--text-primary);
 }
 
+/* Compact group card — used in side panel at smaller sizes */
+.group-card-compact {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  text-align: left;
+  animation: fadeSlideIn 0.4s ease-out;
+}
+
+.group-card-compact h4 {
+  font-size: 0.65rem;
+  color: var(--color-gold);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.group-card-compact .compact-role {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  padding: 1px 0;
+  color: var(--text-primary);
+}
+
+.group-card-compact .compact-role .role-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-card-compact .compact-role .role-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 70px;
+}
+
 /* ============================================
    View: Results
    ============================================ */
@@ -495,6 +616,7 @@ body {
   text-align: center;
   max-width: 700px;
   margin: 0 auto;
+  overflow-y: auto;
 }
 
 #view-results h2 {
@@ -555,35 +677,12 @@ body {
 }
 
 /* ============================================
-   Responsive
+   Responsive: Medium screens (600-899px)
    ============================================ */
-@media (max-width: 900px) {
-  .main-layout:has(.side-panel:not(.hidden)) {
-    grid-template-columns: 1fr;
-  }
-
-  .side-panel {
-    position: static;
-    order: 2;
-  }
-
-  #groups-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  #groups-list .group-card {
-    flex: 1 1 180px;
-  }
-}
-
-@media (max-width: 700px) {
+@media (max-width: 899px) {
   :root {
-    --wheel-size: min(180px, 40vw);
-  }
-
-  .wheels-row {
-    gap: 10px;
+    --groups-panel-width: 160px;
+    --wheel-size: min(180px, calc((100vw - var(--groups-panel-width) - 40px) / 3), calc((100dvh - 140px) / 2));
   }
 
   .app-header h1 {
@@ -594,19 +693,36 @@ body {
     padding: 12px 28px;
     font-size: 1rem;
   }
-}
 
-@media (max-width: 500px) {
-  :root {
-    --wheel-size: min(150px, 42vw);
+  .side-panel {
+    padding: 10px;
   }
 
-  #app {
-    padding: 8px 10px;
+  .side-panel h3 {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+  }
+
+  .group-card .group-role .role-label {
+    min-width: 36px;
+    font-size: 0.7rem;
+  }
+
+  .group-card .group-role .role-name {
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .group-card .group-role {
+    font-size: 0.75rem;
   }
 
   .wheel-label {
     font-size: 0.65rem;
+    padding: 1px 8px;
   }
 
   .wheel-result {
@@ -614,9 +730,158 @@ body {
   }
 
   .wheel-pointer {
+    border-left-width: 8px;
+    border-right-width: 8px;
+    border-top-width: 11px;
+    top: -7px;
+  }
+}
+
+/* ============================================
+   Responsive: Small screens / Carousel (<600px)
+   ============================================ */
+@media (max-width: 599px) {
+  :root {
+    --groups-panel-width: 90px;
+    --wheel-size: min(280px, calc(100vw - var(--groups-panel-width) - 32px), calc(100dvh - 180px));
+  }
+
+  /* Hide header to save space */
+  .app-header {
+    display: none;
+  }
+
+  #app {
+    padding: 4px 8px;
+  }
+
+  .wheel-status {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+
+  /* Switch wheels container to carousel mode */
+  .wheels-container {
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    align-items: center;
+    transform: translateX(calc(-100% * var(--carousel-index, 0)));
+    transition: transform 0.35s ease-out;
+  }
+
+  /* Reset grid placements */
+  #slot-tank,
+  #slot-healer,
+  #slot-dps1,
+  #slot-dps2,
+  #slot-dps3 {
+    grid-column: auto;
+  }
+
+  .wheel-slot {
+    min-width: 100%;
+    flex-shrink: 0;
+    justify-content: center;
+  }
+
+  /* Show carousel dots */
+  .carousel-dots {
+    display: flex;
+  }
+
+  /* Compact side panel */
+  .side-panel {
+    padding: 6px;
+    border-radius: var(--radius-sm);
+  }
+
+  .side-panel h3 {
+    font-size: 0.65rem;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+  }
+
+  /* Smaller button */
+  .btn-large {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+
+  .wheel-pointer {
     border-left-width: 7px;
     border-right-width: 7px;
     border-top-width: 10px;
     top: -6px;
+  }
+
+  .wheel-label {
+    font-size: 0.6rem;
+    padding: 1px 6px;
+  }
+
+  .wheel-result {
+    font-size: 0.7rem;
+  }
+}
+
+/* ============================================
+   Responsive: Height-constrained (≤500px tall)
+   ============================================ */
+@media (max-height: 500px) {
+  .app-header {
+    display: none;
+  }
+
+  .wheel-status {
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+    min-height: 1em;
+  }
+
+  .wheel-label {
+    display: none;
+  }
+
+  .wheel-result {
+    display: none;
+  }
+
+  .btn-large {
+    padding: 8px 20px;
+    font-size: 0.85rem;
+  }
+
+  #app {
+    padding: 2px 8px;
+  }
+
+  :root {
+    --wheel-size: min(var(--wheel-size), calc((100dvh - 100px) / 2));
+  }
+}
+
+/* ============================================
+   Responsive: Very small square (e.g. 380×380 Discord)
+   ============================================ */
+@media (max-width: 599px) and (max-height: 500px) {
+  :root {
+    --groups-panel-width: 80px;
+    --wheel-size: min(240px, calc(100vw - var(--groups-panel-width) - 24px), calc(100dvh - 120px));
+  }
+
+  .wheels-content {
+    gap: 6px;
+  }
+
+  .carousel-dots {
+    padding: 4px 0;
+  }
+
+  .carousel-dot {
+    width: 10px;
+    height: 10px;
   }
 }

@@ -9,6 +9,15 @@ import { Wheel } from './wheel';
 import { audio } from './audio';
 import './style.css';
 
+// ── Configurable Timing Constants ────────────────────────────
+const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
+const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
+const GRID_SPIN_DURATION = 4000;       // ms per wheel in grid mode
+
+// ── Carousel State ───────────────────────────────────────────
+let carouselIndex = 0;
+const CAROUSEL_MQ = window.matchMedia('(max-width: 599px)');
+
 // ── Commit Hash ──────────────────────────────────────────────
 const commitLink = document.getElementById('commit-link') as HTMLAnchorElement;
 commitLink.textContent = __COMMIT_HASH__;
@@ -37,6 +46,8 @@ const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
 // Wheels
 const wheelStatus = document.getElementById('wheel-status') as HTMLDivElement;
 const nextBtn = document.getElementById('next-btn') as HTMLButtonElement;
+const wheelsContainer = document.querySelector('.wheels-container') as HTMLDivElement;
+const carouselDots = document.querySelectorAll('.carousel-dot') as NodeListOf<HTMLButtonElement>;
 
 // Side panel
 const sidePanel = document.getElementById('side-panel') as HTMLElement;
@@ -69,6 +80,67 @@ let spinSequenceStarted = false;
 let poolTanks: WheelEntry[] = [];
 let poolHealers: WheelEntry[] = [];
 let poolDps: WheelEntry[] = [];
+
+// ── Carousel Controller ──────────────────────────────────────
+function isCarouselMode(): boolean {
+  return CAROUSEL_MQ.matches;
+}
+
+function setCarouselSlide(index: number) {
+  carouselIndex = Math.max(0, Math.min(4, index));
+  wheelsContainer.style.setProperty('--carousel-index', String(carouselIndex));
+
+  carouselDots.forEach((dot, i) => {
+    dot.classList.toggle('active', i === carouselIndex);
+  });
+}
+
+function markCarouselDotCompleted(index: number) {
+  carouselDots[index]?.classList.add('completed');
+}
+
+function resetCarouselDots() {
+  carouselDots.forEach((dot) => {
+    dot.classList.remove('completed', 'active');
+  });
+  carouselDots[0]?.classList.add('active');
+}
+
+// Carousel dot click handlers
+carouselDots.forEach((dot) => {
+  dot.addEventListener('click', () => {
+    if (isAnimating) return;
+    const idx = Number(dot.dataset.index);
+    if (!isNaN(idx)) setCarouselSlide(idx);
+  });
+});
+
+// Touch swipe support for carousel
+{
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  wheelsContainer.addEventListener('touchstart', (e) => {
+    if (!isCarouselMode() || isAnimating) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  wheelsContainer.addEventListener('touchend', (e) => {
+    if (!isCarouselMode() || isAnimating) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    // Only handle horizontal swipes (ignore vertical scrolling)
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0 && carouselIndex < 4) {
+        setCarouselSlide(carouselIndex + 1);
+      } else if (dx > 0 && carouselIndex > 0) {
+        setCarouselSlide(carouselIndex - 1);
+      }
+    }
+  }, { passive: true });
+}
 
 // ── Initialization ───────────────────────────────────────────
 async function init() {
@@ -203,6 +275,14 @@ function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
       break;
     case 'wheels':
       viewWheels.classList.remove('hidden');
+      // Force redraw wheels after layout transition
+      requestAnimationFrame(() => {
+        wheelTank?.forceRedraw();
+        wheelHealer?.forceRedraw();
+        wheelDps1?.forceRedraw();
+        wheelDps2?.forceRedraw();
+        wheelDps3?.forceRedraw();
+      });
       break;
     case 'results':
       viewResults.classList.remove('hidden');
@@ -212,30 +292,34 @@ function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
 
 // ── Channel Picker ───────────────────────────────────────────
 function renderChannelPicker(channels: VoiceChannel[]) {
-  channelList.innerHTML = '';
+  channelList.textContent = '';
 
   if (!channels || channels.length === 0) {
-    channelList.innerHTML =
-      '<div style="text-align:center;color:var(--text-secondary)">No voice channels found with users.</div>';
+    const msg = document.createElement('div');
+    msg.style.textAlign = 'center';
+    msg.style.color = 'var(--text-secondary)';
+    msg.textContent = 'No voice channels found with users.';
+    channelList.appendChild(msg);
     return;
   }
 
   channels.forEach((ch) => {
     const card = document.createElement('div');
     card.className = 'channel-card';
-    card.innerHTML = `
-      <span class="channel-name">${escapeHtml(ch.name)}</span>
-      <span class="channel-count">${ch.userCount} users</span>
-    `;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'channel-name';
+    nameSpan.textContent = ch.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'channel-count';
+    countSpan.textContent = `${ch.userCount} users`;
+
+    card.appendChild(nameSpan);
+    card.appendChild(countSpan);
     card.onclick = () => selectChannel(ch.id);
     channelList.appendChild(card);
   });
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 async function selectChannel(channelId: string) {
@@ -255,11 +339,13 @@ async function selectChannel(channelId: string) {
 
 // ── Lobby ────────────────────────────────────────────────────
 function renderLobby(players: WoWPlayer[]) {
-  playerList.innerHTML = '';
+  playerList.textContent = '';
 
   if (!players || players.length === 0) {
-    playerList.innerHTML =
-      '<div style="color:var(--text-secondary)">Waiting for players to join voice...</div>';
+    const msg = document.createElement('div');
+    msg.style.color = 'var(--text-secondary)';
+    msg.textContent = 'Waiting for players to join voice...';
+    playerList.appendChild(msg);
     playerCount.textContent = '';
     spinBtn.disabled = true;
     spinBtn.textContent = 'Waiting for players...';
@@ -280,11 +366,14 @@ function renderLobby(players: WoWPlayer[]) {
     const chip = document.createElement('div');
     chip.className = 'player-chip';
 
-    const roleClass = getPrimaryRole(p);
-    chip.innerHTML = `
-      <span class="role-dot ${roleClass}"></span>
-      <span>${escapeHtml(p.name)}</span>
-    `;
+    const dot = document.createElement('span');
+    dot.className = `role-dot ${getPrimaryRole(p)}`;
+
+    const name = document.createElement('span');
+    name.textContent = p.name;
+
+    chip.appendChild(dot);
+    chip.appendChild(name);
     playerList.appendChild(chip);
   });
 }
@@ -327,7 +416,11 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
 
   showView('wheels');
   sidePanel.classList.remove('hidden');
-  groupsList.innerHTML = '';
+  groupsList.textContent = '';
+
+  // Reset carousel state
+  resetCarouselDots();
+  setCarouselSlide(0);
 
   // Build candidate pools
   initPools(players);
@@ -377,6 +470,15 @@ function updateNextButton() {
 async function spinForCurrentGroup() {
   if (isAnimating || currentGroupIndex >= groups.length) return;
 
+  if (isCarouselMode()) {
+    await spinForCurrentGroupCarousel();
+  } else {
+    await spinForCurrentGroupGrid();
+  }
+}
+
+// ── Grid Mode Spin (all wheels simultaneously) ───────────────
+async function spinForCurrentGroupGrid() {
   isAnimating = true;
   nextBtn.disabled = true;
   const group = groups[currentGroupIndex];
@@ -403,14 +505,14 @@ async function spinForCurrentGroup() {
   const spinPromises: Promise<string>[] = [];
 
   if (group.tank) {
-    spinPromises.push(wheelTank!.spinTo(group.tank.name, 4000));
+    spinPromises.push(wheelTank!.spinTo(group.tank.name, GRID_SPIN_DURATION));
   }
   if (group.healer) {
-    spinPromises.push(wheelHealer!.spinTo(group.healer.name, 4000));
+    spinPromises.push(wheelHealer!.spinTo(group.healer.name, GRID_SPIN_DURATION));
   }
 
   // DPS wheels with staggered durations for visual variety
-  const dpsDurations = [4000, 4300, 4600];
+  const dpsDurations = [GRID_SPIN_DURATION, GRID_SPIN_DURATION + 300, GRID_SPIN_DURATION + 600];
   group.dps.forEach((dpsPlayer, i) => {
     const wheel = [wheelDps1, wheelDps2, wheelDps3][i];
     if (wheel) {
@@ -431,6 +533,74 @@ async function spinForCurrentGroup() {
   wheelStatus.textContent = `Group ${currentGroupIndex + 1} Formed!`;
   appendGroupCard(group, currentGroupIndex);
 
+  advanceAfterSpin(group);
+}
+
+// ── Carousel Mode Spin (sequential per-wheel) ────────────────
+async function spinForCurrentGroupCarousel() {
+  isAnimating = true;
+  nextBtn.disabled = true;
+  const group = groups[currentGroupIndex];
+  wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
+
+  // Clear previous results
+  wheelTank?.clearResult();
+  wheelHealer?.clearResult();
+  wheelDps1?.clearResult();
+  wheelDps2?.clearResult();
+  wheelDps3?.clearResult();
+
+  // Re-init wheels with current pools
+  wheelTank?.init(poolTanks);
+  wheelHealer?.init(poolHealers);
+  wheelDps1?.init(poolDps);
+  wheelDps2?.init(poolDps);
+  wheelDps3?.init(poolDps);
+
+  // Reset dots for this spin
+  resetCarouselDots();
+
+  // Define the sequence: [slideIndex, wheel, winner]
+  const sequence: [number, Wheel | null, WoWPlayer | null][] = [
+    [0, wheelTank, group.tank],
+    [1, wheelHealer, group.healer],
+    [2, wheelDps1, group.dps[0] || null],
+    [3, wheelDps2, group.dps[1] || null],
+    [4, wheelDps3, group.dps[2] || null],
+  ];
+
+  for (const [slideIndex, wheel, winner] of sequence) {
+    if (!wheel || !winner) continue;
+
+    // Slide to this wheel
+    setCarouselSlide(slideIndex);
+    const slot = document.querySelectorAll('.wheel-slot')[slideIndex];
+    slot?.classList.add('spinning');
+
+    // Let carousel transition finish
+    await delay(350);
+
+    // Spin this wheel
+    await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
+
+    slot?.classList.remove('spinning');
+    markCarouselDotCompleted(slideIndex);
+
+    // Pause before next wheel
+    await delay(CAROUSEL_ADVANCE_DELAY);
+  }
+
+  // Victory sound
+  audio.victory();
+
+  // Show group result
+  wheelStatus.textContent = `Group ${currentGroupIndex + 1} Formed!`;
+  appendGroupCard(group, currentGroupIndex);
+
+  advanceAfterSpin(group);
+}
+
+function advanceAfterSpin(group: WoWGroup) {
   // Remove picked players from pools
   const pickedNames = new Set<string>();
   if (group.tank) pickedNames.add(group.tank.name);
@@ -447,6 +617,10 @@ async function spinForCurrentGroup() {
   updateNextButton();
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function finishSpinSequence() {
   if (currentSessionId) {
     const docRef = doc(db, 'sessions', currentSessionId);
@@ -458,46 +632,100 @@ async function finishSpinSequence() {
 
 // ── Group Card Rendering ─────────────────────────────────────
 function appendGroupCard(group: WoWGroup, index: number) {
-  const card = createGroupCard(group, index);
-  groupsList.appendChild(card);
+  if (isCompactPanel()) {
+    groupsList.appendChild(createCompactGroupCard(group, index));
+  } else {
+    groupsList.appendChild(createGroupCard(group, index));
+  }
+}
+
+function isCompactPanel(): boolean {
+  return window.innerWidth < 900;
 }
 
 function createGroupCard(group: WoWGroup, index: number): HTMLDivElement {
   const div = document.createElement('div');
   div.className = 'group-card';
 
-  const dpsHtml = group.dps
-    .map(
-      (d) => `
-    <div class="group-role">
-      <span class="role-indicator" style="background:var(--color-dps)"></span>
-      <span class="role-label">DPS</span>
-      <span class="role-name">${escapeHtml(d.name)}</span>
-    </div>`
-    )
-    .join('');
+  const h4 = document.createElement('h4');
+  h4.textContent = `Group ${index + 1}`;
+  div.appendChild(h4);
 
-  div.innerHTML = `
-    <h4>Group ${index + 1}</h4>
-    <div class="group-role">
-      <span class="role-indicator" style="background:var(--color-tank)"></span>
-      <span class="role-label">Tank</span>
-      <span class="role-name">${group.tank ? escapeHtml(group.tank.name) : 'None'}</span>
-    </div>
-    <div class="group-role">
-      <span class="role-indicator" style="background:var(--color-healer)"></span>
-      <span class="role-label">Healer</span>
-      <span class="role-name">${group.healer ? escapeHtml(group.healer.name) : 'None'}</span>
-    </div>
-    ${dpsHtml}
-  `;
+  // Tank role
+  div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None'));
+  // Healer role
+  div.appendChild(createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None'));
+  // DPS roles
+  group.dps.forEach((d) => {
+    div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name));
+  });
+
   return div;
+}
+
+function createRoleRow(color: string, label: string, name: string): HTMLDivElement {
+  const row = document.createElement('div');
+  row.className = 'group-role';
+
+  const indicator = document.createElement('span');
+  indicator.className = 'role-indicator';
+  indicator.style.background = color;
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'role-label';
+  labelSpan.textContent = label;
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'role-name';
+  nameSpan.textContent = name;
+
+  row.appendChild(indicator);
+  row.appendChild(labelSpan);
+  row.appendChild(nameSpan);
+  return row;
+}
+
+function createCompactGroupCard(group: WoWGroup, index: number): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = 'group-card-compact';
+
+  const h4 = document.createElement('h4');
+  h4.textContent = `Group ${index + 1}`;
+  div.appendChild(h4);
+
+  const roles: { color: string; name: string }[] = [];
+  roles.push({ color: 'var(--color-tank)', name: group.tank?.name || 'None' });
+  roles.push({ color: 'var(--color-healer)', name: group.healer?.name || 'None' });
+  group.dps.forEach((d) => roles.push({ color: 'var(--color-dps)', name: d.name }));
+
+  roles.forEach((r) => {
+    div.appendChild(createCompactRoleRow(r.color, r.name));
+  });
+
+  return div;
+}
+
+function createCompactRoleRow(color: string, name: string): HTMLDivElement {
+  const row = document.createElement('div');
+  row.className = 'compact-role';
+
+  const indicator = document.createElement('span');
+  indicator.className = 'role-indicator';
+  indicator.style.background = color;
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'role-name';
+  nameSpan.textContent = name;
+
+  row.appendChild(indicator);
+  row.appendChild(nameSpan);
+  return row;
 }
 
 // ── Results View ─────────────────────────────────────────────
 function showResults(sessionGroups: WoWGroup[]) {
   showView('results');
-  finalGroups.innerHTML = '';
+  finalGroups.textContent = '';
 
   sessionGroups.forEach((g, i) => {
     finalGroups.appendChild(createGroupCard(g, i));

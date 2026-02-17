@@ -43,52 +43,65 @@
                 <section id="view-wheels" class="view hidden">
                     <div id="wheel-status" class="wheel-status"></div>
 
-                    <!-- Row 1: Tank + Healer -->
-                    <div class="wheels-row">
-                        <div class="wheel-slot" id="slot-tank">
-                            <span class="wheel-label label-tank">Tank</span>
-                            <div class="wheel-frame">
-                                <div class="wheel-pointer"></div>
-                                <canvas id="wheel-tank"></canvas>
+                    <div class="wheels-content">
+                        <div class="wheels-area">
+                            <div class="wheels-container" style="--carousel-index: 0;">
+                                <div class="wheel-slot" id="slot-tank">
+                                    <span class="wheel-label label-tank">Tank</span>
+                                    <div class="wheel-frame">
+                                        <div class="wheel-pointer"></div>
+                                        <canvas id="wheel-tank"></canvas>
+                                    </div>
+                                    <div id="result-tank" class="wheel-result"></div>
+                                </div>
+                                <div class="wheel-slot" id="slot-healer">
+                                    <span class="wheel-label label-healer">Healer</span>
+                                    <div class="wheel-frame">
+                                        <div class="wheel-pointer"></div>
+                                        <canvas id="wheel-healer"></canvas>
+                                    </div>
+                                    <div id="result-healer" class="wheel-result"></div>
+                                </div>
+                                <div class="wheel-slot" id="slot-dps1">
+                                    <span class="wheel-label label-dps">DPS</span>
+                                    <div class="wheel-frame">
+                                        <div class="wheel-pointer"></div>
+                                        <canvas id="wheel-dps1"></canvas>
+                                    </div>
+                                    <div id="result-dps1" class="wheel-result"></div>
+                                </div>
+                                <div class="wheel-slot" id="slot-dps2">
+                                    <span class="wheel-label label-dps">DPS</span>
+                                    <div class="wheel-frame">
+                                        <div class="wheel-pointer"></div>
+                                        <canvas id="wheel-dps2"></canvas>
+                                    </div>
+                                    <div id="result-dps2" class="wheel-result"></div>
+                                </div>
+                                <div class="wheel-slot" id="slot-dps3">
+                                    <span class="wheel-label label-dps">DPS</span>
+                                    <div class="wheel-frame">
+                                        <div class="wheel-pointer"></div>
+                                        <canvas id="wheel-dps3"></canvas>
+                                    </div>
+                                    <div id="result-dps3" class="wheel-result"></div>
+                                </div>
                             </div>
-                            <div id="result-tank" class="wheel-result"></div>
-                        </div>
-                        <div class="wheel-slot" id="slot-healer">
-                            <span class="wheel-label label-healer">Healer</span>
-                            <div class="wheel-frame">
-                                <div class="wheel-pointer"></div>
-                                <canvas id="wheel-healer"></canvas>
-                            </div>
-                            <div id="result-healer" class="wheel-result"></div>
-                        </div>
-                    </div>
 
-                    <!-- Row 2: DPS x3 -->
-                    <div class="wheels-row">
-                        <div class="wheel-slot" id="slot-dps1">
-                            <span class="wheel-label label-dps">DPS</span>
-                            <div class="wheel-frame">
-                                <div class="wheel-pointer"></div>
-                                <canvas id="wheel-dps1"></canvas>
+                            <div class="carousel-dots" aria-label="Wheel navigation">
+                                <button class="carousel-dot active" data-index="0" aria-label="Tank wheel" style="--dot-color: var(--color-tank);"></button>
+                                <button class="carousel-dot" data-index="1" aria-label="Healer wheel" style="--dot-color: var(--color-healer);"></button>
+                                <button class="carousel-dot" data-index="2" aria-label="DPS 1 wheel" style="--dot-color: var(--color-dps);"></button>
+                                <button class="carousel-dot" data-index="3" aria-label="DPS 2 wheel" style="--dot-color: var(--color-dps);"></button>
+                                <button class="carousel-dot" data-index="4" aria-label="DPS 3 wheel" style="--dot-color: var(--color-dps);"></button>
                             </div>
-                            <div id="result-dps1" class="wheel-result"></div>
                         </div>
-                        <div class="wheel-slot" id="slot-dps2">
-                            <span class="wheel-label label-dps">DPS</span>
-                            <div class="wheel-frame">
-                                <div class="wheel-pointer"></div>
-                                <canvas id="wheel-dps2"></canvas>
-                            </div>
-                            <div id="result-dps2" class="wheel-result"></div>
-                        </div>
-                        <div class="wheel-slot" id="slot-dps3">
-                            <span class="wheel-label label-dps">DPS</span>
-                            <div class="wheel-frame">
-                                <div class="wheel-pointer"></div>
-                                <canvas id="wheel-dps3"></canvas>
-                            </div>
-                            <div id="result-dps3" class="wheel-result"></div>
-                        </div>
+
+                        <!-- Side Panel: Formed Groups (inside wheels view for layout) -->
+                        <aside id="side-panel" class="side-panel hidden">
+                            <h3>Groups</h3>
+                            <div id="groups-list"></div>
+                        </aside>
                     </div>
 
                     <button id="next-btn" class="btn btn-primary btn-large">Spin for Group 1</button>
@@ -101,12 +114,6 @@
                     <button id="new-round-btn" class="btn btn-secondary btn-large">New Round</button>
                 </section>
             </main>
-
-            <!-- Side Panel: Formed Groups -->
-            <aside id="side-panel" class="side-panel hidden">
-                <h3>Groups</h3>
-                <div id="groups-list"></div>
-            </aside>
         </div>
     </div>
     <script type="module" src="/main.ts"></script>
