@@ -12,7 +12,7 @@
             <a id="commit-link" class="commit-hash" target="_blank" rel="noopener noreferrer"></a>
         </header>
 
-        <div id="status-message"></div>
+        <div id="status-message" aria-live="polite"></div>
 
         <!-- Demo Mode Controls -->
         <div id="demo-controls" class="hidden">
@@ -89,7 +89,7 @@
                             </div>
 
                             <div class="carousel-dots" aria-label="Wheel navigation">
-                                <button class="carousel-dot active" data-index="0" aria-label="Tank wheel" style="--dot-color: var(--color-tank);"></button>
+                                <button class="carousel-dot active" data-index="0" aria-label="Tank wheel" style="--dot-color: var(--color-tank);" aria-current="step"></button>
                                 <button class="carousel-dot" data-index="1" aria-label="Healer wheel" style="--dot-color: var(--color-healer);"></button>
                                 <button class="carousel-dot" data-index="2" aria-label="DPS 1 wheel" style="--dot-color: var(--color-dps);"></button>
                                 <button class="carousel-dot" data-index="3" aria-label="DPS 2 wheel" style="--dot-color: var(--color-dps);"></button>

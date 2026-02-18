@@ -22,6 +22,7 @@ const CAROUSEL_MQ = window.matchMedia('(max-width: 599px)');
 const commitLink = document.getElementById('commit-link') as HTMLAnchorElement;
 commitLink.textContent = __COMMIT_HASH__;
 commitLink.href = `https://github.com/TytaniumDev/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`;
+commitLink.setAttribute('aria-label', `View commit ${__COMMIT_HASH__} on GitHub`);
 
 // ── UI Elements ──────────────────────────────────────────────
 const statusMsg = document.getElementById('status-message') as HTMLDivElement;
@@ -91,7 +92,13 @@ function setCarouselSlide(index: number) {
   wheelsContainer.style.setProperty('--carousel-index', String(carouselIndex));
 
   carouselDots.forEach((dot, i) => {
-    dot.classList.toggle('active', i === carouselIndex);
+    const isActive = i === carouselIndex;
+    dot.classList.toggle('active', isActive);
+    if (isActive) {
+      dot.setAttribute('aria-current', 'step');
+    } else {
+      dot.removeAttribute('aria-current');
+    }
   });
 }
 
@@ -102,8 +109,11 @@ function markCarouselDotCompleted(index: number) {
 function resetCarouselDots() {
   carouselDots.forEach((dot) => {
     dot.classList.remove('completed', 'active');
+    dot.removeAttribute('aria-current');
   });
-  carouselDots[0]?.classList.add('active');
+  const firstDot = carouselDots[0];
+  firstDot?.classList.add('active');
+  firstDot?.setAttribute('aria-current', 'step');
 }
 
 // Carousel dot click handlers
