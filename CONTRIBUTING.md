@@ -47,7 +47,7 @@ The project uses Playwright for visual regression testing.
 
 ## Project Structure
 
--   `core/`: Core business logic (Group algorithm, models, configuration).
+-   `core/`: Core business logic (Group algorithm, models, security, configuration).
 -   `cogs/`: Discord bot commands and event listeners.
 -   `services/`: Bridges between Cogs, Core logic, and Firebase.
 -   `activity/`: Frontend code for the Discord Activity (TypeScript/Vite).
@@ -58,6 +58,17 @@ The project uses Playwright for visual regression testing.
 -   **Development**: Uses `uv` and `pyproject.toml`.
 -   **Production (Docker)**: Uses `requirements.txt`.
     -   *Note: If you add a dependency, ensure it is reflected in `requirements.txt` for the production build.*
+
+## Security & CI Standards
+
+This project enforces strict security standards for CI/CD pipelines to prevent secret leaks.
+
+-   Please read **[docs/CI_STANDARDS.md](docs/CI_STANDARDS.md)** before modifying GitHub Workflows.
+-   We provide a utility script to scan workflow files for unsafe secret usage:
+    ```bash
+    python3 scripts/check-workflow-secrets.py
+    ```
+-   This script is also run automatically in the CI pipeline.
 
 ## AI Agents
 

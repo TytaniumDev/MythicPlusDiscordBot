@@ -84,6 +84,7 @@ flowchart TB
   - **FirebaseService**: singleton; initializes the Firebase Admin SDK, exposes session management.
   - **issues.py**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
   - **role_ui.py**: **UI Components**. Contains the Discord Views, Buttons, and Modals for the interactive Role Board.
+  - **security.py**: **Security Utilities**. Handles sensitive data redaction (log sanitization) and other security-related helper functions.
   - **storage.py**: **Persistence**. Manages local JSON storage (`player_preferences.json`) for user role preferences.
   - **parallel_group_creator**, **models**, **utils**, **config**: group algorithm, `WoWPlayer`/`WoWGroup`, and app config.
 
