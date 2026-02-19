@@ -14,3 +14,8 @@
 **Challenge:** Testing `load_preferences` error handling required simulating a corrupt file without writing to disk to avoid side effects.
 **Solution:** Used `patch("builtins.open", mock_open(read_data="{invalid json"))` to mock the file content directly.
 **Guideline:** Always use `mock_open` for testing file read/write operations to keep tests fast and isolated.
+
+## 2025-05-22 - [Testing Asyncio Locks in Services]
+**Challenge:** Testing `core_wheel` concurrency logic required simulating a locked state in `GroupService`.
+**Solution:** Manually acquired the lock in the test setup: `service.server_locks[123] = asyncio.Lock(); await service.server_locks[123].acquire()`.
+**Guideline:** For testing concurrency controls, manually manipulate the synchronization primitives (locks, semaphores) in the test setup to force the desired state.
