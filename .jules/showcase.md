@@ -3,6 +3,7 @@
 ## Critical Learnings
 - **[2024-05-22]** Initial audit revealed `README.md` was functional but lacked "Curb Appeal". It missed critical link arrays, visual hooks, and a clear documentation map. Refactoring to follow the "Golden Template".
 - **[2024-05-22]** Standardized "Quick Start" on `uv` to align with CI and modern Python standards. Removing legacy `pip` instructions reduces decision fatigue and support requests for environment issues.
+- **[2025-02-19]** Replaced placeholder hero image with `readme_assets/hero_visual.png` (sourced from visual tests) to improve "Curb Appeal". Updated "Contributing" link to point to `CONTRIBUTING.md` (for humans) instead of `AGENTS.md` (for bots) to reduce confusion.
 
 ## Showcase's Philosophy
 - The README is not documentation; it is a Landing Page.

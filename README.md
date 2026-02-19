@@ -12,7 +12,7 @@
 
 ## 📸 Preview
 
-![Hero Visual](https://placehold.co/600x400?text=App+Screenshot+Coming+Soon)
+![Mythic+ Bot Hero Visual](./readme_assets/hero_visual.png)
 
 ## ⚡ Quick Start (Local Development)
 
@@ -43,9 +43,9 @@ Get up and running in less than 5 minutes.
 
 ## ✨ Key Features
 
-*   **Group Organization**: Automatically calculate balanced Mythic+ groups based on player roles and key levels.
-*   **Discord Activity**: Interactive "Wheel of Fate" for selecting keys or players, integrated directly into Discord voice channels.
-*   **GitHub Integration**: Report bugs and request features directly from Discord using `/bug` and `/featurerequest`.
+*   **⚖️ Balanced Groups**: Automatically calculate optimal Tank/Healer/DPS ratios based on player roles and key levels.
+*   **🎡 Interactive Activity**: "Wheel of Fate" for selecting keys or players, integrated directly into Discord voice channels.
+*   **🐞 Seamless Feedback**: Report bugs and request features directly to GitHub without leaving Discord.
 
 ## 🗺️ Documentation Map <a id="documentation-map"></a>
 
@@ -53,11 +53,11 @@ Get up and running in less than 5 minutes.
 *   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
 *   **🎮 Activity Setup**: [Read `ACTIVITY_SETUP.md`](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
 *   **🔥 Firebase Setup**: [Read `FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Database and Auth configuration.
-*   **👨‍💻 Contributing**: [Read `AGENTS.md`](./AGENTS.md) - Development standards and guidelines.
+*   **👨‍💻 Contributing**: [Read `CONTRIBUTING.md`](./CONTRIBUTING.md) - Development standards and guidelines.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check `AGENTS.md` for development standards and guidelines.
+We welcome contributions! Please check `CONTRIBUTING.md` for development standards and guidelines.
 
 1.  **Install Pre-commit Hooks**
     ```bash
