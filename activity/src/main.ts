@@ -327,7 +327,20 @@ function renderChannelPicker(channels: VoiceChannel[]) {
 
     card.appendChild(nameSpan);
     card.appendChild(countSpan);
-    card.onclick = () => selectChannel(ch.id);
+
+    // Accessibility & Keyboard support
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', `Select ${ch.name}, ${ch.userCount} users`);
+
+    const selectHandler = () => selectChannel(ch.id);
+    card.onclick = selectHandler;
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectHandler();
+      }
+    };
     channelList.appendChild(card);
   });
 }

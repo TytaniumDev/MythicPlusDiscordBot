@@ -31,3 +31,32 @@ test('Wheel result container has aria-live', async ({ page }) => {
   const resultContainer = page.locator('#result-tank');
   await expect(resultContainer).toHaveAttribute('aria-live', 'polite');
 });
+
+test('Channel picker items are accessible buttons', async ({ page }) => {
+  const channelData = {
+    ...mockSession,
+    status: 'lobby',
+    selectedChannelId: null,
+    voiceChannels: [
+      { id: 'vc-1', name: 'Mythic+ Lobby', userCount: 13 },
+      { id: 'vc-2', name: 'Raid Voice', userCount: 5 },
+    ],
+  };
+
+  await page.goto(`/?data=${encodeData(channelData)}`);
+
+  // Verify channel card attributes
+  const card = page.locator('.channel-card').first();
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute('role', 'button');
+  await expect(card).toHaveAttribute('tabindex', '0');
+
+  const label = await card.getAttribute('aria-label');
+  expect(label).not.toBeNull();
+  expect(label).toContain('Select Mythic+ Lobby');
+  expect(label).toContain('13 users');
+
+  // Verify focusability
+  await card.focus();
+  await expect(card).toBeFocused();
+});
