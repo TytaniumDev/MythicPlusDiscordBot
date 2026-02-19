@@ -23,6 +23,7 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+      actions: read
 
     steps:
       - name: Checkout repository
@@ -41,4 +42,5 @@ jobs:
           allowed_bots: 'google-labs-jules[bot]'
           use_sticky_comment: true
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools Bash,WebFetch'
+          additional_permissions: |
+            actions: read
