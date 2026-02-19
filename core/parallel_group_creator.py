@@ -106,23 +106,51 @@ def create_mythic_plus_groups(
             return
         usedPlayers.add(player)
 
-        # Optimization: use a list of lists to iterate over all relevant lists
-        all_lists = [
-            available_tanks,
-            available_healers,
-            available_dps,
-            main_tanks,
-            off_tanks,
-            main_healers,
-            off_healers,
-            main_dps,
-            off_dps,
-            brez_players,
-            lust_players,
-        ]
-        for lst in all_lists:
-            if player in lst:
-                lst.remove(player)
+        # Optimization: Only check lists the player is actually in based on their roles
+        # This avoids O(N) scans on irrelevant lists.
+
+        # Tank lists
+        if player.tankMain:
+            if player in main_tanks:
+                main_tanks.remove(player)
+            if player in available_tanks:
+                available_tanks.remove(player)
+        elif player.offtank:
+            if player in off_tanks:
+                off_tanks.remove(player)
+            if player in available_tanks:
+                available_tanks.remove(player)
+
+        # Healer lists
+        if player.healerMain:
+            if player in main_healers:
+                main_healers.remove(player)
+            if player in available_healers:
+                available_healers.remove(player)
+        elif player.offhealer:
+            if player in off_healers:
+                off_healers.remove(player)
+            if player in available_healers:
+                available_healers.remove(player)
+
+        # DPS lists
+        if player.dpsMain:
+            if player in main_dps:
+                main_dps.remove(player)
+            if player in available_dps:
+                available_dps.remove(player)
+        elif player.offdps:
+            if player in off_dps:
+                off_dps.remove(player)
+            if player in available_dps:
+                available_dps.remove(player)
+
+        # Utility lists
+        if player.hasBrez and player in brez_players:
+            brez_players.remove(player)
+
+        if player.hasLust and player in lust_players:
+            lust_players.remove(player)
 
     def grabNextAvailablePlayer(
         availablePlayers: list[WoWPlayer],
