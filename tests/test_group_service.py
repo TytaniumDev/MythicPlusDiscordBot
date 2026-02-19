@@ -24,7 +24,9 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         ctx.send.assert_called_with("❌ No players found in the channel.")
 
     @patch("services.group_service.get_player_list")
-    async def test_get_groups_data_no_valid_roles(self, mock_get_player_list: MagicMock):
+    async def test_get_groups_data_no_valid_roles(
+        self, mock_get_player_list: MagicMock
+    ):
         """Test that get_groups_data returns None if players exist but have no valid roles."""
         service = GroupService()
         ctx = AsyncMock()
@@ -69,7 +71,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         self,
         mock_get_player_list: MagicMock,
         mock_create_groups: MagicMock,
-        mock_announce: AsyncMock
+        mock_announce: AsyncMock,
     ):
         """Test the happy path where groups are successfully created and announced."""
         service = GroupService()
@@ -97,6 +99,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
 
         # Verify announce_group was called
         mock_announce.assert_called_once_with(ctx, ctx.channel, mock_group, 1, False)
+
 
 if __name__ == "__main__":
     unittest.main()
