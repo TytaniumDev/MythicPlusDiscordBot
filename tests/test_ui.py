@@ -10,10 +10,12 @@ import discord
 
 from core.config import ROLE_HEALER, ROLE_TANK
 from core.role_ui import (
+    PlayerRoleInfo,
     RoleBoardView,
     RoleButton,
     RoleSelectionView,
     create_role_board_embed,
+    create_role_check_embed,
 )
 
 
@@ -26,6 +28,24 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.title, "Mythic+ Role Board")
         self.assertEqual(embed.description, "Current channel roster")
         self.assertEqual(embed.color, discord.Color.gold())
+
+    def test_create_role_check_embed(self):
+        player_infos = [
+            PlayerRoleInfo(name="Player1", roles=["Tank", "Healer"]),
+            PlayerRoleInfo(name="Player2", roles=["DPS"], is_discord_roles=True),
+        ]
+
+        embed = create_role_check_embed(player_infos)
+
+        self.assertEqual(embed.title, "Saved Roles Check")
+        self.assertEqual(embed.color, discord.Color.blue())
+        self.assertEqual(len(embed.fields), 2)
+
+        self.assertEqual(embed.fields[0].name, "Player1")
+        self.assertEqual(embed.fields[0].value, "Tank, Healer")
+
+        self.assertEqual(embed.fields[1].name, "Player2 (Discord Only)")
+        self.assertEqual(embed.fields[1].value, "DPS")
 
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]

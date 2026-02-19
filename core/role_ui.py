@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 from typing import Any
 
 import discord
@@ -25,6 +26,15 @@ from .storage import (
     set_player_preference,
 )
 from .utils import get_wow_name
+
+
+@dataclass
+class PlayerRoleInfo:
+    """Data transfer object for role check display."""
+
+    name: str
+    roles: list[str]
+    is_discord_roles: bool = False
 
 
 class RoleButton(discord.ui.Button["RoleSelectionView"]):
@@ -222,5 +232,26 @@ def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
     lust_count = sum(1 for p in players if p.hasLust)
 
     embed.set_footer(text=f"Utilities: {brez_count} Brez, {lust_count} Lust")
+
+    return embed
+
+
+def create_role_check_embed(player_infos: list[PlayerRoleInfo]) -> discord.Embed:
+    """
+    Creates an embed listing players and their roles.
+
+    Args:
+        player_infos: List of PlayerRoleInfo objects containing player data.
+
+    Returns:
+        A discord.Embed object populated with fields for each player.
+    """
+    embed = discord.Embed(title="Saved Roles Check", color=discord.Color.blue())
+
+    for info in player_infos:
+        display_name = (
+            f"{info.name} (Discord Only)" if info.is_discord_roles else info.name
+        )
+        embed.add_field(name=display_name, value=", ".join(info.roles), inline=False)
 
     return embed
