@@ -4,7 +4,12 @@ import discord
 from discord.ext import commands
 
 from core.config import ALL_ROLES
-from core.role_ui import RoleBoardView, create_role_board_embed
+from core.role_ui import (
+    PlayerRoleInfo,
+    RoleBoardView,
+    create_role_board_embed,
+    create_role_check_embed,
+)
 from core.storage import clear_player_preference, get_player_preference
 from core.utils import get_player_list, get_wow_name
 
@@ -75,29 +80,26 @@ class Roles(commands.Cog):
             await ctx.send("No members found in the channel.")
             return
 
-        embed = discord.Embed(title="Saved Roles Check", color=discord.Color.blue())
-
-        found_any = False
+        player_infos: list[PlayerRoleInfo] = []
         for member in members:
             name = get_wow_name(cast(discord.Member, member))
             saved_roles = get_player_preference(name)
             if saved_roles:
-                embed.add_field(name=name, value=", ".join(saved_roles), inline=False)
-                found_any = True
+                player_infos.append(PlayerRoleInfo(name=name, roles=saved_roles))
             else:
                 # Check if they have discord roles at least
                 discord_roles = [r.name for r in member.roles if r.name in ALL_ROLES]
                 if discord_roles:
-                    embed.add_field(
-                        name=f"{name} (Discord Only)",
-                        value=", ".join(discord_roles),
-                        inline=False,
+                    player_infos.append(
+                        PlayerRoleInfo(
+                            name=name, roles=discord_roles, is_discord_roles=True
+                        )
                     )
-                    found_any = True
 
-        if not found_any:
+        if not player_infos:
             await ctx.send("No saved roles found for anyone in this channel.")
         else:
+            embed = create_role_check_embed(player_infos)
             await ctx.send(embed=embed)
 
     @commands.command()
