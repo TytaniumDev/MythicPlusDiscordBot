@@ -1,13 +1,14 @@
+import asyncio
 import os
 import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
-import asyncio
 
 # Add project root to sys.path to allow imports from core
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from services.group_service import GroupService
+
 
 class TestGroupService(unittest.IsolatedAsyncioTestCase):
     async def test_get_groups_data_no_players(self):
@@ -61,7 +62,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         # Release lock to clean up (optional but good practice)
         service.server_locks[123].release()
 
-    @patch("services.group_service.announce_group")
+    @patch("services.group_service.announce_group", new_callable=AsyncMock)
     @patch("services.group_service.create_mythic_plus_groups")
     @patch("services.group_service.get_player_list")
     async def test_core_wheel_success(
