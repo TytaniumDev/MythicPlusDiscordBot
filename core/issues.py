@@ -8,6 +8,8 @@ import aiohttp
 import discord
 from discord import ui
 
+from core.security import sanitize_logs
+
 from . import config
 
 logger = logging.getLogger(__name__)
@@ -149,7 +151,8 @@ class GitHubIssueModal(ui.Modal):
             if should_include_logs:
                 last_lines = await _get_recent_logs()
                 if last_lines:
-                    body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+                    sanitized_lines = sanitize_logs(last_lines)
+                    body += f"\n**Recent Logs:**\n```log\n{sanitized_lines}\n```\n"
 
         # Add Jules label for automation
         labels = ["bug"] if self.issue_type == "bug" else ["enhancement"]
@@ -213,7 +216,8 @@ async def report_bad_group(
     # Include recent logs as well (MANDATORY for bad groups)
     last_lines = await _get_recent_logs()
     if last_lines:
-        body += f"\n**Recent Logs:**\n```log\n{last_lines}\n```\n"
+        sanitized_lines = sanitize_logs(last_lines)
+        body += f"\n**Recent Logs:**\n```log\n{sanitized_lines}\n```\n"
 
     # Add labels for automation and categorization
     labels = ["bug", "bad-group"]
