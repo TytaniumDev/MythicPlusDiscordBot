@@ -242,6 +242,14 @@ body {
   padding-left: 22px;
 }
 
+.channel-card:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  padding-left: 22px;
+}
+
 .channel-card .channel-name {
   font-weight: 600;
   color: var(--text-heading);
