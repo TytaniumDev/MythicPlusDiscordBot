@@ -328,6 +328,14 @@ function renderChannelPicker(channels: VoiceChannel[]) {
     card.appendChild(nameSpan);
     card.appendChild(countSpan);
     card.onclick = () => selectChannel(ch.id);
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectChannel(ch.id);
+      }
+    };
     channelList.appendChild(card);
   });
 }
