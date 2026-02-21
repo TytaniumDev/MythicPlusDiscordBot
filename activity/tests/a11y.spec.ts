@@ -31,3 +31,18 @@ test('Wheel result container has aria-live', async ({ page }) => {
   const resultContainer = page.locator('#result-tank');
   await expect(resultContainer).toHaveAttribute('aria-live', 'polite');
 });
+
+test('Lobby player chips have accessible role indicators', async ({ page }) => {
+  const lobbyData = { ...mockSession, status: 'lobby', players: mockPlayers, selectedChannelId: 'vc-1' };
+  await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+  const firstChipDot = page.locator('.player-chip .role-dot').first();
+  await expect(firstChipDot).toHaveAttribute('role', 'img');
+
+  // Check for one of the valid role labels
+  const label = await firstChipDot.getAttribute('aria-label');
+  expect(label).toBeTruthy();
+  expect(['Tank', 'Healer', 'DPS']).toContain(label);
+
+  await expect(firstChipDot).toHaveAttribute('title', label as string);
+});
