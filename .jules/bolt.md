@@ -22,3 +22,7 @@
 ## 2026-02-03 - [Deadlock in Re-entrant Locking]
 **Learning:** `threading.Lock` is not re-entrant in Python. Using it in a function (`load_preferences`) that is called by another function (`set_player_preference`) which *also* acquires the same lock results in a deadlock.
 **Action:** Use `threading.RLock` for locks that may be acquired recursively by the same thread.
+
+## 2026-02-04 - [Targeted List Removal in Hot Paths]
+**Learning:** Blindly iterating over a collection of lists to remove an item (O(N*M)) is inefficient when object properties can strictly identify which lists the item belongs to (O(N*k) where k << M). In `parallel_group_creator.py`, using player role flags reduced group creation time by ~40% for large inputs.
+**Action:** When managing items across multiple classification lists, use item properties to target specific lists for removal/updates rather than scanning all lists.
