@@ -56,6 +56,30 @@ body {
 }
 
 /* ============================================
+   Accessibility
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Ensure buttons and links have visible focus consistent with channel cards */
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* Remove default focus ring if custom one is applied */
+.btn:focus:not(:focus-visible),
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================
    App Layout — Viewport-Filling
    ============================================ */
 #app {
@@ -682,6 +706,15 @@ body {
 .spinning .wheel-frame {
   animation: pulseGlow 1s ease-in-out infinite;
   border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ============================================
