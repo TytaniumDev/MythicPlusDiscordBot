@@ -9,3 +9,7 @@
 ## 2025-05-20 - Visual-Only Indicators Accessibility
 **Learning:** Purely visual indicators (like colored dots) exclude screen reader users and rely on color perception. Adding a `title` tooltip alongside `aria-label` and `role="img"` is a low-effort pattern that simultaneously benefits mouse users (hover text) and assistive technology users (screen reader text) without changing the visual design.
 **Action:** Audit other visual-only status indicators (e.g., online/offline dots, difficulty icons) and apply this pattern.
+
+## 2026-02-22 - Clipboard Integration Feedback
+**Learning:** Adding a "Copy to Clipboard" action requires clear visual feedback (e.g., text change to "Copied!", success color) to confirm the action to the user, especially for invisible operations like clipboard writes.
+**Action:** Always include temporary state changes for invisible actions.

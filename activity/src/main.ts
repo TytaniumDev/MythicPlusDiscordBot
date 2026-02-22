@@ -56,6 +56,7 @@ const groupsList = document.getElementById('groups-list') as HTMLDivElement;
 
 // Results
 const finalGroups = document.getElementById('final-groups') as HTMLDivElement;
+const copyResultsBtn = document.getElementById('copy-results-btn') as HTMLButtonElement;
 const newRoundBtn = document.getElementById('new-round-btn') as HTMLButtonElement;
 
 // ── Wheels (5 total) ─────────────────────────────────────────
@@ -168,6 +169,7 @@ async function init() {
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
+  copyResultsBtn.addEventListener('click', copyResultsToClipboard);
   startSessionBtn.addEventListener('click', createSession);
 
   // Check for injected mock data (testing)
@@ -846,6 +848,36 @@ function startDemo() {
   demoControls.classList.add('hidden');
   statusMsg.textContent = '';
   handleSessionUpdate(mockSession);
+}
+
+async function copyResultsToClipboard() {
+  if (!currentSessionData || !currentSessionData.groups) return;
+
+  const text = currentSessionData.groups
+    .map((g, i) => {
+      const tank = `${g.tank?.name || 'None'}${utilityIcons(g.tank)}`;
+      const healer = `${g.healer?.name || 'None'}${utilityIcons(g.healer)}`;
+      const dps = g.dps.map((d) => `${d.name}${utilityIcons(d)}`).join(', ');
+      return `**Group ${i + 1}**\n🛡️ ${tank}\n💚 ${healer}\n⚔️ ${dps}`;
+    })
+    .join('\n\n');
+
+  try {
+    await navigator.clipboard.writeText(text);
+    const originalText = copyResultsBtn.textContent;
+    copyResultsBtn.textContent = 'Copied!';
+    copyResultsBtn.classList.add('btn-success');
+    copyResultsBtn.classList.remove('btn-primary');
+
+    setTimeout(() => {
+      copyResultsBtn.textContent = originalText;
+      copyResultsBtn.classList.remove('btn-success');
+      copyResultsBtn.classList.add('btn-primary');
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    statusMsg.textContent = 'Failed to copy to clipboard.';
+  }
 }
 
 // ── Start ────────────────────────────────────────────────────

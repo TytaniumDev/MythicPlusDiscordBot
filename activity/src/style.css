@@ -893,3 +893,11 @@ body {
     height: 10px;
   }
 }
+
+.results-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
