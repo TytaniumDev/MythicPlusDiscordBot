@@ -2,27 +2,13 @@ name: Workflow Lint
 
 on:
   pull_request:
-    branches:
-      - main
-      - master
     paths:
       - ".github/workflows/**"
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
     paths:
       - ".github/workflows/**"
 
 jobs:
-  workflow-secrets:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Check workflow secrets
-        run: python3 scripts/check-workflow-secrets.py
+  workflow-lint:
+    uses: TytaniumDev/.github/.github/workflows/workflow-lint.yml@main
