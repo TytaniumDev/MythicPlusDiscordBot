@@ -266,6 +266,7 @@ class TestGroupCreator(unittest.TestCase):
 
         # Inject the history
         import core.parallel_group_creator
+
         # IMPORTANT: Assign a copy or new list because the function clears it
         core.parallel_group_creator.lastGroups = [g1]
 
@@ -297,7 +298,7 @@ class TestGroupCreator(unittest.TestCase):
             len(intersection),
             3,
             f"Expected fresh DPS {expected_fresh_dps}, but got {dps_names}. "
-            "The algorithm should prioritize players who haven't played with the tank recently."
+            "The algorithm should prioritize players who haven't played with the tank recently.",
         )
 
 
