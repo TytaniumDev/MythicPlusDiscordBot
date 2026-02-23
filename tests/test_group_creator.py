@@ -286,7 +286,7 @@ class TestGroupCreator(unittest.TestCase):
         self.assertEqual(group.healer, healer)
 
         # Verify it chose the fresh DPS
-        dps_names = set(p.name for p in group.dps)
+        dps_names = {p.name for p in group.dps}
         expected_fresh_dps = {"DPS4", "DPS5", "DPS6"}
 
         # Check intersection with expected fresh DPS
