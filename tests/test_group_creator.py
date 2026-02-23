@@ -5,7 +5,7 @@ import unittest
 # Add the parent directory to the Python path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.models import WoWPlayer
+from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import clear, create_mythic_plus_groups
 from tests.prebuilt_classes import (
     BalanceDruid,
@@ -245,40 +245,60 @@ class TestGroupCreator(unittest.TestCase):
         self.assertEqual(groups[2].size, 1, "Second to last group should have 1 player")
         self.assertEqual(groups[3].size, 2, "Last group should have 2 players")
 
-    def test_not_in_same_group_as_last_time(self):
-        """Test that players are not put in the same group as last time if possible"""
-        players = [
-            TankWarrior("Tank1"),
-            TankDeathKnight("Brez1"),
-            HealerDruid("Brez2"),
-            HealerPriest("Healer2"),
-            Mage("Lust1"),
-            Mage("Lust2"),
-            Warrior("Warrior1"),
-            Warrior("Warrior2"),
-            FeralDruid("Feral1"),
-            FeralDruid("Feral2"),
-        ]
-        groups = create_mythic_plus_groups(players)
-        self.assertEqual(len(groups), 2)
+    def test_avoids_old_teammates_when_possible(self):
+        """Test that group creator prefers fresh teammates over old ones."""
+        # Setup players: 1 Tank, 1 Healer, 3 Old DPS, 3 Fresh DPS
+        tank = TankWarrior("Tank")
+        healer = HealerPriest("Healer")
+        dps1 = Warrior("DPS1")
+        dps2 = Warrior("DPS2")
+        dps3 = Warrior("DPS3")
+        dps4 = Warrior("DPS4")  # Fresh
+        dps5 = Warrior("DPS5")  # Fresh
+        dps6 = Warrior("DPS6")  # Fresh
 
-        # Save the groups as lastGroups
-        global lastGroups
-        lastGroups = groups
+        # Setup History: Tank played with DPS1, DPS2, DPS3
+        # We manually construct lastGroups to simulate history
+        g1 = WoWGroup()
+        g1.tank = tank
+        g1.dps = [dps1, dps2, dps3]
+        # Healer was not in this group, so Healer is fresh to everyone
 
-        # Create new groups with the same players
-        new_groups = create_mythic_plus_groups(players)
+        # Inject the history
+        import core.parallel_group_creator
+        # IMPORTANT: Assign a copy or new list because the function clears it
+        core.parallel_group_creator.lastGroups = [g1]
 
-        # Verify that no players are in the same group as last time
-        for old_group, new_group in zip(lastGroups, new_groups, strict=False):
-            old_players = set(old_group.players)
-            new_players = set(new_group.players)
-            intersection = old_players.intersection(new_players)
-            self.assertEqual(
-                len(intersection),
-                0,
-                f"Players {intersection} are in the same group as last time",
-            )
+        # Now run creation with all players available
+        # The algorithm should form 1 complete group (8 players -> 1 group)
+        # It needs Tank + Healer + 3 DPS.
+        # It should prefer the fresh DPS (4, 5, 6) over the old teammates (1, 2, 3).
+        all_players = [tank, healer, dps1, dps2, dps3, dps4, dps5, dps6]
+
+        groups = create_mythic_plus_groups(all_players)
+
+        # Should have at least 1 group (maybe a remainder group too)
+        self.assertGreaterEqual(len(groups), 1)
+        group = groups[0]
+
+        # Verify specific composition
+        self.assertEqual(group.tank, tank)
+        self.assertEqual(group.healer, healer)
+
+        # Verify it chose the fresh DPS
+        dps_names = set(p.name for p in group.dps)
+        expected_fresh_dps = {"DPS4", "DPS5", "DPS6"}
+
+        # Check intersection with expected fresh DPS
+        # We expect ALL 3 fresh DPS to be chosen because there are exactly 3 spots
+        # and exactly 3 fresh candidates who have no history with the Tank.
+        intersection = dps_names.intersection(expected_fresh_dps)
+        self.assertEqual(
+            len(intersection),
+            3,
+            f"Expected fresh DPS {expected_fresh_dps}, but got {dps_names}. "
+            "The algorithm should prioritize players who haven't played with the tank recently."
+        )
 
 
 if __name__ == "__main__":
