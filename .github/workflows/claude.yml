@@ -12,6 +12,6 @@ on:
 
 jobs:
   claude:
-    uses: TytaniumDev/.github/.github/workflows/claude.yml@main
+    uses: TytaniumOrg/.github/.github/workflows/claude.yml@main
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

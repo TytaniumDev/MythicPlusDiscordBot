@@ -10,6 +10,6 @@ on:
 
 jobs:
   claude-review:
-    uses: TytaniumDev/.github/.github/workflows/claude-code-review.yml@main
+    uses: TytaniumOrg/.github/.github/workflows/claude-code-review.yml@main
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

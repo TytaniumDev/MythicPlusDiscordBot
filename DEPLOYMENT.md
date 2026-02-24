@@ -85,7 +85,7 @@ Keep your current SSH session open while testing new settings.
 
 ### 1.6 Clone the repo on the Pi
 ```bash
-sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
+sudo -u deploy git clone https://github.com/TytaniumOrg/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
 ```
 Use this path for the `PI_APP_DIR` secret.
 

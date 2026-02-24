@@ -108,7 +108,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
-            default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            default_url = "https://tytaniumorg.github.io/MythicPlusDiscordBot/"
             # Logic uses guildId now
             for call in calls:
                 msg = call.args[0]
@@ -177,7 +177,7 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
-            default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
+            default_url = "https://tytaniumorg.github.io/MythicPlusDiscordBot/"
             for call in calls:
                 msg = call.args[0]
                 if f"{default_url}?guildId=123" in msg:
