@@ -11,4 +11,4 @@ on:
 
 jobs:
   workflow-lint:
-    uses: TytaniumOrg/.github/.github/workflows/workflow-lint.yml@main
+    uses: TytaniumDev/.github/.github/workflows/workflow-lint.yml@main

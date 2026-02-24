@@ -21,7 +21,7 @@ const CAROUSEL_MQ = window.matchMedia('(max-width: 599px)');
 // ── Commit Hash ──────────────────────────────────────────────
 const commitLink = document.getElementById('commit-link') as HTMLAnchorElement;
 commitLink.textContent = __COMMIT_HASH__;
-commitLink.href = `https://github.com/TytaniumOrg/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`;
+commitLink.href = `https://github.com/TytaniumDev/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`;
 commitLink.setAttribute('aria-label', `View commit ${__COMMIT_HASH__} on GitHub`);
 
 // ── UI Elements ──────────────────────────────────────────────

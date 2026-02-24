@@ -6,4 +6,4 @@ on:
 
 jobs:
   add-label:
-    uses: TytaniumOrg/.github/.github/workflows/automerge-label.yml@main
+    uses: TytaniumDev/.github/.github/workflows/automerge-label.yml@main

@@ -8,12 +8,12 @@ on:
 jobs:
   lint:
     name: CI
-    uses: TytaniumOrg/.github/.github/workflows/lint.yml@main
+    uses: TytaniumDev/.github/.github/workflows/lint.yml@main
 
   build:
     name: CI
-    uses: TytaniumOrg/.github/.github/workflows/build.yml@main
+    uses: TytaniumDev/.github/.github/workflows/build.yml@main
 
   test:
     name: CI
-    uses: TytaniumOrg/.github/.github/workflows/test.yml@main
+    uses: TytaniumDev/.github/.github/workflows/test.yml@main

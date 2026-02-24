@@ -1,9 +1,9 @@
 # MythicPlusDiscordBot 💎
 
-[![Build Status](https://github.com/tytaniumorg/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumorg/MythicPlusDiscordBot/actions)
+[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-### [ 🚀 Launch App ](https://tytaniumorg.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumorg/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
 > Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with interactive activities.
@@ -20,7 +20,7 @@ Get up and running in less than 5 minutes.
 
 1.  **Clone the repo**
     ```bash
-    git clone https://github.com/TytaniumOrg/MythicPlusDiscordBot.git
+    git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git
     cd MythicPlusDiscordBot
     ```
 
