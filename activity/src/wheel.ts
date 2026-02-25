@@ -120,7 +120,7 @@ export class Wheel {
     if (size === 0) return;
     const cx = size / 2;
     const cy = size / 2;
-    const radius = cx - 6;
+    const radius = cx - size * 0.03;
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -164,7 +164,7 @@ export class Wheel {
 
       // Segment border
       this.ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      this.ctx.lineWidth = 1.5;
+      this.ctx.lineWidth = Math.max(1.5, size * 0.007);
       this.ctx.stroke();
 
       // Text
@@ -177,15 +177,15 @@ export class Wheel {
       this.ctx.shadowColor = 'rgba(0,0,0,0.9)';
       this.ctx.shadowOffsetX = 1;
       this.ctx.shadowOffsetY = 1;
-      this.ctx.shadowBlur = 4;
+      this.ctx.shadowBlur = Math.max(4, size * 0.015);
 
-      const fontSize = Math.max(10, Math.min(14, Math.round(size * 0.055)));
+      const fontSize = Math.max(10, Math.min(20, Math.round(size * 0.055)));
       this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
 
       let name = entry.name;
       if (name.length > 12) name = name.substring(0, 11) + '..';
 
-      this.ctx.fillText(name, radius - 12, 0);
+      this.ctx.fillText(name, radius - size * 0.08, 0);
       this.ctx.restore();
     });
 
@@ -199,13 +199,13 @@ export class Wheel {
     this.ctx.beginPath();
     this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     this.ctx.strokeStyle = '#1a1a2e';
-    this.ctx.lineWidth = 5;
+    this.ctx.lineWidth = Math.max(5, size * 0.02);
     this.ctx.stroke();
 
     this.ctx.beginPath();
     this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     this.ctx.strokeStyle = '#f59e0b';
-    this.ctx.lineWidth = 2.5;
+    this.ctx.lineWidth = Math.max(2.5, size * 0.01);
     this.ctx.shadowColor = 'rgba(245,158,11,0.5)';
     this.ctx.shadowBlur = 10;
     this.ctx.stroke();
@@ -223,7 +223,7 @@ export class Wheel {
     this.ctx.fillStyle = hubGrad;
     this.ctx.fill();
     this.ctx.strokeStyle = '#f59e0b';
-    this.ctx.lineWidth = 2.5;
+    this.ctx.lineWidth = Math.max(2.5, size * 0.01);
     this.ctx.shadowColor = 'rgba(245,158,11,0.4)';
     this.ctx.shadowBlur = 6;
     this.ctx.stroke();
