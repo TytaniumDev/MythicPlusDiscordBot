@@ -53,6 +53,7 @@ export class Wheel {
   private pendingResize = false;
   private baseLabel: string;
   private highlightIndex: number | null = null;
+  private highlightProgress = 0;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -86,6 +87,7 @@ export class Wheel {
     this.entries = entries;
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.highlightIndex = null;
+    this.highlightProgress = 0;
     this.resultEl.textContent = '';
     this.resultEl.className = 'wheel-result';
     this.canvas.setAttribute('aria-label', `${this.baseLabel}. ${this.entries.length} candidates.`);
@@ -205,6 +207,8 @@ export class Wheel {
     if (this.highlightIndex !== null) {
       const hi = this.highlightIndex;
 
+      const t = this.highlightProgress;
+
       // Darken every non-winning slice
       this.entries.forEach((_, i) => {
         if (i === hi) return;
@@ -214,7 +218,7 @@ export class Wheel {
         this.ctx.moveTo(cx, cy);
         this.ctx.arc(cx, cy, radius - 1, sStart, sEnd);
         this.ctx.closePath();
-        this.ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        this.ctx.fillStyle = `rgba(0,0,0,${0.45 * t})`;
         this.ctx.fill();
       });
 
@@ -226,14 +230,14 @@ export class Wheel {
       this.ctx.moveTo(cx, cy);
       this.ctx.arc(cx, cy, radius - 1, hStart, hEnd);
       this.ctx.closePath();
-      this.ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      this.ctx.fillStyle = `rgba(255,255,255,${0.22 * t})`;
       this.ctx.fill();
 
       // Gold glow border around the winning slice
       this.ctx.save();
-      this.ctx.shadowColor = 'rgba(245,158,11,0.9)';
-      this.ctx.shadowBlur = Math.max(12, size * 0.04);
-      this.ctx.strokeStyle = '#f59e0b';
+      this.ctx.shadowColor = `rgba(245,158,11,${0.9 * t})`;
+      this.ctx.shadowBlur = Math.max(12, size * 0.04) * t;
+      this.ctx.strokeStyle = `rgba(245,158,11,${t})`;
       this.ctx.lineWidth = Math.max(3, size * 0.014);
 
       // Draw the two radial edges of the slice
@@ -351,15 +355,29 @@ export class Wheel {
         if (progress < 1) {
           this.animationFrame = requestAnimationFrame(animate);
         } else {
-          this.animationFrame = null;
           this.highlightIndex = winnerIndex;
-          this.draw(); // Redraw with highlight
+          this.highlightProgress = 0;
           audio.land();
-          // Show result with animation class
-          this.resultEl.textContent = winnerName;
-          this.resultEl.classList.add('revealed');
-          this.canvas.setAttribute('aria-label', `${this.baseLabel}. Result: ${winnerName}`);
-          resolve(winnerName);
+
+          // Animate the highlight fade-in
+          const fadeStart = performance.now();
+          const fadeDuration = 400;
+          const fadeIn = (t: number) => {
+            const p = Math.min((t - fadeStart) / fadeDuration, 1);
+            this.highlightProgress = easeOutCubic(p);
+            this.draw();
+            if (p < 1) {
+              this.animationFrame = requestAnimationFrame(fadeIn);
+            } else {
+              this.animationFrame = null;
+              // Show result with animation class
+              this.resultEl.textContent = winnerName;
+              this.resultEl.classList.add('revealed');
+              this.canvas.setAttribute('aria-label', `${this.baseLabel}. Result: ${winnerName}`);
+              resolve(winnerName);
+            }
+          };
+          this.animationFrame = requestAnimationFrame(fadeIn);
         }
       };
 
