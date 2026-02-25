@@ -201,18 +201,32 @@ export class Wheel {
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
 
-    // Highlight the winning slice with a bright overlay and gold border
+    // Highlight the winning slice: fade losers and glow the winner
     if (this.highlightIndex !== null) {
       const hi = this.highlightIndex;
+
+      // Darken every non-winning slice
+      this.entries.forEach((_, i) => {
+        if (i === hi) return;
+        const sStart = this.rotation + i * sliceAngle;
+        const sEnd = sStart + sliceAngle;
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx, cy);
+        this.ctx.arc(cx, cy, radius - 1, sStart, sEnd);
+        this.ctx.closePath();
+        this.ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        this.ctx.fill();
+      });
+
       const hStart = this.rotation + hi * sliceAngle;
       const hEnd = hStart + sliceAngle;
 
-      // Bright white overlay for a "pop" effect
+      // Bright white overlay on winner for a "pop" effect
       this.ctx.beginPath();
       this.ctx.moveTo(cx, cy);
       this.ctx.arc(cx, cy, radius - 1, hStart, hEnd);
       this.ctx.closePath();
-      this.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      this.ctx.fillStyle = 'rgba(255,255,255,0.22)';
       this.ctx.fill();
 
       // Gold glow border around the winning slice
