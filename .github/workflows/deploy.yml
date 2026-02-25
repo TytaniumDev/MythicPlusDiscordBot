@@ -130,6 +130,7 @@ jobs:
             # Update repo
             cd "$PI_APP_DIR"
             echo "Updating repo..."
+            git gc --auto 2>/dev/null || true
             git fetch origin && git reset --hard origin/${{ github.ref_name }}
 
             # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
@@ -140,6 +141,10 @@ jobs:
             export GITHUB_TOKEN="$GITHUB_TOKEN"
             FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
             export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
+
+            # Free disk space before pulling new image
+            echo "Cleaning up old Docker resources..."
+            docker system prune -af --filter "until=1h" > /dev/null 2>&1 || true
 
             # Deploy
             echo "Pulling image..."
