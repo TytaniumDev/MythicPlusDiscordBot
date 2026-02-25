@@ -52,6 +52,7 @@ export class Wheel {
   private resizeObserver: ResizeObserver;
   private pendingResize = false;
   private baseLabel: string;
+  private highlightIndex: number | null = null;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -84,6 +85,7 @@ export class Wheel {
   init(entries: WheelEntry[]) {
     this.entries = entries;
     this.rotation = Math.random() * Math.PI * 2; // Random start position
+    this.highlightIndex = null;
     this.resultEl.textContent = '';
     this.resultEl.className = 'wheel-result';
     this.canvas.setAttribute('aria-label', `${this.baseLabel}. ${this.entries.length} candidates.`);
@@ -193,11 +195,57 @@ export class Wheel {
       this.ctx.restore();
     });
 
-    // Reset shadow before ring drawing
+    // Reset shadow before highlight / ring drawing
     this.ctx.shadowColor = 'transparent';
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
+
+    // Highlight the winning slice with a bright overlay and gold border
+    if (this.highlightIndex !== null) {
+      const hi = this.highlightIndex;
+      const hStart = this.rotation + hi * sliceAngle;
+      const hEnd = hStart + sliceAngle;
+
+      // Bright white overlay for a "pop" effect
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy);
+      this.ctx.arc(cx, cy, radius - 1, hStart, hEnd);
+      this.ctx.closePath();
+      this.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      this.ctx.fill();
+
+      // Gold glow border around the winning slice
+      this.ctx.save();
+      this.ctx.shadowColor = 'rgba(245,158,11,0.9)';
+      this.ctx.shadowBlur = Math.max(12, size * 0.04);
+      this.ctx.strokeStyle = '#f59e0b';
+      this.ctx.lineWidth = Math.max(3, size * 0.014);
+
+      // Draw the two radial edges of the slice
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy);
+      this.ctx.lineTo(
+        cx + Math.cos(hStart) * radius,
+        cy + Math.sin(hStart) * radius,
+      );
+      this.ctx.stroke();
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy);
+      this.ctx.lineTo(
+        cx + Math.cos(hEnd) * radius,
+        cy + Math.sin(hEnd) * radius,
+      );
+      this.ctx.stroke();
+
+      // Draw the outer arc edge of the slice
+      this.ctx.beginPath();
+      this.ctx.arc(cx, cy, radius - 1, hStart, hEnd);
+      this.ctx.stroke();
+
+      this.ctx.restore();
+    }
 
     // Double-stroke outer ring: dark base + gold accent with glow
     this.ctx.beginPath();
@@ -237,6 +285,7 @@ export class Wheel {
   /** Animate the wheel to land on a specific winner */
   spinTo(winnerName: string, duration = 4000): Promise<string> {
     this.canvas.setAttribute('aria-label', `${this.baseLabel}. Spinning...`);
+    this.highlightIndex = null;
     return new Promise((resolve) => {
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame);
@@ -289,6 +338,8 @@ export class Wheel {
           this.animationFrame = requestAnimationFrame(animate);
         } else {
           this.animationFrame = null;
+          this.highlightIndex = winnerIndex;
+          this.draw(); // Redraw with highlight
           audio.land();
           // Show result with animation class
           this.resultEl.textContent = winnerName;
