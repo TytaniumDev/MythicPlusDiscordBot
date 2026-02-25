@@ -215,7 +215,7 @@ export class Wheel {
     this.ctx.shadowColor = 'transparent';
 
     // Center hub with radial gradient
-    const hubRadius = Math.max(12, size * 0.06);
+    const hubRadius = Math.max(6, size * 0.025);
     const hubGrad = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, hubRadius);
     hubGrad.addColorStop(0, '#2d1b69');
     hubGrad.addColorStop(1, '#0d0d1a');
