@@ -121,6 +121,7 @@ export class Wheel {
     const cx = size / 2;
     const cy = size / 2;
     const radius = cx - size * 0.03;
+    const hubRadius = Math.max(6, size * 0.025);
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -187,7 +188,8 @@ export class Wheel {
       if (name.length > 12) name = name.substring(0, 11) + '..';
 
       const textInset = size * (this.entries.length > 8 ? 0.05 : 0.08);
-      this.ctx.fillText(name, radius - textInset, 0);
+      const maxTextWidth = radius - textInset - hubRadius - size * 0.04;
+      this.ctx.fillText(name, radius - textInset, 0, maxTextWidth);
       this.ctx.restore();
     });
 
@@ -215,7 +217,6 @@ export class Wheel {
     this.ctx.shadowColor = 'transparent';
 
     // Center hub with radial gradient
-    const hubRadius = Math.max(6, size * 0.025);
     const hubGrad = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, hubRadius);
     hubGrad.addColorStop(0, '#2d1b69');
     hubGrad.addColorStop(1, '#0d0d1a');
