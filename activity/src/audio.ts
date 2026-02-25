@@ -1,6 +1,7 @@
 /** Web Audio API sound effects for the wheel spinner */
 class AudioManager {
   private ctx: AudioContext | null = null;
+  private lastTickTime = 0;
 
   private getContext(): AudioContext {
     if (!this.ctx) {
@@ -15,6 +16,9 @@ class AudioManager {
 
   /** Short click/pop when wheel crosses a segment boundary */
   tick() {
+    const now = performance.now();
+    if (now - this.lastTickTime < 30) return;
+    this.lastTickTime = now;
     try {
       const ctx = this.getContext();
       const osc = ctx.createOscillator();

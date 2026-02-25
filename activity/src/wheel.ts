@@ -179,8 +179,8 @@ export class Wheel {
       this.ctx.shadowOffsetY = 1;
       this.ctx.shadowBlur = Math.max(4, size * 0.015);
 
-      const entryScale = Math.min(1, 6 / this.entries.length);
-      const fontSize = Math.max(8, Math.min(20, Math.round(size * 0.055 * entryScale)));
+      const entryScale = Math.min(1, Math.sqrt(6 / this.entries.length));
+      const fontSize = Math.max(10, Math.min(24, Math.round(size * 0.06 * entryScale)));
       this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
 
       let name = entry.name;
