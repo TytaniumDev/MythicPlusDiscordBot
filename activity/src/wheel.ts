@@ -311,7 +311,7 @@ export class Wheel {
       const targetAngle = -(winnerIndex * sliceAngle + sliceAngle / 2) - Math.PI / 2;
 
       // Add many full rotations for visual spin effect
-      const fullRotations = Math.PI * 2 * (8 + Math.random() * 4);
+      const fullRotations = Math.PI * 2 * (8 + Math.floor(Math.random() * 4));
       const finalRotation = targetAngle + fullRotations;
 
       const startRotation = this.rotation;
