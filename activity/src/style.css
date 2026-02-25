@@ -429,6 +429,7 @@ body {
   width: 100%;
   aspect-ratio: 1;
   container-type: inline-size;
+  margin-top: 2cqi;
 }
 
 .wheel-frame canvas {

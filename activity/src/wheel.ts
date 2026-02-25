@@ -179,13 +179,15 @@ export class Wheel {
       this.ctx.shadowOffsetY = 1;
       this.ctx.shadowBlur = Math.max(4, size * 0.015);
 
-      const fontSize = Math.max(10, Math.min(20, Math.round(size * 0.055)));
+      const entryScale = Math.min(1, 6 / this.entries.length);
+      const fontSize = Math.max(8, Math.min(20, Math.round(size * 0.055 * entryScale)));
       this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
 
       let name = entry.name;
       if (name.length > 12) name = name.substring(0, 11) + '..';
 
-      this.ctx.fillText(name, radius - size * 0.08, 0);
+      const textInset = size * (this.entries.length > 8 ? 0.05 : 0.08);
+      this.ctx.fillText(name, radius - textInset, 0);
       this.ctx.restore();
     });
 
