@@ -11,7 +11,7 @@
 
 ## 📸 Preview
 
-![Hero Visual](docs/images/hero.png)
+![Screenshot of the Mythic+ Group Organizer activity in Discord](docs/images/hero.png)
 
 ## ⚡ Quick Start (Local Development)
 
