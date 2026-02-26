@@ -1,18 +1,17 @@
 # MythicPlusDiscordBot 💎
 
-[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 ### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
 > Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with interactive activities.
 
+[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ---
 
 ## 📸 Preview
 
-![Hero Visual](https://placehold.co/600x400?text=App+Screenshot+Coming+Soon)
+![Hero Visual](docs/images/hero.png)
 
 ## ⚡ Quick Start (Local Development)
 
@@ -53,11 +52,12 @@ Get up and running in less than 5 minutes.
 *   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
 *   **🎮 Activity Setup**: [Read `ACTIVITY_SETUP.md`](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
 *   **🔥 Firebase Setup**: [Read `FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Database and Auth configuration.
-*   **👨‍💻 Contributing**: [Read `AGENTS.md`](./AGENTS.md) - Development standards and guidelines.
+*   **👨‍💻 Contributing**: [Read `CONTRIBUTING.md`](./CONTRIBUTING.md) - Development standards and guidelines.
+*   **🤖 AI Operations**: [Read `AGENTS.md`](./AGENTS.md) - Operational standards for AI agents.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check `AGENTS.md` for development standards and guidelines.
+We welcome contributions! Please check `CONTRIBUTING.md` for development standards and guidelines.
 
 1.  **Install Pre-commit Hooks**
     ```bash
