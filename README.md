@@ -57,7 +57,7 @@ Get up and running in less than 5 minutes.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check `CONTRIBUTING.md` for development standards and guidelines.
+We welcome contributions! Please check [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development standards and guidelines.
 
 1.  **Install Pre-commit Hooks**
     ```bash
