@@ -1,19 +1,22 @@
 name: CI
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
-    branches: [main, master]
-  workflow_call:
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
-  lint:
-    name: CI
-    uses: TytaniumDev/.github/.github/workflows/lint.yml@main
-
-  build:
-    name: CI
-    uses: TytaniumDev/.github/.github/workflows/build.yml@main
-
-  test:
-    name: CI
-    uses: TytaniumDev/.github/.github/workflows/test.yml@main
+  verify-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install
+      - name: Verify Backend
+        run: ./scripts/verify.sh
+        env:
+          CI: true
