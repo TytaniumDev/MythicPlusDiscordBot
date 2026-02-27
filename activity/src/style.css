@@ -327,8 +327,10 @@ body {
   gap: 6px;
 }
 
-.role-column-dps .player-chip {
-  display: inline-flex;
+.dps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .role-column-header {
@@ -918,6 +920,10 @@ body {
   #player-list {
     grid-template-columns: 1fr;
     overflow-y: auto;
+  }
+
+  .dps-grid {
+    grid-template-columns: 1fr;
   }
 }
 

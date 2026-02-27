@@ -420,9 +420,12 @@ function renderLobby(players: WoWPlayer[]) {
   dpsHeading.textContent = `DPS (${dps.length})`;
   rightCol.appendChild(dpsHeading);
 
+  const dpsGrid = document.createElement('div');
+  dpsGrid.className = 'dps-grid';
   dps.forEach((p) => {
-    rightCol.appendChild(createPlayerChip(p));
+    dpsGrid.appendChild(createPlayerChip(p));
   });
+  rightCol.appendChild(dpsGrid);
 
   playerList.appendChild(leftCol);
   playerList.appendChild(rightCol);
