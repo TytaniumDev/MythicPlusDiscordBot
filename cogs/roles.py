@@ -53,10 +53,9 @@ class Roles(commands.Cog):
 
             # Sync updated roles to Firebase if an activity session is active
             groups_cog = self.bot.get_cog("Groups")
-            if groups_cog is not None and hasattr(groups_cog, "session_service"):
-                session_svc = groups_cog.session_service  # type: ignore[attr-defined]
-                if guild.id in session_svc.active_sessions:
-                    await session_svc.update_guild_voice_states(guild)
+            session_svc = getattr(groups_cog, "session_service", None)
+            if session_svc and guild.id in session_svc.active_sessions:
+                await session_svc.update_guild_voice_states(guild)
 
         # Initial render
         members = [m for m in target_channel.members if not m.bot]

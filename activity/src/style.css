@@ -309,22 +309,41 @@ body {
 }
 
 #player-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   margin-bottom: 24px;
 }
 
+.role-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.role-column-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--border-subtle);
+  text-align: center;
+}
+
+.role-column-header.tank { color: var(--color-tank); border-color: var(--color-tank); }
+.role-column-header.healer { color: var(--color-healer); border-color: var(--color-healer); }
+.role-column-header.dps { color: var(--color-dps); border-color: var(--color-dps); }
+
 .player-chip {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 12px;
+  padding: 6px 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
   transition: border-color 0.2s;
 }
 
@@ -364,21 +383,21 @@ body {
 }
 
 .role-tag.tag-tank {
-  background: rgba(59, 130, 246, 0.2);
+  background: color-mix(in srgb, var(--color-tank) 20%, transparent);
   color: var(--color-tank);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  border: 1px solid color-mix(in srgb, var(--color-tank) 40%, transparent);
 }
 
 .role-tag.tag-healer {
-  background: rgba(34, 197, 94, 0.2);
+  background: color-mix(in srgb, var(--color-healer) 20%, transparent);
   color: var(--color-healer);
-  border: 1px solid rgba(34, 197, 94, 0.4);
+  border: 1px solid color-mix(in srgb, var(--color-healer) 40%, transparent);
 }
 
 .role-tag.tag-dps {
-  background: rgba(239, 68, 68, 0.2);
+  background: color-mix(in srgb, var(--color-dps) 20%, transparent);
   color: var(--color-dps);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid color-mix(in srgb, var(--color-dps) 40%, transparent);
 }
 
 .role-tag.tag-offspec {
@@ -387,15 +406,15 @@ body {
 }
 
 .role-tag.tag-subtype {
-  background: rgba(245, 158, 11, 0.15);
+  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
   color: var(--color-gold);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
 }
 
 .role-tag.tag-utility {
-  background: rgba(139, 92, 246, 0.2);
+  background: color-mix(in srgb, var(--color-purple) 20%, transparent);
   color: var(--color-purple);
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  border: 1px solid color-mix(in srgb, var(--color-purple) 40%, transparent);
 }
 
 #view-lobby .btn {

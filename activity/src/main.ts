@@ -381,45 +381,68 @@ function renderLobby(players: WoWPlayer[]) {
     spinBtn.textContent = 'Calculating...';
   }
 
-  players.forEach((p) => {
-    const chip = document.createElement('div');
-    chip.className = 'player-chip';
+  // Group players by main role into columns
+  const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
+  const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
+  const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
 
-    const roleKey = getPrimaryRole(p);
-    const roleName = formatRoleName(roleKey);
+  const columns: { label: string; roleClass: string; players: WoWPlayer[] }[] = [
+    { label: `Tank (${tanks.length})`, roleClass: 'tank', players: tanks },
+    { label: `Heal (${healers.length})`, roleClass: 'healer', players: healers },
+    { label: `DPS (${dps.length})`, roleClass: 'dps', players: dps },
+  ];
 
-    // Header row: dot + name
-    const header = document.createElement('div');
-    header.className = 'chip-header';
+  columns.forEach((col) => {
+    const column = document.createElement('div');
+    column.className = 'role-column';
 
-    const dot = document.createElement('span');
-    dot.className = `role-dot ${roleKey}`;
-    dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', roleName);
-    dot.setAttribute('title', roleName);
+    const heading = document.createElement('div');
+    heading.className = `role-column-header ${col.roleClass}`;
+    heading.textContent = col.label;
+    column.appendChild(heading);
 
-    const name = document.createElement('span');
-    name.textContent = p.name;
+    col.players.forEach((p) => {
+      const chip = document.createElement('div');
+      chip.className = 'player-chip';
 
-    header.appendChild(dot);
-    header.appendChild(name);
-    chip.appendChild(header);
+      const roleKey = getPrimaryRole(p);
+      const roleName = formatRoleName(roleKey);
 
-    // Tags row: role badges
-    const tags = getRoleTags(p);
-    if (tags.length > 0) {
-      const tagsRow = document.createElement('div');
-      tagsRow.className = 'chip-tags';
-      tags.forEach((tag) => {
-        const badge = document.createElement('span');
-        badge.className = `role-tag ${tag.cssClass}`;
-        badge.textContent = tag.label;
-        tagsRow.appendChild(badge);
-      });
-      chip.appendChild(tagsRow);
-    }
+      // Header row: dot + name
+      const header = document.createElement('div');
+      header.className = 'chip-header';
 
-    playerList.appendChild(chip);
+      const dot = document.createElement('span');
+      dot.className = `role-dot ${roleKey}`;
+      dot.setAttribute('role', 'img');
+      dot.setAttribute('aria-label', roleName);
+      dot.setAttribute('title', roleName);
+
+      const name = document.createElement('span');
+      name.textContent = p.name;
+
+      header.appendChild(dot);
+      header.appendChild(name);
+      chip.appendChild(header);
+
+      // Tags row: role badges
+      const tags = getRoleTags(p);
+      if (tags.length > 0) {
+        const tagsRow = document.createElement('div');
+        tagsRow.className = 'chip-tags';
+        tags.forEach((tag) => {
+          const badge = document.createElement('span');
+          badge.className = `role-tag ${tag.cssClass}`;
+          badge.textContent = tag.label;
+          tagsRow.appendChild(badge);
+        });
+        chip.appendChild(tagsRow);
+      }
+
+      column.appendChild(chip);
+    });
+
+    playerList.appendChild(column);
   });
 }
 
@@ -436,10 +459,10 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
   if (p.roles.healerMain) tags.push({ label: 'Healer', cssClass: 'tag-healer' });
   if (p.roles.dpsMain) tags.push({ label: 'DPS', cssClass: 'tag-dps' });
 
-  // Offspecs
-  if (p.roles.offtank) tags.push({ label: 'Tank Off', cssClass: 'tag-tank tag-offspec' });
-  if (p.roles.offhealer) tags.push({ label: 'Healer Off', cssClass: 'tag-healer tag-offspec' });
-  if (p.roles.offdps) tags.push({ label: 'DPS Off', cssClass: 'tag-dps tag-offspec' });
+  // Offspecs (only show if the corresponding main spec is not active)
+  if (p.roles.offtank && !p.roles.tankMain) tags.push({ label: 'Offtank', cssClass: 'tag-tank tag-offspec' });
+  if (p.roles.offhealer && !p.roles.healerMain) tags.push({ label: 'Offheal', cssClass: 'tag-healer tag-offspec' });
+  if (p.roles.offdps && !p.roles.dpsMain) tags.push({ label: 'OffDPS', cssClass: 'tag-dps tag-offspec' });
 
   // DPS subtypes
   if (p.roles.ranged) tags.push({ label: 'Ranged', cssClass: 'tag-subtype' });
