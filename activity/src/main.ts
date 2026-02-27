@@ -388,6 +388,10 @@ function renderLobby(players: WoWPlayer[]) {
     const roleKey = getPrimaryRole(p);
     const roleName = formatRoleName(roleKey);
 
+    // Header row: dot + name
+    const header = document.createElement('div');
+    header.className = 'chip-header';
+
     const dot = document.createElement('span');
     dot.className = `role-dot ${roleKey}`;
     dot.setAttribute('role', 'img');
@@ -397,10 +401,55 @@ function renderLobby(players: WoWPlayer[]) {
     const name = document.createElement('span');
     name.textContent = p.name;
 
-    chip.appendChild(dot);
-    chip.appendChild(name);
+    header.appendChild(dot);
+    header.appendChild(name);
+    chip.appendChild(header);
+
+    // Tags row: role badges
+    const tags = getRoleTags(p);
+    if (tags.length > 0) {
+      const tagsRow = document.createElement('div');
+      tagsRow.className = 'chip-tags';
+      tags.forEach((tag) => {
+        const badge = document.createElement('span');
+        badge.className = `role-tag ${tag.cssClass}`;
+        badge.textContent = tag.label;
+        tagsRow.appendChild(badge);
+      });
+      chip.appendChild(tagsRow);
+    }
+
     playerList.appendChild(chip);
   });
+}
+
+interface RoleTag {
+  label: string;
+  cssClass: string;
+}
+
+function getRoleTags(p: WoWPlayer): RoleTag[] {
+  const tags: RoleTag[] = [];
+
+  // Main roles
+  if (p.roles.tankMain) tags.push({ label: 'Tank', cssClass: 'tag-tank' });
+  if (p.roles.healerMain) tags.push({ label: 'Healer', cssClass: 'tag-healer' });
+  if (p.roles.dpsMain) tags.push({ label: 'DPS', cssClass: 'tag-dps' });
+
+  // Offspecs
+  if (p.roles.offtank) tags.push({ label: 'Tank Off', cssClass: 'tag-tank tag-offspec' });
+  if (p.roles.offhealer) tags.push({ label: 'Healer Off', cssClass: 'tag-healer tag-offspec' });
+  if (p.roles.offdps) tags.push({ label: 'DPS Off', cssClass: 'tag-dps tag-offspec' });
+
+  // DPS subtypes
+  if (p.roles.ranged) tags.push({ label: 'Ranged', cssClass: 'tag-subtype' });
+  if (p.roles.melee) tags.push({ label: 'Melee', cssClass: 'tag-subtype' });
+
+  // Utilities
+  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-utility' });
+  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-utility' });
+
+  return tags;
 }
 
 function getPrimaryRole(p: WoWPlayer): string {

@@ -318,14 +318,20 @@ body {
 
 .player-chip {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  border-radius: var(--radius-md);
   font-size: 0.85rem;
   transition: border-color 0.2s;
+}
+
+.chip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .player-chip .role-dot {
@@ -338,6 +344,59 @@ body {
 .role-dot.tank { background: var(--color-tank); }
 .role-dot.healer { background: var(--color-healer); }
 .role-dot.dps { background: var(--color-dps); }
+
+.chip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.role-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.role-tag.tag-tank {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--color-tank);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.role-tag.tag-healer {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--color-healer);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.role-tag.tag-dps {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-dps);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.role-tag.tag-offspec {
+  background: transparent;
+  opacity: 0.7;
+}
+
+.role-tag.tag-subtype {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-gold);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.role-tag.tag-utility {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--color-purple);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
 
 #view-lobby .btn {
   margin-top: 8px;
