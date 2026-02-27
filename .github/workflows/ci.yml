@@ -6,14 +6,6 @@ on:
   workflow_call:
 
 jobs:
-  lint:
-    name: CI
-    uses: TytaniumDev/.github/.github/workflows/lint.yml@main
-
   build:
     name: CI
     uses: TytaniumDev/.github/.github/workflows/build.yml@main
-
-  test:
-    name: CI
-    uses: TytaniumDev/.github/.github/workflows/test.yml@main
