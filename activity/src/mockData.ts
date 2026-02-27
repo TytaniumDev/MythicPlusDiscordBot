@@ -229,6 +229,15 @@ export const mockGroups: WoWGroup[] = [
       mockPlayers[9], // DrZoidberg (DPS, Ranged)
       mockPlayers[5]  // Will (DPS)
     ]
+  },
+  {
+    tank: null,
+    healer: null,
+    dps: [
+      mockPlayers[7],  // hammer13 (DPS)
+      mockPlayers[10], // Player1x (DPS, Healer Offspec, Lust)
+      mockPlayers[12]  // rorschach128 (DPS)
+    ]
   }
 ];
 
