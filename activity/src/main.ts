@@ -43,6 +43,7 @@ const channelList = document.getElementById('channel-list') as HTMLDivElement;
 const playerList = document.getElementById('player-list') as HTMLDivElement;
 const playerCount = document.getElementById('player-count') as HTMLSpanElement;
 const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
+const changeChannelBtn = document.getElementById('change-channel-btn') as HTMLButtonElement;
 
 // Wheels
 const wheelStatus = document.getElementById('wheel-status') as HTMLDivElement;
@@ -170,6 +171,7 @@ async function init() {
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
   startSessionBtn.addEventListener('click', createSession);
+  changeChannelBtn.addEventListener('click', changeChannel);
 
   // Check for injected mock data (testing)
   const dataParam = urlParams.get('data');
@@ -354,6 +356,21 @@ async function selectChannel(channelId: string) {
   if (!currentSessionId) return;
   const docRef = doc(db, 'sessions', currentSessionId);
   await updateDoc(docRef, { selectedChannelId: channelId });
+}
+
+async function changeChannel() {
+  if (isDemoMode && currentSessionData) {
+    handleSessionUpdate({
+      ...currentSessionData,
+      selectedChannelId: null,
+      players: [],
+    } as Session);
+    return;
+  }
+
+  if (!currentSessionId) return;
+  const docRef = doc(db, 'sessions', currentSessionId);
+  await updateDoc(docRef, { selectedChannelId: null, players: [] });
 }
 
 // ── Lobby ────────────────────────────────────────────────────

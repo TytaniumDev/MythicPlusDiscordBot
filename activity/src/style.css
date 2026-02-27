@@ -227,6 +227,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 14px 18px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -296,6 +297,27 @@ body {
 
 .lobby-header h2 {
   font-size: 1.1rem;
+  color: var(--text-heading);
+}
+
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
   color: var(--text-heading);
 }
 
