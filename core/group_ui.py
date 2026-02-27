@@ -35,6 +35,36 @@ def build_group_embed(group: WoWGroup, group_number: int) -> discord.Embed:
     return embed
 
 
+async def _animate_update(
+    channel: discord.abc.GuildChannel | discord.abc.Messageable,
+    message: discord.Message,
+    embed: discord.Embed,
+    index: int,
+    name: str,
+    value: str,
+    debug: bool,
+) -> discord.Message:
+    """
+    Helper function to perform an animated update of a single embed field.
+
+    Args:
+        channel: The channel where typing should be shown.
+        message: The message to edit.
+        embed: The current embed object.
+        index: The index of the field to update.
+        name: The name of the field to update.
+        value: The new value for the field.
+        debug: Whether to skip typing delay.
+
+    Returns:
+        The updated message object.
+    """
+    await show_short_typing(channel, debug_mode=debug)
+    return await message.edit(
+        embed=embed.set_field_at(index=index, name=name, value=value)
+    )
+
+
 async def announce_group(
     ctx: commands.Context[commands.Bot],
     channel: discord.abc.GuildChannel | discord.abc.Messageable,
@@ -93,38 +123,41 @@ async def announce_group(
         )
 
         embedMessage = await ctx.send(embed=embed)
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
+
+        embedMessage = await _animate_update(
+            channel, embedMessage, embed, 0, "Tank", tank_name, debug
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
+        embedMessage = await _animate_update(
+            channel, embedMessage, embed, 1, "Healer", healer_name, debug
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
-            )
+        embedMessage = await _animate_update(
+            channel,
+            embedMessage,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
+            debug,
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
-            )
+        embedMessage = await _animate_update(
+            channel,
+            embedMessage,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
+            debug,
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {dps2_name}, {dps3_name}",
-            )
+        embedMessage = await _animate_update(
+            channel,
+            embedMessage,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {dps2_name}, {dps3_name}",
+            debug,
         )
+        # Final updates for utilities don't need typing delay
         embedMessage = await embedMessage.edit(
             embed=embed.set_field_at(index=3, name="Battle Res", value=f"{brez_player}")
         )
