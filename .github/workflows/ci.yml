@@ -2,10 +2,14 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main]
   workflow_call:
 
 jobs:
-  ci:
+  lint:
     name: CI
-    uses: TytaniumDev/.github/.github/workflows/ci.yml@main
+    uses: TytaniumDev/.github/.github/workflows/lint.yml@main
+
+  test:
+    name: CI
+    uses: TytaniumDev/.github/.github/workflows/test.yml@main
