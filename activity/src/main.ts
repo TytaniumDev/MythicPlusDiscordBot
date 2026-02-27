@@ -381,69 +381,90 @@ function renderLobby(players: WoWPlayer[]) {
     spinBtn.textContent = 'Calculating...';
   }
 
-  // Group players by main role into columns
+  // Group players by main role
   const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
   const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
   const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
 
-  const columns: { label: string; roleClass: string; players: WoWPlayer[] }[] = [
+  // Left column: Tank + Heal sections stacked
+  const leftCol = document.createElement('div');
+  leftCol.className = 'role-column';
+
+  const sections: { label: string; roleClass: string; players: WoWPlayer[] }[] = [
     { label: `Tank (${tanks.length})`, roleClass: 'tank', players: tanks },
     { label: `Heal (${healers.length})`, roleClass: 'healer', players: healers },
-    { label: `DPS (${dps.length})`, roleClass: 'dps', players: dps },
   ];
 
-  columns.forEach((col) => {
-    const column = document.createElement('div');
-    column.className = 'role-column';
+  sections.forEach((sec) => {
+    const section = document.createElement('div');
+    section.className = 'role-section';
 
     const heading = document.createElement('div');
-    heading.className = `role-column-header ${col.roleClass}`;
-    heading.textContent = col.label;
-    column.appendChild(heading);
+    heading.className = `role-column-header ${sec.roleClass}`;
+    heading.textContent = sec.label;
+    section.appendChild(heading);
 
-    col.players.forEach((p) => {
-      const chip = document.createElement('div');
-      chip.className = 'player-chip';
-
-      const roleKey = getPrimaryRole(p);
-      const roleName = formatRoleName(roleKey);
-
-      // Header row: dot + name
-      const header = document.createElement('div');
-      header.className = 'chip-header';
-
-      const dot = document.createElement('span');
-      dot.className = `role-dot ${roleKey}`;
-      dot.setAttribute('role', 'img');
-      dot.setAttribute('aria-label', roleName);
-      dot.setAttribute('title', roleName);
-
-      const name = document.createElement('span');
-      name.textContent = p.name;
-
-      header.appendChild(dot);
-      header.appendChild(name);
-      chip.appendChild(header);
-
-      // Tags row: role badges
-      const tags = getRoleTags(p);
-      if (tags.length > 0) {
-        const tagsRow = document.createElement('div');
-        tagsRow.className = 'chip-tags';
-        tags.forEach((tag) => {
-          const badge = document.createElement('span');
-          badge.className = `role-tag ${tag.cssClass}`;
-          badge.textContent = tag.label;
-          tagsRow.appendChild(badge);
-        });
-        chip.appendChild(tagsRow);
-      }
-
-      column.appendChild(chip);
+    sec.players.forEach((p) => {
+      section.appendChild(createPlayerChip(p));
     });
 
-    playerList.appendChild(column);
+    leftCol.appendChild(section);
   });
+
+  // Right column: DPS section
+  const rightCol = document.createElement('div');
+  rightCol.className = 'role-column role-column-dps';
+
+  const dpsHeading = document.createElement('div');
+  dpsHeading.className = 'role-column-header dps';
+  dpsHeading.textContent = `DPS (${dps.length})`;
+  rightCol.appendChild(dpsHeading);
+
+  dps.forEach((p) => {
+    rightCol.appendChild(createPlayerChip(p));
+  });
+
+  playerList.appendChild(leftCol);
+  playerList.appendChild(rightCol);
+}
+
+function createPlayerChip(p: WoWPlayer): HTMLElement {
+  const chip = document.createElement('div');
+  chip.className = 'player-chip';
+
+  const roleKey = getPrimaryRole(p);
+  const roleName = formatRoleName(roleKey);
+
+  const header = document.createElement('div');
+  header.className = 'chip-header';
+
+  const dot = document.createElement('span');
+  dot.className = `role-dot ${roleKey}`;
+  dot.setAttribute('role', 'img');
+  dot.setAttribute('aria-label', roleName);
+  dot.setAttribute('title', roleName);
+
+  const name = document.createElement('span');
+  name.textContent = p.name;
+
+  header.appendChild(dot);
+  header.appendChild(name);
+  chip.appendChild(header);
+
+  const tags = getRoleTags(p);
+  if (tags.length > 0) {
+    const tagsRow = document.createElement('div');
+    tagsRow.className = 'chip-tags';
+    tags.forEach((tag) => {
+      const badge = document.createElement('span');
+      badge.className = `role-tag ${tag.cssClass}`;
+      badge.textContent = tag.label;
+      tagsRow.appendChild(badge);
+    });
+    chip.appendChild(tagsRow);
+  }
+
+  return chip;
 }
 
 interface RoleTag {

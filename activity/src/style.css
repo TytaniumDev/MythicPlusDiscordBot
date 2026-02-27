@@ -310,7 +310,7 @@ body {
 
 #player-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 2fr;
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -318,7 +318,17 @@ body {
 .role-column {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.role-section {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+
+.role-column-dps .player-chip {
+  display: inline-flex;
 }
 
 .role-column-header {
@@ -902,6 +912,12 @@ body {
 
   .wheel-result {
     font-size: 0.7rem;
+  }
+
+  /* Collapse lobby columns to single scrollable column */
+  #player-list {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 }
 
