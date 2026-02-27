@@ -72,7 +72,8 @@ let isDemoMode = false;
 let discordChannelId: string | null = null;
 
 // Spin sequence state
-let groups: WoWGroup[] = [];
+let fullGroups: WoWGroup[] = [];
+let remainderGroups: WoWGroup[] = [];
 let currentGroupIndex = 0;
 let isAnimating = false;
 let spinSequenceStarted = false;
@@ -437,9 +438,15 @@ async function requestSpin() {
   await updateDoc(docRef, { status: 'request_spin' });
 }
 
+// ── Group Completeness Check ─────────────────────────────────
+function isCompleteGroup(group: WoWGroup): boolean {
+  return group.tank !== null && group.healer !== null && group.dps.length === 3;
+}
+
 // ── Spin Sequence ────────────────────────────────────────────
 function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
-  groups = sessionGroups;
+  fullGroups = sessionGroups.filter(isCompleteGroup);
+  remainderGroups = sessionGroups.filter((g) => !isCompleteGroup(g));
   currentGroupIndex = 0;
   isAnimating = false;
 
@@ -484,7 +491,7 @@ function initAllWheels() {
 function updateNextButton() {
   nextBtn.classList.remove('hidden');
 
-  if (currentGroupIndex >= groups.length) {
+  if (currentGroupIndex >= fullGroups.length) {
     nextBtn.textContent = 'Finish';
     nextBtn.disabled = false;
     nextBtn.onclick = finishSpinSequence;
@@ -497,7 +504,7 @@ function updateNextButton() {
 }
 
 async function spinForCurrentGroup() {
-  if (isAnimating || currentGroupIndex >= groups.length) return;
+  if (isAnimating || currentGroupIndex >= fullGroups.length) return;
 
   if (isCarouselMode()) {
     await spinForCurrentGroupCarousel();
@@ -510,7 +517,7 @@ async function spinForCurrentGroup() {
 async function spinForCurrentGroupGrid() {
   isAnimating = true;
   nextBtn.disabled = true;
-  const group = groups[currentGroupIndex];
+  const group = fullGroups[currentGroupIndex];
   wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
 
   // Add spinning class for glow animation
@@ -569,7 +576,7 @@ async function spinForCurrentGroupGrid() {
 async function spinForCurrentGroupCarousel() {
   isAnimating = true;
   nextBtn.disabled = true;
-  const group = groups[currentGroupIndex];
+  const group = fullGroups[currentGroupIndex];
   wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
 
   // Clear previous results
@@ -633,6 +640,14 @@ function advanceAfterSpin(_group: WoWGroup) {
   // Advance to next group (pools are kept intact so all players remain in wheels)
   currentGroupIndex++;
   isAnimating = false;
+
+  // After all full groups are spun, show remainder groups as cards (no wheel spin)
+  if (currentGroupIndex >= fullGroups.length && remainderGroups.length > 0) {
+    remainderGroups.forEach((rg, i) => {
+      appendGroupCard(rg, fullGroups.length + i, 'Remainder');
+    });
+  }
+
   updateNextButton();
 }
 
@@ -659,11 +674,11 @@ function utilityIcons(player?: WoWPlayer | null): string {
 }
 
 // ── Group Card Rendering ─────────────────────────────────────
-function appendGroupCard(group: WoWGroup, index: number) {
+function appendGroupCard(group: WoWGroup, index: number, label?: string) {
   if (isCompactPanel()) {
-    groupsList.appendChild(createCompactGroupCard(group, index));
+    groupsList.appendChild(createCompactGroupCard(group, index, label));
   } else {
-    groupsList.appendChild(createGroupCard(group, index));
+    groupsList.appendChild(createGroupCard(group, index, label));
   }
 }
 
@@ -671,12 +686,12 @@ function isCompactPanel(): boolean {
   return window.innerWidth < 900;
 }
 
-function createGroupCard(group: WoWGroup, index: number): HTMLDivElement {
+function createGroupCard(group: WoWGroup, index: number, label?: string): HTMLDivElement {
   const div = document.createElement('div');
   div.className = 'group-card';
 
   const h4 = document.createElement('h4');
-  h4.textContent = `Group ${index + 1}`;
+  h4.textContent = label ?? `Group ${index + 1}`;
   div.appendChild(h4);
 
   // Tank role
@@ -720,12 +735,12 @@ function createRoleRow(
   return row;
 }
 
-function createCompactGroupCard(group: WoWGroup, index: number): HTMLDivElement {
+function createCompactGroupCard(group: WoWGroup, index: number, label?: string): HTMLDivElement {
   const div = document.createElement('div');
   div.className = 'group-card-compact';
 
   const h4 = document.createElement('h4');
-  h4.textContent = `Group ${index + 1}`;
+  h4.textContent = label ?? `Group ${index + 1}`;
   div.appendChild(h4);
 
   const roles: { color: string; roleLabel: string; name: string; player?: WoWPlayer | null }[] = [];
@@ -783,14 +798,16 @@ function showResults(sessionGroups: WoWGroup[]) {
   finalGroups.textContent = '';
 
   sessionGroups.forEach((g, i) => {
-    finalGroups.appendChild(createGroupCard(g, i));
+    const label = isCompleteGroup(g) ? undefined : 'Remainder';
+    finalGroups.appendChild(createGroupCard(g, i, label));
   });
 }
 
 // ── New Round ────────────────────────────────────────────────
 async function startNewRound() {
   spinSequenceStarted = false;
-  groups = [];
+  fullGroups = [];
+  remainderGroups = [];
   currentGroupIndex = 0;
   isAnimating = false;
 
