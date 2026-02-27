@@ -381,26 +381,122 @@ function renderLobby(players: WoWPlayer[]) {
     spinBtn.textContent = 'Calculating...';
   }
 
-  players.forEach((p) => {
-    const chip = document.createElement('div');
-    chip.className = 'player-chip';
+  // Group players by main role
+  const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
+  const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
+  const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
 
-    const roleKey = getPrimaryRole(p);
-    const roleName = formatRoleName(roleKey);
+  // Left column: Tank + Heal sections stacked
+  const leftCol = document.createElement('div');
+  leftCol.className = 'role-column';
 
-    const dot = document.createElement('span');
-    dot.className = `role-dot ${roleKey}`;
-    dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', roleName);
-    dot.setAttribute('title', roleName);
+  const sections: { label: string; roleClass: string; players: WoWPlayer[] }[] = [
+    { label: `Tank (${tanks.length})`, roleClass: 'tank', players: tanks },
+    { label: `Heal (${healers.length})`, roleClass: 'healer', players: healers },
+  ];
 
-    const name = document.createElement('span');
-    name.textContent = p.name;
+  sections.forEach((sec) => {
+    const section = document.createElement('div');
+    section.className = 'role-section';
 
-    chip.appendChild(dot);
-    chip.appendChild(name);
-    playerList.appendChild(chip);
+    const heading = document.createElement('div');
+    heading.className = `role-column-header ${sec.roleClass}`;
+    heading.textContent = sec.label;
+    section.appendChild(heading);
+
+    sec.players.forEach((p) => {
+      section.appendChild(createPlayerChip(p));
+    });
+
+    leftCol.appendChild(section);
   });
+
+  // Right column: DPS section
+  const rightCol = document.createElement('div');
+  rightCol.className = 'role-column role-column-dps';
+
+  const dpsHeading = document.createElement('div');
+  dpsHeading.className = 'role-column-header dps';
+  dpsHeading.textContent = `DPS (${dps.length})`;
+  rightCol.appendChild(dpsHeading);
+
+  const dpsGrid = document.createElement('div');
+  dpsGrid.className = 'dps-grid';
+  dps.forEach((p) => {
+    dpsGrid.appendChild(createPlayerChip(p));
+  });
+  rightCol.appendChild(dpsGrid);
+
+  playerList.appendChild(leftCol);
+  playerList.appendChild(rightCol);
+}
+
+function createPlayerChip(p: WoWPlayer): HTMLElement {
+  const chip = document.createElement('div');
+  chip.className = 'player-chip';
+
+  const roleKey = getPrimaryRole(p);
+  const roleName = formatRoleName(roleKey);
+
+  const header = document.createElement('div');
+  header.className = 'chip-header';
+
+  const dot = document.createElement('span');
+  dot.className = `role-dot ${roleKey}`;
+  dot.setAttribute('role', 'img');
+  dot.setAttribute('aria-label', roleName);
+  dot.setAttribute('title', roleName);
+
+  const name = document.createElement('span');
+  name.textContent = p.name;
+
+  header.appendChild(dot);
+  header.appendChild(name);
+  chip.appendChild(header);
+
+  const tags = getRoleTags(p);
+  if (tags.length > 0) {
+    const tagsRow = document.createElement('div');
+    tagsRow.className = 'chip-tags';
+    tags.forEach((tag) => {
+      const badge = document.createElement('span');
+      badge.className = `role-tag ${tag.cssClass}`;
+      badge.textContent = tag.label;
+      tagsRow.appendChild(badge);
+    });
+    chip.appendChild(tagsRow);
+  }
+
+  return chip;
+}
+
+interface RoleTag {
+  label: string;
+  cssClass: string;
+}
+
+function getRoleTags(p: WoWPlayer): RoleTag[] {
+  const tags: RoleTag[] = [];
+
+  // Main roles
+  if (p.roles.tankMain) tags.push({ label: 'Tank', cssClass: 'tag-tank' });
+  if (p.roles.healerMain) tags.push({ label: 'Healer', cssClass: 'tag-healer' });
+  if (p.roles.dpsMain) tags.push({ label: 'DPS', cssClass: 'tag-dps' });
+
+  // Offspecs (only show if the corresponding main spec is not active)
+  if (p.roles.offtank && !p.roles.tankMain) tags.push({ label: 'Offtank', cssClass: 'tag-tank tag-offspec' });
+  if (p.roles.offhealer && !p.roles.healerMain) tags.push({ label: 'Offheal', cssClass: 'tag-healer tag-offspec' });
+  if (p.roles.offdps && !p.roles.dpsMain) tags.push({ label: 'OffDPS', cssClass: 'tag-dps tag-offspec' });
+
+  // DPS subtypes
+  if (p.roles.ranged) tags.push({ label: 'Ranged', cssClass: 'tag-subtype' });
+  if (p.roles.melee) tags.push({ label: 'Melee', cssClass: 'tag-subtype' });
+
+  // Utilities
+  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-utility' });
+  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-utility' });
+
+  return tags;
 }
 
 function getPrimaryRole(p: WoWPlayer): string {

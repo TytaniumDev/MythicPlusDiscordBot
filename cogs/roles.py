@@ -51,6 +51,12 @@ class Roles(commands.Cog):
 
             await board_message.edit(embed=embed)
 
+            # Sync updated roles to Firebase if an activity session is active
+            groups_cog = self.bot.get_cog("Groups")
+            session_svc = getattr(groups_cog, "session_service", None)
+            if session_svc and guild.id in session_svc.active_sessions:
+                await session_svc.update_guild_voice_states(guild)
+
         # Initial render
         members = [m for m in target_channel.members if not m.bot]
         players = get_player_list(cast(list[discord.Member], members))
