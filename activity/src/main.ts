@@ -50,7 +50,11 @@ const playerCount = document.getElementById('player-count') as HTMLSpanElement;
 const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
 const changeChannelBtn = document.getElementById('change-channel-btn') as HTMLButtonElement;
 
+// Lobby options
+const announceCheckbox = document.getElementById('announce-checkbox') as HTMLInputElement;
+
 // Wheels
+const wheelsBackBtn = document.getElementById('wheels-back-btn') as HTMLButtonElement;
 const wheelStatus = document.getElementById('wheel-status') as HTMLDivElement;
 const nextBtn = document.getElementById('next-btn') as HTMLButtonElement;
 const wheelsContainer = document.querySelector('.wheels-container') as HTMLDivElement;
@@ -243,7 +247,20 @@ async function init() {
   newRoundBtn.addEventListener('click', startNewRound);
   startSessionBtn.addEventListener('click', createSession);
   changeChannelBtn.addEventListener('click', changeChannel);
-  document.querySelector('.app-header h1')!.addEventListener('click', () => showView('home'));
+  wheelsBackBtn.addEventListener('click', () => cancelAndReturnToLobby());
+  document.querySelector('.app-header h1')!.addEventListener('click', () => {
+    if (!viewWheels.classList.contains('hidden')) {
+      cancelAndReturnToLobby();
+    } else {
+      showView('home');
+    }
+  });
+  announceCheckbox.addEventListener('change', async () => {
+    if (isDemoMode) return;
+    if (!currentSessionId) return;
+    const docRef = doc(db, 'sessions', currentSessionId);
+    await updateDoc(docRef, { announceResults: announceCheckbox.checked });
+  });
 
   // Check for injected mock data (testing)
   const dataParam = urlParams.get('data');
@@ -301,6 +318,7 @@ function handleSessionUpdate(data: Session) {
       } else {
         showView('lobby');
         renderLobby(data.players);
+        announceCheckbox.checked = data.announceResults !== false;
       }
       break;
 
@@ -733,6 +751,36 @@ function initAllWheels() {
   wheelDps3?.init(poolDps);
 }
 
+function resetSpinState() {
+  wheelTank?.cancel();
+  wheelHealer?.cancel();
+  wheelDps1?.cancel();
+  wheelDps2?.cancel();
+  wheelDps3?.cancel();
+  spinSequenceStarted = false;
+  fullGroups = [];
+  remainderGroups = [];
+  currentGroupIndex = 0;
+  isAnimating = false;
+}
+
+async function cancelAndReturnToLobby() {
+  resetSpinState();
+
+  if (isDemoMode && currentSessionData) {
+    handleSessionUpdate({
+      ...currentSessionData,
+      status: 'lobby',
+      groups: [],
+    } as Session);
+    return;
+  }
+
+  if (!currentSessionId) return;
+  const docRef = doc(db, 'sessions', currentSessionId);
+  await updateDoc(docRef, { status: 'lobby', groups: [] });
+}
+
 function updateNextButton() {
   nextBtn.classList.remove('hidden');
 
@@ -801,8 +849,13 @@ async function spinForCurrentGroupGrid() {
     }
   });
 
-  // Wait for all wheels to finish
-  await Promise.all(spinPromises);
+  try {
+    // Wait for all wheels to finish
+    await Promise.all(spinPromises);
+  } catch {
+    // Spin was cancelled — bail out silently
+    return;
+  }
 
   // Remove spinning class
   document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.remove('spinning'));
@@ -850,25 +903,30 @@ async function spinForCurrentGroupCarousel() {
     [4, wheelDps3, group.dps[2] || null],
   ];
 
-  for (const [slideIndex, wheel, winner] of sequence) {
-    if (!wheel || !winner) continue;
+  try {
+    for (const [slideIndex, wheel, winner] of sequence) {
+      if (!wheel || !winner) continue;
 
-    // Slide to this wheel
-    setCarouselSlide(slideIndex);
-    const slot = document.querySelectorAll('.wheel-slot')[slideIndex];
-    slot?.classList.add('spinning');
+      // Slide to this wheel
+      setCarouselSlide(slideIndex);
+      const slot = document.querySelectorAll('.wheel-slot')[slideIndex];
+      slot?.classList.add('spinning');
 
-    // Let carousel transition finish
-    await delay(350);
+      // Let carousel transition finish
+      await delay(350);
 
-    // Spin this wheel
-    await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
+      // Spin this wheel
+      await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
 
-    slot?.classList.remove('spinning');
-    markCarouselDotCompleted(slideIndex);
+      slot?.classList.remove('spinning');
+      markCarouselDotCompleted(slideIndex);
 
-    // Pause before next wheel
-    await delay(CAROUSEL_ADVANCE_DELAY);
+      // Pause before next wheel
+      await delay(CAROUSEL_ADVANCE_DELAY);
+    }
+  } catch {
+    // Spin was cancelled — bail out silently
+    return;
   }
 
   // Victory sound
@@ -1050,11 +1108,7 @@ function showResults(sessionGroups: WoWGroup[]) {
 
 // ── New Round ────────────────────────────────────────────────
 async function startNewRound() {
-  spinSequenceStarted = false;
-  fullGroups = [];
-  remainderGroups = [];
-  currentGroupIndex = 0;
-  isAnimating = false;
+  resetSpinState();
 
   if (isDemoMode && currentSessionData) {
     handleSessionUpdate({
@@ -1093,6 +1147,7 @@ async function createSession() {
     voiceChannels: [],
     selectedChannelId: discordChannelId,
     isDebug: false,
+    announceResults: true,
     createdAt: serverTimestamp(),
     lastActive: serverTimestamp(),
   });

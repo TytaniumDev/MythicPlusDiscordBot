@@ -54,6 +54,7 @@ export class Wheel {
   private baseLabel: string;
   private highlightIndex: number | null = null;
   private highlightProgress = 0;
+  private rejectSpin: ((reason?: string) => void) | null = null;
 
   constructor(canvasId: string, resultId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -300,11 +301,27 @@ export class Wheel {
     this.ctx.shadowColor = 'transparent';
   }
 
+  /** Cancel any in-progress spin, rejecting the promise */
+  cancel() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    this.highlightIndex = null;
+    this.highlightProgress = 0;
+    if (this.rejectSpin) {
+      this.rejectSpin('cancelled');
+      this.rejectSpin = null;
+    }
+  }
+
   /** Animate the wheel to land on a specific winner */
   spinTo(winnerName: string, duration = 4000): Promise<string> {
     this.canvas.setAttribute('aria-label', `${this.baseLabel}. Spinning...`);
     this.highlightIndex = null;
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      this.rejectSpin = reject;
+
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame);
       }
@@ -370,6 +387,7 @@ export class Wheel {
               this.animationFrame = requestAnimationFrame(fadeIn);
             } else {
               this.animationFrame = null;
+              this.rejectSpin = null;
               // Show result with animation class
               this.resultEl.textContent = winnerName;
               this.resultEl.classList.add('revealed');

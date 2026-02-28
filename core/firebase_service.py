@@ -107,6 +107,7 @@ class FirebaseService:
                 "voiceChannels": [],  # List of {id, name, userCount}
                 "selectedChannelId": selected_channel_id,
                 "isDebug": debug,
+                "announceResults": True,
                 "createdAt": firestore.SERVER_TIMESTAMP,
                 "lastActive": firestore.SERVER_TIMESTAMP,
                 **guild_fields,

@@ -175,9 +175,10 @@ class SessionService:
             )
 
         elif status == "completed":
-            asyncio.run_coroutine_threadsafe(
-                self._announce_completion(guild_id, data), self.bot.loop
-            )
+            if data.get("announceResults", True):
+                asyncio.run_coroutine_threadsafe(
+                    self._announce_completion(guild_id, data), self.bot.loop
+                )
 
         # If selected channel changed, we need to sync players immediately
         if new_selected != old_selected and new_selected:

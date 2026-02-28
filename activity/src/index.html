@@ -49,12 +49,20 @@
                         <div class="lobby-header-spacer" aria-hidden="true"></div>
                     </div>
                     <div id="player-list"></div>
+                    <label class="lobby-option">
+                        <input type="checkbox" id="announce-checkbox" checked>
+                        <span>Post results to chat</span>
+                    </label>
                     <button id="spin-btn" class="btn btn-primary btn-large" disabled>Loading...</button>
                 </section>
 
                 <!-- View: Wheels -->
                 <section id="view-wheels" class="view hidden">
-                    <div id="wheel-status" class="wheel-status"></div>
+                    <div class="wheels-header">
+                        <button id="wheels-back-btn" class="btn btn-back" aria-label="Back to lobby">&larr;</button>
+                        <div id="wheel-status" class="wheel-status"></div>
+                        <div class="wheels-header-spacer" aria-hidden="true"></div>
+                    </div>
 
                     <div class="wheels-content">
                         <div class="wheels-area">

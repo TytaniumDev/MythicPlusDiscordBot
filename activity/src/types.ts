@@ -41,6 +41,7 @@ export interface Session {
   selectedChannelId?: string | null;
   guildName?: string;
   guildIconUrl?: string;
+  announceResults?: boolean;
   createdAt: any; // Firestore Timestamp
 }
 
