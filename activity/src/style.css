@@ -1,4 +1,23 @@
 /* ============================================
+   Bundled Fonts — deterministic rendering
+   ============================================ */
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/Inter-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
    CSS Custom Properties
    ============================================ */
 :root {
@@ -20,7 +39,7 @@
   --text-secondary: #9ca3af;
   --text-heading: #ffffff;
 
-  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -551,22 +570,6 @@ body {
   border: 1px solid color-mix(in srgb, var(--color-purple) 40%, transparent);
 }
 
-.lobby-option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.lobby-option input[type="checkbox"] {
-  accent-color: var(--color-gold);
-  cursor: pointer;
-}
-
 #view-lobby .btn {
   margin-top: 8px;
 }
@@ -750,17 +753,25 @@ body {
 }
 
 /* ============================================
-   Side Panel — Vertical Groups
+   Side Column — Groups panel + announce toggle
    ============================================ */
-.side-panel {
+.side-column {
   width: var(--groups-panel-width);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 100%;
+}
+
+.side-panel {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 12px;
   overflow-y: auto;
-  max-height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .side-panel h3 {
@@ -775,6 +786,22 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.announce-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.announce-option input[type="checkbox"] {
+  accent-color: var(--color-gold);
+  cursor: pointer;
 }
 
 /* ============================================
