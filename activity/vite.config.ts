@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
 
-const commitHash = execSync('git rev-parse --short HEAD').toString().trim();
+const commitHash = process.env.PLAYWRIGHT_TEST
+  ? 'abc1234'
+  : execSync('git rev-parse --short HEAD').toString().trim();
 
 export default defineConfig({
   root: 'src',
