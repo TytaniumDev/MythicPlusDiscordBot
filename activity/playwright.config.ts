@@ -13,7 +13,8 @@ export default defineConfig({
     toHaveScreenshot: {
       // Tests seed Math.random for deterministic canvas rendering.
       // Small tolerance for font/subpixel differences across environments.
-      maxDiffPixelRatio: 0.01,
+      // When updating snapshots, use 0 so all changes are captured regardless of size.
+      maxDiffPixelRatio: process.env.UPDATE_SNAPSHOTS ? 0 : 0.01,
     },
   },
   projects: [
