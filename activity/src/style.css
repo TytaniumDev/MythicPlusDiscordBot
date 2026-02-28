@@ -551,6 +551,22 @@ body {
   border: 1px solid color-mix(in srgb, var(--color-purple) 40%, transparent);
 }
 
+.lobby-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lobby-option input[type="checkbox"] {
+  accent-color: var(--color-gold);
+  cursor: pointer;
+}
+
 #view-lobby .btn {
   margin-top: 8px;
 }
@@ -566,13 +582,27 @@ body {
   text-align: center;
 }
 
+.wheels-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.wheels-header .wheel-status {
+  flex: 1;
+}
+
+.wheels-header-spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
 .wheel-status {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-gold);
-  margin-bottom: 8px;
   min-height: 1.4em;
-  flex-shrink: 0;
 }
 
 /* Wheels content: wheels area + groups panel side by side */
