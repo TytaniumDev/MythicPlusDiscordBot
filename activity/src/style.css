@@ -292,6 +292,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  min-height: 32px;
   margin-bottom: 24px;
   position: relative;
 }
