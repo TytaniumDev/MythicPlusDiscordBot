@@ -45,8 +45,14 @@ class SessionService:
             voice_channel_id = str(ctx.author.voice.channel.id)
 
         # Get or create the session with the selected channel
+        guild_name = ctx.guild.name
+        guild_icon_url = str(ctx.guild.icon.url) if ctx.guild.icon else None
         session_id = await self.firebase.get_or_create_session(
-            guild_id, debug=debug, selected_channel_id=voice_channel_id
+            guild_id,
+            debug=debug,
+            selected_channel_id=voice_channel_id,
+            guild_name=guild_name,
+            guild_icon_url=guild_icon_url,
         )
 
         self.active_sessions[guild_id] = session_id

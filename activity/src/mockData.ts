@@ -243,6 +243,7 @@ export const mockGroups: WoWGroup[] = [
 
 export const mockSession: Session = {
   guildId: 'demo-guild',
+  guildName: 'Gif or Gif',
   status: 'lobby',
   players: [], // Initially empty until channel selected
   groups: [], // Initially empty

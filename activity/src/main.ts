@@ -3,7 +3,7 @@
 import { setupDiscordSdk } from './discordSdk';
 import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { Session, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
+import { Session, RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
 import { Wheel } from './wheel';
 import { audio } from './audio';
@@ -31,10 +31,15 @@ const startDemoBtn = document.getElementById('start-demo-btn') as HTMLButtonElem
 const startSessionBtn = document.getElementById('start-session-btn') as HTMLButtonElement;
 
 // Views
+const viewHome = document.getElementById('view-home') as HTMLElement;
 const viewChannels = document.getElementById('view-channels') as HTMLElement;
 const viewLobby = document.getElementById('view-lobby') as HTMLElement;
 const viewWheels = document.getElementById('view-wheels') as HTMLElement;
 const viewResults = document.getElementById('view-results') as HTMLElement;
+
+// Home view
+const recentGuildsList = document.getElementById('recent-guilds-list') as HTMLDivElement;
+const noRecentGuilds = document.getElementById('no-recent-guilds') as HTMLParagraphElement;
 
 // Channel picker
 const channelList = document.getElementById('channel-list') as HTMLDivElement;
@@ -154,6 +159,43 @@ carouselDots.forEach((dot) => {
   }, { passive: true });
 }
 
+// ── Recent Guilds (localStorage) ─────────────────────────────
+const RECENT_GUILDS_KEY = 'wheelson-recent-guilds';
+const MAX_RECENT_GUILDS = 10;
+
+function getRecentGuilds(): RecentGuild[] {
+  try {
+    const raw = localStorage.getItem(RECENT_GUILDS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as RecentGuild[])
+      .filter((g) => g.guildId && g.guildName && typeof g.lastVisited === 'number')
+      .sort((a, b) => b.lastVisited - a.lastVisited);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentGuild(guildId: string, guildName: string, guildIconUrl?: string) {
+  const guilds = getRecentGuilds().filter((g) => g.guildId !== guildId);
+  guilds.unshift({ guildId, guildName, guildIconUrl, lastVisited: Date.now() });
+  if (guilds.length > MAX_RECENT_GUILDS) guilds.length = MAX_RECENT_GUILDS;
+  localStorage.setItem(RECENT_GUILDS_KEY, JSON.stringify(guilds));
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 // ── Initialization ───────────────────────────────────────────
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -203,7 +245,8 @@ async function init() {
   console.log('[Activity] Resolved sessionId:', currentSessionId);
 
   if (!currentSessionId) {
-    statusMsg.textContent = 'No Guild/Session ID found. Try the Demo below.';
+    showView('home');
+    renderRecentGuilds();
     demoControls.classList.remove('hidden');
     return;
   }
@@ -231,6 +274,11 @@ async function init() {
 // ── Session State Handler ────────────────────────────────────
 function handleSessionUpdate(data: Session) {
   currentSessionData = data;
+
+  // Persist guild info for recent guilds list
+  if (currentSessionId && data.guildName) {
+    saveRecentGuild(currentSessionId, data.guildName, data.guildIconUrl);
+  }
 
   switch (data.status) {
     case 'lobby':
@@ -271,7 +319,8 @@ function handleSessionUpdate(data: Session) {
 }
 
 // ── View Management ──────────────────────────────────────────
-function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
+function showView(view: 'home' | 'channels' | 'lobby' | 'wheels' | 'results') {
+  viewHome.classList.add('hidden');
   viewChannels.classList.add('hidden');
   viewLobby.classList.add('hidden');
   viewWheels.classList.add('hidden');
@@ -280,6 +329,9 @@ function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
   statusMsg.textContent = '';
 
   switch (view) {
+    case 'home':
+      viewHome.classList.remove('hidden');
+      break;
     case 'channels':
       viewChannels.classList.remove('hidden');
       break;
@@ -301,6 +353,87 @@ function showView(view: 'channels' | 'lobby' | 'wheels' | 'results') {
       viewResults.classList.remove('hidden');
       break;
   }
+}
+
+// ── Home View (Recent Guilds) ────────────────────────────────
+function renderRecentGuilds() {
+  const guilds = getRecentGuilds();
+  recentGuildsList.textContent = '';
+
+  if (guilds.length === 0) {
+    noRecentGuilds.classList.remove('hidden');
+    return;
+  }
+
+  noRecentGuilds.classList.add('hidden');
+
+  guilds.forEach((guild) => {
+    const card = document.createElement('div');
+    card.className = 'guild-card';
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+
+    if (guild.guildIconUrl) {
+      const icon = document.createElement('img');
+      icon.className = 'guild-icon';
+      icon.src = guild.guildIconUrl;
+      icon.alt = '';
+      card.appendChild(icon);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'guild-icon-placeholder';
+      card.appendChild(placeholder);
+    }
+
+    const info = document.createElement('div');
+    info.className = 'guild-card-info';
+
+    const name = document.createElement('div');
+    name.className = 'guild-card-name';
+    name.textContent = guild.guildName;
+    info.appendChild(name);
+
+    const time = document.createElement('div');
+    time.className = 'guild-last-visited';
+    time.textContent = formatRelativeTime(guild.lastVisited);
+    info.appendChild(time);
+
+    card.appendChild(info);
+
+    card.onclick = () => connectToGuild(guild.guildId);
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        connectToGuild(guild.guildId);
+      }
+    };
+
+    recentGuildsList.appendChild(card);
+  });
+}
+
+function connectToGuild(guildId: string) {
+  currentSessionId = guildId;
+  demoControls.classList.add('hidden');
+  statusMsg.textContent = 'Connecting...';
+
+  const docRef = doc(db, 'sessions', guildId);
+  onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        startSessionBtn.classList.add('hidden');
+        handleSessionUpdate(docSnap.data() as Session);
+      } else {
+        statusMsg.textContent = `No active session found. (ID: ${guildId})`;
+        startSessionBtn.classList.remove('hidden');
+      }
+    },
+    (error) => {
+      console.error('[Activity] Firestore error:', error);
+      statusMsg.textContent = 'Activity ended.';
+    },
+  );
 }
 
 // ── Channel Picker ───────────────────────────────────────────
