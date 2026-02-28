@@ -61,7 +61,7 @@ const wheelsContainer = document.querySelector('.wheels-container') as HTMLDivEl
 const carouselDots = document.querySelectorAll('.carousel-dot') as NodeListOf<HTMLButtonElement>;
 
 // Side panel
-const sidePanel = document.getElementById('side-panel') as HTMLElement;
+const sideColumn = document.getElementById('side-column') as HTMLElement;
 const groupsList = document.getElementById('groups-list') as HTMLDivElement;
 
 // Results
@@ -318,7 +318,6 @@ function handleSessionUpdate(data: Session) {
       } else {
         showView('lobby');
         renderLobby(data.players);
-        announceCheckbox.checked = data.announceResults !== false;
       }
       break;
 
@@ -332,7 +331,8 @@ function handleSessionUpdate(data: Session) {
       if ((data as unknown as Record<string, unknown>).staticWheel) {
         // Static wheel mode for visual testing
         showView('wheels');
-        sidePanel.classList.remove('hidden');
+        sideColumn.classList.remove('hidden');
+        announceCheckbox.checked = data.announceResults !== false;
         initPools(data.players);
         initAllWheels();
         wheelStatus.textContent = 'Static preview';
@@ -356,7 +356,7 @@ function showView(view: 'home' | 'channels' | 'lobby' | 'wheels' | 'results') {
   viewLobby.classList.add('hidden');
   viewWheels.classList.add('hidden');
   viewResults.classList.add('hidden');
-  sidePanel.classList.add('hidden');
+  sideColumn.classList.add('hidden');
   statusMsg.textContent = '';
 
   switch (view) {
@@ -714,8 +714,11 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   isAnimating = false;
 
   showView('wheels');
-  sidePanel.classList.remove('hidden');
+  sideColumn.classList.remove('hidden');
   groupsList.textContent = '';
+  if (currentSessionData) {
+    announceCheckbox.checked = currentSessionData.announceResults !== false;
+  }
 
   // Reset carousel state
   resetCarouselDots();
@@ -775,7 +778,6 @@ async function cancelAndReturnToLobby() {
   if (currentSessionData?.players) {
     showView('lobby');
     renderLobby(currentSessionData.players);
-    announceCheckbox.checked = currentSessionData.announceResults !== false;
   }
 
   if (isDemoMode && currentSessionData) {

@@ -734,17 +734,25 @@ body {
 }
 
 /* ============================================
-   Side Panel — Vertical Groups
+   Side Column — Groups panel + announce toggle
    ============================================ */
-.side-panel {
+.side-column {
   width: var(--groups-panel-width);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 100%;
+}
+
+.side-panel {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 12px;
   overflow-y: auto;
-  max-height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .side-panel h3 {
@@ -764,10 +772,9 @@ body {
 .announce-option {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
