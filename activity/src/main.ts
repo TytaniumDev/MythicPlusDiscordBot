@@ -247,7 +247,7 @@ async function init() {
   newRoundBtn.addEventListener('click', startNewRound);
   startSessionBtn.addEventListener('click', createSession);
   changeChannelBtn.addEventListener('click', changeChannel);
-  wheelsBackBtn.addEventListener('click', () => cancelAndReturnToLobby());
+  wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
   document.querySelector('.app-header h1')!.addEventListener('click', () => {
     if (!viewWheels.classList.contains('hidden')) {
       cancelAndReturnToLobby();
@@ -762,10 +762,21 @@ function resetSpinState() {
   remainderGroups = [];
   currentGroupIndex = 0;
   isAnimating = false;
+
+  // Clean up visual state left behind by a cancelled spin
+  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.remove('spinning'));
+  groupsList.textContent = '';
 }
 
 async function cancelAndReturnToLobby() {
   resetSpinState();
+
+  // Show lobby immediately for responsiveness (Firestore update confirms later)
+  if (currentSessionData?.players) {
+    showView('lobby');
+    renderLobby(currentSessionData.players);
+    announceCheckbox.checked = currentSessionData.announceResults !== false;
+  }
 
   if (isDemoMode && currentSessionData) {
     handleSessionUpdate({
