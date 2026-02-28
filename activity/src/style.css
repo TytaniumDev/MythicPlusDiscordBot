@@ -289,7 +289,7 @@ body {
 
 .lobby-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 10px;
   margin-bottom: 24px;
@@ -304,6 +304,8 @@ body {
 .btn-back {
   position: absolute;
   left: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   padding: 0;
@@ -318,7 +320,7 @@ body {
   background: var(--bg-card-hover);
   border-color: var(--border-accent);
   color: var(--text-heading);
-  transform: none;
+  transform: translateY(-50%);
 }
 
 .player-count {
