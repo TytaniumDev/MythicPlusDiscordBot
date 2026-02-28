@@ -298,7 +298,6 @@ async function init() {
       }
       showView('home');
       renderRecentGuilds();
-      demoControls.classList.remove('hidden');
     } else if (currentView === 'lobby' && targetView === 'channels') {
       // Back from lobby to channels: clear selection and re-render channel picker
       changeChannel();
@@ -357,7 +356,6 @@ async function init() {
   if (!currentSessionId) {
     showView('home');
     renderRecentGuilds();
-    demoControls.classList.remove('hidden');
     return;
   }
 
@@ -394,8 +392,6 @@ function handleSessionUpdate(data: Session) {
       if ((data as unknown as Record<string, unknown>).staticWheel) {
         // Static wheel mode for visual testing
         showView('wheels');
-        sideColumn.classList.remove('hidden');
-        announceCheckbox.checked = data.announceResults !== false;
         initPools(data.players);
         initAllWheels();
         wheelStatus.textContent = 'Static preview';
@@ -422,6 +418,9 @@ function showView(view: ViewName) {
   sideColumn.classList.add('hidden');
   statusMsg.textContent = '';
 
+  // Demo controls are only relevant on the home view
+  demoControls.classList.toggle('hidden', view !== 'home');
+
   switch (view) {
     case 'home':
       viewHome.classList.remove('hidden');
@@ -434,6 +433,11 @@ function showView(view: ViewName) {
       break;
     case 'wheels':
       viewWheels.classList.remove('hidden');
+      sideColumn.classList.remove('hidden');
+      if (currentSessionData) {
+        announceCheckbox.checked =
+          currentSessionData.announceResults !== false;
+      }
       // Force redraw wheels after layout transition
       requestAnimationFrame(() => {
         wheelTank?.forceRedraw();
@@ -525,7 +529,6 @@ function renderRecentGuilds() {
 
 function connectToGuild(guildId: string) {
   currentSessionId = guildId;
-  demoControls.classList.add('hidden');
   statusMsg.textContent = 'Connecting...';
   subscribeToSession(guildId);
 }
@@ -794,11 +797,7 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   isAnimating = false;
 
   showView('wheels');
-  sideColumn.classList.remove('hidden');
   groupsList.textContent = '';
-  if (currentSessionData) {
-    announceCheckbox.checked = currentSessionData.announceResults !== false;
-  }
 
   // Reset carousel state
   resetCarouselDots();
@@ -1253,7 +1252,6 @@ async function createSession() {
 // ── Demo Mode ────────────────────────────────────────────────
 function startDemo() {
   isDemoMode = true;
-  demoControls.classList.add('hidden');
   statusMsg.textContent = '';
   handleSessionUpdate(mockSession);
 }
