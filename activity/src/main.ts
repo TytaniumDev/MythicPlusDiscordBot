@@ -82,10 +82,9 @@ const VIEW_TO_ROUTE: Record<ViewName, string> = {
   home: '#/', channels: '#/channels', lobby: '#/lobby',
   wheels: '#/wheels', results: '#/results',
 };
-const ROUTE_TO_VIEW: Record<string, ViewName> = {
-  '#/': 'home', '#/channels': 'channels', '#/lobby': 'lobby',
-  '#/wheels': 'wheels', '#/results': 'results',
-};
+const ROUTE_TO_VIEW = Object.fromEntries(
+  Object.entries(VIEW_TO_ROUTE).map(([view, route]) => [route, view]),
+) as Record<string, ViewName>;
 
 let currentView: ViewName = 'home';
 let isNavigatingFromPopstate = false;
@@ -247,6 +246,11 @@ function subscribeToSession(sessionId: string) {
 
 // ── Initialization ───────────────────────────────────────────
 async function init() {
+  // Clear any stale hash from a previous session/refresh
+  if (location.hash && location.hash !== '#/') {
+    history.replaceState(null, '', '#/');
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
 
   // Initialize wheels
@@ -412,7 +416,7 @@ function handleSessionUpdate(data: Session) {
 }
 
 // ── View Management ──────────────────────────────────────────
-function showView(view: 'home' | 'channels' | 'lobby' | 'wheels' | 'results') {
+function showView(view: ViewName) {
   viewHome.classList.add('hidden');
   viewChannels.classList.add('hidden');
   viewLobby.classList.add('hidden');
