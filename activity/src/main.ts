@@ -299,11 +299,8 @@ async function init() {
       showView('home');
       renderRecentGuilds();
     } else if (currentView === 'lobby' && targetView === 'channels') {
-      // Back from lobby to channels: re-render channel picker
-      showView('channels');
-      if (currentSessionData?.voiceChannels) {
-        renderChannelPicker(currentSessionData.voiceChannels);
-      }
+      // Back from lobby to channels: clear selection and re-render channel picker
+      changeChannel();
     } else if (currentView === 'wheels' && targetView === 'lobby') {
       // Back from wheels to lobby — reuse existing cancel logic
       cancelAndReturnToLobby();
