@@ -290,11 +290,20 @@ body {
 .lobby-header {
   display: flex;
   align-items: center;
+  margin-bottom: 24px;
+}
+
+.lobby-header-center {
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 32px;
-  margin-bottom: 24px;
-  position: relative;
+  flex: 1;
+}
+
+.lobby-header-spacer {
+  width: 32px;
+  flex-shrink: 0;
 }
 
 .lobby-header h2 {
@@ -303,12 +312,9 @@ body {
 }
 
 .btn-back {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
   width: 32px;
   height: 32px;
+  flex-shrink: 0;
   padding: 0;
   border: 1px solid var(--border-subtle);
   background: var(--bg-card);
@@ -321,7 +327,7 @@ body {
   background: var(--bg-card-hover);
   border-color: var(--border-accent);
   color: var(--text-heading);
-  transform: translateY(-50%);
+  transform: none;
 }
 
 .player-count {
