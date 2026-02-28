@@ -395,8 +395,6 @@ function handleSessionUpdate(data: Session) {
       if ((data as unknown as Record<string, unknown>).staticWheel) {
         // Static wheel mode for visual testing
         showView('wheels');
-        sideColumn.classList.remove('hidden');
-        announceCheckbox.checked = data.announceResults !== false;
         initPools(data.players);
         initAllWheels();
         wheelStatus.textContent = 'Static preview';
@@ -424,11 +422,7 @@ function showView(view: ViewName) {
   statusMsg.textContent = '';
 
   // Demo controls are only relevant on the home view
-  if (view === 'home') {
-    demoControls.classList.remove('hidden');
-  } else {
-    demoControls.classList.add('hidden');
-  }
+  demoControls.classList.toggle('hidden', view !== 'home');
 
   switch (view) {
     case 'home':
@@ -442,6 +436,11 @@ function showView(view: ViewName) {
       break;
     case 'wheels':
       viewWheels.classList.remove('hidden');
+      sideColumn.classList.remove('hidden');
+      if (currentSessionData) {
+        announceCheckbox.checked =
+          currentSessionData.announceResults !== false;
+      }
       // Force redraw wheels after layout transition
       requestAnimationFrame(() => {
         wheelTank?.forceRedraw();
@@ -801,11 +800,7 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   isAnimating = false;
 
   showView('wheels');
-  sideColumn.classList.remove('hidden');
   groupsList.textContent = '';
-  if (currentSessionData) {
-    announceCheckbox.checked = currentSessionData.announceResults !== false;
-  }
 
   // Reset carousel state
   resetCarouselDots();
