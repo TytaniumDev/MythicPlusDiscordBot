@@ -293,6 +293,7 @@ body {
   justify-content: center;
   gap: 10px;
   margin-bottom: 16px;
+  position: relative;
 }
 
 .lobby-header h2 {
@@ -301,24 +302,23 @@ body {
 }
 
 .btn-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  left: 0;
   width: 32px;
   height: 32px;
+  padding: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
   background: var(--bg-card);
   color: var(--text-secondary);
   font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight: normal;
 }
 
 .btn-back:hover {
   background: var(--bg-card-hover);
   border-color: var(--border-accent);
   color: var(--text-heading);
+  transform: none;
 }
 
 .player-count {

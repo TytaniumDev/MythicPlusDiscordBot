@@ -359,18 +359,19 @@ async function selectChannel(channelId: string) {
 }
 
 async function changeChannel() {
+  const updatePayload = { selectedChannelId: null, players: [] };
+
   if (isDemoMode && currentSessionData) {
     handleSessionUpdate({
       ...currentSessionData,
-      selectedChannelId: null,
-      players: [],
+      ...updatePayload,
     } as Session);
     return;
   }
 
   if (!currentSessionId) return;
   const docRef = doc(db, 'sessions', currentSessionId);
-  await updateDoc(docRef, { selectedChannelId: null, players: [] });
+  await updateDoc(docRef, updatePayload);
 }
 
 // ── Lobby ────────────────────────────────────────────────────
@@ -380,6 +381,8 @@ function renderLobby(players: WoWPlayer[]) {
   if (!players || players.length === 0) {
     const msg = document.createElement('div');
     msg.style.color = 'var(--text-secondary)';
+    msg.style.gridColumn = '1 / -1';
+    msg.style.textAlign = 'center';
     msg.textContent = 'Waiting for players to join voice...';
     playerList.appendChild(msg);
     playerCount.textContent = '';
