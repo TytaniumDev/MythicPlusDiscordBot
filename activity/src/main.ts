@@ -75,6 +75,21 @@ let wheelDps1: Wheel | null = null;
 let wheelDps2: Wheel | null = null;
 let wheelDps3: Wheel | null = null;
 
+// ── Routing ──────────────────────────────────────────────────
+type ViewName = 'home' | 'channels' | 'lobby' | 'wheels' | 'results';
+
+const VIEW_TO_ROUTE: Record<ViewName, string> = {
+  home: '#/', channels: '#/channels', lobby: '#/lobby',
+  wheels: '#/wheels', results: '#/results',
+};
+const ROUTE_TO_VIEW = Object.fromEntries(
+  Object.entries(VIEW_TO_ROUTE).map(([view, route]) => [route, view]),
+) as Record<string, ViewName>;
+
+let currentView: ViewName = 'home';
+let isNavigatingFromPopstate = false;
+let isFirstView = true;
+
 // ── State ────────────────────────────────────────────────────
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
@@ -231,6 +246,11 @@ function subscribeToSession(sessionId: string) {
 
 // ── Initialization ───────────────────────────────────────────
 async function init() {
+  // Clear any stale hash from a previous session/refresh
+  if (location.hash && location.hash !== '#/') {
+    history.replaceState(null, '', '#/');
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
 
   // Initialize wheels
@@ -260,6 +280,52 @@ async function init() {
     if (!currentSessionId) return;
     const docRef = doc(db, 'sessions', currentSessionId);
     await updateDoc(docRef, { announceResults: announceCheckbox.checked });
+  });
+
+  // Browser back/forward navigation
+  window.addEventListener('popstate', () => {
+    const hash = location.hash || '#/';
+    const targetView = ROUTE_TO_VIEW[hash];
+    if (!targetView || targetView === currentView) return;
+
+    isNavigatingFromPopstate = true;
+
+    if (currentView === 'channels' && targetView === 'home') {
+      // Back from channels to home: unsubscribe and show demo controls
+      if (sessionUnsubscribe) {
+        sessionUnsubscribe();
+        sessionUnsubscribe = null;
+      }
+      showView('home');
+      renderRecentGuilds();
+      demoControls.classList.remove('hidden');
+    } else if (currentView === 'lobby' && targetView === 'channels') {
+      // Back from lobby to channels: re-render channel picker
+      showView('channels');
+      if (currentSessionData?.voiceChannels) {
+        renderChannelPicker(currentSessionData.voiceChannels);
+      }
+    } else if (currentView === 'wheels' && targetView === 'lobby') {
+      // Back from wheels to lobby — reuse existing cancel logic
+      cancelAndReturnToLobby();
+    } else if (currentView === 'results' && targetView === 'lobby') {
+      // Back from results: intercept and redirect to channels for a new round
+      history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
+      startNewRound();
+    } else if (targetView === 'wheels' || targetView === 'results') {
+      // Forward into wheels/results without active state — redirect to channels
+      console.warn('[Activity] Forward nav to', targetView, 'without state, redirecting to channels');
+      history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
+      showView('channels');
+      if (currentSessionData?.voiceChannels) {
+        renderChannelPicker(currentSessionData.voiceChannels);
+      }
+    } else {
+      console.warn('[Activity] Unexpected popstate transition:', currentView, '->', targetView);
+      showView(targetView);
+    }
+
+    isNavigatingFromPopstate = false;
   });
 
   // Check for injected mock data (testing)
@@ -350,7 +416,7 @@ function handleSessionUpdate(data: Session) {
 }
 
 // ── View Management ──────────────────────────────────────────
-function showView(view: 'home' | 'channels' | 'lobby' | 'wheels' | 'results') {
+function showView(view: ViewName) {
   viewHome.classList.add('hidden');
   viewChannels.classList.add('hidden');
   viewLobby.classList.add('hidden');
@@ -383,6 +449,23 @@ function showView(view: 'home' | 'channels' | 'lobby' | 'wheels' | 'results') {
     case 'results':
       viewResults.classList.remove('hidden');
       break;
+  }
+
+  // Update hash-based routing
+  currentView = view;
+  if (!isNavigatingFromPopstate) {
+    const route = VIEW_TO_ROUTE[view];
+    if (isFirstView) {
+      // Replace initial blank entry so back doesn't go to an empty page
+      history.replaceState({ view }, '', route);
+      isFirstView = false;
+    } else if (view === 'results') {
+      // Replace #/wheels so back from results skips the wheels view
+      history.replaceState({ view }, '', route);
+    } else if (location.hash !== route) {
+      // Guard against duplicate entries from repeated Firestore updates
+      history.pushState({ view }, '', route);
+    }
   }
 }
 
