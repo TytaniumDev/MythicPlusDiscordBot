@@ -279,7 +279,7 @@ async function init() {
   });
 
   // Browser back/forward navigation
-  window.addEventListener('popstate', (e) => {
+  window.addEventListener('popstate', () => {
     const hash = location.hash || '#/';
     const targetView = ROUTE_TO_VIEW[hash];
     if (!targetView || targetView === currentView) return;
@@ -302,51 +302,23 @@ async function init() {
         renderChannelPicker(currentSessionData.voiceChannels);
       }
     } else if (currentView === 'wheels' && targetView === 'lobby') {
-      // Back from wheels to lobby: cancel spin and restore lobby
-      resetSpinState();
-      showView('lobby');
-      if (currentSessionData?.players) {
-        renderLobby(currentSessionData.players);
-        announceCheckbox.checked = currentSessionData.announceResults !== false;
-      }
-      // Write status back to lobby
-      if (isDemoMode && currentSessionData) {
-        currentSessionData = { ...currentSessionData, status: 'lobby', groups: [] } as Session;
-      } else if (currentSessionId) {
-        const docRef = doc(db, 'sessions', currentSessionId);
-        updateDoc(docRef, { status: 'lobby', groups: [] });
-      }
+      // Back from wheels to lobby — reuse existing cancel logic
+      cancelAndReturnToLobby();
     } else if (currentView === 'results' && targetView === 'lobby') {
       // Back from results: intercept and redirect to channels for a new round
       history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
-      resetSpinState();
+      startNewRound();
+    } else if (targetView === 'wheels' || targetView === 'results') {
+      // Forward into wheels/results without active state — redirect to channels
+      console.warn('[Activity] Forward nav to', targetView, 'without state, redirecting to channels');
+      history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
       showView('channels');
-      // Clear selection so user picks a channel again
-      if (isDemoMode && currentSessionData) {
-        currentSessionData = {
-          ...currentSessionData,
-          status: 'lobby',
-          selectedChannelId: null,
-          groups: [],
-          players: [],
-        } as Session;
-        renderChannelPicker(currentSessionData.voiceChannels || []);
-      } else if (currentSessionId) {
-        const docRef = doc(db, 'sessions', currentSessionId);
-        updateDoc(docRef, {
-          status: 'lobby',
-          selectedChannelId: null,
-          groups: [],
-          players: [],
-        });
-        if (currentSessionData?.voiceChannels) {
-          renderChannelPicker(currentSessionData.voiceChannels);
-        }
+      if (currentSessionData?.voiceChannels) {
+        renderChannelPicker(currentSessionData.voiceChannels);
       }
     } else {
-      // Fallback: just show the target view
-      const stateView = (e.state as { view?: ViewName } | null)?.view;
-      showView(stateView ?? targetView);
+      console.warn('[Activity] Unexpected popstate transition:', currentView, '->', targetView);
+      showView(targetView);
     }
 
     isNavigatingFromPopstate = false;
