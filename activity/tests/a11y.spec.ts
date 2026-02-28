@@ -46,3 +46,19 @@ test('Lobby player chips have accessible role indicators', async ({ page }) => {
 
   await expect(firstChipDot).toHaveAttribute('title', label as string);
 });
+
+test('Clicking Wheelson header navigates back to home', async ({ page }) => {
+  const lobbyData = { ...mockSession, status: 'lobby', players: mockPlayers, selectedChannelId: 'vc-1' };
+  await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+  // Verify we're in the lobby view
+  await expect(page.locator('#view-lobby')).toBeVisible();
+  await expect(page.locator('#view-home')).toBeHidden();
+
+  // Click the Wheelson header
+  await page.locator('.app-header h1').click();
+
+  // Should navigate back to home view
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('#view-lobby')).toBeHidden();
+});

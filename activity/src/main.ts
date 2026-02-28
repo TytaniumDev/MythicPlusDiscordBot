@@ -243,6 +243,7 @@ async function init() {
   newRoundBtn.addEventListener('click', startNewRound);
   startSessionBtn.addEventListener('click', createSession);
   changeChannelBtn.addEventListener('click', changeChannel);
+  document.querySelector('.app-header h1')!.addEventListener('click', () => showView('home'));
 
   // Check for injected mock data (testing)
   const dataParam = urlParams.get('data');

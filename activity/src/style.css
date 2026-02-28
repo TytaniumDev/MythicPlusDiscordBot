@@ -82,6 +82,7 @@ body {
   font-weight: 700;
   color: var(--text-heading);
   letter-spacing: -0.02em;
+  cursor: pointer;
 }
 
 .commit-hash {
