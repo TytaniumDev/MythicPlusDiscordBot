@@ -298,7 +298,6 @@ async function init() {
       }
       showView('home');
       renderRecentGuilds();
-      demoControls.classList.remove('hidden');
     } else if (currentView === 'lobby' && targetView === 'channels') {
       // Back from lobby to channels: re-render channel picker
       showView('channels');
@@ -360,7 +359,6 @@ async function init() {
   if (!currentSessionId) {
     showView('home');
     renderRecentGuilds();
-    demoControls.classList.remove('hidden');
     return;
   }
 
@@ -424,6 +422,13 @@ function showView(view: ViewName) {
   viewResults.classList.add('hidden');
   sideColumn.classList.add('hidden');
   statusMsg.textContent = '';
+
+  // Demo controls are only relevant on the home view
+  if (view === 'home') {
+    demoControls.classList.remove('hidden');
+  } else {
+    demoControls.classList.add('hidden');
+  }
 
   switch (view) {
     case 'home':
@@ -528,7 +533,6 @@ function renderRecentGuilds() {
 
 function connectToGuild(guildId: string) {
   currentSessionId = guildId;
-  demoControls.classList.add('hidden');
   statusMsg.textContent = 'Connecting...';
   subscribeToSession(guildId);
 }
@@ -1256,7 +1260,6 @@ async function createSession() {
 // ── Demo Mode ────────────────────────────────────────────────
 function startDemo() {
   isDemoMode = true;
-  demoControls.classList.add('hidden');
   statusMsg.textContent = '';
   handleSessionUpdate(mockSession);
 }
