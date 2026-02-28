@@ -1,7 +1,7 @@
 // Discord SDK must be imported first — it patches fetch/WebSocket for the
 // embedded activity proxy before Firebase opens any connections.
 import { setupDiscordSdk } from './discordSdk';
-import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { db } from './firebase';
 import { Session, RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
@@ -74,6 +74,7 @@ let wheelDps3: Wheel | null = null;
 // ── State ────────────────────────────────────────────────────
 let currentSessionId: string | null = null;
 let currentSessionData: Session | null = null;
+let sessionUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 
@@ -196,6 +197,34 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
+// ── Session Listener ─────────────────────────────────────────
+function subscribeToSession(sessionId: string) {
+  // Unsubscribe from any previous listener to prevent leaks
+  if (sessionUnsubscribe) {
+    sessionUnsubscribe();
+    sessionUnsubscribe = null;
+  }
+
+  const docRef = doc(db, 'sessions', sessionId);
+  sessionUnsubscribe = onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        startSessionBtn.classList.add('hidden');
+        handleSessionUpdate(docSnap.data() as Session);
+      } else {
+        console.warn('[Activity] No doc at sessions/' + sessionId);
+        statusMsg.textContent = `No active session found. (ID: ${sessionId})`;
+        startSessionBtn.classList.remove('hidden');
+      }
+    },
+    (error) => {
+      console.error('[Activity] Firestore error:', error);
+      statusMsg.textContent = 'Activity ended.';
+    },
+  );
+}
+
 // ── Initialization ───────────────────────────────────────────
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -251,24 +280,7 @@ async function init() {
     return;
   }
 
-  const docRef = doc(db, 'sessions', currentSessionId);
-  onSnapshot(
-    docRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        startSessionBtn.classList.add('hidden');
-        handleSessionUpdate(docSnap.data() as Session);
-      } else {
-        console.warn('[Activity] No doc at sessions/' + currentSessionId);
-        statusMsg.textContent = `No active session found. (ID: ${currentSessionId})`;
-        startSessionBtn.classList.remove('hidden');
-      }
-    },
-    (error) => {
-      console.error('[Activity] Firestore error:', error);
-      statusMsg.textContent = 'Activity ended.';
-    }
-  );
+  subscribeToSession(currentSessionId);
 }
 
 // ── Session State Handler ────────────────────────────────────
@@ -416,24 +428,7 @@ function connectToGuild(guildId: string) {
   currentSessionId = guildId;
   demoControls.classList.add('hidden');
   statusMsg.textContent = 'Connecting...';
-
-  const docRef = doc(db, 'sessions', guildId);
-  onSnapshot(
-    docRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        startSessionBtn.classList.add('hidden');
-        handleSessionUpdate(docSnap.data() as Session);
-      } else {
-        statusMsg.textContent = `No active session found. (ID: ${guildId})`;
-        startSessionBtn.classList.remove('hidden');
-      }
-    },
-    (error) => {
-      console.error('[Activity] Firestore error:', error);
-      statusMsg.textContent = 'Activity ended.';
-    },
-  );
+  subscribeToSession(guildId);
 }
 
 // ── Channel Picker ───────────────────────────────────────────
