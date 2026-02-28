@@ -24,13 +24,17 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [[ "${{ github.event_name }}" != "pull_request" || "${{ github.event.action }}" != "synchronize" ]]; then
+          if [[ "$EVENT_NAME" != "pull_request" || "$EVENT_ACTION" != "synchronize" ]]; then
             echo "should_review=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # Check if Claude has already approved this PR
-          approved=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+          approved=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --paginate \
             --jq '[.[] | select(.user.login == "claude[bot]" and .state == "APPROVED")] | length')
           if [[ "$approved" -gt 0 ]]; then
             echo "Claude has already approved this PR, skipping review"
