@@ -227,6 +227,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 14px 18px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
@@ -288,15 +289,45 @@ body {
 
 .lobby-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.lobby-header-center {
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 16px;
+  flex: 1;
+}
+
+.lobby-header-spacer {
+  width: 32px;
+  flex-shrink: 0;
 }
 
 .lobby-header h2 {
   font-size: 1.1rem;
   color: var(--text-heading);
+}
+
+.btn-back {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: normal;
+}
+
+.btn-back:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  color: var(--text-heading);
+  transform: none;
 }
 
 .player-count {
@@ -481,6 +512,7 @@ body {
   align-content: center;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   width: 100%;
 }
 
