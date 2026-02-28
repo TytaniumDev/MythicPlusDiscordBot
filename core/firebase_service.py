@@ -73,6 +73,8 @@ class FirebaseService:
         guild_id: int,
         debug: bool = False,
         selected_channel_id: str | None = None,
+        guild_name: str | None = None,
+        guild_icon_url: str | None = None,
     ) -> str:
         """
         Gets or creates a persistent session document for the guild.
@@ -86,11 +88,18 @@ class FirebaseService:
 
         import asyncio
 
+        # Build optional guild metadata fields (shared between create/update)
+        guild_fields: dict[str, Any] = {}
+        if guild_name is not None:
+            guild_fields["guildName"] = guild_name
+        if guild_icon_url is not None:
+            guild_fields["guildIconUrl"] = guild_icon_url
+
         # Check if exists
         doc = await asyncio.to_thread(doc_ref.get)
         if not doc.exists:
             # Create new session structure
-            data = {
+            data: dict[str, Any] = {
                 "guildId": str(guild_id),
                 "status": "lobby",  # lobby, spinning, completed
                 "players": [],  # List of players (synced when channel selected)
@@ -100,11 +109,15 @@ class FirebaseService:
                 "isDebug": debug,
                 "createdAt": firestore.SERVER_TIMESTAMP,
                 "lastActive": firestore.SERVER_TIMESTAMP,
+                **guild_fields,
             }
             await asyncio.to_thread(doc_ref.set, data)
         else:
             # Update lastActive and selected channel
-            update: dict[str, Any] = {"lastActive": firestore.SERVER_TIMESTAMP}
+            update: dict[str, Any] = {
+                "lastActive": firestore.SERVER_TIMESTAMP,
+                **guild_fields,
+            }
             if selected_channel_id:
                 update["selectedChannelId"] = selected_channel_id
             await asyncio.to_thread(doc_ref.update, update)

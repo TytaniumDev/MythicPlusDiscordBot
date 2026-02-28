@@ -165,9 +165,7 @@ function viewportTests(
     test('No Session', async ({ page }) => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto('/');
-      await expect(page.locator('#status-message')).toHaveText(
-        'No Guild/Session ID found. Try the Demo below.'
-      );
+      await expect(page.locator('#view-home')).toBeVisible();
       await expect(page.locator('#demo-controls')).toBeVisible();
 
       await expect(page).toHaveScreenshot(`no-session-${viewport.width}x${viewport.height}.png`);
@@ -302,6 +300,59 @@ test.describe('Functional Tests', () => {
     await expect(page.locator('#wheel-dps1')).toBeAttached();
     await expect(page.locator('#wheel-dps2')).toBeAttached();
     await expect(page.locator('#wheel-dps3')).toBeAttached();
+  });
+});
+
+// ── Home View (Recent Guilds) Tests ──────────────────────────
+test.describe('Home View Tests', () => {
+  const recentGuilds = [
+    { guildId: 'guild-1', guildName: 'Gif or Gif', guildIconUrl: undefined, lastVisited: Date.now() - 60000 },
+    { guildId: 'guild-2', guildName: 'Another Guild', guildIconUrl: undefined, lastVisited: Date.now() - 3600000 },
+  ];
+
+  test('Shows home view with recent guilds from localStorage', async ({ page }) => {
+    await page.addInitScript((guilds) => {
+      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
+    }, recentGuilds);
+
+    await page.goto('/');
+    await expect(page.locator('#view-home')).toBeVisible();
+    await expect(page.locator('.guild-card')).toHaveCount(2);
+    await expect(page.locator('.guild-card-name').first()).toHaveText('Gif or Gif');
+    await expect(page.locator('.guild-card-name').nth(1)).toHaveText('Another Guild');
+  });
+
+  test('Shows empty state when no recent guilds', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#view-home')).toBeVisible();
+    await expect(page.locator('.guild-card')).toHaveCount(0);
+    await expect(page.locator('#no-recent-guilds')).toBeVisible();
+  });
+
+  test('Demo controls visible on home view', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('#view-home')).toBeVisible();
+    await expect(page.locator('#demo-controls')).toBeVisible();
+  });
+
+  test('Guild cards are keyboard accessible', async ({ page }) => {
+    await page.addInitScript((guilds) => {
+      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
+    }, recentGuilds);
+
+    await page.goto('/');
+    const firstCard = page.locator('.guild-card').first();
+    await expect(firstCard).toHaveAttribute('role', 'button');
+    await expect(firstCard).toHaveAttribute('tabindex', '0');
+  });
+
+  test('Guild icon placeholder shown when no icon URL', async ({ page }) => {
+    await page.addInitScript((guilds) => {
+      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
+    }, recentGuilds);
+
+    await page.goto('/');
+    await expect(page.locator('.guild-icon-placeholder').first()).toBeVisible();
   });
 });
 

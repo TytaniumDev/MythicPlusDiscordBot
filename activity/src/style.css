@@ -202,6 +202,96 @@ body {
 }
 
 /* ============================================
+   View: Home (Recent Guilds)
+   ============================================ */
+#view-home {
+  max-width: 500px;
+  margin: 0 auto;
+  overflow-y: auto;
+}
+
+#view-home h2 {
+  font-size: 1.1rem;
+  color: var(--text-heading);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+#recent-guilds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guild-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guild-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  padding-left: 22px;
+}
+
+.guild-card:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  padding-left: 22px;
+}
+
+.guild-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.guild-icon-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-purple);
+  flex-shrink: 0;
+}
+
+.guild-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.guild-card-name {
+  font-weight: 600;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guild-last-visited {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.empty-message {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 16px;
+}
+
+/* ============================================
    View: Channel Picker
    ============================================ */
 #view-channels {

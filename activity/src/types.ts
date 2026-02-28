@@ -39,5 +39,14 @@ export interface Session {
   groups: WoWGroup[];
   voiceChannels?: VoiceChannel[];
   selectedChannelId?: string | null;
+  guildName?: string;
+  guildIconUrl?: string;
   createdAt: any; // Firestore Timestamp
+}
+
+export interface RecentGuild {
+  guildId: string;
+  guildName: string;
+  guildIconUrl?: string;
+  lastVisited: number;
 }

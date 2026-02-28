@@ -50,7 +50,11 @@ class TestSessionServiceGetOrCreateSession(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "1")
         self.assertEqual(service.active_sessions[1], "1")
         mock_firebase.get_or_create_session.assert_called_once_with(
-            1, debug=False, selected_channel_id="99"
+            1,
+            debug=False,
+            selected_channel_id="99",
+            guild_name=ctx.guild.name,
+            guild_icon_url=str(ctx.guild.icon.url),
         )
 
         mock_firebase.listen_to_session.assert_called_once()
