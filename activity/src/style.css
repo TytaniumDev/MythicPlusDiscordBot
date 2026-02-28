@@ -292,7 +292,7 @@ body {
   align-items: baseline;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   position: relative;
 }
 
@@ -503,6 +503,7 @@ body {
   align-content: center;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   width: 100%;
 }
 
