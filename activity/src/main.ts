@@ -268,13 +268,23 @@ async function init() {
   startSessionBtn.addEventListener('click', createSession);
   changeChannelBtn.addEventListener('click', changeChannel);
   wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
-  document.querySelector('.app-header h1')!.addEventListener('click', () => {
+
+  const headerTitle = document.querySelector('.app-header h1') as HTMLHeadingElement;
+  const handleHeaderClick = () => {
     if (!viewWheels.classList.contains('hidden')) {
       cancelAndReturnToLobby();
     } else {
       showView('home');
     }
+  };
+  headerTitle.addEventListener('click', handleHeaderClick);
+  headerTitle.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleHeaderClick();
+    }
   });
+
   announceCheckbox.addEventListener('change', async () => {
     if (isDemoMode) return;
     if (!currentSessionId) return;
