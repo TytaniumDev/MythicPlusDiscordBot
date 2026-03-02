@@ -42,10 +42,18 @@ function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
+export interface WheelConfig {
+  role: string;
+  label: string;
+  labelClass: string;
+  ariaLabel: string;
+}
+
 export class Wheel {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private resultEl: HTMLElement;
+  private slotEl: HTMLDivElement;
   private entries: WheelEntry[] = [];
   private rotation = 0;
   private animationFrame: number | null = null;
@@ -56,16 +64,42 @@ export class Wheel {
   private highlightProgress = 0;
   private rejectSpin: ((reason?: string) => void) | null = null;
 
-  constructor(canvasId: string, resultId: string) {
-    this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext('2d')!;
-    this.resultEl = document.getElementById(resultId) as HTMLElement;
+  constructor(config: WheelConfig) {
+    // Build DOM programmatically
+    this.slotEl = document.createElement('div');
+    this.slotEl.className = 'wheel-slot';
+    this.slotEl.id = `slot-${config.role}`;
 
-    this.baseLabel = this.canvas.getAttribute('aria-label') || 'Wheel';
+    const label = document.createElement('span');
+    label.className = `wheel-label label-${config.labelClass}`;
+    label.textContent = config.label;
+    this.slotEl.appendChild(label);
+
+    const frame = document.createElement('div');
+    frame.className = 'wheel-frame';
+
+    const pointer = document.createElement('div');
+    pointer.className = 'wheel-pointer';
+    frame.appendChild(pointer);
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = `wheel-${config.role}`;
     this.canvas.setAttribute('role', 'img');
+    this.canvas.setAttribute('aria-label', config.ariaLabel);
+    frame.appendChild(this.canvas);
+
+    this.slotEl.appendChild(frame);
+
+    this.resultEl = document.createElement('div');
+    this.resultEl.id = `result-${config.role}`;
+    this.resultEl.className = 'wheel-result';
+    this.resultEl.setAttribute('aria-live', 'polite');
+    this.slotEl.appendChild(this.resultEl);
+
+    this.ctx = this.canvas.getContext('2d')!;
+    this.baseLabel = config.ariaLabel;
 
     // Watch for size changes on the wheel-frame parent
-    const frame = this.canvas.closest('.wheel-frame');
     this.resizeObserver = new ResizeObserver(() => {
       if (this.pendingResize) return;
       this.pendingResize = true;
@@ -78,9 +112,12 @@ export class Wheel {
         }
       });
     });
-    if (frame) {
-      this.resizeObserver.observe(frame);
-    }
+    this.resizeObserver.observe(frame);
+  }
+
+  /** Get the root DOM element for mounting into a parent */
+  get element(): HTMLDivElement {
+    return this.slotEl;
   }
 
   /** Set up the wheel with a new list of candidates */

@@ -25,7 +25,7 @@ echo "4. Running Tests..."
 # Use --update-snapshots when UPDATE_SNAPSHOTS is set (generates/refreshes baseline PNGs)
 if [ "$UPDATE_SNAPSHOTS" = "true" ]; then
     echo "   (updating baseline snapshots)"
-    npx playwright test --update-snapshots
+    npx playwright test --update-snapshots=all
 else
     npx playwright test
 fi

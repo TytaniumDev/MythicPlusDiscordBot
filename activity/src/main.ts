@@ -5,7 +5,7 @@ import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, Unsubscribe } from
 import { db } from './firebase';
 import { Session, RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
 import { mockSession, mockPlayers, mockGroups } from './mockData';
-import { Wheel } from './wheel';
+import { WheelsGrid } from './wheelsGrid';
 import { audio } from './audio';
 import './style.css';
 
@@ -13,10 +13,6 @@ import './style.css';
 const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
 const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
 const GRID_SPIN_DURATION = 4000;       // ms per wheel in grid mode
-
-// ── Carousel State ───────────────────────────────────────────
-let carouselIndex = 0;
-const CAROUSEL_MQ = window.matchMedia('(max-width: 599px)');
 
 // ── Commit Hash ──────────────────────────────────────────────
 const commitLink = document.getElementById('commit-link') as HTMLAnchorElement;
@@ -57,8 +53,7 @@ const announceCheckbox = document.getElementById('announce-checkbox') as HTMLInp
 const wheelsBackBtn = document.getElementById('wheels-back-btn') as HTMLButtonElement;
 const wheelStatus = document.getElementById('wheel-status') as HTMLDivElement;
 const nextBtn = document.getElementById('next-btn') as HTMLButtonElement;
-const wheelsContainer = document.querySelector('.wheels-container') as HTMLDivElement;
-const carouselDots = document.querySelectorAll('.carousel-dot') as NodeListOf<HTMLButtonElement>;
+const wheelsAreaMount = document.getElementById('wheels-area') as HTMLDivElement;
 
 // Side panel
 const sideColumn = document.getElementById('side-column') as HTMLElement;
@@ -68,12 +63,8 @@ const groupsList = document.getElementById('groups-list') as HTMLDivElement;
 const finalGroups = document.getElementById('final-groups') as HTMLDivElement;
 const newRoundBtn = document.getElementById('new-round-btn') as HTMLButtonElement;
 
-// ── Wheels (5 total) ─────────────────────────────────────────
-let wheelTank: Wheel | null = null;
-let wheelHealer: Wheel | null = null;
-let wheelDps1: Wheel | null = null;
-let wheelDps2: Wheel | null = null;
-let wheelDps3: Wheel | null = null;
+// ── Wheels Grid Component ────────────────────────────────────
+let wheelsGrid: WheelsGrid | null = null;
 
 // ── Routing ──────────────────────────────────────────────────
 type ViewName = 'home' | 'channels' | 'lobby' | 'wheels' | 'results';
@@ -101,83 +92,12 @@ let discordChannelId: string | null = null;
 let fullGroups: WoWGroup[] = [];
 let remainderGroups: WoWGroup[] = [];
 let currentGroupIndex = 0;
-let isAnimating = false;
 let spinSequenceStarted = false;
 
 // Candidate pools (filtered between groups)
 let poolTanks: WheelEntry[] = [];
 let poolHealers: WheelEntry[] = [];
 let poolDps: WheelEntry[] = [];
-
-// ── Carousel Controller ──────────────────────────────────────
-function isCarouselMode(): boolean {
-  return CAROUSEL_MQ.matches;
-}
-
-function setCarouselSlide(index: number) {
-  carouselIndex = Math.max(0, Math.min(4, index));
-  wheelsContainer.style.setProperty('--carousel-index', String(carouselIndex));
-
-  carouselDots.forEach((dot, i) => {
-    const isActive = i === carouselIndex;
-    dot.classList.toggle('active', isActive);
-    if (isActive) {
-      dot.setAttribute('aria-current', 'step');
-    } else {
-      dot.removeAttribute('aria-current');
-    }
-  });
-}
-
-function markCarouselDotCompleted(index: number) {
-  carouselDots[index]?.classList.add('completed');
-}
-
-function resetCarouselDots() {
-  carouselDots.forEach((dot) => {
-    dot.classList.remove('completed', 'active');
-    dot.removeAttribute('aria-current');
-  });
-  const firstDot = carouselDots[0];
-  firstDot?.classList.add('active');
-  firstDot?.setAttribute('aria-current', 'step');
-}
-
-// Carousel dot click handlers
-carouselDots.forEach((dot) => {
-  dot.addEventListener('click', () => {
-    if (isAnimating) return;
-    const idx = Number(dot.dataset.index);
-    if (!isNaN(idx)) setCarouselSlide(idx);
-  });
-});
-
-// Touch swipe support for carousel
-{
-  let touchStartX = 0;
-  let touchStartY = 0;
-
-  wheelsContainer.addEventListener('touchstart', (e) => {
-    if (!isCarouselMode() || isAnimating) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-  }, { passive: true });
-
-  wheelsContainer.addEventListener('touchend', (e) => {
-    if (!isCarouselMode() || isAnimating) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-
-    // Only handle horizontal swipes (ignore vertical scrolling)
-    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0 && carouselIndex < 4) {
-        setCarouselSlide(carouselIndex + 1);
-      } else if (dx > 0 && carouselIndex > 0) {
-        setCarouselSlide(carouselIndex - 1);
-      }
-    }
-  }, { passive: true });
-}
 
 // ── Recent Guilds (localStorage) ─────────────────────────────
 const RECENT_GUILDS_KEY = 'wheelson-recent-guilds';
@@ -253,12 +173,8 @@ async function init() {
 
   const urlParams = new URLSearchParams(window.location.search);
 
-  // Initialize wheels
-  wheelTank = new Wheel('wheel-tank', 'result-tank');
-  wheelHealer = new Wheel('wheel-healer', 'result-healer');
-  wheelDps1 = new Wheel('wheel-dps1', 'result-dps1');
-  wheelDps2 = new Wheel('wheel-dps2', 'result-dps2');
-  wheelDps3 = new Wheel('wheel-dps3', 'result-dps3');
+  // Initialize wheels grid component
+  wheelsGrid = new WheelsGrid(wheelsAreaMount);
 
   // Event listeners
   spinBtn.addEventListener('click', requestSpin);
@@ -403,7 +319,7 @@ function handleSessionUpdate(data: Session) {
         // Static wheel mode for visual testing
         showView('wheels');
         initPools(data.players);
-        initAllWheels();
+        wheelsGrid?.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
         wheelStatus.textContent = 'Static preview';
         nextBtn.classList.add('hidden');
       } else if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
@@ -450,11 +366,7 @@ function showView(view: ViewName) {
       }
       // Force redraw wheels after layout transition
       requestAnimationFrame(() => {
-        wheelTank?.forceRedraw();
-        wheelHealer?.forceRedraw();
-        wheelDps1?.forceRedraw();
-        wheelDps2?.forceRedraw();
-        wheelDps3?.forceRedraw();
+        wheelsGrid?.forceRedraw();
       });
       break;
     case 'results':
@@ -804,18 +716,17 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   fullGroups = sessionGroups.filter(isCompleteGroup);
   remainderGroups = sessionGroups.filter((g) => !isCompleteGroup(g));
   currentGroupIndex = 0;
-  isAnimating = false;
 
   showView('wheels');
   groupsList.textContent = '';
 
   // Reset carousel state
-  resetCarouselDots();
-  setCarouselSlide(0);
+  wheelsGrid?.resetCarouselDots();
+  wheelsGrid?.setCarouselSlide(0);
 
-  // Build candidate pools
+  // Build candidate pools and init all wheels
   initPools(players);
-  initAllWheels();
+  wheelsGrid?.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
 
   // Set up button for first group
   updateNextButton();
@@ -835,28 +746,18 @@ function initPools(players: WoWPlayer[]) {
     .map((p) => ({ name: p.name, isOffspec: !p.roles.dpsMain }));
 }
 
-function initAllWheels() {
-  wheelTank?.init(poolTanks);
-  wheelHealer?.init(poolHealers);
-  wheelDps1?.init(poolDps);
-  wheelDps2?.init(poolDps);
-  wheelDps3?.init(poolDps);
-}
-
 function resetSpinState() {
-  wheelTank?.cancel();
-  wheelHealer?.cancel();
-  wheelDps1?.cancel();
-  wheelDps2?.cancel();
-  wheelDps3?.cancel();
+  wheelsGrid?.cancelAll();
   spinSequenceStarted = false;
   fullGroups = [];
   remainderGroups = [];
   currentGroupIndex = 0;
-  isAnimating = false;
+  if (wheelsGrid) {
+    wheelsGrid.isAnimating = false;
+  }
 
   // Clean up visual state left behind by a cancelled spin
-  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.remove('spinning'));
+  wheelsGrid?.clearSpinningState();
   groupsList.textContent = '';
 }
 
@@ -899,9 +800,9 @@ function updateNextButton() {
 }
 
 async function spinForCurrentGroup() {
-  if (isAnimating || currentGroupIndex >= fullGroups.length) return;
+  if (!wheelsGrid || wheelsGrid.isAnimating || currentGroupIndex >= fullGroups.length) return;
 
-  if (isCarouselMode()) {
+  if (wheelsGrid.isCarouselMode()) {
     await spinForCurrentGroupCarousel();
   } else {
     await spinForCurrentGroupGrid();
@@ -910,42 +811,36 @@ async function spinForCurrentGroup() {
 
 // ── Grid Mode Spin (all wheels simultaneously) ───────────────
 async function spinForCurrentGroupGrid() {
-  isAnimating = true;
+  if (!wheelsGrid) return;
+  wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
   wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
 
   // Add spinning class for glow animation
-  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.add('spinning'));
+  wheelsGrid.setAllSpinning();
 
   // Clear previous results
-  wheelTank?.clearResult();
-  wheelHealer?.clearResult();
-  wheelDps1?.clearResult();
-  wheelDps2?.clearResult();
-  wheelDps3?.clearResult();
+  wheelsGrid.clearAllResults();
 
   // Re-init wheels with current pools
-  wheelTank?.init(poolTanks);
-  wheelHealer?.init(poolHealers);
-  wheelDps1?.init(poolDps);
-  wheelDps2?.init(poolDps);
-  wheelDps3?.init(poolDps);
+  wheelsGrid.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
 
   // Spin all 5 wheels simultaneously with slightly staggered stop times
   const spinPromises: Promise<string>[] = [];
 
   if (group.tank) {
-    spinPromises.push(wheelTank!.spinTo(group.tank.name, GRID_SPIN_DURATION));
+    spinPromises.push(wheelsGrid.tank.spinTo(group.tank.name, GRID_SPIN_DURATION));
   }
   if (group.healer) {
-    spinPromises.push(wheelHealer!.spinTo(group.healer.name, GRID_SPIN_DURATION));
+    spinPromises.push(wheelsGrid.healer.spinTo(group.healer.name, GRID_SPIN_DURATION));
   }
 
   // DPS wheels with staggered durations for visual variety
+  const dpsWheels = [wheelsGrid.dps1, wheelsGrid.dps2, wheelsGrid.dps3];
   const dpsDurations = [GRID_SPIN_DURATION, GRID_SPIN_DURATION + 300, GRID_SPIN_DURATION + 600];
   group.dps.forEach((dpsPlayer, i) => {
-    const wheel = [wheelDps1, wheelDps2, wheelDps3][i];
+    const wheel = dpsWheels[i];
     if (wheel) {
       spinPromises.push(wheel.spinTo(dpsPlayer.name, dpsDurations[i]));
     }
@@ -960,7 +855,8 @@ async function spinForCurrentGroupGrid() {
   }
 
   // Remove spinning class
-  document.querySelectorAll('.wheel-slot').forEach((el) => el.classList.remove('spinning'));
+  wheelsGrid.clearSpinningState();
+  wheelsGrid.isAnimating = false;
 
   // Victory sound
   audio.victory();
@@ -974,44 +870,34 @@ async function spinForCurrentGroupGrid() {
 
 // ── Carousel Mode Spin (sequential per-wheel) ────────────────
 async function spinForCurrentGroupCarousel() {
-  isAnimating = true;
+  if (!wheelsGrid) return;
+  wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
   wheelStatus.textContent = `Spinning for Group ${currentGroupIndex + 1}...`;
 
   // Clear previous results
-  wheelTank?.clearResult();
-  wheelHealer?.clearResult();
-  wheelDps1?.clearResult();
-  wheelDps2?.clearResult();
-  wheelDps3?.clearResult();
+  wheelsGrid.clearAllResults();
 
   // Re-init wheels with current pools
-  wheelTank?.init(poolTanks);
-  wheelHealer?.init(poolHealers);
-  wheelDps1?.init(poolDps);
-  wheelDps2?.init(poolDps);
-  wheelDps3?.init(poolDps);
+  wheelsGrid.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
 
   // Reset dots for this spin
-  resetCarouselDots();
+  wheelsGrid.resetCarouselDots();
 
   // Define the sequence: [slideIndex, wheel, winner]
-  const sequence: [number, Wheel | null, WoWPlayer | null][] = [
-    [0, wheelTank, group.tank],
-    [1, wheelHealer, group.healer],
-    [2, wheelDps1, group.dps[0] || null],
-    [3, wheelDps2, group.dps[1] || null],
-    [4, wheelDps3, group.dps[2] || null],
-  ];
+  const wheels = wheelsGrid.orderedWheels();
+  const winners = [group.tank, group.healer, group.dps[0] || null, group.dps[1] || null, group.dps[2] || null];
 
   try {
-    for (const [slideIndex, wheel, winner] of sequence) {
-      if (!wheel || !winner) continue;
+    for (let slideIndex = 0; slideIndex < wheels.length; slideIndex++) {
+      const wheel = wheels[slideIndex];
+      const winner = winners[slideIndex];
+      if (!winner) continue;
 
       // Slide to this wheel
-      setCarouselSlide(slideIndex);
-      const slot = document.querySelectorAll('.wheel-slot')[slideIndex];
+      wheelsGrid.setCarouselSlide(slideIndex);
+      const slot = wheelsGrid.getSlot(slideIndex);
       slot?.classList.add('spinning');
 
       // Let carousel transition finish
@@ -1021,7 +907,7 @@ async function spinForCurrentGroupCarousel() {
       await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
 
       slot?.classList.remove('spinning');
-      markCarouselDotCompleted(slideIndex);
+      wheelsGrid.markDotCompleted(slideIndex);
 
       // Pause before next wheel
       await delay(CAROUSEL_ADVANCE_DELAY);
@@ -1030,6 +916,9 @@ async function spinForCurrentGroupCarousel() {
     // Spin was cancelled — bail out silently
     return;
   }
+
+  // Remove animation lock
+  wheelsGrid.isAnimating = false;
 
   // Victory sound
   audio.victory();
@@ -1044,7 +933,6 @@ async function spinForCurrentGroupCarousel() {
 function advanceAfterSpin(_group: WoWGroup) {
   // Advance to next group (pools are kept intact so all players remain in wheels)
   currentGroupIndex++;
-  isAnimating = false;
 
   // After all full groups are spun, show remainder groups as cards (no wheel spin)
   if (currentGroupIndex >= fullGroups.length && remainderGroups.length > 0) {
