@@ -1081,6 +1081,8 @@ body {
   }
 
   .wheel-frame {
+    width: 100%;
+    flex: 0 0 auto;
     max-width: min(400px, 70dvh);
   }
 
