@@ -61,58 +61,8 @@
                     </div>
 
                     <div class="wheels-content">
-                        <div class="wheels-area">
-                            <div class="wheels-container" style="--carousel-index: 0;">
-                                <div class="wheel-slot" id="slot-tank">
-                                    <span class="wheel-label label-tank">Tank</span>
-                                    <div class="wheel-frame">
-                                        <div class="wheel-pointer"></div>
-                                        <canvas id="wheel-tank" aria-label="Tank Selection Wheel"></canvas>
-                                    </div>
-                                    <div id="result-tank" class="wheel-result" aria-live="polite"></div>
-                                </div>
-                                <div class="wheel-slot" id="slot-healer">
-                                    <span class="wheel-label label-healer">Healer</span>
-                                    <div class="wheel-frame">
-                                        <div class="wheel-pointer"></div>
-                                        <canvas id="wheel-healer" aria-label="Healer Selection Wheel"></canvas>
-                                    </div>
-                                    <div id="result-healer" class="wheel-result" aria-live="polite"></div>
-                                </div>
-                                <div class="wheel-slot" id="slot-dps1">
-                                    <span class="wheel-label label-dps">DPS</span>
-                                    <div class="wheel-frame">
-                                        <div class="wheel-pointer"></div>
-                                        <canvas id="wheel-dps1" aria-label="DPS Selection Wheel 1"></canvas>
-                                    </div>
-                                    <div id="result-dps1" class="wheel-result" aria-live="polite"></div>
-                                </div>
-                                <div class="wheel-slot" id="slot-dps2">
-                                    <span class="wheel-label label-dps">DPS</span>
-                                    <div class="wheel-frame">
-                                        <div class="wheel-pointer"></div>
-                                        <canvas id="wheel-dps2" aria-label="DPS Selection Wheel 2"></canvas>
-                                    </div>
-                                    <div id="result-dps2" class="wheel-result" aria-live="polite"></div>
-                                </div>
-                                <div class="wheel-slot" id="slot-dps3">
-                                    <span class="wheel-label label-dps">DPS</span>
-                                    <div class="wheel-frame">
-                                        <div class="wheel-pointer"></div>
-                                        <canvas id="wheel-dps3" aria-label="DPS Selection Wheel 3"></canvas>
-                                    </div>
-                                    <div id="result-dps3" class="wheel-result" aria-live="polite"></div>
-                                </div>
-                            </div>
-
-                            <div class="carousel-dots" aria-label="Wheel navigation">
-                                <button class="carousel-dot active" data-index="0" aria-label="Tank wheel" style="--dot-color: var(--color-tank);" aria-current="step"></button>
-                                <button class="carousel-dot" data-index="1" aria-label="Healer wheel" style="--dot-color: var(--color-healer);"></button>
-                                <button class="carousel-dot" data-index="2" aria-label="DPS 1 wheel" style="--dot-color: var(--color-dps);"></button>
-                                <button class="carousel-dot" data-index="3" aria-label="DPS 2 wheel" style="--dot-color: var(--color-dps);"></button>
-                                <button class="carousel-dot" data-index="4" aria-label="DPS 3 wheel" style="--dot-color: var(--color-dps);"></button>
-                            </div>
-                        </div>
+                        <!-- Wheels area: dynamically populated by WheelsGrid -->
+                        <div id="wheels-area" class="wheels-content-area"></div>
 
                         <!-- Side Panel: Formed Groups + Announce toggle -->
                         <div id="side-column" class="side-column hidden">
