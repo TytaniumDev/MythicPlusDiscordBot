@@ -19,10 +19,14 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         self.mock_dev = AsyncMock(spec=discord.User)
         self.mock_dev.send = AsyncMock()
 
+    @patch("bot.create_error_issue", new_callable=AsyncMock, return_value=None)
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
     async def test_send_error_to_dev_short_with_log(
-        self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
+        self,
+        mock_get_user: MagicMock,
+        mock_fetch_user: MagicMock,
+        mock_create_issue: AsyncMock,
     ):
         mock_get_user.return_value = self.mock_dev
 
@@ -48,10 +52,14 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(kwargs["files"]), 1)
         self.assertIsInstance(kwargs["files"][0], discord.File)
 
+    @patch("bot.create_error_issue", new_callable=AsyncMock, return_value=None)
     @patch("bot.MythicPlusBot.fetch_user")
     @patch("bot.MythicPlusBot.get_user")
     async def test_send_error_to_dev_long_with_log(
-        self, mock_get_user: MagicMock, mock_fetch_user: MagicMock
+        self,
+        mock_get_user: MagicMock,
+        mock_fetch_user: MagicMock,
+        mock_create_issue: AsyncMock,
     ):
         mock_get_user.return_value = self.mock_dev
 
@@ -139,6 +147,74 @@ class TestErrorHandling(unittest.IsolatedAsyncioTestCase):
         args, _ = mock_send_to_dev.call_args
         self.assertEqual(args[0], error)
         self.assertIn("Event: on_message", args[1])
+
+    @patch("bot.create_error_issue", new_callable=AsyncMock)
+    @patch("bot.MythicPlusBot.fetch_user")
+    @patch("bot.MythicPlusBot.get_user")
+    async def test_send_error_to_dev_creates_github_issue(
+        self,
+        mock_get_user: MagicMock,
+        mock_fetch_user: MagicMock,
+        mock_create_issue: AsyncMock,
+    ):
+        mock_get_user.return_value = self.mock_dev
+        mock_create_issue.return_value = {"html_url": "http://github.com/issue/1"}
+
+        error = ValueError("Test Error")
+
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="mock log data")),
+        ):
+            await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
+
+        mock_create_issue.assert_called_once_with(error, "Test Context")
+
+        # Verify issue URL was sent as follow-up DM
+        calls = self.mock_dev.send.call_args_list
+        self.assertEqual(len(calls), 2)
+        self.assertIn("http://github.com/issue/1", calls[1].args[0])
+
+    @patch("bot.create_error_issue", new_callable=AsyncMock, return_value=None)
+    @patch("bot.MythicPlusBot.fetch_user")
+    @patch("bot.MythicPlusBot.get_user")
+    async def test_send_error_to_dev_no_followup_when_no_issue(
+        self,
+        mock_get_user: MagicMock,
+        mock_fetch_user: MagicMock,
+        mock_create_issue: AsyncMock,
+    ):
+        mock_get_user.return_value = self.mock_dev
+
+        error = ValueError("Test Error")
+
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="mock log data")),
+        ):
+            await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
+
+        # Only the error DM, no follow-up for issue URL
+        self.mock_dev.send.assert_called_once()
+
+    @patch("bot.create_error_issue", new_callable=AsyncMock)
+    @patch("bot.MythicPlusBot.fetch_user")
+    @patch("bot.MythicPlusBot.get_user")
+    async def test_github_issue_created_even_when_dm_fails(
+        self,
+        mock_get_user: MagicMock,
+        mock_fetch_user: MagicMock,
+        mock_create_issue: AsyncMock,
+    ):
+        mock_get_user.return_value = None  # Can't find developer
+        mock_create_issue.return_value = None
+
+        error = ValueError("Test Error")
+
+        await self.bot._send_error_to_dev(error, "Test Context")  # pyright: ignore[reportPrivateUsage]
+
+        # Issue creation should still be attempted
+        mock_create_issue.assert_called_once_with(error, "Test Context")
 
 
 if __name__ == "__main__":

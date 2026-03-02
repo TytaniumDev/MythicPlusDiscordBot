@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from core.config import BOT_TOKEN, DEVELOPER_ID, LOG_FILE
 from core.firebase_service import FirebaseService
+from core.issues import create_error_issue
 from services.group_service import GroupService
 
 # Age in seconds beyond which abandoned session documents are deleted on bot startup (24 hours).
@@ -30,6 +31,7 @@ class MythicPlusBot(commands.Bot):
         self, error: BaseException, context_info: str = "Unknown Context"
     ) -> None:
         """Sends a detailed error message and traceback to the developer via DM."""
+        dev: discord.User | None = None
         try:
             dev = self.get_user(DEVELOPER_ID) or await self.fetch_user(DEVELOPER_ID)
             if not dev:
@@ -65,6 +67,14 @@ class MythicPlusBot(commands.Bot):
         except Exception as e:
             logger.error("Failed to send error DM to developer: %s", e)
             logger.error("Original error in %s: %s", context_info, error)
+
+        # Auto-create GitHub issue with PII obfuscated (fire-and-forget)
+        issue = await create_error_issue(error, context_info)
+        if issue and dev:
+            try:
+                await dev.send(f"📋 GitHub issue: {issue['html_url']}")
+            except Exception as e:
+                logger.warning("Failed to send GitHub issue follow-up DM: %s", e)
 
     async def setup_hook(self):
         # Load extensions

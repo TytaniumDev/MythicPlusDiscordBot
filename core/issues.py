@@ -1,14 +1,16 @@
 import asyncio
 import logging
 import os
+import traceback as tb_module
 from collections import deque
 from typing import Any
+from urllib.parse import quote
 
 import aiohttp
 import discord
 from discord import ui
 
-from core.security import sanitize_logs
+from core.security import sanitize_for_github, sanitize_logs
 
 from . import config
 
@@ -73,6 +75,101 @@ async def create_github_issue(
                 # Do not include response body in exception message; it may leak
                 # credentials or repo info into logs (e.g. when included in bug reports).
                 raise GitHubError(f"Failed to create issue: HTTP {response.status}")
+
+
+async def search_github_issues(error_type: str) -> dict[str, Any] | None:
+    """Search for an existing open auto-error issue matching *error_type*."""
+    if (
+        not config.GITHUB_TOKEN
+        or not config.GITHUB_REPO_OWNER
+        or not config.GITHUB_REPO_NAME
+    ):
+        return None
+
+    query = (
+        f"repo:{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}"
+        f" is:issue is:open label:auto-error"
+        f" {error_type} in:title"
+    )
+    url = f"https://api.github.com/search/issues?q={quote(query, safe='')}"
+    headers = {
+        "Authorization": f"token {config.GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status == 200:
+                    data: dict[str, Any] = await response.json()
+                    items: list[dict[str, Any]] = data.get("items", [])
+                    if data.get("total_count", 0) > 0 and items:
+                        return items[0]
+    except Exception as e:
+        logger.warning("Failed to search for existing GitHub issues: %s", e)
+    return None
+
+
+async def create_error_issue(
+    error: BaseException, context_info: str
+) -> dict[str, Any] | None:
+    """Create a GitHub issue from a bot error with PII obfuscated.
+
+    Returns the issue dict on success, the existing duplicate issue if one is
+    already open, or ``None`` when GitHub is not configured or on failure.
+    """
+    if not config.GITHUB_TOKEN:
+        return None
+
+    try:
+        error_type = type(error).__name__
+
+        # Check for an existing open issue to avoid duplicates
+        existing = await search_github_issues(error_type)
+        if existing:
+            logger.info(
+                "Skipping auto-error issue: existing open issue found for %s",
+                error_type,
+            )
+            return existing
+
+        # Build title
+        error_msg = sanitize_for_github(str(error))
+        max_title_msg = 60
+        short_msg = (
+            error_msg[:max_title_msg] + "…"
+            if len(error_msg) > max_title_msg
+            else error_msg
+        )
+        title = f"[Auto] {error_type}: {short_msg}"
+
+        # Build traceback
+        tb_str = "".join(
+            tb_module.format_exception(type(error), error, error.__traceback__)
+        )
+
+        safe_context = sanitize_for_github(context_info)
+        safe_traceback = sanitize_for_github(tb_str)
+        version_str = _get_version_string()
+
+        body = (
+            f"**Version:** {version_str}\n\n"
+            f"**Context:**\n```\n{safe_context}\n```\n\n"
+            f"**Error:** `{error_type}: {error_msg}`\n\n"
+            f"**Traceback:**\n```python\n{safe_traceback}\n```\n"
+        )
+
+        last_lines = await _get_recent_logs()
+        if last_lines:
+            safe_logs = sanitize_for_github(last_lines)
+            body += f"\n**Recent Logs:**\n```log\n{safe_logs}\n```\n"
+
+        labels = ["bug", "auto-error"]
+        return await create_github_issue(title, body, labels)
+
+    except Exception as e:
+        logger.error("Failed to create automatic error issue: %s", type(e).__name__)
+        return None
 
 
 class GitHubIssueModal(ui.Modal):
