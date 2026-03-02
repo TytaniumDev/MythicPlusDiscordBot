@@ -24,6 +24,9 @@ export class WheelsGrid {
   readonly dps2: Wheel;
   readonly dps3: Wheel;
 
+  /** Cached ordered array of all 5 wheels (tank, healer, dps1-3) */
+  readonly wheels: readonly Wheel[];
+
   private areaEl: HTMLDivElement;
   private containerEl: HTMLDivElement;
   private dotsEl: HTMLDivElement;
@@ -47,6 +50,8 @@ export class WheelsGrid {
     this.dps1 = new Wheel({ role: 'dps1', label: 'DPS', labelClass: 'dps', ariaLabel: 'DPS Selection Wheel 1' });
     this.dps2 = new Wheel({ role: 'dps2', label: 'DPS', labelClass: 'dps', ariaLabel: 'DPS Selection Wheel 2' });
     this.dps3 = new Wheel({ role: 'dps3', label: 'DPS', labelClass: 'dps', ariaLabel: 'DPS Selection Wheel 3' });
+
+    this.wheels = [this.tank, this.healer, this.dps1, this.dps2, this.dps3];
 
     // Mount wheel slots into the container
     this.containerEl.appendChild(this.tank.element);
@@ -101,7 +106,8 @@ export class WheelsGrid {
 
       // Only handle horizontal swipes (ignore vertical scrolling)
       if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-        if (dx < 0 && this.carouselIndex < 4) {
+        const maxIndex = this.dots.length - 1;
+        if (dx < 0 && this.carouselIndex < maxIndex) {
           this.setCarouselSlide(this.carouselIndex + 1);
         } else if (dx > 0 && this.carouselIndex > 0) {
           this.setCarouselSlide(this.carouselIndex - 1);
@@ -111,11 +117,6 @@ export class WheelsGrid {
 
     // Mount the whole area into the parent
     parent.appendChild(this.areaEl);
-  }
-
-  /** Get the root DOM element */
-  get element(): HTMLDivElement {
-    return this.areaEl;
   }
 
   /** Check if we're in mobile carousel mode */
@@ -181,7 +182,7 @@ export class WheelsGrid {
 
   /** Navigate to a carousel slide */
   setCarouselSlide(index: number) {
-    this.carouselIndex = Math.max(0, Math.min(4, index));
+    this.carouselIndex = Math.max(0, Math.min(this.dots.length - 1, index));
     this.containerEl.style.setProperty('--carousel-index', String(this.carouselIndex));
 
     this.dots.forEach((dot, i) => {
@@ -211,18 +212,12 @@ export class WheelsGrid {
     firstDot?.setAttribute('aria-current', 'step');
   }
 
-  /** Remove all visual spin state (classes + results) */
-  resetSpinVisuals() {
-    this.clearSpinningState();
-    this.clearAllResults();
-  }
-
   /** Get the ordered array of wheels for spin sequences */
-  orderedWheels(): Wheel[] {
-    return [this.tank, this.healer, this.dps1, this.dps2, this.dps3];
+  orderedWheels(): readonly Wheel[] {
+    return this.wheels;
   }
 
   private allSlots(): HTMLElement[] {
-    return this.orderedWheels().map((w) => w.element);
+    return this.wheels.map((w) => w.element);
   }
 }

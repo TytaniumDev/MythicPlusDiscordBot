@@ -745,6 +745,9 @@ function resetSpinState() {
   remainderGroups = [];
   currentGroupIndex = 0;
   isAnimating = false;
+  if (wheelsGrid) {
+    wheelsGrid.isAnimating = false;
+  }
 
   // Clean up visual state left behind by a cancelled spin
   wheelsGrid?.clearSpinningState();
