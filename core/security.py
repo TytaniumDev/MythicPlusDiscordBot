@@ -13,21 +13,24 @@ def obfuscate_pii(text: str) -> str:
         return text
 
     # 1. Discord object repr: <Member id=123… name='Foo' …>
+    #    Use .*? to handle names containing single quotes (e.g. O'Reilly)
     text = re.sub(
-        r"<(\w+)\s+id=\d{15,21}\s+name='[^']*'",
+        r"<(\w+)\s+id=\d{15,21}\s+name='.*?'",
         r"<\1 id=[REDACTED_ID] name='[REDACTED]'",
         text,
     )
 
     # 2. "User: Name (ID)" context lines
+    #    Use greedy .+ to handle usernames containing parentheses
     text = re.sub(
-        r"(User:\s*).+?\s*\(\d{15,21}\)",
+        r"(User:\s*).+\s\(\d{15,21}\)",
         r"\1[REDACTED_USER] ([REDACTED_ID])",
         text,
     )
 
     # 3. Username#Discriminator (legacy format)
-    text = re.sub(r"\S+#\d{4}", "[REDACTED_USER]", text)
+    #    Use .+ to handle usernames with spaces (e.g. "Cool User#1234")
+    text = re.sub(r".+#\d{4}", "[REDACTED_USER]", text)
 
     # 4. "Channel: …" context lines
     text = re.sub(r"(Channel:\s*).+", r"\1[REDACTED_CHANNEL]", text)

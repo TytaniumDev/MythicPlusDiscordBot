@@ -31,6 +31,7 @@ class MythicPlusBot(commands.Bot):
         self, error: BaseException, context_info: str = "Unknown Context"
     ) -> None:
         """Sends a detailed error message and traceback to the developer via DM."""
+        dev: discord.User | None = None
         try:
             dev = self.get_user(DEVELOPER_ID) or await self.fetch_user(DEVELOPER_ID)
             if not dev:
@@ -69,13 +70,11 @@ class MythicPlusBot(commands.Bot):
 
         # Auto-create GitHub issue with PII obfuscated (fire-and-forget)
         issue = await create_error_issue(error, context_info)
-        if issue:
+        if issue and dev:
             try:
-                dev = self.get_user(DEVELOPER_ID) or await self.fetch_user(DEVELOPER_ID)
-                if dev:
-                    await dev.send(f"📋 GitHub issue: {issue['html_url']}")
-            except Exception:
-                pass
+                await dev.send(f"📋 GitHub issue: {issue['html_url']}")
+            except Exception as e:
+                logger.warning("Failed to send GitHub issue follow-up DM: %s", e)
 
     async def setup_hook(self):
         # Load extensions

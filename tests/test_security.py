@@ -89,6 +89,24 @@ class TestObfuscatePii(unittest.TestCase):
         self.assertNotIn("CoolUser#9876", result)
         self.assertIn("[REDACTED_USER]", result)
 
+    def test_username_discriminator_with_spaces(self):
+        text = "Something about Cool User#9876 happened"
+        result = obfuscate_pii(text)
+        self.assertNotIn("Cool User#9876", result)
+        self.assertIn("[REDACTED_USER]", result)
+
+    def test_discord_object_repr_single_quote_name(self):
+        text = "<Member id=123456789012345678 name='O'Reilly' discriminator='1234'>"
+        result = obfuscate_pii(text)
+        self.assertNotIn("O'Reilly", result)
+        self.assertNotIn("123456789012345678", result)
+
+    def test_user_context_with_parens_in_name(self):
+        text = "User: Name(Tag) (123456789012345678)"
+        result = obfuscate_pii(text)
+        self.assertNotIn("Name(Tag)", result)
+        self.assertNotIn("123456789012345678", result)
+
     def test_empty_string(self):
         self.assertEqual(obfuscate_pii(""), "")
 

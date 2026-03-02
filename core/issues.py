@@ -89,7 +89,7 @@ async def search_github_issues(error_type: str) -> dict[str, Any] | None:
     query = (
         f"repo:{config.GITHUB_REPO_OWNER}/{config.GITHUB_REPO_NAME}"
         f" is:issue is:open label:auto-error"
-        f" {quote(error_type)} in:title"
+        f" {error_type} in:title"
     )
     url = f"https://api.github.com/search/issues?q={quote(query, safe='')}"
     headers = {
@@ -105,8 +105,8 @@ async def search_github_issues(error_type: str) -> dict[str, Any] | None:
                     items: list[dict[str, Any]] = data.get("items", [])
                     if data.get("total_count", 0) > 0 and items:
                         return items[0]
-    except Exception:
-        pass  # Fall through to create a new issue
+    except Exception as e:
+        logger.warning("Failed to search for existing GitHub issues: %s", e)
     return None
 
 
