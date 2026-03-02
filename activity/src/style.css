@@ -646,10 +646,10 @@ body {
 .wheels-container {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   justify-items: center;
-  align-items: center;
+  align-items: stretch;
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -689,13 +689,12 @@ body {
 
 .wheel-frame {
   position: relative;
-  width: 100%;
-  max-width: 100%;
   aspect-ratio: 1;
   container-type: inline-size;
   margin-top: 2cqi;
-  flex-shrink: 1;
+  flex: 1;
   min-height: 0;
+  max-width: 100%;
 }
 
 .wheel-frame canvas {
