@@ -121,9 +121,11 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         mock_ctx2 = AsyncMock()
         mock_ctx2.guild.id = 123
 
+        from typing import Any
+
         # We need to simulate a long-running execution for the first call
         # so the second call encounters a locked state.
-        async def mock_execute(*args, **kwargs):
+        async def mock_execute(*args: Any, **kwargs: Any) -> None:
             await asyncio.sleep(0.1)
 
         with patch.object(
@@ -158,7 +160,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         }
         service.get_groups_data = AsyncMock(return_value=mock_groups_data)
 
-        await service._execute_core_wheel(mock_ctx, mock_channel, guild_id, debug)
+        await service._execute_core_wheel(mock_ctx, mock_channel, guild_id, debug)  # pyright: ignore[reportPrivateUsage]
 
         service.get_groups_data.assert_awaited_once_with(mock_ctx, debug)
         self.assertEqual(service.last_results[guild_id], mock_groups_data)
@@ -174,6 +176,6 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
 
         service.get_groups_data = AsyncMock(return_value=None)
 
-        await service._execute_core_wheel(mock_ctx, mock_channel, guild_id, debug)
+        await service._execute_core_wheel(mock_ctx, mock_channel, guild_id, debug)  # pyright: ignore[reportPrivateUsage]
 
         self.assertNotIn(guild_id, service.last_results)
