@@ -92,7 +92,6 @@ let discordChannelId: string | null = null;
 let fullGroups: WoWGroup[] = [];
 let remainderGroups: WoWGroup[] = [];
 let currentGroupIndex = 0;
-let isAnimating = false;
 let spinSequenceStarted = false;
 
 // Candidate pools (filtered between groups)
@@ -707,7 +706,6 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   fullGroups = sessionGroups.filter(isCompleteGroup);
   remainderGroups = sessionGroups.filter((g) => !isCompleteGroup(g));
   currentGroupIndex = 0;
-  isAnimating = false;
 
   showView('wheels');
   groupsList.textContent = '';
@@ -744,7 +742,6 @@ function resetSpinState() {
   fullGroups = [];
   remainderGroups = [];
   currentGroupIndex = 0;
-  isAnimating = false;
   if (wheelsGrid) {
     wheelsGrid.isAnimating = false;
   }
@@ -793,7 +790,7 @@ function updateNextButton() {
 }
 
 async function spinForCurrentGroup() {
-  if (isAnimating || currentGroupIndex >= fullGroups.length || !wheelsGrid) return;
+  if (!wheelsGrid || wheelsGrid.isAnimating || currentGroupIndex >= fullGroups.length) return;
 
   if (wheelsGrid.isCarouselMode()) {
     await spinForCurrentGroupCarousel();
@@ -805,7 +802,6 @@ async function spinForCurrentGroup() {
 // ── Grid Mode Spin (all wheels simultaneously) ───────────────
 async function spinForCurrentGroupGrid() {
   if (!wheelsGrid) return;
-  isAnimating = true;
   wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
@@ -865,7 +861,6 @@ async function spinForCurrentGroupGrid() {
 // ── Carousel Mode Spin (sequential per-wheel) ────────────────
 async function spinForCurrentGroupCarousel() {
   if (!wheelsGrid) return;
-  isAnimating = true;
   wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
@@ -928,7 +923,6 @@ async function spinForCurrentGroupCarousel() {
 function advanceAfterSpin(_group: WoWGroup) {
   // Advance to next group (pools are kept intact so all players remain in wheels)
   currentGroupIndex++;
-  isAnimating = false;
 
   // After all full groups are spun, show remainder groups as cards (no wheel spin)
   if (currentGroupIndex >= fullGroups.length && remainderGroups.length > 0) {

@@ -124,7 +124,11 @@ export class WheelsGrid {
     return CAROUSEL_MQ.matches;
   }
 
-  /** Set the external animation lock (used by spin sequences) */
+  /** Animation lock — gates dot clicks, swipes, and spin requests */
+  get isAnimating(): boolean {
+    return this._isAnimating;
+  }
+
   set isAnimating(value: boolean) {
     this._isAnimating = value;
   }
