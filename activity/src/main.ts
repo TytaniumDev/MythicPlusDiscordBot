@@ -576,14 +576,13 @@ async function selectChannel(channelId: string, channelName?: string) {
 
   currentChannelId = channelId;
 
-  // Create the channel doc (merge to avoid overwriting bot-created data)
+  // Create the channel doc (merge to avoid overwriting bot-owned fields like players)
   const channelDocRef = doc(db, 'channels', channelId);
   await setDoc(channelDocRef, {
     channelId,
     channelName: channelName || '',
     guildId: currentGuildId,
     status: 'lobby',
-    players: [],
     groups: [],
     isDebug: false,
     announceResults: true,
