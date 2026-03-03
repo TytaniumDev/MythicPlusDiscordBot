@@ -30,6 +30,7 @@ class SessionService:
         self.channel_listeners: dict[str, Any] = {}  # doc_id -> watch
         self.guild_listeners: dict[int, Any] = {}  # guild_id -> watch
         self._collection_watch: Any = None
+        self._guild_collection_watch: Any = None
 
     def _run_async(self, coro: Any) -> None:
         """Schedules a coroutine on the bot loop with error logging."""
@@ -187,6 +188,100 @@ class SessionService:
 
             # If no more channels for this guild, clean up guild tracking
             self._cleanup_guild_if_empty(active.guild_id)
+
+    def start_guild_collection_listener(self) -> None:
+        """Watches the guilds collection to auto-discover frontend-created guild docs."""
+        if self._guild_collection_watch is not None:
+            return
+        if not self.firebase.is_available():
+            return
+
+        def on_guild_collection_snapshot(
+            col_snapshot: Any, changes: Any, read_time: Any
+        ) -> None:
+            for change in changes:
+                if change.type.name == "ADDED":
+                    self._handle_guild_collection_added(change)
+                elif change.type.name == "REMOVED":
+                    self._handle_guild_collection_removed(change)
+
+        self._guild_collection_watch = self.firebase.listen_to_collection(
+            "guilds", on_guild_collection_snapshot
+        )
+
+    def _handle_guild_collection_added(self, change: Any) -> None:
+        """Handle a new guild doc appearing in the collection."""
+        doc = change.document
+        data = doc.to_dict()
+        doc_id = doc.id
+
+        guild_id_str = data.get("guildId") or doc_id
+        try:
+            guild_id = int(guild_id_str)
+        except (ValueError, TypeError):
+            return
+
+        # Skip if already tracked
+        if guild_id in self.active_guilds:
+            return
+
+        # Validate that the bot is in this guild
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return
+
+        logger.info("Auto-discovered guild %s from collection", guild_id)
+        self.active_guilds.add(guild_id)
+
+        # Start per-guild listener for refresh requests
+        if guild_id not in self.guild_listeners:
+            self._start_guild_listener(guild_id)
+
+        # If the doc has a refreshRequest, populate guild metadata + voice channels
+        if data.get("refreshRequest"):
+            self._run_async(self._initialize_guild_from_frontend(guild_id, guild, data))
+
+    def _handle_guild_collection_removed(self, change: Any) -> None:
+        """Handle a guild doc being deleted from the collection."""
+        doc_id = change.document.id
+        try:
+            guild_id = int(doc_id)
+        except (ValueError, TypeError):
+            return
+
+        if guild_id in self.active_guilds:
+            self.active_guilds.discard(guild_id)
+            if guild_id in self.guild_listeners:
+                watch = self.guild_listeners.pop(guild_id)
+                if watch:
+                    watch.unsubscribe()
+            logger.info("Guild %s removed from tracking", guild_id)
+
+    async def _initialize_guild_from_frontend(
+        self, guild_id: int, guild: discord.Guild, data: dict[str, Any]
+    ) -> None:
+        """Populates guild metadata and voice channels for a frontend-created guild doc."""
+        guild_id_str = str(guild_id)
+        guild_icon_url = str(guild.icon.url) if guild.icon else None
+
+        try:
+            await self.refresh_guild_voice_channels(guild)
+            update: dict[str, Any] = {
+                "guildName": guild.name,
+                "refreshRequest": None,
+            }
+            if guild_icon_url:
+                update["guildIconUrl"] = guild_icon_url
+            await self.firebase.update_guild_doc(guild_id_str, update)
+        except Exception as e:
+            logger.error("Failed to initialize guild %s: %s", guild_id, e)
+            # Still clear refreshRequest so the frontend doesn't hang
+            try:
+                await self.firebase.update_guild_doc(
+                    guild_id_str, {"refreshRequest": None}
+                )
+            except Exception:
+                pass
 
     def _start_guild_listener(self, guild_id: int) -> None:
         """Listens to a guild doc for refreshRequest field changes."""

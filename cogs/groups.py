@@ -115,7 +115,8 @@ class Groups(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        """Start watching the channels collection for frontend-created channel docs."""
+        """Start watching collections for frontend-created guild and channel docs."""
+        self.session_service.start_guild_collection_listener()
         self.session_service.start_collection_listener()
 
     @commands.Cog.listener()

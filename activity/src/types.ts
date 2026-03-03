@@ -36,6 +36,7 @@ export interface GuildData {
   guildName?: string;
   guildIconUrl?: string;
   voiceChannels: VoiceChannel[];
+  refreshRequest?: unknown;
   createdAt: unknown;
   lastActive: unknown;
 }
