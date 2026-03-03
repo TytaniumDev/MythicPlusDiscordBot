@@ -91,6 +91,7 @@ let guildUnsubscribe: Unsubscribe | null = null;
 let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
+let guildDocCreationInFlight = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
@@ -152,12 +153,21 @@ function subscribeToGuild(guildId: string) {
     docRef,
     (docSnap) => {
       if (docSnap.exists()) {
-        startSessionBtn.classList.add('hidden');
         handleGuildUpdate(docSnap.data() as GuildData);
       } else {
-        console.warn('[Activity] No doc at guilds/' + guildId);
-        statusMsg.textContent = `No active session found. (Guild: ${guildId})`;
-        startSessionBtn.classList.remove('hidden');
+        // Auto-create guild doc instead of showing a button
+        if (!guildDocCreationInFlight) {
+          guildDocCreationInFlight = true;
+          statusMsg.textContent = 'Setting up session...';
+          createGuildEntry()
+            .catch((err) => {
+              console.error('[Activity] Failed to auto-create guild doc:', err);
+              statusMsg.textContent = 'Failed to set up session. Please try again.';
+            })
+            .finally(() => {
+              guildDocCreationInFlight = false;
+            });
+        }
       }
     },
     (error) => {
@@ -356,10 +366,15 @@ function handleGuildUpdate(data: GuildData) {
     saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
   }
 
-  // If no channel is selected yet, show channel picker
+  // If no channel is selected yet, show channel picker (or loading state)
   if (!currentChannelId) {
     showView('channels');
-    renderChannelPicker(data.voiceChannels || []);
+    if (data.refreshRequest && (!data.voiceChannels || data.voiceChannels.length === 0)) {
+      statusMsg.textContent = 'Loading channels...';
+    } else {
+      statusMsg.textContent = '';
+      renderChannelPicker(data.voiceChannels || []);
+    }
   }
 }
 
@@ -1234,41 +1249,40 @@ async function startNewRound() {
 async function createGuildEntry() {
   if (!currentGuildId) return;
 
-  startSessionBtn.disabled = true;
-  startSessionBtn.textContent = 'Creating...';
+  // Validate guild ID is a numeric Discord snowflake (no path traversal)
+  if (!/^\d+$/.test(currentGuildId)) {
+    console.error('[Activity] Invalid guild ID:', currentGuildId);
+    statusMsg.textContent = 'Invalid guild ID.';
+    return;
+  }
 
-  try {
-    // Create guild doc
-    const guildDocRef = doc(db, 'guilds', currentGuildId);
-    await setDoc(guildDocRef, {
+  // Create guild doc with refreshRequest so bot populates voice channels
+  const guildDocRef = doc(db, 'guilds', currentGuildId);
+  await setDoc(guildDocRef, {
+    guildId: currentGuildId,
+    voiceChannels: [],
+    refreshRequest: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp(),
+  });
+
+  // If we have a channel from Discord SDK, also create a channel doc
+  if (discordChannelId) {
+    currentChannelId = discordChannelId;
+    const channelDocRef = doc(db, 'channels', discordChannelId);
+    await setDoc(channelDocRef, {
+      channelId: discordChannelId,
+      channelName: '',
       guildId: currentGuildId,
-      voiceChannels: [],
+      status: 'lobby',
+      players: [],
+      groups: [],
+      isDebug: false,
+      announceResults: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     });
-
-    // If we have a channel from Discord SDK, also create a channel doc
-    if (discordChannelId) {
-      currentChannelId = discordChannelId;
-      const channelDocRef = doc(db, 'channels', discordChannelId);
-      await setDoc(channelDocRef, {
-        channelId: discordChannelId,
-        channelName: '',
-        guildId: currentGuildId,
-        status: 'lobby',
-        players: [],
-        groups: [],
-        isDebug: false,
-        announceResults: true,
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-      });
-      subscribeToChannel(discordChannelId);
-    }
-  } finally {
-    // Reset button state whether or not the operation succeeded
-    startSessionBtn.disabled = false;
-    startSessionBtn.textContent = 'Start Session';
+    subscribeToChannel(discordChannelId);
   }
 }
 
