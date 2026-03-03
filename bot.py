@@ -119,8 +119,6 @@ class MythicPlusBot(commands.Bot):
         if firebase.is_available():
             await firebase.delete_old_docs("guilds", FIREBASE_DOC_MAX_AGE_SECONDS)
             await firebase.delete_old_docs("channels", FIREBASE_DOC_MAX_AGE_SECONDS)
-            # One-time migration: remove old sessions collection
-            await firebase.delete_all_in_collection("sessions")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
