@@ -31,6 +31,17 @@ class SessionService:
         self.guild_listeners: dict[int, Any] = {}  # guild_id -> watch
         self._collection_watch: Any = None
 
+    def _run_async(self, coro: Any) -> None:
+        """Schedules a coroutine on the bot loop with error logging."""
+        future = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
+        future.add_done_callback(self._log_future_exception)
+
+    @staticmethod
+    def _log_future_exception(future: Any) -> None:
+        exc = future.exception()
+        if exc:
+            logger.error("Async task failed: %s", exc)
+
     async def get_or_create_session(
         self,
         ctx: commands.Context[commands.Bot],
@@ -94,7 +105,7 @@ class SessionService:
         return (guild_doc_id, channel_doc_id)
 
     def start_collection_listener(self) -> None:
-        """Watches the channels collection for new docs created by the frontend."""
+        """Watches the channels collection to auto-discover new and existing channel docs."""
         if self._collection_watch is not None:
             return
         if not self.firebase.is_available():
@@ -147,29 +158,23 @@ class SessionService:
         # Track the guild and ensure guild doc exists
         if guild_id not in self.active_guilds:
             self.active_guilds.add(guild_id)
-            asyncio.run_coroutine_threadsafe(
+            self._run_async(
                 self.firebase.get_or_create_guild_doc(guild_id, guild_name=guild.name),
-                self.bot.loop,
             )
             if guild_id not in self.guild_listeners:
                 self._start_guild_listener(guild_id)
 
         # Sync players
-        asyncio.run_coroutine_threadsafe(
-            self.update_channel_players(channel_id, guild), self.bot.loop
-        )
+        self._run_async(self.update_channel_players(channel_id, guild))
 
     def _handle_collection_removed(self, change: Any) -> None:
         """Handle a channel doc being deleted from the collection."""
         doc = change.document
-        data = doc.to_dict()
         doc_id = doc.id
-        channel_id_str = data.get("channelId")
-        if not channel_id_str:
-            return
 
+        # Use doc.id directly — deleted doc data may be None or empty
         try:
-            channel_id = int(channel_id_str)
+            channel_id = int(doc_id)
         except (ValueError, TypeError):
             return
 
@@ -181,11 +186,7 @@ class SessionService:
             logger.info("Channel %s removed from tracking", channel_id)
 
             # If no more channels for this guild, clean up guild tracking
-            guild_has_channels = any(
-                ac.guild_id == active.guild_id for ac in self.active_channels.values()
-            )
-            if not guild_has_channels:
-                self.active_guilds.discard(active.guild_id)
+            self._cleanup_guild_if_empty(active.guild_id)
 
     def _start_guild_listener(self, guild_id: int) -> None:
         """Listens to a guild doc for refreshRequest field changes."""
@@ -198,9 +199,8 @@ class SessionService:
                 if data.get("refreshRequest"):
                     guild = self.bot.get_guild(guild_id)
                     if guild:
-                        asyncio.run_coroutine_threadsafe(
+                        self._run_async(
                             self._handle_refresh_request(guild_id, guild),
-                            self.bot.loop,
                         )
 
         watch = self.firebase.listen_to_guild_doc(str(guild_id), on_snapshot)
@@ -240,16 +240,14 @@ class SessionService:
         status = data.get("status")
 
         if status == "request_spin":
-            asyncio.run_coroutine_threadsafe(
+            self._run_async(
                 self._process_spin_request(doc_id, channel_id, guild_id, data),
-                self.bot.loop,
             )
 
         elif status == "completed":
             if data.get("announceResults", True):
-                asyncio.run_coroutine_threadsafe(
+                self._run_async(
                     self._announce_completion(channel_id, guild_id, data),
-                    self.bot.loop,
                 )
 
     async def _process_spin_request(
@@ -392,15 +390,30 @@ class SessionService:
         await self.firebase.delete_channel_doc(active.doc_id)
 
         # If no more active channels for this guild, clean up guild
+        await self._async_cleanup_guild_if_empty(active.guild_id)
+
+    def _cleanup_guild_if_empty(self, guild_id: int) -> None:
+        """Removes guild tracking and listener if no active channels remain (sync)."""
         guild_has_channels = any(
-            ac.guild_id == active.guild_id for ac in self.active_channels.values()
+            ac.guild_id == guild_id for ac in self.active_channels.values()
         )
         if not guild_has_channels:
-            self.active_guilds.discard(active.guild_id)
-            await self.firebase.delete_guild_doc(str(active.guild_id))
-            # Stop guild listener
-            if active.guild_id in self.guild_listeners:
-                watch = self.guild_listeners.pop(active.guild_id)
+            self.active_guilds.discard(guild_id)
+            if guild_id in self.guild_listeners:
+                watch = self.guild_listeners.pop(guild_id)
+                if watch:
+                    watch.unsubscribe()
+
+    async def _async_cleanup_guild_if_empty(self, guild_id: int) -> None:
+        """Removes guild tracking, listener, and Firestore doc if no active channels remain."""
+        guild_has_channels = any(
+            ac.guild_id == guild_id for ac in self.active_channels.values()
+        )
+        if not guild_has_channels:
+            self.active_guilds.discard(guild_id)
+            await self.firebase.delete_guild_doc(str(guild_id))
+            if guild_id in self.guild_listeners:
+                watch = self.guild_listeners.pop(guild_id)
                 if watch:
                     watch.unsubscribe()
 

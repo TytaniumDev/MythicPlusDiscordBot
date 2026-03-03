@@ -489,6 +489,55 @@ class TestCollectionListenerRemoved(unittest.TestCase):
         # Guild also cleaned up (last channel)
         self.assertNotIn(1, service.active_guilds)
 
+    @patch("services.session_service.FirebaseService")
+    def test_removed_event_handles_empty_doc_data(
+        self, mock_firebase_cls: MagicMock
+    ) -> None:
+        """Deleted doc data may be None; handler uses doc.id instead."""
+        mock_firebase_cls.return_value = MagicMock()
+        bot = MagicMock()
+        service = SessionService(bot)
+
+        mock_watch = MagicMock()
+        service.active_channels[42] = ActiveChannel(doc_id="42", guild_id=1)
+        service.active_guilds.add(1)
+        service.channel_listeners["42"] = mock_watch
+
+        change = MagicMock()
+        change.type.name = "REMOVED"
+        change.document.id = "42"
+        change.document.to_dict.return_value = None  # Deleted doc has no data
+
+        service._handle_collection_removed(change)  # pyright: ignore[reportPrivateUsage]
+
+        self.assertNotIn(42, service.active_channels)
+        mock_watch.unsubscribe.assert_called_once()
+
+    @patch("services.session_service.FirebaseService")
+    def test_removed_event_keeps_guild_with_other_channels(
+        self, mock_firebase_cls: MagicMock
+    ) -> None:
+        """Guild tracking stays if other channels exist for same guild."""
+        mock_firebase_cls.return_value = MagicMock()
+        bot = MagicMock()
+        service = SessionService(bot)
+
+        service.active_channels[42] = ActiveChannel(doc_id="42", guild_id=1)
+        service.active_channels[43] = ActiveChannel(doc_id="43", guild_id=1)
+        service.active_guilds.add(1)
+        service.channel_listeners["42"] = MagicMock()
+
+        change = MagicMock()
+        change.type.name = "REMOVED"
+        change.document.id = "42"
+        change.document.to_dict.return_value = None
+
+        service._handle_collection_removed(change)  # pyright: ignore[reportPrivateUsage]
+
+        self.assertNotIn(42, service.active_channels)
+        self.assertIn(43, service.active_channels)
+        self.assertIn(1, service.active_guilds)
+
 
 class TestAnnounceCompletion(unittest.IsolatedAsyncioTestCase):
     """Tests for SessionService._announce_completion."""

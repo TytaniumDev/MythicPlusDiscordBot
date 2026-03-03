@@ -36,8 +36,8 @@ export interface GuildData {
   guildName?: string;
   guildIconUrl?: string;
   voiceChannels: VoiceChannel[];
-  createdAt: any; // Firestore Timestamp
-  lastActive: any;
+  createdAt: unknown;
+  lastActive: unknown;
 }
 
 export interface ChannelData {
@@ -49,8 +49,8 @@ export interface ChannelData {
   groups: WoWGroup[];
   isDebug: boolean;
   announceResults: boolean;
-  createdAt: any; // Firestore Timestamp
-  lastActive: any;
+  createdAt: unknown;
+  lastActive: unknown;
 }
 
 export interface RecentGuild {

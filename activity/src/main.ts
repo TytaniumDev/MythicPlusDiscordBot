@@ -346,6 +346,11 @@ async function init() {
 function handleGuildUpdate(data: GuildData) {
   guildData = data;
 
+  // Re-enable refresh button once bot has processed the request
+  if (!('refreshRequest' in data && data.refreshRequest) && refreshChannelsBtn.disabled) {
+    refreshChannelsBtn.disabled = false;
+  }
+
   // Persist guild info for recent guilds list
   if (currentGuildId && data.guildName) {
     saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
@@ -571,7 +576,7 @@ async function selectChannel(channelId: string, channelName?: string) {
 
   currentChannelId = channelId;
 
-  // Create the channel doc
+  // Create the channel doc (merge to avoid overwriting bot-created data)
   const channelDocRef = doc(db, 'channels', channelId);
   await setDoc(channelDocRef, {
     channelId,
@@ -584,7 +589,7 @@ async function selectChannel(channelId: string, channelName?: string) {
     announceResults: true,
     createdAt: serverTimestamp(),
     lastActive: serverTimestamp(),
-  });
+  }, { merge: true });
 
   // Subscribe to the channel doc
   subscribeToChannel(channelId);
@@ -621,8 +626,7 @@ async function refreshChannels() {
   refreshChannelsBtn.disabled = true;
   const docRef = doc(db, 'guilds', currentGuildId);
   await updateDoc(docRef, { refreshRequest: serverTimestamp() });
-  // Re-enable after a short delay (bot will update the doc)
-  setTimeout(() => { refreshChannelsBtn.disabled = false; }, 3000);
+  // Button re-enabled in handleGuildUpdate when refreshRequest is cleared
 }
 
 // ── Lobby ────────────────────────────────────────────────────
@@ -1230,37 +1234,39 @@ async function createGuildEntry() {
   startSessionBtn.disabled = true;
   startSessionBtn.textContent = 'Creating...';
 
-  // Create guild doc
-  const guildDocRef = doc(db, 'guilds', currentGuildId);
-  await setDoc(guildDocRef, {
-    guildId: currentGuildId,
-    voiceChannels: [],
-    createdAt: serverTimestamp(),
-    lastActive: serverTimestamp(),
-  });
-
-  // If we have a channel from Discord SDK, also create a channel doc
-  if (discordChannelId) {
-    currentChannelId = discordChannelId;
-    const channelDocRef = doc(db, 'channels', discordChannelId);
-    await setDoc(channelDocRef, {
-      channelId: discordChannelId,
-      channelName: '',
+  try {
+    // Create guild doc
+    const guildDocRef = doc(db, 'guilds', currentGuildId);
+    await setDoc(guildDocRef, {
       guildId: currentGuildId,
-      status: 'lobby',
-      players: [],
-      groups: [],
-      isDebug: false,
-      announceResults: true,
+      voiceChannels: [],
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     });
-    subscribeToChannel(discordChannelId);
-  }
 
-  // onSnapshot will pick up the new doc and hide the button
-  startSessionBtn.disabled = false;
-  startSessionBtn.textContent = 'Start Session';
+    // If we have a channel from Discord SDK, also create a channel doc
+    if (discordChannelId) {
+      currentChannelId = discordChannelId;
+      const channelDocRef = doc(db, 'channels', discordChannelId);
+      await setDoc(channelDocRef, {
+        channelId: discordChannelId,
+        channelName: '',
+        guildId: currentGuildId,
+        status: 'lobby',
+        players: [],
+        groups: [],
+        isDebug: false,
+        announceResults: true,
+        createdAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+      });
+      subscribeToChannel(discordChannelId);
+    }
+  } finally {
+    // Reset button state whether or not the operation succeeded
+    startSessionBtn.disabled = false;
+    startSessionBtn.textContent = 'Start Session';
+  }
 }
 
 // ── Demo Mode ────────────────────────────────────────────────
