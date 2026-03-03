@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class FirebaseService:
+    DELETE_FIELD: Any = (
+        firestore.firestore.DELETE_FIELD
+    )  # Sentinel to remove a field on update
     _instance = None
     _lock = threading.Lock()
 

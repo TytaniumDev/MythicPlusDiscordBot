@@ -265,24 +265,29 @@ class SessionService:
         guild_id_str = str(guild_id)
         guild_icon_url = str(guild.icon.url) if guild.icon else None
 
+        delete = self.firebase.DELETE_FIELD
         try:
             await self.refresh_guild_voice_channels(guild)
             update: dict[str, Any] = {
                 "guildName": guild.name,
-                "refreshRequest": None,
+                "refreshRequest": delete,
             }
             if guild_icon_url:
                 update["guildIconUrl"] = guild_icon_url
             await self.firebase.update_guild_doc(guild_id_str, update)
         except Exception as e:
             logger.error("Failed to initialize guild %s: %s", guild_id, e)
-            # Still clear refreshRequest so the frontend doesn't hang
+            # Still try to clear refreshRequest so the frontend doesn't hang
             try:
                 await self.firebase.update_guild_doc(
-                    guild_id_str, {"refreshRequest": None}
+                    guild_id_str, {"refreshRequest": delete}
                 )
-            except Exception:
-                pass
+            except Exception as e2:
+                logger.error(
+                    "Failed to clear refreshRequest for guild %s: %s",
+                    guild_id,
+                    e2,
+                )
 
     def _start_guild_listener(self, guild_id: int) -> None:
         """Listens to a guild doc for refreshRequest field changes."""

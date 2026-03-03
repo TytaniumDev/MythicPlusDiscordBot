@@ -160,7 +160,8 @@ function subscribeToGuild(guildId: string) {
           guildDocCreationInFlight = true;
           statusMsg.textContent = 'Setting up session...';
           createGuildEntry()
-            .catch(() => {
+            .catch((err) => {
+              console.error('[Activity] Failed to auto-create guild doc:', err);
               statusMsg.textContent = 'Failed to set up session. Please try again.';
             })
             .finally(() => {
@@ -1247,6 +1248,13 @@ async function startNewRound() {
 // ── Guild Entry Creation ─────────────────────────────────────
 async function createGuildEntry() {
   if (!currentGuildId) return;
+
+  // Validate guild ID is a numeric Discord snowflake (no path traversal)
+  if (!/^\d+$/.test(currentGuildId)) {
+    console.error('[Activity] Invalid guild ID:', currentGuildId);
+    statusMsg.textContent = 'Invalid guild ID.';
+    return;
+  }
 
   // Create guild doc with refreshRequest so bot populates voice channels
   const guildDocRef = doc(db, 'guilds', currentGuildId);
