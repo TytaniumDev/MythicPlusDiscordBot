@@ -1074,7 +1074,9 @@ function utilityIcons(player?: WoWPlayer | null): string {
 
 // ── Group Card Rendering ─────────────────────────────────────
 function appendGroupCard(group: WoWGroup, index: number, label?: string) {
-  if (isCompactPanel()) {
+  if (label === 'Remainder') {
+    groupsList.appendChild(isCompactPanel() ? createCompactRemainderCard(group) : createRemainderCard(group));
+  } else if (isCompactPanel()) {
     groupsList.appendChild(createCompactGroupCard(group, index, label));
   } else {
     groupsList.appendChild(createGroupCard(group, index, label));
@@ -1100,6 +1102,27 @@ function createGroupCard(group: WoWGroup, index: number, label?: string): HTMLDi
     createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None', group.healer),
   );
   // DPS roles
+  group.dps.forEach((d) => {
+    div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name, d));
+  });
+
+  return div;
+}
+
+function createRemainderCard(group: WoWGroup): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = 'group-card';
+
+  const h4 = document.createElement('h4');
+  h4.textContent = 'Remainder';
+  div.appendChild(h4);
+
+  if (group.tank) {
+    div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank.name, group.tank));
+  }
+  if (group.healer) {
+    div.appendChild(createRoleRow('var(--color-healer)', 'Healer', group.healer.name, group.healer));
+  }
   group.dps.forEach((d) => {
     div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name, d));
   });
@@ -1166,6 +1189,26 @@ function createCompactGroupCard(group: WoWGroup, index: number, label?: string):
   return div;
 }
 
+function createCompactRemainderCard(group: WoWGroup): HTMLDivElement {
+  const div = document.createElement('div');
+  div.className = 'group-card-compact';
+
+  const h4 = document.createElement('h4');
+  h4.textContent = 'Remainder';
+  div.appendChild(h4);
+
+  const roles: { color: string; roleLabel: string; name: string; player: WoWPlayer }[] = [];
+  if (group.tank) roles.push({ color: 'var(--color-tank)', roleLabel: 'Tank', name: group.tank.name, player: group.tank });
+  if (group.healer) roles.push({ color: 'var(--color-healer)', roleLabel: 'Healer', name: group.healer.name, player: group.healer });
+  group.dps.forEach((d) => roles.push({ color: 'var(--color-dps)', roleLabel: 'DPS', name: d.name, player: d }));
+
+  roles.forEach((r) => {
+    div.appendChild(createCompactRoleRow(r.color, r.roleLabel, r.name, r.player));
+  });
+
+  return div;
+}
+
 function createCompactRoleRow(
   color: string,
   roleLabel: string,
@@ -1197,8 +1240,11 @@ function showResults(sessionGroups: WoWGroup[]) {
   finalGroups.textContent = '';
 
   sessionGroups.forEach((g, i) => {
-    const label = isCompleteGroup(g) ? undefined : 'Remainder';
-    finalGroups.appendChild(createGroupCard(g, i, label));
+    if (isCompleteGroup(g)) {
+      finalGroups.appendChild(createGroupCard(g, i));
+    } else {
+      finalGroups.appendChild(createRemainderCard(g));
+    }
   });
 }
 
