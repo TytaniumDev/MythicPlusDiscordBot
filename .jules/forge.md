@@ -5,3 +5,7 @@
 **Discovery:** The Agent persona for `Architect` referenced deprecated tools (`black`, `flake8`) instead of the project standard `ruff`.
 **Discovery:** The `Bolt` persona file (`.jules/personas/bolt.md`) was missing, despite a journal file existing at `.jules/bolt.md`.
 **Action:** Updated CI workflows to use `astral-sh/setup-uv` for consistency. Updated `Architect` instructions to mandate `ruff`. Created `Bolt` persona with performance-focused boundaries and `uv` usage instructions.
+
+## 2026-03-03 - [CI/AGENTS.md Calibration]
+**Discovery:** The `setup.sh` script referenced deprecated `pip` install instructions instead of `uv`, causing an environment parity mismatch. Additionally, `AGENTS.md` environment setup and verification instructions were inline, not meeting the "copy-paste ready" standard.
+**Action:** Updated `setup.sh` to use `uv sync` and `uv run` for executing python tests. Refactored `AGENTS.md` instructions into executable bash code blocks to ensure agent operational context matches current standards.

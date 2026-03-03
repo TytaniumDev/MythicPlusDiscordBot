@@ -10,10 +10,16 @@ This file provides the necessary context and operational standards for AI agents
 ### 1. Code Quality & Verification
 To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes:
 
-- **Backend (`core/`, `cogs/`):** Run `./scripts/verify.sh`.
-  - Runs `ruff check --fix` (Lint), `ruff format` (Format), `pyright` (Type Check), and `unittest` (Tests).
-- **Frontend (`activity/`):** Run `./scripts/verify-activity.sh`.
-  - Runs `npm run typecheck` (TypeScript), `npm run build` (Build), and `npx playwright test` (E2E Tests).
+- **Backend (`core/`, `cogs/`):** Run the verification script:
+  ```bash
+  ./scripts/verify.sh
+  ```
+  Runs `ruff check --fix` (Lint), `ruff format` (Format), `pyright` (Type Check), and `unittest` (Tests).
+- **Frontend (`activity/`):** Run the verification script:
+  ```bash
+  ./scripts/verify-activity.sh
+  ```
+  Runs `npm run typecheck` (TypeScript), `npm run build` (Build), and `npx playwright test` (E2E Tests).
 - **Verification:** Do not submit code unless the relevant script passes successfully.
 
 ### 2. Python Conventions
@@ -33,11 +39,25 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
 
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
-2. **Environment:** Ensure the environment is set up and dependencies are installed (`uv sync` for backend, `npm ci` for frontend).
+2. **Environment:** Ensure the environment is set up and dependencies are installed.
+   - **Backend:**
+     ```bash
+     uv sync
+     ```
+   - **Frontend:**
+     ```bash
+     cd activity && npm ci
+     ```
 3. **Develop:** Implement the requested changes.
 4. **Verify:** Execute the relevant verification script(s).
-   - **Backend:** `./scripts/verify.sh`
-   - **Frontend:** `./scripts/verify-activity.sh`
+   - **Backend:**
+     ```bash
+     ./scripts/verify.sh
+     ```
+   - **Frontend:**
+     ```bash
+     ./scripts/verify-activity.sh
+     ```
    - **Crucial:** You must use these scripts when the `pre_commit_instructions` tool asks you to "Run Relevant Tests".
 
 ## Self-Correction
