@@ -39,7 +39,7 @@
   --text-secondary: #9ca3af;
   --text-heading: #ffffff;
 
-  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family: 'Inter', sans-serif;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -80,8 +80,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 8px 12px;
   overflow: hidden;
 }
