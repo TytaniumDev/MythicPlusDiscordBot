@@ -177,11 +177,19 @@ export class Wheel {
       this.ctx.lineWidth = 3;
       this.ctx.stroke();
 
-      this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      this.ctx.font = `bold ${Math.round(size * 0.07)}px system-ui, sans-serif`;
+      this.ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      this.ctx.font = `bold ${Math.round(size * 0.1)}px 'Inter', sans-serif`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
+      this.ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      this.ctx.shadowOffsetX = 1;
+      this.ctx.shadowOffsetY = 1;
+      this.ctx.shadowBlur = Math.max(4, size * 0.015);
       this.ctx.fillText('No candidates', cx, cy);
+      this.ctx.shadowColor = 'transparent';
+      this.ctx.shadowBlur = 0;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
       return;
     }
 
@@ -224,7 +232,7 @@ export class Wheel {
 
       const entryScale = Math.min(1, Math.sqrt(6 / this.entries.length));
       const fontSize = Math.max(10, Math.min(24, Math.round(size * 0.06 * entryScale)));
-      this.ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+      this.ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
 
       let name = entry.name;
       if (name.length > 12) name = name.substring(0, 11) + '..';
