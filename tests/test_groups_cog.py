@@ -87,12 +87,11 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
     async def test_activity_command_default_url(self):
         bot = MagicMock()
         bot.group_service = AsyncMock()
-        # We don't need group service data anymore for activity
 
         cog = Groups(bot)
         cog.session_service.get_or_create_session = AsyncMock(
-            return_value="123"
-        )  # returns guildId
+            return_value=("123", "456")
+        )
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -101,23 +100,20 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             "http://discord.invite"
         )
 
-        # We don't patch core.config.ACTIVITY_URL here because we want to test the default
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
-            # Logic uses guildId now
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?guildId=123" in msg:
+                if f"{default_url}?guildId=123&channelId=456" in msg:
                     found_url = True
                     break
             self.assertTrue(
                 found_url,
-                f"Default ACTIVITY_URL {default_url} with guildId not found in response",
+                f"Default ACTIVITY_URL {default_url} with guildId+channelId not found in response",
             )
 
     async def test_activity_command_override_url(self):
@@ -125,7 +121,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot.group_service = AsyncMock()
 
         cog = Groups(bot)
-        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
+        cog.session_service.get_or_create_session = AsyncMock(
+            return_value=("123", "456")
+        )
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -134,7 +132,6 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             "http://discord.invite"
         )
 
-        # Patch core.config.ACTIVITY_URL to simulate override
         custom_url = "https://custom.url/"
         with (
             patch("core.config.ACTIVITY_URL", custom_url),
@@ -142,12 +139,11 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         ):
             await cog.activity.callback(cog, ctx)  # type: ignore
 
-            # Check if the message contains the custom URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             for call in calls:
                 msg = call.args[0]
-                if f"{custom_url}?guildId=123" in msg:
+                if f"{custom_url}?guildId=123&channelId=456" in msg:
                     found_url = True
                     break
             self.assertTrue(
@@ -159,7 +155,9 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         bot.group_service = AsyncMock()
 
         cog = Groups(bot)
-        cog.session_service.get_or_create_session = AsyncMock(return_value="123")
+        cog.session_service.get_or_create_session = AsyncMock(
+            return_value=("123", "456")
+        )
         ctx = AsyncMock()
         ctx.guild.id = 123
         ctx.author.voice.channel = MagicMock()
@@ -169,34 +167,34 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch("core.config.DISCORD_APPLICATION_ID", "12345"):
-            # Call activitytest
             await cog.activitytest.callback(cog, ctx)  # type: ignore
 
-            # We don't check get_groups_data anymore
-
-            # Check if the message contains the default URL with guildId
             calls = ctx.send.call_args_list
             found_url = False
             default_url = "https://tytaniumdev.github.io/MythicPlusDiscordBot/"
             for call in calls:
                 msg = call.args[0]
-                if f"{default_url}?guildId=123" in msg:
+                if f"{default_url}?guildId=123&channelId=456" in msg:
                     found_url = True
                     break
             self.assertTrue(found_url)
 
-    async def test_on_voice_state_update_performance_optimization(self):
-        """Test that voice state updates without channel changes (e.g. mute) do not trigger DB writes."""
+    async def test_on_voice_state_update_channel_level_tracking(self):
+        """Test that voice state updates check active_channels, not active_sessions."""
         bot = MagicMock()
 
-        # We need to mock SessionService inside Groups cog
         with patch("cogs.groups.SessionService") as MockSessionService:
             cog = Groups(bot)
             mock_service_instance = MockSessionService.return_value
 
-            # Simulate active session keyed by guild_id
-            mock_service_instance.active_sessions = {456: "session_id"}
-            mock_service_instance.update_guild_voice_states = AsyncMock()
+            # Simulate active channel tracking
+            from services.session_service import ActiveChannel
+
+            mock_service_instance.active_channels = {
+                123: ActiveChannel(doc_id="123", guild_id=456)
+            }
+            mock_service_instance.update_channel_players = AsyncMock()
+            mock_service_instance.cleanup_channel = AsyncMock()
 
             # Mock Member with guild
             member = MagicMock()
@@ -204,40 +202,42 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
             member.guild = MagicMock()
             member.guild.id = 456
 
-            # Case 1: Channel Change (Join/Move) - Should update
+            # Case 1: Join a tracked channel
             before = MagicMock()
-            before.channel = MagicMock()
-            before.channel.id = 999
+            before.channel = None
 
             after = MagicMock()
             after.channel = MagicMock()
             after.channel.id = 123
+            after.channel.members = [member]
 
             await cog.on_voice_state_update(member, before, after)
 
-            # Verify update called with the guild
-            mock_service_instance.update_guild_voice_states.assert_called_with(
-                member.guild
+            mock_service_instance.update_channel_players.assert_called_with(
+                123, member.guild
             )
-            mock_service_instance.update_guild_voice_states.reset_mock()
+            mock_service_instance.update_channel_players.reset_mock()
 
-            # Case 2: Channel Change (Leave) - Should update
+            # Case 2: Leave a tracked channel (still has humans)
+            human = MagicMock()
+            human.bot = False
             before_leave = MagicMock()
             before_leave.channel = MagicMock()
             before_leave.channel.id = 123
+            before_leave.channel.members = [human]
 
             after_leave = MagicMock()
-            after_leave.channel = None  # Leaving to no voice
+            after_leave.channel = None
 
             await cog.on_voice_state_update(member, before_leave, after_leave)
 
-            # Verify update called
-            mock_service_instance.update_guild_voice_states.assert_called_with(
-                member.guild
+            mock_service_instance.update_channel_players.assert_called_with(
+                123, member.guild
             )
-            mock_service_instance.update_guild_voice_states.reset_mock()
+            mock_service_instance.cleanup_channel.assert_not_called()
 
             # Case 3: No Channel Change (e.g. Mute) - Should NOT update
+            mock_service_instance.update_channel_players.reset_mock()
             channel_obj = MagicMock()
             channel_obj.id = 123
 
@@ -249,10 +249,44 @@ class TestGroupsCog(unittest.IsolatedAsyncioTestCase):
 
             await cog.on_voice_state_update(member, before_mute, after_mute)
 
-            # Assert call count is 0
-            self.assertEqual(
-                mock_service_instance.update_guild_voice_states.call_count, 0
-            )
+            self.assertEqual(mock_service_instance.update_channel_players.call_count, 0)
+
+    async def test_on_voice_state_update_cleanup_empty_channel(self):
+        """Test that leaving a tracked channel with no humans triggers cleanup."""
+        bot = MagicMock()
+
+        with patch("cogs.groups.SessionService") as MockSessionService:
+            cog = Groups(bot)
+            mock_service_instance = MockSessionService.return_value
+
+            from services.session_service import ActiveChannel
+
+            mock_service_instance.active_channels = {
+                123: ActiveChannel(doc_id="123", guild_id=456)
+            }
+            mock_service_instance.update_channel_players = AsyncMock()
+            mock_service_instance.cleanup_channel = AsyncMock()
+
+            member = MagicMock()
+            member.bot = False
+            member.guild = MagicMock()
+            member.guild.id = 456
+
+            # Leave with only bots remaining
+            bot_member = MagicMock()
+            bot_member.bot = True
+
+            before = MagicMock()
+            before.channel = MagicMock()
+            before.channel.id = 123
+            before.channel.members = [bot_member]  # only bots left
+
+            after = MagicMock()
+            after.channel = None
+
+            await cog.on_voice_state_update(member, before, after)
+
+            mock_service_instance.cleanup_channel.assert_called_once_with(123)
 
 
 if __name__ == "__main__":

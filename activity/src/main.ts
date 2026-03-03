@@ -3,8 +3,8 @@
 import { setupDiscordSdk } from './discordSdk';
 import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { db } from './firebase';
-import { Session, RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry } from './types';
-import { mockSession, mockPlayers, mockGroups } from './mockData';
+import { RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry, GuildData, ChannelData } from './types';
+import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from './mockData';
 import { WheelsGrid } from './wheelsGrid';
 import { audio } from './audio';
 import './style.css';
@@ -39,6 +39,7 @@ const noRecentGuilds = document.getElementById('no-recent-guilds') as HTMLParagr
 
 // Channel picker
 const channelList = document.getElementById('channel-list') as HTMLDivElement;
+const refreshChannelsBtn = document.getElementById('refresh-channels-btn') as HTMLButtonElement;
 
 // Lobby
 const playerList = document.getElementById('player-list') as HTMLDivElement;
@@ -82,9 +83,12 @@ let isNavigatingFromPopstate = false;
 let isFirstView = true;
 
 // ── State ────────────────────────────────────────────────────
-let currentSessionId: string | null = null;
-let currentSessionData: Session | null = null;
-let sessionUnsubscribe: Unsubscribe | null = null;
+let currentGuildId: string | null = null;
+let currentChannelId: string | null = null;
+let guildData: GuildData | null = null;
+let channelData: ChannelData | null = null;
+let guildUnsubscribe: Unsubscribe | null = null;
+let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 
@@ -136,30 +140,53 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-// ── Session Listener ─────────────────────────────────────────
-function subscribeToSession(sessionId: string) {
-  // Unsubscribe from any previous listener to prevent leaks
-  if (sessionUnsubscribe) {
-    sessionUnsubscribe();
-    sessionUnsubscribe = null;
+// ── Guild Listener ───────────────────────────────────────────
+function subscribeToGuild(guildId: string) {
+  if (guildUnsubscribe) {
+    guildUnsubscribe();
+    guildUnsubscribe = null;
   }
 
-  const docRef = doc(db, 'sessions', sessionId);
-  sessionUnsubscribe = onSnapshot(
+  const docRef = doc(db, 'guilds', guildId);
+  guildUnsubscribe = onSnapshot(
     docRef,
     (docSnap) => {
       if (docSnap.exists()) {
         startSessionBtn.classList.add('hidden');
-        handleSessionUpdate(docSnap.data() as Session);
+        handleGuildUpdate(docSnap.data() as GuildData);
       } else {
-        console.warn('[Activity] No doc at sessions/' + sessionId);
-        statusMsg.textContent = `No active session found. (ID: ${sessionId})`;
+        console.warn('[Activity] No doc at guilds/' + guildId);
+        statusMsg.textContent = `No active session found. (Guild: ${guildId})`;
         startSessionBtn.classList.remove('hidden');
       }
     },
     (error) => {
-      console.error('[Activity] Firestore error:', error);
+      console.error('[Activity] Guild Firestore error:', error);
       statusMsg.textContent = 'Activity ended.';
+    },
+  );
+}
+
+// ── Channel Listener ─────────────────────────────────────────
+function subscribeToChannel(channelId: string) {
+  if (channelUnsubscribe) {
+    channelUnsubscribe();
+    channelUnsubscribe = null;
+  }
+
+  const docRef = doc(db, 'channels', channelId);
+  channelUnsubscribe = onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        handleChannelUpdate(docSnap.data() as ChannelData);
+      } else {
+        console.warn('[Activity] No doc at channels/' + channelId);
+        // Channel doc doesn't exist yet — stay on channel picker
+      }
+    },
+    (error) => {
+      console.error('[Activity] Channel Firestore error:', error);
     },
   );
 }
@@ -181,9 +208,10 @@ async function init() {
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
-  startSessionBtn.addEventListener('click', createSession);
+  startSessionBtn.addEventListener('click', createGuildEntry);
   changeChannelBtn.addEventListener('click', changeChannel);
   wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
+  refreshChannelsBtn.addEventListener('click', refreshChannels);
 
   const headerTitle = document.querySelector('.app-header h1') as HTMLHeadingElement;
   const handleHeaderClick = () => {
@@ -203,8 +231,8 @@ async function init() {
 
   announceCheckbox.addEventListener('change', async () => {
     if (isDemoMode) return;
-    if (!currentSessionId) return;
-    const docRef = doc(db, 'sessions', currentSessionId);
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { announceResults: announceCheckbox.checked });
   });
 
@@ -217,15 +245,19 @@ async function init() {
     isNavigatingFromPopstate = true;
 
     if (currentView === 'channels' && targetView === 'home') {
-      // Back from channels to home: unsubscribe and show demo controls
-      if (sessionUnsubscribe) {
-        sessionUnsubscribe();
-        sessionUnsubscribe = null;
+      // Back from channels to home: unsubscribe from both
+      if (channelUnsubscribe) {
+        channelUnsubscribe();
+        channelUnsubscribe = null;
+      }
+      if (guildUnsubscribe) {
+        guildUnsubscribe();
+        guildUnsubscribe = null;
       }
       showView('home');
       renderRecentGuilds();
     } else if (currentView === 'lobby' && targetView === 'channels') {
-      // Back from lobby to channels: clear selection and re-render channel picker
+      // Back from lobby to channels: unsubscribe channel only
       changeChannel();
     } else if (currentView === 'wheels' && targetView === 'lobby') {
       // Back from wheels to lobby — reuse existing cancel logic
@@ -239,8 +271,8 @@ async function init() {
       console.warn('[Activity] Forward nav to', targetView, 'without state, redirecting to channels');
       history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
       showView('channels');
-      if (currentSessionData?.voiceChannels) {
-        renderChannelPicker(currentSessionData.voiceChannels);
+      if (guildData?.voiceChannels) {
+        renderChannelPicker(guildData.voiceChannels);
       }
     } else {
       console.warn('[Activity] Unexpected popstate transition:', currentView, '->', targetView);
@@ -256,20 +288,34 @@ async function init() {
     try {
       const json = atob(dataParam);
       const data = JSON.parse(json);
-      handleSessionUpdate(data);
+      // Support both legacy session format and new split format
+      if (data.guild && data.channel) {
+        handleGuildUpdate(data.guild);
+        handleChannelUpdate(data.channel);
+      } else if (data.channelId !== undefined) {
+        // New channel-only data for testing
+        handleChannelUpdate(data);
+      } else if (data.voiceChannels !== undefined && data.status === undefined) {
+        // Guild-only data for testing
+        handleGuildUpdate(data);
+      } else {
+        // Legacy: combined data with status field — route to channel handler
+        handleChannelUpdate(data as ChannelData);
+      }
       return;
     } catch (e) {
       console.error('Invalid data param', e);
     }
   }
 
-  // Resolve session ID: URL params first, then Discord SDK for embedded activities
-  currentSessionId = urlParams.get('guildId') || urlParams.get('sessionId');
+  // Resolve guild ID: URL params first, then Discord SDK for embedded activities
+  currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
+  const urlChannelId = urlParams.get('channelId');
 
-  if (!currentSessionId) {
+  if (!currentGuildId) {
     const discordContext = await setupDiscordSdk();
     if (discordContext) {
-      currentSessionId = discordContext.guildId;
+      currentGuildId = discordContext.guildId;
       discordChannelId = discordContext.channelId;
       console.log('[Activity] Discord SDK context:', discordContext);
     } else {
@@ -277,35 +323,54 @@ async function init() {
     }
   }
 
-  console.log('[Activity] Resolved sessionId:', currentSessionId);
+  console.log('[Activity] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
 
-  if (!currentSessionId) {
+  if (!currentGuildId) {
     showView('home');
     renderRecentGuilds();
     return;
   }
 
-  subscribeToSession(currentSessionId);
+  // Subscribe to guild doc
+  subscribeToGuild(currentGuildId);
+
+  // If we have a channel ID, subscribe to it directly (skip channel picker)
+  const resolvedChannelId = urlChannelId || discordChannelId;
+  if (resolvedChannelId) {
+    currentChannelId = resolvedChannelId;
+    subscribeToChannel(resolvedChannelId);
+  }
 }
 
-// ── Session State Handler ────────────────────────────────────
-function handleSessionUpdate(data: Session) {
-  currentSessionData = data;
+// ── Guild Update Handler ─────────────────────────────────────
+function handleGuildUpdate(data: GuildData) {
+  guildData = data;
+
+  // Re-enable refresh button once bot has processed the request
+  if (!('refreshRequest' in data && data.refreshRequest) && refreshChannelsBtn.disabled) {
+    refreshChannelsBtn.disabled = false;
+  }
 
   // Persist guild info for recent guilds list
-  if (currentSessionId && data.guildName) {
-    saveRecentGuild(currentSessionId, data.guildName, data.guildIconUrl);
+  if (currentGuildId && data.guildName) {
+    saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
   }
+
+  // If no channel is selected yet, show channel picker
+  if (!currentChannelId) {
+    showView('channels');
+    renderChannelPicker(data.voiceChannels || []);
+  }
+}
+
+// ── Channel Update Handler ───────────────────────────────────
+function handleChannelUpdate(data: ChannelData) {
+  channelData = data;
 
   switch (data.status) {
     case 'lobby':
-      if (!data.selectedChannelId) {
-        showView('channels');
-        renderChannelPicker(data.voiceChannels || []);
-      } else {
-        showView('lobby');
-        renderLobby(data.players);
-      }
+      showView('lobby');
+      renderLobby(data.players);
       break;
 
     case 'request_spin':
@@ -360,9 +425,9 @@ function showView(view: ViewName) {
     case 'wheels':
       viewWheels.classList.remove('hidden');
       sideColumn.classList.remove('hidden');
-      if (currentSessionData) {
+      if (channelData) {
         announceCheckbox.checked =
-          currentSessionData.announceResults !== false;
+          channelData.announceResults !== false;
       }
       // Force redraw wheels after layout transition
       requestAnimationFrame(() => {
@@ -450,9 +515,9 @@ function renderRecentGuilds() {
 }
 
 function connectToGuild(guildId: string) {
-  currentSessionId = guildId;
+  currentGuildId = guildId;
   statusMsg.textContent = 'Connecting...';
-  subscribeToSession(guildId);
+  subscribeToGuild(guildId);
 }
 
 // ── Channel Picker ───────────────────────────────────────────
@@ -482,48 +547,89 @@ function renderChannelPicker(channels: VoiceChannel[]) {
 
     card.appendChild(nameSpan);
     card.appendChild(countSpan);
-    card.onclick = () => selectChannel(ch.id);
+    card.onclick = () => selectChannel(ch.id, ch.name);
     card.setAttribute('role', 'button');
     card.tabIndex = 0;
     card.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        selectChannel(ch.id);
+        selectChannel(ch.id, ch.name);
       }
     };
     channelList.appendChild(card);
   });
 }
 
-async function selectChannel(channelId: string) {
-  if (isDemoMode && currentSessionData) {
-    handleSessionUpdate({
-      ...currentSessionData,
-      selectedChannelId: channelId,
+async function selectChannel(channelId: string, channelName?: string) {
+  if (isDemoMode) {
+    currentChannelId = channelId;
+    handleChannelUpdate({
+      ...mockChannelData,
+      channelId,
+      channelName: channelName || 'Demo Channel',
       players: mockPlayers,
-    } as Session);
+    });
     return;
   }
 
-  if (!currentSessionId) return;
-  const docRef = doc(db, 'sessions', currentSessionId);
-  await updateDoc(docRef, { selectedChannelId: channelId });
+  if (!currentGuildId) return;
+
+  currentChannelId = channelId;
+
+  // Create the channel doc (merge to avoid overwriting bot-owned fields like players)
+  const channelDocRef = doc(db, 'channels', channelId);
+  await setDoc(channelDocRef, {
+    channelId,
+    channelName: channelName || '',
+    guildId: currentGuildId,
+    status: 'lobby',
+    groups: [],
+    isDebug: false,
+    announceResults: true,
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp(),
+  }, { merge: true });
+
+  // Subscribe to the channel doc
+  subscribeToChannel(channelId);
 }
 
 async function changeChannel() {
-  const updatePayload = { selectedChannelId: null, players: [] };
-
-  if (isDemoMode && currentSessionData) {
-    handleSessionUpdate({
-      ...currentSessionData,
-      ...updatePayload,
-    } as Session);
+  if (isDemoMode) {
+    currentChannelId = null;
+    channelData = null;
+    if (guildData) {
+      showView('channels');
+      renderChannelPicker(guildData.voiceChannels || []);
+    }
     return;
   }
 
-  if (!currentSessionId) return;
-  const docRef = doc(db, 'sessions', currentSessionId);
-  await updateDoc(docRef, updatePayload);
+  // Unsubscribe from channel doc
+  if (channelUnsubscribe) {
+    channelUnsubscribe();
+    channelUnsubscribe = null;
+  }
+  currentChannelId = null;
+  channelData = null;
+
+  // Show channel picker from cached guild data
+  showView('channels');
+  if (guildData?.voiceChannels) {
+    renderChannelPicker(guildData.voiceChannels);
+  }
+}
+
+async function refreshChannels() {
+  if (!currentGuildId) return;
+  refreshChannelsBtn.disabled = true;
+  try {
+    const docRef = doc(db, 'guilds', currentGuildId);
+    await updateDoc(docRef, { refreshRequest: serverTimestamp() });
+    // Button re-enabled in handleGuildUpdate when refreshRequest is cleared
+  } catch {
+    refreshChannelsBtn.disabled = false;
+  }
 }
 
 // ── Lobby ────────────────────────────────────────────────────
@@ -548,7 +654,7 @@ function renderLobby(players: WoWPlayer[]) {
   spinBtn.textContent = 'SPIN THE WHEEL!';
 
   // Override if request_spin
-  if (currentSessionData?.status === 'request_spin') {
+  if (channelData?.status === 'request_spin') {
     spinBtn.disabled = true;
     spinBtn.textContent = 'Calculating...';
   }
@@ -684,25 +790,25 @@ function formatRoleName(role: string): string {
 
 // ── Spin Request ─────────────────────────────────────────────
 async function requestSpin() {
-  if (isDemoMode && currentSessionData) {
+  if (isDemoMode && channelData) {
     spinBtn.disabled = true;
-    const calculatingData = { ...currentSessionData, status: 'request_spin' } as Session;
-    handleSessionUpdate(calculatingData);
+    const calculatingData = { ...channelData, status: 'request_spin' } as ChannelData;
+    handleChannelUpdate(calculatingData);
 
     // Simulate bot processing
     setTimeout(() => {
-      handleSessionUpdate({
+      handleChannelUpdate({
         ...calculatingData,
         status: 'spinning',
         groups: mockGroups,
-      } as Session);
+      } as ChannelData);
     }, 1500);
     return;
   }
 
-  if (!currentSessionId) return;
+  if (!currentChannelId) return;
   spinBtn.disabled = true;
-  const docRef = doc(db, 'sessions', currentSessionId);
+  const docRef = doc(db, 'channels', currentChannelId);
   await updateDoc(docRef, { status: 'request_spin' });
 }
 
@@ -765,22 +871,22 @@ async function cancelAndReturnToLobby() {
   resetSpinState();
 
   // Show lobby immediately for responsiveness (Firestore update confirms later)
-  if (currentSessionData?.players) {
+  if (channelData?.players) {
     showView('lobby');
-    renderLobby(currentSessionData.players);
+    renderLobby(channelData.players);
   }
 
-  if (isDemoMode && currentSessionData) {
-    handleSessionUpdate({
-      ...currentSessionData,
+  if (isDemoMode && channelData) {
+    handleChannelUpdate({
+      ...channelData,
       status: 'lobby',
       groups: [],
-    } as Session);
+    } as ChannelData);
     return;
   }
 
-  if (!currentSessionId) return;
-  const docRef = doc(db, 'sessions', currentSessionId);
+  if (!currentChannelId) return;
+  const docRef = doc(db, 'channels', currentChannelId);
   await updateDoc(docRef, { status: 'lobby', groups: [] });
 }
 
@@ -949,11 +1055,11 @@ function delay(ms: number): Promise<void> {
 }
 
 async function finishSpinSequence() {
-  if (currentSessionId) {
-    const docRef = doc(db, 'sessions', currentSessionId);
+  if (isDemoMode && channelData) {
+    handleChannelUpdate({ ...channelData, status: 'completed' } as ChannelData);
+  } else if (currentChannelId) {
+    const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { status: 'completed' });
-  } else if (isDemoMode && currentSessionData) {
-    handleSessionUpdate({ ...currentSessionData, status: 'completed' } as Session);
   }
 }
 
@@ -1100,58 +1206,79 @@ function showResults(sessionGroups: WoWGroup[]) {
 async function startNewRound() {
   resetSpinState();
 
-  if (isDemoMode && currentSessionData) {
-    handleSessionUpdate({
-      ...currentSessionData,
-      status: 'lobby',
-      selectedChannelId: null,
-      groups: [],
-      players: [],
-    } as Session);
+  if (isDemoMode) {
+    currentChannelId = null;
+    channelData = null;
+    if (guildData) {
+      showView('channels');
+      renderChannelPicker(guildData.voiceChannels || []);
+    }
     return;
   }
 
-  if (!currentSessionId) return;
-  const docRef = doc(db, 'sessions', currentSessionId);
-  await updateDoc(docRef, {
-    status: 'lobby',
-    selectedChannelId: null,
-    groups: [],
-    players: [],
-  });
+  // Unsubscribe from channel doc and go back to channel picker
+  if (channelUnsubscribe) {
+    channelUnsubscribe();
+    channelUnsubscribe = null;
+  }
+  currentChannelId = null;
+  channelData = null;
+
+  showView('channels');
+  if (guildData?.voiceChannels) {
+    renderChannelPicker(guildData.voiceChannels);
+  }
 }
 
-// ── Session Creation ─────────────────────────────────────────
-async function createSession() {
-  if (!currentSessionId) return;
+// ── Guild Entry Creation ─────────────────────────────────────
+async function createGuildEntry() {
+  if (!currentGuildId) return;
 
   startSessionBtn.disabled = true;
   startSessionBtn.textContent = 'Creating...';
 
-  const docRef = doc(db, 'sessions', currentSessionId);
-  await setDoc(docRef, {
-    guildId: currentSessionId,
-    status: 'lobby',
-    players: [],
-    groups: [],
-    voiceChannels: [],
-    selectedChannelId: discordChannelId,
-    isDebug: false,
-    announceResults: true,
-    createdAt: serverTimestamp(),
-    lastActive: serverTimestamp(),
-  });
+  try {
+    // Create guild doc
+    const guildDocRef = doc(db, 'guilds', currentGuildId);
+    await setDoc(guildDocRef, {
+      guildId: currentGuildId,
+      voiceChannels: [],
+      createdAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
+    });
 
-  // onSnapshot will pick up the new doc and hide the button
-  startSessionBtn.disabled = false;
-  startSessionBtn.textContent = 'Start Session';
+    // If we have a channel from Discord SDK, also create a channel doc
+    if (discordChannelId) {
+      currentChannelId = discordChannelId;
+      const channelDocRef = doc(db, 'channels', discordChannelId);
+      await setDoc(channelDocRef, {
+        channelId: discordChannelId,
+        channelName: '',
+        guildId: currentGuildId,
+        status: 'lobby',
+        players: [],
+        groups: [],
+        isDebug: false,
+        announceResults: true,
+        createdAt: serverTimestamp(),
+        lastActive: serverTimestamp(),
+      });
+      subscribeToChannel(discordChannelId);
+    }
+  } finally {
+    // Reset button state whether or not the operation succeeded
+    startSessionBtn.disabled = false;
+    startSessionBtn.textContent = 'Start Session';
+  }
 }
 
 // ── Demo Mode ────────────────────────────────────────────────
 function startDemo() {
   isDemoMode = true;
+  currentGuildId = 'demo-guild';
   statusMsg.textContent = '';
-  handleSessionUpdate(mockSession);
+  guildData = mockGuildData;
+  handleGuildUpdate(mockGuildData);
 }
 
 // ── Start ────────────────────────────────────────────────────

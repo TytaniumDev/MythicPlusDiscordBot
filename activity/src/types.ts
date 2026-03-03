@@ -31,18 +31,26 @@ export interface VoiceChannel {
   userCount: number;
 }
 
-export interface Session {
+export interface GuildData {
   guildId: string;
-  channelId?: string; // Legacy/Optional
+  guildName?: string;
+  guildIconUrl?: string;
+  voiceChannels: VoiceChannel[];
+  createdAt: unknown;
+  lastActive: unknown;
+}
+
+export interface ChannelData {
+  channelId: string;
+  channelName: string;
+  guildId: string;
   status: 'lobby' | 'request_spin' | 'spinning' | 'completed';
   players: WoWPlayer[];
   groups: WoWGroup[];
-  voiceChannels?: VoiceChannel[];
-  selectedChannelId?: string | null;
-  guildName?: string;
-  guildIconUrl?: string;
-  announceResults?: boolean;
-  createdAt: any; // Firestore Timestamp
+  isDebug: boolean;
+  announceResults: boolean;
+  createdAt: unknown;
+  lastActive: unknown;
 }
 
 export interface RecentGuild {

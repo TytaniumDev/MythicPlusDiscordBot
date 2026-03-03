@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import dataclass
 from typing import Any, cast
 
 import discord
@@ -14,23 +15,39 @@ from core.utils import get_player_list
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ActiveChannel:
+    doc_id: str
+    guild_id: int
+
+
 class SessionService:
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.firebase = FirebaseService()
-        self.active_sessions: dict[int, str] = {}  # guild_id -> session_id
-        self.listeners: dict[str, Any] = {}  # session_id -> watch object
-        self.guild_states: dict[
-            int, dict[str, Any]
-        ] = {}  # guild_id -> local cache of session state
+        self.active_guilds: set[int] = set()
+        self.active_channels: dict[int, ActiveChannel] = {}  # channel_id -> info
+        self.channel_listeners: dict[str, Any] = {}  # doc_id -> watch
+        self.guild_listeners: dict[int, Any] = {}  # guild_id -> watch
         self._collection_watch: Any = None
+
+    def _run_async(self, coro: Any) -> None:
+        """Schedules a coroutine on the bot loop with error logging."""
+        future = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
+        future.add_done_callback(self._log_future_exception)
+
+    @staticmethod
+    def _log_future_exception(future: Any) -> None:
+        exc = future.exception()
+        if exc:
+            logger.error("Async task failed: %s", exc)
 
     async def get_or_create_session(
         self,
         ctx: commands.Context[commands.Bot],
         debug: bool = False,
-    ) -> str | None:
-        """Gets or creates a persistent session for the guild and sets up listeners."""
+    ) -> tuple[str, str] | None:
+        """Creates guild + channel docs and sets up listeners. Returns (guild_id, channel_id) or None."""
         if not self.firebase.is_available():
             return None
 
@@ -38,43 +55,57 @@ class SessionService:
             return None
 
         guild_id = ctx.guild.id
-
-        # Determine the voice channel to pre-select
-        voice_channel_id: str | None = None
-        if ctx.author.voice and ctx.author.voice.channel:
-            voice_channel_id = str(ctx.author.voice.channel.id)
-
-        # Get or create the session with the selected channel
         guild_name = ctx.guild.name
         guild_icon_url = str(ctx.guild.icon.url) if ctx.guild.icon else None
-        session_id = await self.firebase.get_or_create_session(
+
+        # Create/update guild doc
+        guild_doc_id = await self.firebase.get_or_create_guild_doc(
             guild_id,
-            debug=debug,
-            selected_channel_id=voice_channel_id,
             guild_name=guild_name,
             guild_icon_url=guild_icon_url,
         )
+        self.active_guilds.add(guild_id)
 
-        self.active_sessions[guild_id] = session_id
+        # Refresh voice channels in guild doc
+        await self.refresh_guild_voice_channels(ctx.guild)
 
-        # Start listening if not already
-        if session_id not in self.listeners:
-            self._start_listening(session_id, guild_id)
+        # Start guild doc listener for refresh requests
+        if guild_id not in self.guild_listeners:
+            self._start_guild_listener(guild_id)
 
-        # Set guild state AFTER attaching the listener so the initial snapshot
-        # callback cannot clobber the value we're about to set
-        if voice_channel_id:
-            if guild_id not in self.guild_states:
-                self.guild_states[guild_id] = {}
-            self.guild_states[guild_id]["selectedChannelId"] = voice_channel_id
+        # Determine the voice channel
+        voice_channel_id: int | None = None
+        voice_channel_name = ""
+        if ctx.author.voice and ctx.author.voice.channel:
+            voice_channel_id = ctx.author.voice.channel.id
+            voice_channel_name = ctx.author.voice.channel.name
 
-        # Always sync voice states (populates players for the selected channel)
-        await self.update_guild_voice_states(ctx.guild)
+        if voice_channel_id is None:
+            return None
 
-        return session_id
+        # Create/update channel doc
+        channel_doc_id = await self.firebase.get_or_create_channel_doc(
+            voice_channel_id,
+            guild_id,
+            voice_channel_name,
+            debug=debug,
+        )
+
+        self.active_channels[voice_channel_id] = ActiveChannel(
+            doc_id=channel_doc_id, guild_id=guild_id
+        )
+
+        # Start channel doc listener
+        if channel_doc_id not in self.channel_listeners:
+            self._start_channel_listener(channel_doc_id, voice_channel_id, guild_id)
+
+        # Sync players for this channel
+        await self.update_channel_players(voice_channel_id, ctx.guild)
+
+        return (guild_doc_id, channel_doc_id)
 
     def start_collection_listener(self) -> None:
-        """Watches the sessions collection for new docs created by the frontend."""
+        """Watches the channels collection to auto-discover new and existing channel docs."""
         if self._collection_watch is not None:
             return
         if not self.firebase.is_available():
@@ -84,200 +115,203 @@ class SessionService:
             col_snapshot: Any, changes: Any, read_time: Any
         ) -> None:
             for change in changes:
-                if change.type.name != "ADDED":
-                    continue
-
-                doc = change.document
-                data = doc.to_dict()
-                session_id = doc.id
-                guild_id_str = data.get("guildId")
-                if not guild_id_str:
-                    continue
-
-                try:
-                    guild_id = int(guild_id_str)
-                except (ValueError, TypeError):
-                    continue
-
-                # Skip if already tracked
-                if guild_id in self.active_sessions:
-                    continue
-
-                # Validate that the bot is in this guild
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    continue
-
-                logger.info(
-                    "Auto-discovered session %s for guild %s", session_id, guild_id
-                )
-                self.active_sessions[guild_id] = session_id
-                self._start_listening(session_id, guild_id)
-
-                # Sync voice states on the bot's event loop
-                asyncio.run_coroutine_threadsafe(
-                    self.update_guild_voice_states(guild), self.bot.loop
-                )
+                if change.type.name == "ADDED":
+                    self._handle_collection_added(change)
+                elif change.type.name == "REMOVED":
+                    self._handle_collection_removed(change)
 
         self._collection_watch = self.firebase.listen_to_collection(
-            "sessions", on_collection_snapshot
+            "channels", on_collection_snapshot
         )
 
-    def _start_listening(self, session_id: str, guild_id: int) -> None:
-        """Internal method to attach the Firestore listener."""
+    def _handle_collection_added(self, change: Any) -> None:
+        """Handle a new channel doc appearing in the collection."""
+        doc = change.document
+        data = doc.to_dict()
+        doc_id = doc.id
+        channel_id_str = data.get("channelId")
+        guild_id_str = data.get("guildId")
+        if not channel_id_str or not guild_id_str:
+            return
+
+        try:
+            channel_id = int(channel_id_str)
+            guild_id = int(guild_id_str)
+        except (ValueError, TypeError):
+            return
+
+        # Skip if already tracked
+        if channel_id in self.active_channels:
+            return
+
+        # Validate that the bot is in this guild
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return
+
+        logger.info("Auto-discovered channel %s for guild %s", doc_id, guild_id)
+        self.active_channels[channel_id] = ActiveChannel(
+            doc_id=doc_id, guild_id=guild_id
+        )
+        self._start_channel_listener(doc_id, channel_id, guild_id)
+
+        # Track the guild and ensure guild doc exists
+        if guild_id not in self.active_guilds:
+            self.active_guilds.add(guild_id)
+            self._run_async(
+                self.firebase.get_or_create_guild_doc(guild_id, guild_name=guild.name),
+            )
+            if guild_id not in self.guild_listeners:
+                self._start_guild_listener(guild_id)
+
+        # Sync players
+        self._run_async(self.update_channel_players(channel_id, guild))
+
+    def _handle_collection_removed(self, change: Any) -> None:
+        """Handle a channel doc being deleted from the collection."""
+        doc = change.document
+        doc_id = doc.id
+
+        # Use doc.id directly — deleted doc data may be None or empty
+        try:
+            channel_id = int(doc_id)
+        except (ValueError, TypeError):
+            return
+
+        if channel_id in self.active_channels:
+            active = self.active_channels.pop(channel_id)
+            if doc_id in self.channel_listeners:
+                watch = self.channel_listeners.pop(doc_id)
+                watch.unsubscribe()
+            logger.info("Channel %s removed from tracking", channel_id)
+
+            # If no more channels for this guild, clean up guild tracking
+            self._cleanup_guild_if_empty(active.guild_id)
+
+    def _start_guild_listener(self, guild_id: int) -> None:
+        """Listens to a guild doc for refreshRequest field changes."""
 
         def on_snapshot(col_snapshot: Any, changes: Any, read_time: Any) -> None:
             for change in changes:
-                if change.type.name == "MODIFIED" or change.type.name == "ADDED":
+                if change.type.name != "MODIFIED":
+                    continue
+                data = change.document.to_dict()
+                if data.get("refreshRequest"):
+                    guild = self.bot.get_guild(guild_id)
+                    if guild:
+                        self._run_async(
+                            self._handle_refresh_request(guild_id, guild),
+                        )
+
+        watch = self.firebase.listen_to_guild_doc(str(guild_id), on_snapshot)
+        self.guild_listeners[guild_id] = watch
+
+    async def _handle_refresh_request(
+        self, guild_id: int, guild: discord.Guild
+    ) -> None:
+        """Handles a refresh request from the frontend."""
+        try:
+            await self.refresh_guild_voice_channels(guild)
+        finally:
+            # Always clear refreshRequest so the frontend button re-enables
+            await self.firebase.update_guild_doc(
+                str(guild_id), {"refreshRequest": None}
+            )
+
+    def _start_channel_listener(
+        self, doc_id: str, channel_id: int, guild_id: int
+    ) -> None:
+        """Attaches a Firestore listener for a channel document."""
+
+        def on_snapshot(col_snapshot: Any, changes: Any, read_time: Any) -> None:
+            for change in changes:
+                if change.type.name in ("MODIFIED", "ADDED"):
                     doc = change.document
                     data = doc.to_dict()
-                    is_initial = change.type.name == "ADDED"
-                    self._handle_update(
-                        session_id, guild_id, data, is_initial=is_initial
-                    )
+                    self._handle_channel_update(doc_id, channel_id, guild_id, data)
 
-        watch = self.firebase.listen_to_session(session_id, on_snapshot)
-        self.listeners[session_id] = watch
+        watch = self.firebase.listen_to_channel_doc(doc_id, on_snapshot)
+        self.channel_listeners[doc_id] = watch
 
-    def _handle_update(
+    def _handle_channel_update(
         self,
-        session_id: str,
+        doc_id: str,
+        channel_id: int,
         guild_id: int,
         data: dict[str, Any],
-        *,
-        is_initial: bool = False,
     ) -> None:
-        """
-        Handles updates from Firestore.
-        Executed in a separate thread by the Firestore SDK.
-        """
-        # Update local cache
-        if guild_id not in self.guild_states:
-            self.guild_states[guild_id] = {}
-
-        old_selected = self.guild_states[guild_id].get("selectedChannelId")
-        new_selected = data.get("selectedChannelId")
-        # During initial ADDED snapshot, don't let a stale None clobber a
-        # locally-set value (race condition with get_or_create_session).
-        # During real MODIFIED updates (e.g. "new round"), always trust Firestore.
-        if is_initial:
-            if new_selected is not None or old_selected is None:
-                self.guild_states[guild_id]["selectedChannelId"] = new_selected
-        else:
-            self.guild_states[guild_id]["selectedChannelId"] = new_selected
-
+        """Handles updates from a channel Firestore document."""
         status = data.get("status")
 
         if status == "request_spin":
-            # The UI requested a spin. We need to calculate groups.
-            asyncio.run_coroutine_threadsafe(
-                self._process_spin_request(session_id, guild_id, data), self.bot.loop
+            self._run_async(
+                self._process_spin_request(doc_id, channel_id, guild_id, data),
             )
 
         elif status == "completed":
             if data.get("announceResults", True):
-                asyncio.run_coroutine_threadsafe(
-                    self._announce_completion(guild_id, data), self.bot.loop
+                self._run_async(
+                    self._announce_completion(channel_id, guild_id, data),
                 )
 
-        # If selected channel changed, we need to sync players immediately
-        if new_selected != old_selected and new_selected:
-            asyncio.run_coroutine_threadsafe(
-                self._sync_players_for_selected_channel(guild_id, new_selected),
-                self.bot.loop,
-            )
-
-    async def _sync_players_for_selected_channel(
-        self, guild_id: int, channel_id_str: str
-    ):
-        """Syncs players from the newly selected channel."""
-        guild = self.bot.get_guild(guild_id)
-        if not guild:
-            return
-
-        # We can just run the full update logic
-        await self.update_guild_voice_states(guild)
-
     async def _process_spin_request(
-        self, session_id: str, guild_id: int, data: dict[str, Any]
+        self,
+        doc_id: str,
+        channel_id: int,
+        guild_id: int,
+        data: dict[str, Any],
     ) -> None:
         """Calculates groups and updates Firestore."""
-        logger.info(f"Processing spin request for session {session_id}")
+        logger.info("Processing spin request for channel %s", channel_id)
 
         guild = self.bot.get_guild(guild_id)
         if not guild:
-            logger.error(f"Guild {guild_id} not found.")
+            logger.error("Guild %d not found.", guild_id)
             return
 
         is_debug = data.get("isDebug", False)
-        selected_channel_id = data.get("selectedChannelId")
 
         if is_debug:
-            # For debug sessions, use players already stored in the session
-            # (In the new flow, players might be populated by debug logic in frontend or backend mock)
-            # If the players list is empty, we might fallback to a default mock list?
             players_data = data.get("players", [])
             players = [WoWPlayer.from_dict(p) for p in players_data]
-            logger.info(f"Using {len(players)} debug players from session data.")
+            logger.info("Using %d debug players from channel data.", len(players))
         else:
-            if not selected_channel_id:
-                logger.warning("No channel selected for spin.")
-                return
-
-            channel = guild.get_channel(int(selected_channel_id))
+            channel = guild.get_channel(channel_id)
             if not channel or not isinstance(channel, discord.VoiceChannel):
                 logger.warning(
-                    f"Selected channel {selected_channel_id} not found or invalid."
+                    "Channel %d not found or not a voice channel.", channel_id
                 )
                 return
 
-            # 1. Get Players from Channel
             members = [m for m in channel.members if not m.bot]
-            if not members:
-                logger.warning("No players found in channel during spin request.")
-                # We should probably still spin (result in 0 groups) or error?
-                # Let's proceed with empty list
-
-            # 2. Parse Players
             players = get_player_list(members)
 
         if not players and not is_debug:
-            logger.warning("No valid players found.")
-            # Ensure we update firestore to spinning with empty groups so frontend doesn't hang?
-            # Or maybe just return and let frontend handle timeout?
-            # Better to finish the spin with 0 groups.
-            groups = []
+            groups: list[WoWGroup] = []
         else:
-            # 3. Calculate Groups
             groups = create_mythic_plus_groups(players, debug=is_debug)
 
-        # 4. Save results to Bot's GroupService (for !badgroup support)
-        # Note: We need a way to map this back to the channel where /activity might have been run?
-        # Or just store it under guild_id.
         if hasattr(self.bot, "group_service"):
             self.bot.group_service.last_results[guild_id] = {
                 "players": list(players),
                 "groups": list(groups),
             }
 
-        # 5. Update Firestore
         groups_data = [g.to_dict() for g in groups]
 
-        await self.firebase.update_session(
-            session_id, {"status": "spinning", "groups": groups_data}
+        await self.firebase.update_channel_doc(
+            doc_id, {"status": "spinning", "groups": groups_data}
         )
 
-    async def _announce_completion(self, guild_id: int, data: dict[str, Any]) -> None:
-        """Announces results to the selected voice channel using per-group embeds."""
-        selected_channel_id = data.get("selectedChannelId")
-        if not selected_channel_id:
-            return
-
+    async def _announce_completion(
+        self, channel_id: int, guild_id: int, data: dict[str, Any]
+    ) -> None:
+        """Announces results to the voice channel using per-group embeds."""
         guild = self.bot.get_guild(guild_id)
         if not guild:
             return
 
-        channel = guild.get_channel(int(selected_channel_id))
+        channel = guild.get_channel(channel_id)
         if not channel or not isinstance(channel, discord.VoiceChannel):
             return
 
@@ -304,50 +338,93 @@ class SessionService:
                 await channel.send(embed=embed)
         except Exception as e:
             logger.warning(
-                f"Could not send completion embed to channel {channel.name}: {e}"
+                "Could not send completion embed to channel %s: %s",
+                channel.name,
+                e,
             )
 
-    async def update_guild_voice_states(self, guild: discord.Guild):
-        """
-        Scans all voice channels in the guild.
-        Updates 'voiceChannels' in Firestore.
-        If a channel is selected, syncs its players.
-        """
-        session_id = self.active_sessions.get(guild.id)
-        if not session_id:
-            # Maybe the session exists but we aren't tracking it yet?
-            # We should probably check if we need to start tracking?
-            # For now, assume we only track if /activity was run once.
-            return
+    async def refresh_guild_voice_channels(self, guild: discord.Guild) -> None:
+        """Scans all voice channels in the guild and writes voiceChannels to guild doc."""
+        guild_id_str = str(guild.id)
 
-        # 1. Build Voice Channels List
         voice_channels_data: list[dict[str, Any]] = []
         for vc in guild.voice_channels:
-            # Count non-bot members
             count = len([m for m in vc.members if not m.bot])
             if count > 0:
                 voice_channels_data.append(
                     {"id": str(vc.id), "name": vc.name, "userCount": count}
                 )
 
-        # Sort by user count desc
         voice_channels_data.sort(key=lambda x: cast(int, x["userCount"]), reverse=True)
 
-        update_data = {"voiceChannels": voice_channels_data}
+        await self.firebase.update_guild_doc(
+            guild_id_str, {"voiceChannels": voice_channels_data}
+        )
 
-        # 2. Check selected channel
-        selected_id = self.guild_states.get(guild.id, {}).get("selectedChannelId")
-        if selected_id:
-            # Sync players
-            channel = guild.get_channel(int(selected_id))
-            if channel and isinstance(channel, discord.VoiceChannel):
-                members = [m for m in channel.members if not m.bot]
-                players = get_player_list(members)
-                update_data["players"] = [p.to_dict() for p in players]
-            else:
-                # Selected channel invalid or empty?
-                # If invalid, maybe clear selected?
-                # For now, just send empty players
-                update_data["players"] = []
+    async def update_channel_players(
+        self, channel_id: int, guild: discord.Guild
+    ) -> None:
+        """Gets members from one channel and writes players to its channel doc."""
+        active = self.active_channels.get(channel_id)
+        if not active:
+            return
 
-        await self.firebase.update_session(session_id, update_data)
+        channel = guild.get_channel(channel_id)
+        if channel and isinstance(channel, discord.VoiceChannel):
+            members = [m for m in channel.members if not m.bot]
+            players = get_player_list(members)
+            players_data = [p.to_dict() for p in players]
+        else:
+            players_data = []
+
+        await self.firebase.update_channel_doc(active.doc_id, {"players": players_data})
+
+    async def cleanup_channel(self, channel_id: int) -> None:
+        """Deletes a channel doc and cleans up tracking."""
+        active = self.active_channels.pop(channel_id, None)
+        if not active:
+            return
+
+        # Stop the listener
+        if active.doc_id in self.channel_listeners:
+            watch = self.channel_listeners.pop(active.doc_id)
+            watch.unsubscribe()
+
+        # Delete the channel doc
+        await self.firebase.delete_channel_doc(active.doc_id)
+
+        # If no more active channels for this guild, clean up guild
+        await self._async_cleanup_guild_if_empty(active.guild_id)
+
+    def _cleanup_guild_if_empty(self, guild_id: int) -> None:
+        """Removes guild tracking and listener if no active channels remain (sync)."""
+        guild_has_channels = any(
+            ac.guild_id == guild_id for ac in self.active_channels.values()
+        )
+        if not guild_has_channels:
+            self.active_guilds.discard(guild_id)
+            if guild_id in self.guild_listeners:
+                watch = self.guild_listeners.pop(guild_id)
+                if watch:
+                    watch.unsubscribe()
+
+    async def _async_cleanup_guild_if_empty(self, guild_id: int) -> None:
+        """Removes guild tracking, listener, and Firestore doc if no active channels remain."""
+        guild_has_channels = any(
+            ac.guild_id == guild_id for ac in self.active_channels.values()
+        )
+        if not guild_has_channels:
+            self.active_guilds.discard(guild_id)
+            await self.firebase.delete_guild_doc(str(guild_id))
+            if guild_id in self.guild_listeners:
+                watch = self.guild_listeners.pop(guild_id)
+                if watch:
+                    watch.unsubscribe()
+
+    def get_active_channel_ids_for_guild(self, guild_id: int) -> list[int]:
+        """Returns all channel_ids in active_channels for a given guild."""
+        return [
+            ch_id
+            for ch_id, ac in self.active_channels.items()
+            if ac.guild_id == guild_id
+        ]

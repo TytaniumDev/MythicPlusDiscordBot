@@ -1,4 +1,4 @@
-import { Session, WoWGroup, WoWPlayer } from './types';
+import { GuildData, ChannelData, WoWGroup, WoWPlayer } from './types';
 
 export const mockPlayers: WoWPlayer[] = [
   // 1. Martz: Healer, Tank Offspec, DPS Offspec, Brez
@@ -241,17 +241,27 @@ export const mockGroups: WoWGroup[] = [
   }
 ];
 
-export const mockSession: Session = {
+export const mockGuildData: GuildData = {
   guildId: 'demo-guild',
   guildName: 'Gif or Gif',
-  status: 'lobby',
-  players: [], // Initially empty until channel selected
-  groups: [], // Initially empty
   voiceChannels: [
     { id: 'vc-1', name: 'Mythic+ Lobby', userCount: 13 },
     { id: 'vc-2', name: 'Raid Voice', userCount: 5 },
     { id: 'vc-3', name: 'AFK', userCount: 1 },
   ],
-  selectedChannelId: null, // Start with picker
-  createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 }
+  createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
+  lastActive: { seconds: Date.now() / 1000, nanoseconds: 0 },
+};
+
+export const mockChannelData: ChannelData = {
+  channelId: 'vc-1',
+  channelName: 'Mythic+ Lobby',
+  guildId: 'demo-guild',
+  status: 'lobby',
+  players: mockPlayers,
+  groups: [],
+  isDebug: false,
+  announceResults: true,
+  createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
+  lastActive: { seconds: Date.now() / 1000, nanoseconds: 0 },
 };

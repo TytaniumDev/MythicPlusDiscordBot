@@ -329,8 +329,15 @@ body {
 #view-channels h2 {
   font-size: 1.1rem;
   color: var(--text-heading);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   text-align: center;
+}
+
+.btn-refresh {
+  display: block;
+  margin: 0 auto 20px;
+  font-size: 0.85rem;
+  padding: 6px 16px;
 }
 
 #channel-list {

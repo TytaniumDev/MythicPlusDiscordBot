@@ -63,19 +63,16 @@ class Groups(commands.Cog):
                 )
                 return
 
-            # We don't need to get players upfront anymore. The activity starts with a channel picker.
+            # Create guild + channel docs in Firebase
+            result = await self.session_service.get_or_create_session(ctx, debug=debug)
 
-            # Create Session in Firebase (or get existing)
-            # This ensures the listener is attached and we are tracking this guild.
-            session_id = await self.session_service.get_or_create_session(
-                ctx, debug=debug
-            )
-
-            if not session_id:
+            if not result:
                 await ctx.send(
                     "❌ Failed to create/get session. Is Firebase configured?"
                 )
                 return
+
+            guild_id, channel_id = result
 
             # Create Links
             channel = ctx.author.voice.channel
@@ -92,7 +89,7 @@ class Groups(commands.Cog):
                     )
                     invite_url = invite.url
                 except Exception as e:
-                    logger.warning(f"Failed to create embedded invite: {e}")
+                    logger.warning("Failed to create embedded invite: %s", e)
 
             # Create Direct Link
             activity_url_base = config.ACTIVITY_URL
@@ -101,11 +98,9 @@ class Groups(commands.Cog):
             msg += f"**Voice Channel Activity:** {invite_url}\n"
 
             if activity_url_base:
-                # We use guildId as the key now, but for backward compatibility/simplicity,
-                # let's just use sessionId=guildId (since session_id IS guild_id).
-                # The frontend will look for guildId query param as per plan,
-                # but session_service.get_or_create_session returns the guild ID.
-                direct_link = f"{activity_url_base}?guildId={session_id}"
+                direct_link = (
+                    f"{activity_url_base}?guildId={guild_id}&channelId={channel_id}"
+                )
                 msg += f"**Browser Link:** [Click Here]({direct_link})\n"
             else:
                 msg += "⚠️ `ACTIVITY_URL` not set in .env."
@@ -120,7 +115,7 @@ class Groups(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        """Start watching the sessions collection for frontend-created sessions."""
+        """Start watching the channels collection for frontend-created channel docs."""
         self.session_service.start_collection_listener()
 
     @commands.Cog.listener()
@@ -130,15 +125,24 @@ class Groups(commands.Cog):
         before: discord.VoiceState,
         after: discord.VoiceState,
     ) -> None:
-        """
-        Listen for voice state updates to sync the lobby.
-        """
+        """Listen for voice state updates to sync channel player lists."""
         if before.channel == after.channel:
             return
 
-        # Check if we have an active session for this member's guild
-        if member.guild.id in self.session_service.active_sessions:
-            await self.session_service.update_guild_voice_states(member.guild)
+        # Update affected channel docs (player lists only)
+        if before.channel and before.channel.id in self.session_service.active_channels:
+            humans = [m for m in before.channel.members if not m.bot]
+            if not humans:
+                await self.session_service.cleanup_channel(before.channel.id)
+            else:
+                await self.session_service.update_channel_players(
+                    before.channel.id, member.guild
+                )
+
+        if after.channel and after.channel.id in self.session_service.active_channels:
+            await self.session_service.update_channel_players(
+                after.channel.id, member.guild
+            )
 
     @commands.hybrid_command(
         name="badgroup", description="Report a bad set of groups to the developers."
