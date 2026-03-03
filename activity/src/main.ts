@@ -1058,7 +1058,7 @@ function advanceAfterSpin(_group: WoWGroup) {
   // After all full groups are spun, show remainder groups as cards (no wheel spin)
   if (currentGroupIndex >= fullGroups.length && remainderGroups.length > 0) {
     remainderGroups.forEach((rg, i) => {
-      appendGroupCard(rg, fullGroups.length + i, 'Remainder');
+      appendGroupCard(rg, fullGroups.length + i, 'Remainder', true);
     });
   }
 
@@ -1088,11 +1088,11 @@ function utilityIcons(player?: WoWPlayer | null): string {
 }
 
 // ── Group Card Rendering ─────────────────────────────────────
-function appendGroupCard(group: WoWGroup, index: number, label?: string) {
+function appendGroupCard(group: WoWGroup, index: number, label?: string, hideEmpty = false) {
   if (isCompactPanel()) {
-    groupsList.appendChild(createCompactGroupCard(group, index, label));
+    groupsList.appendChild(createCompactGroupCard(group, index, label, hideEmpty));
   } else {
-    groupsList.appendChild(createGroupCard(group, index, label));
+    groupsList.appendChild(createGroupCard(group, index, label, hideEmpty));
   }
 }
 
@@ -1100,7 +1100,7 @@ function isCompactPanel(): boolean {
   return window.innerWidth < 900;
 }
 
-function createGroupCard(group: WoWGroup, index: number, label?: string): HTMLDivElement {
+function createGroupCard(group: WoWGroup, index: number, label?: string, hideEmpty = false): HTMLDivElement {
   const div = document.createElement('div');
   div.className = 'group-card';
 
@@ -1108,13 +1108,14 @@ function createGroupCard(group: WoWGroup, index: number, label?: string): HTMLDi
   h4.textContent = label ?? `Group ${index + 1}`;
   div.appendChild(h4);
 
-  // Tank role
-  div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None', group.tank));
-  // Healer role
-  div.appendChild(
-    createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None', group.healer),
-  );
-  // DPS roles
+  if (!hideEmpty || group.tank) {
+    div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None', group.tank));
+  }
+  if (!hideEmpty || group.healer) {
+    div.appendChild(
+      createRoleRow('var(--color-healer)', 'Healer', group.healer?.name || 'None', group.healer),
+    );
+  }
   group.dps.forEach((d) => {
     div.appendChild(createRoleRow('var(--color-dps)', 'DPS', d.name, d));
   });
@@ -1149,7 +1150,7 @@ function createRoleRow(
   return row;
 }
 
-function createCompactGroupCard(group: WoWGroup, index: number, label?: string): HTMLDivElement {
+function createCompactGroupCard(group: WoWGroup, index: number, label?: string, hideEmpty = false): HTMLDivElement {
   const div = document.createElement('div');
   div.className = 'group-card-compact';
 
@@ -1158,18 +1159,22 @@ function createCompactGroupCard(group: WoWGroup, index: number, label?: string):
   div.appendChild(h4);
 
   const roles: { color: string; roleLabel: string; name: string; player?: WoWPlayer | null }[] = [];
-  roles.push({
-    color: 'var(--color-tank)',
-    roleLabel: 'Tank',
-    name: group.tank?.name || 'None',
-    player: group.tank,
-  });
-  roles.push({
-    color: 'var(--color-healer)',
-    roleLabel: 'Healer',
-    name: group.healer?.name || 'None',
-    player: group.healer,
-  });
+  if (!hideEmpty || group.tank) {
+    roles.push({
+      color: 'var(--color-tank)',
+      roleLabel: 'Tank',
+      name: group.tank?.name || 'None',
+      player: group.tank,
+    });
+  }
+  if (!hideEmpty || group.healer) {
+    roles.push({
+      color: 'var(--color-healer)',
+      roleLabel: 'Healer',
+      name: group.healer?.name || 'None',
+      player: group.healer,
+    });
+  }
   group.dps.forEach((d) =>
     roles.push({ color: 'var(--color-dps)', roleLabel: 'DPS', name: d.name, player: d }),
   );
@@ -1212,8 +1217,8 @@ function showResults(sessionGroups: WoWGroup[]) {
   finalGroups.textContent = '';
 
   sessionGroups.forEach((g, i) => {
-    const label = isCompleteGroup(g) ? undefined : 'Remainder';
-    finalGroups.appendChild(createGroupCard(g, i, label));
+    const remainder = !isCompleteGroup(g);
+    finalGroups.appendChild(createGroupCard(g, i, remainder ? 'Remainder' : undefined, remainder));
   });
 }
 
