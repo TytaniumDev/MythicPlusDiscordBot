@@ -186,6 +186,10 @@ export class Wheel {
       this.ctx.shadowOffsetY = 1;
       this.ctx.shadowBlur = Math.max(4, size * 0.015);
       this.ctx.fillText('No candidates', cx, cy);
+      this.ctx.shadowColor = 'transparent';
+      this.ctx.shadowBlur = 0;
+      this.ctx.shadowOffsetX = 0;
+      this.ctx.shadowOffsetY = 0;
       return;
     }
 
