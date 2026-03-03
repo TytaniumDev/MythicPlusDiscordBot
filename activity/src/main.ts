@@ -1051,11 +1051,11 @@ function delay(ms: number): Promise<void> {
 }
 
 async function finishSpinSequence() {
-  if (currentChannelId) {
+  if (isDemoMode && channelData) {
+    handleChannelUpdate({ ...channelData, status: 'completed' } as ChannelData);
+  } else if (currentChannelId) {
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { status: 'completed' });
-  } else if (isDemoMode && channelData) {
-    handleChannelUpdate({ ...channelData, status: 'completed' } as ChannelData);
   }
 }
 
