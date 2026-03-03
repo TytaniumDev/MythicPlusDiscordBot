@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockSession, mockPlayers, mockGroups } from '../src/mockData';
+import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/mockData';
 
 // Helper to encode data for URL
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
@@ -28,47 +28,38 @@ const VIEWPORTS = {
   landscapeShort: { width: 800,  height: 400 },
 } as const;
 
-// ── Shared Test Data ──────────────────────────────────────────
-const channelPickerData = {
-  ...mockSession,
-  status: 'lobby',
-  selectedChannelId: null,
-};
+// ── Shared Test Data (using new guild + channel model) ────────
+const channelPickerData = mockGuildData;
 
 const lobbyData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'lobby',
-  selectedChannelId: 'vc-1',
   players: mockPlayers,
 };
 
 const lobbyEmptyData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'lobby',
-  selectedChannelId: 'vc-1',
   players: [],
 };
 
 const staticWheelsData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'spinning',
   staticWheel: true,
-  selectedChannelId: 'vc-1',
   players: mockPlayers,
 };
 
 const spinningReadyData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'spinning',
-  selectedChannelId: 'vc-1',
   players: mockPlayers,
   groups: mockGroups,
 };
 
 const resultsData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'completed',
-  selectedChannelId: 'vc-1',
   players: mockPlayers,
   groups: mockGroups,
 };
@@ -86,7 +77,7 @@ function viewportTests(
       await page.goto(`/?data=${encodeData(channelPickerData)}`);
       await expect(page.locator('#view-channels')).toBeVisible();
 
-      const channelCount = mockSession.voiceChannels?.length || 0;
+      const channelCount = mockGuildData.voiceChannels?.length || 0;
       await expect(page.locator('.channel-card')).toHaveCount(channelCount);
 
       await expect(page).toHaveScreenshot(`channels-${viewport.width}x${viewport.height}.png`);
@@ -249,9 +240,8 @@ test.describe('Carousel Mode Tests', () => {
 test.describe('Functional Tests', () => {
   test('Request spin shows calculating state', async ({ page }) => {
     const data = {
-      ...mockSession,
+      ...mockChannelData,
       status: 'request_spin',
-      selectedChannelId: 'vc-1',
       players: mockPlayers,
     };
     await page.goto(`/?data=${encodeData(data)}`);
@@ -376,8 +366,8 @@ test.describe('Grid Mode Tests', () => {
   });
 
   test('Wheels use grid layout', async ({ page }) => {
-    await page.goto(`/?data=${encodeData(staticWheelsData)}`);
     const container = page.locator('.wheels-container');
+    await page.goto(`/?data=${encodeData(staticWheelsData)}`);
     const display = await container.evaluate(el => getComputedStyle(el).display);
     expect(display).toBe('grid');
   });

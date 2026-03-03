@@ -12,8 +12,8 @@ from core.firebase_service import FirebaseService
 from core.issues import create_error_issue
 from services.group_service import GroupService
 
-# Age in seconds beyond which abandoned session documents are deleted on bot startup (24 hours).
-FIREBASE_SESSION_MAX_AGE_SECONDS = 24 * 60 * 60
+# Age in seconds beyond which abandoned docs are deleted on bot startup (24 hours).
+FIREBASE_DOC_MAX_AGE_SECONDS = 24 * 60 * 60
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -114,10 +114,13 @@ class MythicPlusBot(commands.Bot):
     async def on_ready(self):
         if self.user:
             logger.info("Logged in as %s (ID: %s)", self.user, self.user.id)
-        # Clean up abandoned session documents (e.g. frontend closed without completing).
+        # Clean up abandoned docs (e.g. frontend closed without completing).
         firebase = FirebaseService()
         if firebase.is_available():
-            await firebase.delete_sessions_older_than(FIREBASE_SESSION_MAX_AGE_SECONDS)
+            await firebase.delete_old_docs("guilds", FIREBASE_DOC_MAX_AGE_SECONDS)
+            await firebase.delete_old_docs("channels", FIREBASE_DOC_MAX_AGE_SECONDS)
+            # One-time migration: remove old sessions collection
+            await firebase.delete_all_in_collection("sessions")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError
