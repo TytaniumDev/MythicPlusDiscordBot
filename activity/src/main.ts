@@ -623,9 +623,13 @@ async function changeChannel() {
 async function refreshChannels() {
   if (!currentGuildId) return;
   refreshChannelsBtn.disabled = true;
-  const docRef = doc(db, 'guilds', currentGuildId);
-  await updateDoc(docRef, { refreshRequest: serverTimestamp() });
-  // Button re-enabled in handleGuildUpdate when refreshRequest is cleared
+  try {
+    const docRef = doc(db, 'guilds', currentGuildId);
+    await updateDoc(docRef, { refreshRequest: serverTimestamp() });
+    // Button re-enabled in handleGuildUpdate when refreshRequest is cleared
+  } catch {
+    refreshChannelsBtn.disabled = false;
+  }
 }
 
 // ── Lobby ────────────────────────────────────────────────────

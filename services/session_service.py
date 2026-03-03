@@ -210,9 +210,13 @@ class SessionService:
         self, guild_id: int, guild: discord.Guild
     ) -> None:
         """Handles a refresh request from the frontend."""
-        await self.refresh_guild_voice_channels(guild)
-        # Clear the refreshRequest field
-        await self.firebase.update_guild_doc(str(guild_id), {"refreshRequest": None})
+        try:
+            await self.refresh_guild_voice_channels(guild)
+        finally:
+            # Always clear refreshRequest so the frontend button re-enables
+            await self.firebase.update_guild_doc(
+                str(guild_id), {"refreshRequest": None}
+            )
 
     def _start_channel_listener(
         self, doc_id: str, channel_id: int, guild_id: int
