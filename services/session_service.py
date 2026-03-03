@@ -237,9 +237,10 @@ class SessionService:
         if guild_id not in self.guild_listeners:
             self._start_guild_listener(guild_id)
 
-        # If the doc has a refreshRequest, populate guild metadata + voice channels
+        # If the doc has a refreshRequest, populate guild metadata + voice channels.
+        # This also handles stale refreshRequests from a previous bot restart.
         if data.get("refreshRequest"):
-            self._run_async(self._initialize_guild_from_frontend(guild_id, guild, data))
+            self._run_async(self._initialize_guild_from_frontend(guild_id, guild))
 
     def _handle_guild_collection_removed(self, change: Any) -> None:
         """Handle a guild doc being deleted from the collection."""
@@ -258,7 +259,7 @@ class SessionService:
             logger.info("Guild %s removed from tracking", guild_id)
 
     async def _initialize_guild_from_frontend(
-        self, guild_id: int, guild: discord.Guild, data: dict[str, Any]
+        self, guild_id: int, guild: discord.Guild
     ) -> None:
         """Populates guild metadata and voice channels for a frontend-created guild doc."""
         guild_id_str = str(guild_id)

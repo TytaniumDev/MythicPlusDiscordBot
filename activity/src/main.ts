@@ -159,9 +159,13 @@ function subscribeToGuild(guildId: string) {
         if (!guildDocCreationInFlight) {
           guildDocCreationInFlight = true;
           statusMsg.textContent = 'Setting up session...';
-          createGuildEntry().finally(() => {
-            guildDocCreationInFlight = false;
-          });
+          createGuildEntry()
+            .catch(() => {
+              statusMsg.textContent = 'Failed to set up session. Please try again.';
+            })
+            .finally(() => {
+              guildDocCreationInFlight = false;
+            });
         }
       }
     },
