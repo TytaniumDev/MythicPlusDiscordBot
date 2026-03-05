@@ -26,3 +26,7 @@
 ## 2026-02-04 - [Targeted List Removal in Hot Paths]
 **Learning:** Blindly iterating over a collection of lists to remove an item (O(N*M)) is inefficient when object properties can strictly identify which lists the item belongs to (O(N*k) where k << M). In `parallel_group_creator.py`, using player role flags reduced group creation time by ~40% for large inputs.
 **Action:** When managing items across multiple classification lists, use item properties to target specific lists for removal/updates rather than scanning all lists.
+
+## 2026-03-10 - [Canvas Rendering Animation Loop Bottleneck]
+**Learning:** In the activity frontend (`activity/src/wheel.ts`), color transformation functions (`lighten`, `darken`, `desaturate`) that perform hex parsing (`parseInt`), floating point math, and string concatenation were being called dynamically inside the `draw()` method. Because `draw()` executes every frame via `requestAnimationFrame` and loops over all candidates, this caused unnecessary overhead and dropped frames.
+**Action:** Always precompute static data structures, especially styled attributes (like colors, sizes) outside of the animation/rendering loop. Use O(1) lookups during the actual `requestAnimationFrame` callback to ensure a smooth 60fps experience.
