@@ -697,9 +697,9 @@ body {
   aspect-ratio: 1;
   container-type: inline-size;
   margin-top: 2cqi;
-  flex: 1;
+  width: 100%;
+  max-height: 100%;
   min-height: 0;
-  max-width: 100%;
 }
 
 .wheel-frame canvas {
