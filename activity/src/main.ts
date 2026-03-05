@@ -697,7 +697,7 @@ function renderLobby(players: WoWPlayer[]) {
     msg.style.textAlign = 'center';
     msg.textContent = 'Waiting for players to join voice...';
     playerList.appendChild(msg);
-    playerCount.textContent = '';
+    playerCount.textContent = '0 players';
     spinBtn.disabled = true;
     spinBtn.textContent = 'Waiting for players...';
     return;
