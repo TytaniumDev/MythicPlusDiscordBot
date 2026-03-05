@@ -343,7 +343,7 @@ function handleChannelUpdate(data: ChannelData) {
     awaitingInitialChannelSnapshot = false;
     const view = statusToView(data.status);
     navigateTo(view, { replace: true });
-    return;
+    // Fall through to apply view-specific state (e.g., startSpinSequence for spinning)
   }
 
   // Re-render lobby if we're on lobby view
