@@ -17,5 +17,7 @@ permissions:
 jobs:
   claude-review:
     uses: TytaniumDev/.github/.github/workflows/claude-code-review.yml@main
+    with:
+      allowed_bots: '*'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
