@@ -63,6 +63,8 @@ export class Wheel {
   private highlightIndex: number | null = null;
   private highlightProgress = 0;
   private rejectSpin: ((reason?: string) => void) | null = null;
+  private cssWidth = 0;
+  private cssHeight = 0;
 
   constructor(config: WheelConfig) {
     // Build DOM programmatically
@@ -152,6 +154,8 @@ export class Wheel {
     const w = Math.round(rect.width * dpr);
     const h = Math.round(rect.height * dpr);
     if (w === 0 || h === 0) return; // Not visible yet
+    this.cssWidth = rect.width;
+    this.cssHeight = rect.height;
     this.canvas.width = w;
     this.canvas.height = h;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -159,9 +163,8 @@ export class Wheel {
 
   /** Draw the current state of the wheel */
   draw() {
-    const rect = this.canvas.getBoundingClientRect();
-    const sizeW = rect.width;
-    const sizeH = rect.height;
+    const sizeW = this.cssWidth;
+    const sizeH = this.cssHeight;
     if (sizeW === 0 || sizeH === 0) return;
     const cx = sizeW / 2;
     const cy = sizeH / 2;
