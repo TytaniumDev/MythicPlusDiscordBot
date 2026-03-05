@@ -1,6 +1,6 @@
 # Firebase Setup Instructions
 
-This project uses Firebase Firestore to synchronize the Discord Bot (Backend) and the Activity Website (Frontend).
+This project uses Firebase Firestore to synchronize the Discord Bot (Backend) and the Web Frontend.
 
 ## 1. Create a Firebase Project
 1. Go to [Firebase Console](https://console.firebase.google.com/).
@@ -8,7 +8,7 @@ This project uses Firebase Firestore to synchronize the Discord Bot (Backend) an
 3. Once created, go to **Project Settings** (gear icon).
 
 ## 2. Frontend Configuration (GitHub Secrets)
-The frontend (Activity) needs public configuration to connect to Firebase.
+The frontend needs public configuration to connect to Firebase.
 
 1. In Firebase Console > Project Settings > General, scroll down to "Your apps".
 2. Click the Web icon (</>) to create a new web app.
@@ -42,23 +42,26 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 2. Click "Create Database".
 3. Choose **Standard** edition and select a location (e.g. your nearest region).
 4. After the database is created, open the **Rules** tab.
-5. Replace the default rules with the following so the Activity and bot can read/write sessions (we rely on opaque session IDs; you can add Auth or stricter rules later):
+5. Replace the default rules with the following so the frontend and bot can read/write data (we rely on opaque IDs; you can add Auth or stricter rules later):
    ```
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /sessions/{sessionId} {
+       match /guilds/{guildId} {
+         allow read, write: if true;
+       }
+       match /channels/{channelId} {
          allow read, write: if true;
        }
      }
    }
    ```
-   *Warning: This allows anyone to read/write sessions. For a production app, you should restrict writes to only the fields the frontend needs to update (like status).*
+   *Warning: This allows anyone to read/write guild and channel documents. For a production app, you should restrict writes to only the fields the frontend needs to update (like status).*
 
-## 6. Session cleanup (database growth)
+## 6. Document cleanup (database growth)
 
-Session documents are cleaned up so the database does not grow indefinitely:
+Guild and channel documents are cleaned up so the database does not grow indefinitely:
 
-- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The session and document stay active so the Activity page remains valid (e.g. you can keep viewing results).
-- **New Activity replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** session first (removes from memory, unsubscribes its listener, deletes the session document), then creates the new session. Anyone still on the old Activity page will see **"Activity ended"** and can start a new one via Discord.
-- **Startup cleanup.** On **bot startup**, the bot deletes any session document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_SESSION_MAX_AGE_SECONDS` in `bot.py`.
+- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The documents stay active so the web page remains valid (e.g. you can keep viewing results).
+- **New session replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** channel document first (removes from memory, unsubscribes its listener, deletes the document), then creates a new one.
+- **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_SESSION_MAX_AGE_SECONDS` in `bot.py`.
