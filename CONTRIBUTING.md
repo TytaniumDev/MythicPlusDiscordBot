@@ -1,6 +1,6 @@
 # Contributing to MythicPlusDiscordBot
 
-Thank you for your interest in contributing! This guide covers the technical standards and workflows for developers.
+Thank you for your interest in contributing! This guide covers the technical standards and workflows for developers. **Note:** This document is the primary entry point for human developers. If you are an AI agent, please refer to **[AGENTS.md](AGENTS.md)** for your specific operational directives.
 
 ## Development Environment
 
@@ -45,12 +45,24 @@ The project uses Playwright for visual regression testing.
 -   **Rule:** If your changes affect the UI, you must update and commit the new snapshots.
 -   **CI:** Tests run automatically in CI and will fail if snapshots do not match.
 
+## Coding Standards
+
+- **Docstrings**: All Python backend code must use **Google-style docstrings**, including explicit `Args:` and `Returns:` sections for functions and methods.
+- **Type Hints**: Full type hints are mandatory for all Python code. This ensures strict validation by `pyright` during verification.
+
+## Security & CI Standards
+
+This project has strict requirements to prevent secret leaks and ensure CI reliability.
+- Please review **[docs/CI_STANDARDS.md](docs/CI_STANDARDS.md)** for the complete set of rules.
+- The project enforces these standards automatically using the `scripts/check-workflow-secrets.py` tool in CI.
+
 ## Project Structure
 
 -   `core/`: Core business logic (Group algorithm, models, configuration).
 -   `cogs/`: Discord bot commands and event listeners.
 -   `services/`: Bridges between Cogs, Core logic, and Firebase.
 -   `activity/`: Frontend code for the Discord Activity (TypeScript/Vite).
+-   `tests/`: Unit tests and mock classes for the Python backend.
 -   `scripts/`: Utility scripts for verification and deployment.
 
 ## Production vs. Development
@@ -58,10 +70,6 @@ The project uses Playwright for visual regression testing.
 -   **Development**: Uses `uv` and `pyproject.toml`.
 -   **Production (Docker)**: Uses `requirements.txt`.
     -   *Note: If you add a dependency, ensure it is reflected in `requirements.txt` for the production build.*
-
-## AI Agents
-
-If you are an AI agent, please refer to **[AGENTS.md](AGENTS.md)** for your specific operational directives.
 
 ## Command Style
 

@@ -59,3 +59,10 @@ Any future updates to README must preserve this skeleton.
     -   **Demo Mode:** Standalone in-memory mock.
     -   **Mock/Static Mode:** Automated testing injection.
 3.  **Visual Verification:** Frontend changes require running `scripts/verify-activity.sh`. Visual regression tests (Playwright) enforce UI consistency via committed snapshots in `activity/tests/visual.spec.ts-snapshots`.
+
+### [2024-05-24] Drift Prevention and CI Linkage
+**Context:** Important standards (like docstrings, type hints, and CI secrets checking) were implicitly expected but missing from the main developer entry point (`CONTRIBUTING.md`).
+**Learning:**
+1.  **Documentation Entry Points:** `CONTRIBUTING.md` is strictly the primary document for *human* developers. Instructions for *AI agents* belong exclusively in `AGENTS.md`. These boundaries must be explicit to prevent confusion.
+2.  **Explicit Standard Definitions:** Coding standards (e.g., Google-style docstrings, type hints) must be explicitly listed in `CONTRIBUTING.md` to prevent "Documentation Drift" where codebase reality outpaces the onboarding guide.
+3.  **CI Linkage:** Deep-dive security or CI rules (like preventing secret leaks in GitHub Actions) should be placed in dedicated files (e.g., `docs/CI_STANDARDS.md`), but they *must* be linked from `CONTRIBUTING.md` so new contributors are aware they exist.
