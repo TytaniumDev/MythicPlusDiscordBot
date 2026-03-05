@@ -70,13 +70,17 @@ let wheelsGrid: WheelsGrid | null = null;
 // ── Routing ──────────────────────────────────────────────────
 type ViewName = 'home' | 'channels' | 'lobby' | 'wheels' | 'results';
 
-const VIEW_TO_ROUTE: Record<ViewName, string> = {
-  home: '#/', channels: '#/channels', lobby: '#/lobby',
-  wheels: '#/wheels', results: '#/results',
-};
-const ROUTE_TO_VIEW = Object.fromEntries(
-  Object.entries(VIEW_TO_ROUTE).map(([view, route]) => [route, view]),
-) as Record<string, ViewName>;
+function viewToRoute(view: ViewName, guildId?: string | null): string {
+  if (view === 'home' || !guildId) return '#/';
+  return `#/guild/${guildId}/${view}`;
+}
+
+function routeToView(hash: string): { view: ViewName; guildId: string | null } {
+  if (!hash || hash === '#/') return { view: 'home', guildId: null };
+  const match = hash.match(/^#\/guild\/([\w-]+)\/(channels|lobby|wheels|results)$/);
+  if (match) return { view: match[2] as ViewName, guildId: match[1] };
+  return { view: 'home', guildId: null };
+}
 
 let currentView: ViewName = 'home';
 let isNavigatingFromPopstate = false;
@@ -159,7 +163,7 @@ function subscribeToGuild(guildId: string) {
         if (!guildDocCreationInFlight) {
           guildDocCreationInFlight = true;
           statusMsg.textContent = 'Setting up session...';
-          createGuildEntry()
+          createGuildEntry(guildId)
             .catch((err) => {
               console.error('[Wheelson] Failed to auto-create guild doc:', err);
               statusMsg.textContent = 'Failed to set up session. Please try again.';
@@ -204,11 +208,6 @@ function subscribeToChannel(channelId: string) {
 
 // ── Initialization ───────────────────────────────────────────
 async function init() {
-  // Clear any stale hash from a previous session/refresh
-  if (location.hash && location.hash !== '#/') {
-    history.replaceState(null, '', '#/');
-  }
-
   const urlParams = new URLSearchParams(window.location.search);
 
   // Initialize wheels grid component
@@ -219,7 +218,7 @@ async function init() {
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
   newRoundBtn.addEventListener('click', startNewRound);
-  startSessionBtn.addEventListener('click', createGuildEntry);
+  startSessionBtn.addEventListener('click', () => createGuildEntry());
   changeChannelBtn.addEventListener('click', changeChannel);
   wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
   refreshChannelsBtn.addEventListener('click', refreshChannels);
@@ -250,8 +249,14 @@ async function init() {
   // Browser back/forward navigation
   window.addEventListener('popstate', () => {
     const hash = location.hash || '#/';
-    const targetView = ROUTE_TO_VIEW[hash];
-    if (!targetView || targetView === currentView) return;
+    const parsed = routeToView(hash);
+    const targetView = parsed.view;
+    if (targetView === currentView) return;
+
+    // If route has a different guild ID, switch to it
+    if (parsed.guildId && parsed.guildId !== currentGuildId) {
+      connectToGuild(parsed.guildId);
+    }
 
     isNavigatingFromPopstate = true;
 
@@ -275,12 +280,12 @@ async function init() {
       cancelAndReturnToLobby();
     } else if (currentView === 'results' && targetView === 'lobby') {
       // Back from results: intercept and redirect to channels for a new round
-      history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
+      history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
       startNewRound();
     } else if (targetView === 'wheels' || targetView === 'results') {
       // Forward into wheels/results without active state — redirect to channels
       console.warn('[Wheelson] Forward nav to', targetView, 'without state, redirecting to channels');
-      history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
+      history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
       showView('channels');
       if (guildData?.voiceChannels) {
         renderChannelPicker(guildData.voiceChannels);
@@ -319,9 +324,14 @@ async function init() {
     }
   }
 
-  // Resolve guild ID: URL params first, then Discord SDK for embedded activities
+  // Resolve guild ID: URL params first, then hash route, then Discord SDK
   currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
   const urlChannelId = urlParams.get('channelId');
+  const initialRoute = routeToView(location.hash);
+
+  if (!currentGuildId && initialRoute.guildId) {
+    currentGuildId = initialRoute.guildId;
+  }
 
   if (!currentGuildId) {
     const discordContext = await setupDiscordSdk();
@@ -337,6 +347,9 @@ async function init() {
   console.log('[Wheelson] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
 
   if (!currentGuildId) {
+    if (location.hash && location.hash !== '#/') {
+      history.replaceState(null, '', '#/');
+    }
     showView('home');
     renderRecentGuilds();
     return;
@@ -344,6 +357,12 @@ async function init() {
 
   // Subscribe to guild doc
   subscribeToGuild(currentGuildId);
+
+  // If hash points to a stale wheels/results view with no active state, redirect to channels
+  if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
+    console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
+    history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
+  }
 
   // If we have a channel ID, subscribe to it directly (skip channel picker)
   const resolvedChannelId = urlChannelId || discordChannelId;
@@ -458,7 +477,7 @@ function showView(view: ViewName) {
   // Update hash-based routing
   currentView = view;
   if (!isNavigatingFromPopstate) {
-    const route = VIEW_TO_ROUTE[view];
+    const route = viewToRoute(view, currentGuildId);
     if (isFirstView) {
       // Replace initial blank entry so back doesn't go to an empty page
       history.replaceState({ view }, '', route);
@@ -544,14 +563,14 @@ function renderChannelPicker(channels: VoiceChannel[]) {
     const msg = document.createElement('div');
     msg.style.textAlign = 'center';
     msg.style.color = 'var(--text-secondary)';
-    msg.textContent = 'No voice channels found with users.';
+    msg.textContent = 'No voice channels found.';
     channelList.appendChild(msg);
     return;
   }
 
   channels.forEach((ch) => {
     const card = document.createElement('div');
-    card.className = 'channel-card';
+    card.className = ch.userCount === 0 ? 'channel-card channel-empty' : 'channel-card';
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'channel-name';
@@ -559,7 +578,7 @@ function renderChannelPicker(channels: VoiceChannel[]) {
 
     const countSpan = document.createElement('span');
     countSpan.className = 'channel-count';
-    countSpan.textContent = `${ch.userCount} users`;
+    countSpan.textContent = ch.userCount === 0 ? 'Empty' : `${ch.userCount} users`;
 
     card.appendChild(nameSpan);
     card.appendChild(countSpan);
@@ -1252,20 +1271,20 @@ async function startNewRound() {
 }
 
 // ── Guild Entry Creation ─────────────────────────────────────
-async function createGuildEntry() {
-  if (!currentGuildId) return;
+async function createGuildEntry(guildId?: string) {
+  const id = guildId ?? currentGuildId;
+  if (!id) return;
 
   // Validate guild ID is a numeric Discord snowflake (no path traversal)
-  if (!/^\d+$/.test(currentGuildId)) {
-    console.error('[Wheelson] Invalid guild ID:', currentGuildId);
-    statusMsg.textContent = 'Invalid guild ID.';
+  if (!/^\d+$/.test(id) && id !== 'demo-guild') {
+    console.error('[Wheelson] Invalid guild ID:', id);
     return;
   }
 
   // Create guild doc with refreshRequest so bot populates voice channels
-  const guildDocRef = doc(db, 'guilds', currentGuildId);
+  const guildDocRef = doc(db, 'guilds', id);
   await setDoc(guildDocRef, {
-    guildId: currentGuildId,
+    guildId: id,
     voiceChannels: [],
     refreshRequest: serverTimestamp(),
     createdAt: serverTimestamp(),
@@ -1279,7 +1298,7 @@ async function createGuildEntry() {
     await setDoc(channelDocRef, {
       channelId: discordChannelId,
       channelName: '',
-      guildId: currentGuildId,
+      guildId: id,
       status: 'lobby',
       players: [],
       groups: [],

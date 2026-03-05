@@ -451,12 +451,13 @@ class SessionService:
         voice_channels_data: list[dict[str, Any]] = []
         for vc in guild.voice_channels:
             count = len([m for m in vc.members if not m.bot])
-            if count > 0:
-                voice_channels_data.append(
-                    {"id": str(vc.id), "name": vc.name, "userCount": count}
-                )
+            voice_channels_data.append(
+                {"id": str(vc.id), "name": vc.name, "userCount": count}
+            )
 
-        voice_channels_data.sort(key=lambda x: cast(int, x["userCount"]), reverse=True)
+        voice_channels_data.sort(
+            key=lambda x: (-cast(int, x["userCount"]), cast(str, x["name"]))
+        )
 
         await self.firebase.update_guild_doc(
             guild_id_str, {"voiceChannels": voice_channels_data}
