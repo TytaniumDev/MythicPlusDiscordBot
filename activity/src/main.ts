@@ -374,7 +374,10 @@ async function init() {
   // Event listeners
   spinBtn.addEventListener('click', () => {
     navigateTo('wheels');
-    requestSpin();
+    requestSpin().catch(() => {
+      navigateTo('lobby');
+      statusMsg.textContent = 'Spin request failed. Please try again.';
+    });
   });
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
@@ -404,6 +407,7 @@ async function init() {
   window.addEventListener('popstate', () => {
     const parsed = routeToView(location.hash || '#/');
     let view = parsed.view;
+    if (view === currentView) return;
 
     if (parsed.guildId && parsed.guildId !== currentGuildId && view !== 'home') {
       connectToGuild(parsed.guildId);
@@ -487,10 +491,8 @@ async function init() {
   // If hash points to a stale wheels/results view with no active state, redirect to channels
   if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
     console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
-    navigateTo('channels', { replace: true });
-  } else {
-    navigateTo('channels', { replace: true });
   }
+  navigateTo('channels', { replace: true });
 }
 
 function statusToView(status: string): ViewName {
@@ -503,6 +505,7 @@ function statusToView(status: string): ViewName {
     case 'completed':
       return 'results';
     default:
+      console.warn('[Wheelson] Unknown channel status:', status);
       return 'lobby';
   }
 }
