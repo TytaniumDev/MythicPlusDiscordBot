@@ -317,8 +317,8 @@ function handleGuildUpdate(data: GuildData) {
     refreshChannelsBtn.disabled = false;
   }
 
-  // Persist guild info for recent guilds list (skip demo mode)
-  if (currentGuildId && data.guildName && !isDemoMode) {
+  // Persist guild info for recent guilds list (skip demo mode; validate snowflake format)
+  if (currentGuildId && data.guildName && !isDemoMode && /^\d+$/.test(currentGuildId)) {
     saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
   }
 
