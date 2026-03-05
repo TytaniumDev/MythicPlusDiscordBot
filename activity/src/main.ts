@@ -94,6 +94,7 @@ let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 let guildDocCreationInFlight = false;
+let awaitingInitialChannelSnapshot = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
@@ -336,6 +337,15 @@ function handleGuildUpdate(data: GuildData) {
 function handleChannelUpdate(data: ChannelData) {
   channelData = data;
 
+  // First snapshot after init with a pre-resolved channel (Discord Activity):
+  // navigate to the view matching the channel's current status.
+  if (awaitingInitialChannelSnapshot) {
+    awaitingInitialChannelSnapshot = false;
+    const view = statusToView(data.status);
+    navigateTo(view, { replace: true });
+    return;
+  }
+
   // Re-render lobby if we're on lobby view
   if (currentView === 'lobby') {
     renderLobby(data.players);
@@ -481,18 +491,23 @@ async function init() {
   // Subscribe to guild doc
   subscribeToGuild(currentGuildId);
 
-  // If we have a channel ID, subscribe to it directly (skip channel picker)
+  // If we have a channel ID, subscribe to it directly and let the first
+  // snapshot drive the initial view (via awaitingInitialChannelSnapshot).
   const resolvedChannelId = urlChannelId || discordChannelId;
   if (resolvedChannelId) {
     currentChannelId = resolvedChannelId;
+    awaitingInitialChannelSnapshot = true;
     subscribeToChannel(resolvedChannelId);
+    // Show channels view as loading placeholder until first snapshot arrives
+    showView('channels');
+    statusMsg.textContent = 'Loading...';
+  } else {
+    // No pre-resolved channel — go to channel picker
+    if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
+      console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
+    }
+    navigateTo('channels', { replace: true });
   }
-
-  // If hash points to a stale wheels/results view with no active state, redirect to channels
-  if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
-    console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
-  }
-  navigateTo('channels', { replace: true });
 }
 
 function statusToView(status: string): ViewName {
