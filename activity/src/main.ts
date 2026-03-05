@@ -417,11 +417,15 @@ async function init() {
   window.addEventListener('popstate', () => {
     const parsed = routeToView(location.hash || '#/');
     let view = parsed.view;
-    if (view === currentView) return;
 
+    // Switch guild if the URL points to a different one
+    let guildChanged = false;
     if (parsed.guildId && parsed.guildId !== currentGuildId && view !== 'home') {
+      guildChanged = true;
       connectToGuild(parsed.guildId);
     }
+
+    if (view === currentView && !guildChanged) return;
 
     // Guard against navigating to wheels/results without active state
     if ((view === 'wheels' || view === 'results') && !channelData?.groups?.length) {
