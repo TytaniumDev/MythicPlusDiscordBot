@@ -254,6 +254,33 @@ class TestRefreshGuildVoiceChannels(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(channels[2]["name"], "Small")
 
     @patch("services.session_service.FirebaseService")
+    async def test_refresh_sorts_empty_channels_alphabetically(
+        self, mock_firebase_cls: MagicMock
+    ) -> None:
+        mock_firebase = MagicMock()
+        mock_firebase.update_guild_doc = AsyncMock()
+        mock_firebase_cls.return_value = mock_firebase
+
+        bot = MagicMock()
+        service = SessionService(bot)
+
+        vc1 = _make_voice_channel(42, "Zeta", [])
+        vc2 = _make_voice_channel(43, "Alpha", [])
+        vc3 = _make_voice_channel(44, "Mango", [])
+
+        guild = MagicMock()
+        guild.id = 1
+        guild.voice_channels = [vc1, vc2, vc3]
+
+        await service.refresh_guild_voice_channels(guild)
+
+        channels = mock_firebase.update_guild_doc.call_args[0][1]["voiceChannels"]
+        self.assertEqual(len(channels), 3)
+        self.assertEqual(channels[0]["name"], "Alpha")
+        self.assertEqual(channels[1]["name"], "Mango")
+        self.assertEqual(channels[2]["name"], "Zeta")
+
+    @patch("services.session_service.FirebaseService")
     async def test_refresh_filters_bots(self, mock_firebase_cls: MagicMock) -> None:
         mock_firebase = MagicMock()
         mock_firebase.update_guild_doc = AsyncMock()

@@ -1276,7 +1276,7 @@ async function createGuildEntry(guildId?: string) {
   if (!id) return;
 
   // Validate guild ID is a numeric Discord snowflake (no path traversal)
-  if (!/^\d+$/.test(id)) {
+  if (!/^\d+$/.test(id) && id !== 'demo-guild') {
     console.error('[Wheelson] Invalid guild ID:', id);
     return;
   }
