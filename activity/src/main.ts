@@ -419,9 +419,10 @@ async function init() {
     let view = parsed.view;
 
     // Switch guild if the URL points to a different one
-    const guildChanged = parsed.guildId && parsed.guildId !== currentGuildId && view !== 'home';
-    if (guildChanged) {
-      connectToGuild(parsed.guildId!);
+    let guildChanged = false;
+    if (parsed.guildId && parsed.guildId !== currentGuildId && view !== 'home') {
+      guildChanged = true;
+      connectToGuild(parsed.guildId);
     }
 
     if (view === currentView && !guildChanged) return;
