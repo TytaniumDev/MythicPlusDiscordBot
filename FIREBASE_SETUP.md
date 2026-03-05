@@ -63,5 +63,5 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 Guild and channel documents are cleaned up so the database does not grow indefinitely:
 
 - **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The documents stay active so the web page remains valid (e.g. you can keep viewing results).
-- **New session replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** channel document first (removes from memory, unsubscribes its listener, deletes the document), then creates a new one.
+- **New lobby replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** channel document first (removes from memory, unsubscribes its listener, deletes the document), then creates a new one.
 - **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_SESSION_MAX_AGE_SECONDS` in `bot.py`.
