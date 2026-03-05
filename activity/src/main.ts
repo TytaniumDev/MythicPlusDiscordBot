@@ -697,13 +697,13 @@ function renderLobby(players: WoWPlayer[]) {
     msg.style.textAlign = 'center';
     msg.textContent = 'Waiting for players to join voice...';
     playerList.appendChild(msg);
-    playerCount.textContent = '';
+    playerCount.textContent = '0 players';
     spinBtn.disabled = true;
     spinBtn.textContent = 'Waiting for players...';
     return;
   }
 
-  playerCount.textContent = `${players.length} players`;
+  playerCount.textContent = players.length === 1 ? '1 player' : `${players.length} players`;
   spinBtn.disabled = false;
   spinBtn.textContent = 'SPIN THE WHEEL!';
 

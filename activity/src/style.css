@@ -420,9 +420,10 @@ body {
 
 .lobby-header-center {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 4px;
   flex: 1;
 }
 
@@ -444,8 +445,6 @@ body {
   border: 1px solid var(--border-subtle);
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 1rem;
-  font-weight: normal;
 }
 
 .btn-back:hover {
