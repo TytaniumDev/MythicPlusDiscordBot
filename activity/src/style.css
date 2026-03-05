@@ -445,9 +445,6 @@ body {
   border: 1px solid var(--border-subtle);
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 1rem;
-  font-weight: normal;
-  line-height: 1;
 }
 
 .btn-back:hover {

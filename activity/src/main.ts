@@ -703,7 +703,7 @@ function renderLobby(players: WoWPlayer[]) {
     return;
   }
 
-  playerCount.textContent = `${players.length} players`;
+  playerCount.textContent = players.length === 1 ? '1 player' : `${players.length} players`;
   spinBtn.disabled = false;
   spinBtn.textContent = 'SPIN THE WHEEL!';
 
