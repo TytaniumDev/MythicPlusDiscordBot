@@ -381,8 +381,8 @@ function handleGuildUpdate(data: GuildData) {
     refreshChannelsBtn.disabled = false;
   }
 
-  // Persist guild info for recent guilds list
-  if (currentGuildId && data.guildName) {
+  // Persist guild info for recent guilds list (skip demo mode)
+  if (currentGuildId && data.guildName && !isDemoMode) {
     saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
   }
 
