@@ -1,0 +1,86 @@
+name: Auto Approve
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  check_suite:
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  checks: read
+
+jobs:
+  auto-approve:
+    if: >-
+      github.event.pull_request.user.login == 'TytaniumDev' ||
+      github.event.sender.login == 'TytaniumDev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for CI checks to pass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Resolve PR number from event
+            let prNumber = context.payload.pull_request?.number;
+            if (!prNumber && context.payload.check_suite) {
+              const prs = context.payload.check_suite.pull_requests || [];
+              if (prs.length === 0) {
+                console.log('No PRs associated with this check suite.');
+                return;
+              }
+              prNumber = prs[0].number;
+            }
+            if (!prNumber) {
+              console.log('Could not determine PR number.');
+              return;
+            }
+
+            // Verify PR author is TytaniumDev
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            if (pr.user.login !== 'TytaniumDev') {
+              console.log(`PR author is ${pr.user.login}, not TytaniumDev. Skipping.`);
+              return;
+            }
+
+            // Poll for required checks (up to 10 minutes)
+            const requiredChecks = ['CI / Lint', 'CI / Build', 'CI / Test'];
+            const maxAttempts = 40;
+            const delayMs = 15000;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const { data: checkRuns } = await github.rest.checks.listForRef({
+                owner, repo, ref: pr.head.sha, per_page: 100,
+              });
+
+              const results = requiredChecks.map(name => {
+                const run = checkRuns.check_runs.find(r => r.name === name);
+                return { name, status: run?.status, conclusion: run?.conclusion };
+              });
+
+              const allComplete = results.every(r => r.status === 'completed');
+              const allPassed = results.every(r => r.conclusion === 'success');
+
+              if (allComplete) {
+                if (allPassed) {
+                  console.log('All required checks passed. Approving PR.');
+                  await github.rest.pulls.createReview({
+                    owner, repo, pull_number: prNumber,
+                    event: 'APPROVE',
+                    body: 'All CI checks passed.',
+                  });
+                  return;
+                } else {
+                  console.log('Some checks failed:', results.filter(r => r.conclusion !== 'success'));
+                  return;
+                }
+              }
+
+              console.log(`Attempt ${attempt}/${maxAttempts}: waiting for checks...`, results);
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+
+            console.log('Timed out waiting for checks.');
