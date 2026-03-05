@@ -63,6 +63,8 @@ export class Wheel {
   private highlightIndex: number | null = null;
   private highlightProgress = 0;
   private rejectSpin: ((reason?: string) => void) | null = null;
+  private cssWidth = 0;
+  private cssHeight = 0;
 
   constructor(config: WheelConfig) {
     // Build DOM programmatically
@@ -149,20 +151,25 @@ export class Wheel {
   private resizeCanvas() {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const size = Math.round(rect.width);
-    if (size === 0) return; // Not visible yet
-    this.canvas.width = size * dpr;
-    this.canvas.height = size * dpr;
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (w === 0 || h === 0) return; // Not visible yet
+    this.cssWidth = rect.width;
+    this.cssHeight = rect.height;
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   /** Draw the current state of the wheel */
   draw() {
-    const size = this.canvas.getBoundingClientRect().width;
-    if (size === 0) return;
-    const cx = size / 2;
-    const cy = size / 2;
-    const radius = cx - size * 0.03;
+    const sizeW = this.cssWidth;
+    const sizeH = this.cssHeight;
+    if (sizeW === 0 || sizeH === 0) return;
+    const cx = sizeW / 2;
+    const cy = sizeH / 2;
+    const radius = Math.min(cx, cy) - Math.min(sizeW, sizeH) * 0.03;
+    const size = Math.min(sizeW, sizeH);
     const hubRadius = Math.max(6, size * 0.025);
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
