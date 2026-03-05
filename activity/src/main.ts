@@ -83,8 +83,6 @@ function routeToView(hash: string): { view: ViewName; guildId: string | null } {
 }
 
 let currentView: ViewName = 'home';
-let isNavigatingFromPopstate = false;
-let isFirstView = true;
 
 // ── State ────────────────────────────────────────────────────
 let currentGuildId: string | null = null;
@@ -96,6 +94,7 @@ let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 let guildDocCreationInFlight = false;
+let awaitingInitialChannelSnapshot = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
@@ -196,7 +195,6 @@ function subscribeToChannel(channelId: string) {
         handleChannelUpdate(docSnap.data() as ChannelData);
       } else {
         console.warn('[Wheelson] No doc at channels/' + channelId);
-        // Channel doc doesn't exist yet — stay on channel picker
       }
     },
     (error) => {
@@ -206,235 +204,7 @@ function subscribeToChannel(channelId: string) {
   );
 }
 
-// ── Initialization ───────────────────────────────────────────
-async function init() {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  // Initialize wheels grid component
-  wheelsGrid = new WheelsGrid(wheelsAreaMount);
-
-  // Event listeners
-  spinBtn.addEventListener('click', requestSpin);
-  nextBtn.addEventListener('click', spinForCurrentGroup);
-  startDemoBtn.addEventListener('click', startDemo);
-  newRoundBtn.addEventListener('click', startNewRound);
-  startSessionBtn.addEventListener('click', () => createGuildEntry());
-  changeChannelBtn.addEventListener('click', changeChannel);
-  wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
-  refreshChannelsBtn.addEventListener('click', refreshChannels);
-
-  const headerTitle = document.querySelector('.app-header h1') as HTMLHeadingElement;
-  const handleHeaderClick = () => {
-    if (!viewWheels.classList.contains('hidden')) {
-      cancelAndReturnToLobby();
-    } else {
-      showView('home');
-    }
-  };
-  headerTitle.addEventListener('click', handleHeaderClick);
-  headerTitle.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleHeaderClick();
-    }
-  });
-
-  announceCheckbox.addEventListener('change', async () => {
-    if (isDemoMode) return;
-    if (!currentChannelId) return;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { announceResults: announceCheckbox.checked });
-  });
-
-  // Browser back/forward navigation
-  window.addEventListener('popstate', () => {
-    const hash = location.hash || '#/';
-    const parsed = routeToView(hash);
-    const targetView = parsed.view;
-    if (targetView === currentView) return;
-
-    // If route has a different guild ID, switch to it
-    if (parsed.guildId && parsed.guildId !== currentGuildId) {
-      connectToGuild(parsed.guildId);
-    }
-
-    isNavigatingFromPopstate = true;
-
-    if (currentView === 'channels' && targetView === 'home') {
-      // Back from channels to home: unsubscribe from both
-      if (channelUnsubscribe) {
-        channelUnsubscribe();
-        channelUnsubscribe = null;
-      }
-      if (guildUnsubscribe) {
-        guildUnsubscribe();
-        guildUnsubscribe = null;
-      }
-      showView('home');
-      renderRecentGuilds();
-    } else if (currentView === 'lobby' && targetView === 'channels') {
-      // Back from lobby to channels: unsubscribe channel only
-      changeChannel();
-    } else if (currentView === 'wheels' && targetView === 'lobby') {
-      // Back from wheels to lobby — reuse existing cancel logic
-      cancelAndReturnToLobby();
-    } else if (currentView === 'results' && targetView === 'lobby') {
-      // Back from results: intercept and redirect to channels for a new round
-      history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
-      startNewRound();
-    } else if (targetView === 'wheels' || targetView === 'results') {
-      // Forward into wheels/results without active state — redirect to channels
-      console.warn('[Wheelson] Forward nav to', targetView, 'without state, redirecting to channels');
-      history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
-      showView('channels');
-      if (guildData?.voiceChannels) {
-        renderChannelPicker(guildData.voiceChannels);
-      }
-    } else {
-      console.warn('[Wheelson] Unexpected popstate transition:', currentView, '->', targetView);
-      showView(targetView);
-    }
-
-    isNavigatingFromPopstate = false;
-  });
-
-  // Check for injected mock data (testing)
-  const dataParam = urlParams.get('data');
-  if (dataParam) {
-    try {
-      const json = atob(dataParam);
-      const data = JSON.parse(json);
-      // Support both legacy session format and new split format
-      if (data.guild && data.channel) {
-        handleGuildUpdate(data.guild);
-        handleChannelUpdate(data.channel);
-      } else if (data.channelId !== undefined) {
-        // New channel-only data for testing
-        handleChannelUpdate(data);
-      } else if (data.voiceChannels !== undefined && data.status === undefined) {
-        // Guild-only data for testing
-        handleGuildUpdate(data);
-      } else {
-        // Legacy: combined data with status field — route to channel handler
-        handleChannelUpdate(data as ChannelData);
-      }
-      return;
-    } catch (e) {
-      console.error('Invalid data param', e);
-    }
-  }
-
-  // Resolve guild ID: URL params first, then hash route, then Discord SDK
-  currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
-  const urlChannelId = urlParams.get('channelId');
-  const initialRoute = routeToView(location.hash);
-
-  if (!currentGuildId && initialRoute.guildId) {
-    currentGuildId = initialRoute.guildId;
-  }
-
-  if (!currentGuildId) {
-    const discordContext = await setupDiscordSdk();
-    if (discordContext) {
-      currentGuildId = discordContext.guildId;
-      discordChannelId = discordContext.channelId;
-      console.log('[Wheelson] Discord SDK context:', discordContext);
-    } else {
-      console.warn('[Wheelson] Discord SDK returned null context');
-    }
-  }
-
-  console.log('[Wheelson] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
-
-  if (!currentGuildId) {
-    if (location.hash && location.hash !== '#/') {
-      history.replaceState(null, '', '#/');
-    }
-    showView('home');
-    renderRecentGuilds();
-    return;
-  }
-
-  // Subscribe to guild doc
-  subscribeToGuild(currentGuildId);
-
-  // If hash points to a stale wheels/results view with no active state, redirect to channels
-  if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
-    console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
-    history.replaceState({ view: 'channels' }, '', viewToRoute('channels', currentGuildId));
-  }
-
-  // If we have a channel ID, subscribe to it directly (skip channel picker)
-  const resolvedChannelId = urlChannelId || discordChannelId;
-  if (resolvedChannelId) {
-    currentChannelId = resolvedChannelId;
-    subscribeToChannel(resolvedChannelId);
-  }
-}
-
-// ── Guild Update Handler ─────────────────────────────────────
-function handleGuildUpdate(data: GuildData) {
-  guildData = data;
-
-  // Re-enable refresh button once bot has processed the request
-  if (!('refreshRequest' in data && data.refreshRequest) && refreshChannelsBtn.disabled) {
-    refreshChannelsBtn.disabled = false;
-  }
-
-  // Persist guild info for recent guilds list
-  if (currentGuildId && data.guildName) {
-    saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
-  }
-
-  // If no channel is selected yet, show channel picker (or loading state)
-  if (!currentChannelId) {
-    showView('channels');
-    if (data.refreshRequest && (!data.voiceChannels || data.voiceChannels.length === 0)) {
-      statusMsg.textContent = 'Loading channels...';
-    } else {
-      statusMsg.textContent = '';
-      renderChannelPicker(data.voiceChannels || []);
-    }
-  }
-}
-
-// ── Channel Update Handler ───────────────────────────────────
-function handleChannelUpdate(data: ChannelData) {
-  channelData = data;
-
-  switch (data.status) {
-    case 'lobby':
-      showView('lobby');
-      renderLobby(data.players);
-      break;
-
-    case 'request_spin':
-      // Stay on lobby view, disable button
-      spinBtn.disabled = true;
-      spinBtn.textContent = 'Calculating...';
-      break;
-
-    case 'spinning':
-      if ((data as unknown as Record<string, unknown>).staticWheel) {
-        // Static wheel mode for visual testing
-        showView('wheels');
-        initPools(data.players);
-        wheelsGrid?.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
-        wheelStatus.textContent = 'Static preview';
-        nextBtn.classList.add('hidden');
-      } else if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
-        spinSequenceStarted = true;
-        startSpinSequence(data.groups, data.players);
-      }
-      break;
-
-    case 'completed':
-      showResults(data.groups);
-      break;
-  }
-}
-
-// ── View Management ──────────────────────────────────────────
+// ── View Management (pure DOM) ───────────────────────────────
 function showView(view: ViewName) {
   viewHome.classList.add('hidden');
   viewChannels.classList.add('hidden');
@@ -474,21 +244,284 @@ function showView(view: ViewName) {
       break;
   }
 
-  // Update hash-based routing
   currentView = view;
-  if (!isNavigatingFromPopstate) {
-    const route = viewToRoute(view, currentGuildId);
-    if (isFirstView) {
-      // Replace initial blank entry so back doesn't go to an empty page
-      history.replaceState({ view }, '', route);
-      isFirstView = false;
-    } else if (view === 'results') {
-      // Replace #/wheels so back from results skips the wheels view
-      history.replaceState({ view }, '', route);
-    } else if (location.hash !== route) {
-      // Guard against duplicate entries from repeated Firestore updates
-      history.pushState({ view }, '', route);
+}
+
+// ── Navigation ───────────────────────────────────────────────
+
+function handleRouteChange(view: ViewName) {
+  // ── Tear down ──
+  if (view === 'home') {
+    if (channelUnsubscribe) { channelUnsubscribe(); channelUnsubscribe = null; }
+    if (guildUnsubscribe) { guildUnsubscribe(); guildUnsubscribe = null; }
+    currentGuildId = null; currentChannelId = null;
+    channelData = null; guildData = null;
+    isDemoMode = false;
+  }
+  if (view === 'channels') {
+    if (channelUnsubscribe) { channelUnsubscribe(); channelUnsubscribe = null; }
+    currentChannelId = null; channelData = null;
+    resetSpinState();
+  }
+  if (view === 'lobby') {
+    resetSpinState();
+  }
+
+  // ── Show ──
+  showView(view);
+
+  // ── Render ──
+  switch (view) {
+    case 'home':
+      renderRecentGuilds();
+      break;
+    case 'channels':
+      if (guildData?.voiceChannels) {
+        renderChannelPicker(guildData.voiceChannels);
+      } else {
+        statusMsg.textContent = 'Loading channels...';
+      }
+      break;
+    case 'lobby':
+      if (channelData?.players) renderLobby(channelData.players);
+      break;
+    case 'wheels':
+      wheelStatus.textContent = 'Calculating...';
+      nextBtn.classList.add('hidden');
+      groupsList.textContent = '';
+      break;
+    case 'results':
+      if (channelData?.groups) renderResultsContent(channelData.groups);
+      break;
+  }
+}
+
+function navigateTo(view: ViewName, opts?: { replace?: boolean }) {
+  handleRouteChange(view);
+
+  // ── URL ──
+  const route = viewToRoute(view, currentGuildId);
+  if (opts?.replace) {
+    history.replaceState({ view }, '', route);
+  } else {
+    history.pushState({ view }, '', route);
+  }
+}
+
+// ── Guild Update Handler (data only) ─────────────────────────
+function handleGuildUpdate(data: GuildData) {
+  guildData = data;
+
+  // Re-enable refresh button once bot has processed the request
+  if (!('refreshRequest' in data && data.refreshRequest) && refreshChannelsBtn.disabled) {
+    refreshChannelsBtn.disabled = false;
+  }
+
+  // Persist guild info for recent guilds list (skip demo mode)
+  if (currentGuildId && data.guildName && !isDemoMode) {
+    saveRecentGuild(currentGuildId, data.guildName, data.guildIconUrl);
+  }
+
+  // Re-render channel picker if we're on that view
+  if (currentView === 'channels') {
+    if (data.refreshRequest && (!data.voiceChannels || data.voiceChannels.length === 0)) {
+      statusMsg.textContent = 'Loading channels...';
+    } else {
+      statusMsg.textContent = '';
+      renderChannelPicker(data.voiceChannels || []);
     }
+  }
+}
+
+// ── Channel Update Handler (data only) ───────────────────────
+function handleChannelUpdate(data: ChannelData) {
+  channelData = data;
+
+  // First snapshot after init with a pre-resolved channel (Discord Activity):
+  // navigate to the view matching the channel's current status.
+  if (awaitingInitialChannelSnapshot) {
+    awaitingInitialChannelSnapshot = false;
+    const view = statusToView(data.status);
+    navigateTo(view, { replace: true });
+    // Fall through to apply view-specific state (e.g., startSpinSequence for spinning)
+  }
+
+  // Re-render lobby if we're on lobby view
+  if (currentView === 'lobby') {
+    renderLobby(data.players);
+    if (data.status === 'request_spin') {
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Calculating...';
+    }
+  }
+
+  // If groups arrived and we're on wheels, start animation
+  if (currentView === 'wheels' && data.status === 'spinning') {
+    if ((data as unknown as Record<string, unknown>).staticWheel) {
+      initPools(data.players);
+      wheelsGrid?.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
+      wheelStatus.textContent = 'Static preview';
+      nextBtn.classList.add('hidden');
+    } else if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
+      spinSequenceStarted = true;
+      startSpinSequence(data.groups, data.players);
+    }
+  }
+
+  // Re-render results if we're on results view
+  if (currentView === 'results' && data.status === 'completed') {
+    renderResultsContent(data.groups || []);
+  }
+}
+
+// ── Initialization ───────────────────────────────────────────
+async function init() {
+  const urlParams = new URLSearchParams(window.location.search);
+
+  // Initialize wheels grid component
+  wheelsGrid = new WheelsGrid(wheelsAreaMount);
+
+  // Event listeners
+  spinBtn.addEventListener('click', () => {
+    navigateTo('wheels');
+    requestSpin().catch(() => {
+      navigateTo('lobby');
+      statusMsg.textContent = 'Spin request failed. Please try again.';
+    });
+  });
+  nextBtn.addEventListener('click', spinForCurrentGroup);
+  startDemoBtn.addEventListener('click', startDemo);
+  newRoundBtn.addEventListener('click', () => navigateTo('channels'));
+  startSessionBtn.addEventListener('click', () => createGuildEntry());
+  changeChannelBtn.addEventListener('click', () => navigateTo('channels'));
+  wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
+  refreshChannelsBtn.addEventListener('click', refreshChannels);
+
+  const headerTitle = document.querySelector('.app-header h1') as HTMLHeadingElement;
+  headerTitle.addEventListener('click', () => navigateTo('home'));
+  headerTitle.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigateTo('home');
+    }
+  });
+
+  announceCheckbox.addEventListener('change', async () => {
+    if (isDemoMode) return;
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
+    await updateDoc(docRef, { announceResults: announceCheckbox.checked });
+  });
+
+  // Browser back/forward navigation
+  window.addEventListener('popstate', () => {
+    const parsed = routeToView(location.hash || '#/');
+    let view = parsed.view;
+    if (view === currentView) return;
+
+    if (parsed.guildId && parsed.guildId !== currentGuildId && view !== 'home') {
+      connectToGuild(parsed.guildId);
+    }
+
+    // Guard against navigating to wheels/results without active state
+    if ((view === 'wheels' || view === 'results') && !channelData?.groups?.length) {
+      view = currentGuildId ? 'channels' : 'home';
+      history.replaceState({ view }, '', viewToRoute(view, currentGuildId));
+    }
+
+    // Don't push to history — browser already updated the URL
+    handleRouteChange(view);
+  });
+
+  // Check for injected mock data (testing)
+  const dataParam = urlParams.get('data');
+  if (dataParam) {
+    try {
+      const json = atob(dataParam);
+      const data = JSON.parse(json);
+      if (data.guild && data.channel) {
+        guildData = data.guild;
+        const channelView = statusToView((data.channel as ChannelData).status);
+        showView(channelView);
+        handleChannelUpdate(data.channel);
+      } else if ('voiceChannels' in data && !('status' in data)) {
+        guildData = data;
+        showView('channels');
+        handleGuildUpdate(data);
+      } else {
+        const cd = data as ChannelData;
+        channelData = cd;
+        const view = statusToView(cd.status);
+        showView(view);
+        handleChannelUpdate(cd);
+      }
+      return;
+    } catch (e) {
+      console.error('Invalid data param', e);
+    }
+  }
+
+  // Resolve guild ID: URL params first, then hash route, then Discord SDK
+  currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
+  const urlChannelId = urlParams.get('channelId');
+  const initialRoute = routeToView(location.hash);
+
+  if (!currentGuildId && initialRoute.guildId) {
+    currentGuildId = initialRoute.guildId;
+  }
+
+  if (!currentGuildId) {
+    const discordContext = await setupDiscordSdk();
+    if (discordContext) {
+      currentGuildId = discordContext.guildId;
+      discordChannelId = discordContext.channelId;
+      console.log('[Wheelson] Discord SDK context:', discordContext);
+    } else {
+      console.warn('[Wheelson] Discord SDK returned null context');
+    }
+  }
+
+  console.log('[Wheelson] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
+
+  if (!currentGuildId) {
+    navigateTo('home', { replace: true });
+    return;
+  }
+
+  // Subscribe to guild doc
+  subscribeToGuild(currentGuildId);
+
+  // If we have a channel ID, subscribe to it directly and let the first
+  // snapshot drive the initial view (via awaitingInitialChannelSnapshot).
+  const resolvedChannelId = urlChannelId || discordChannelId;
+  if (resolvedChannelId) {
+    currentChannelId = resolvedChannelId;
+    awaitingInitialChannelSnapshot = true;
+    subscribeToChannel(resolvedChannelId);
+    // Show channels view as loading placeholder until first snapshot arrives
+    showView('channels');
+    statusMsg.textContent = 'Loading...';
+  } else {
+    // No pre-resolved channel — go to channel picker
+    if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
+      console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
+    }
+    navigateTo('channels', { replace: true });
+  }
+}
+
+function statusToView(status: string): ViewName {
+  switch (status) {
+    case 'lobby':
+    case 'request_spin':
+      return 'lobby';
+    case 'spinning':
+      return 'wheels';
+    case 'completed':
+      return 'results';
+    default:
+      console.warn('[Wheelson] Unknown channel status:', status);
+      return 'lobby';
   }
 }
 
@@ -537,11 +570,15 @@ function renderRecentGuilds() {
 
     card.appendChild(info);
 
-    card.onclick = () => connectToGuild(guild.guildId);
+    const handleGuildClick = () => {
+      connectToGuild(guild.guildId);
+      navigateTo('channels');
+    };
+    card.onclick = handleGuildClick;
     card.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        connectToGuild(guild.guildId);
+        handleGuildClick();
       }
     };
 
@@ -550,8 +587,9 @@ function renderRecentGuilds() {
 }
 
 function connectToGuild(guildId: string) {
+  if (channelUnsubscribe) { channelUnsubscribe(); channelUnsubscribe = null; }
+  currentChannelId = null; channelData = null;
   currentGuildId = guildId;
-  statusMsg.textContent = 'Connecting...';
   subscribeToGuild(guildId);
 }
 
@@ -598,12 +636,13 @@ function renderChannelPicker(channels: VoiceChannel[]) {
 async function selectChannel(channelId: string, channelName?: string) {
   if (isDemoMode) {
     currentChannelId = channelId;
-    handleChannelUpdate({
+    channelData = {
       ...mockChannelData,
       channelId,
       channelName: channelName || 'Demo Channel',
       players: mockPlayers,
-    });
+    };
+    navigateTo('lobby');
     return;
   }
 
@@ -627,32 +666,8 @@ async function selectChannel(channelId: string, channelName?: string) {
 
   // Subscribe to the channel doc
   subscribeToChannel(channelId);
-}
 
-async function changeChannel() {
-  if (isDemoMode) {
-    currentChannelId = null;
-    channelData = null;
-    if (guildData) {
-      showView('channels');
-      renderChannelPicker(guildData.voiceChannels || []);
-    }
-    return;
-  }
-
-  // Unsubscribe from channel doc
-  if (channelUnsubscribe) {
-    channelUnsubscribe();
-    channelUnsubscribe = null;
-  }
-  currentChannelId = null;
-  channelData = null;
-
-  // Show channel picker from cached guild data
-  showView('channels');
-  if (guildData?.voiceChannels) {
-    renderChannelPicker(guildData.voiceChannels);
-  }
+  navigateTo('lobby');
 }
 
 async function refreshChannels() {
@@ -826,14 +841,11 @@ function formatRoleName(role: string): string {
 // ── Spin Request ─────────────────────────────────────────────
 async function requestSpin() {
   if (isDemoMode && channelData) {
-    spinBtn.disabled = true;
-    const calculatingData = { ...channelData, status: 'request_spin' } as ChannelData;
-    handleChannelUpdate(calculatingData);
-
-    // Simulate bot processing
+    const currentData = { ...channelData };
+    // Simulate bot processing after delay
     setTimeout(() => {
       handleChannelUpdate({
-        ...calculatingData,
+        ...currentData,
         status: 'spinning',
         groups: mockGroups,
       } as ChannelData);
@@ -842,7 +854,6 @@ async function requestSpin() {
   }
 
   if (!currentChannelId) return;
-  spinBtn.disabled = true;
   const docRef = doc(db, 'channels', currentChannelId);
   await updateDoc(docRef, { status: 'request_spin' });
 }
@@ -858,7 +869,6 @@ function startSpinSequence(sessionGroups: WoWGroup[], players: WoWPlayer[]) {
   remainderGroups = sessionGroups.filter((g) => !isCompleteGroup(g));
   currentGroupIndex = 0;
 
-  showView('wheels');
   groupsList.textContent = '';
 
   // Reset carousel state
@@ -903,20 +913,10 @@ function resetSpinState() {
 }
 
 async function cancelAndReturnToLobby() {
-  resetSpinState();
-
-  // Show lobby immediately for responsiveness (Firestore update confirms later)
-  if (channelData?.players) {
-    showView('lobby');
-    renderLobby(channelData.players);
-  }
+  navigateTo('lobby');
 
   if (isDemoMode && channelData) {
-    handleChannelUpdate({
-      ...channelData,
-      status: 'lobby',
-      groups: [],
-    } as ChannelData);
+    channelData = { ...channelData, status: 'lobby', groups: [] };
     return;
   }
 
@@ -1090,8 +1090,10 @@ function delay(ms: number): Promise<void> {
 }
 
 async function finishSpinSequence() {
+  navigateTo('results', { replace: true });
+
   if (isDemoMode && channelData) {
-    handleChannelUpdate({ ...channelData, status: 'completed' } as ChannelData);
+    channelData = { ...channelData, status: 'completed' };
   } else if (currentChannelId) {
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { status: 'completed' });
@@ -1232,42 +1234,13 @@ function createCompactRoleRow(
 }
 
 // ── Results View ─────────────────────────────────────────────
-function showResults(sessionGroups: WoWGroup[]) {
-  showView('results');
+function renderResultsContent(sessionGroups: WoWGroup[]) {
   finalGroups.textContent = '';
 
   sessionGroups.forEach((g, i) => {
     const remainder = !isCompleteGroup(g);
     finalGroups.appendChild(createGroupCard(g, i, remainder ? 'Remainder' : undefined, remainder));
   });
-}
-
-// ── New Round ────────────────────────────────────────────────
-async function startNewRound() {
-  resetSpinState();
-
-  if (isDemoMode) {
-    currentChannelId = null;
-    channelData = null;
-    if (guildData) {
-      showView('channels');
-      renderChannelPicker(guildData.voiceChannels || []);
-    }
-    return;
-  }
-
-  // Unsubscribe from channel doc and go back to channel picker
-  if (channelUnsubscribe) {
-    channelUnsubscribe();
-    channelUnsubscribe = null;
-  }
-  currentChannelId = null;
-  channelData = null;
-
-  showView('channels');
-  if (guildData?.voiceChannels) {
-    renderChannelPicker(guildData.voiceChannels);
-  }
 }
 
 // ── Guild Entry Creation ─────────────────────────────────────
@@ -1315,9 +1288,8 @@ async function createGuildEntry(guildId?: string) {
 function startDemo() {
   isDemoMode = true;
   currentGuildId = 'demo-guild';
-  statusMsg.textContent = '';
   guildData = mockGuildData;
-  handleGuildUpdate(mockGuildData);
+  navigateTo('channels');
 }
 
 // ── Start ────────────────────────────────────────────────────
