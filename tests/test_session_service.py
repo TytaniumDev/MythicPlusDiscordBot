@@ -216,10 +216,12 @@ class TestRefreshGuildVoiceChannels(unittest.IsolatedAsyncioTestCase):
         call_args = mock_firebase.update_guild_doc.call_args
         self.assertEqual(call_args[0][0], "1")
         channels = call_args[0][1]["voiceChannels"]
-        # Only vc1 has users
-        self.assertEqual(len(channels), 1)
+        # All voice channels included (occupied first, then empty)
+        self.assertEqual(len(channels), 2)
         self.assertEqual(channels[0]["id"], "42")
         self.assertEqual(channels[0]["userCount"], 2)
+        self.assertEqual(channels[1]["id"], "43")
+        self.assertEqual(channels[1]["userCount"], 0)
 
     @patch("services.session_service.FirebaseService")
     async def test_refresh_sorts_by_user_count_desc(
