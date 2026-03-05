@@ -161,7 +161,7 @@ function subscribeToGuild(guildId: string) {
           statusMsg.textContent = 'Setting up session...';
           createGuildEntry()
             .catch((err) => {
-              console.error('[Activity] Failed to auto-create guild doc:', err);
+              console.error('[Wheelson] Failed to auto-create guild doc:', err);
               statusMsg.textContent = 'Failed to set up session. Please try again.';
             })
             .finally(() => {
@@ -171,8 +171,8 @@ function subscribeToGuild(guildId: string) {
       }
     },
     (error) => {
-      console.error('[Activity] Guild Firestore error:', error);
-      statusMsg.textContent = 'Activity ended.';
+      console.error('[Wheelson] Guild Firestore error:', error);
+      statusMsg.textContent = 'Connection lost. Please refresh to try again.';
     },
   );
 }
@@ -191,12 +191,13 @@ function subscribeToChannel(channelId: string) {
       if (docSnap.exists()) {
         handleChannelUpdate(docSnap.data() as ChannelData);
       } else {
-        console.warn('[Activity] No doc at channels/' + channelId);
+        console.warn('[Wheelson] No doc at channels/' + channelId);
         // Channel doc doesn't exist yet — stay on channel picker
       }
     },
     (error) => {
-      console.error('[Activity] Channel Firestore error:', error);
+      console.error('[Wheelson] Channel Firestore error:', error);
+      statusMsg.textContent = 'Connection lost. Please refresh to try again.';
     },
   );
 }
@@ -278,14 +279,14 @@ async function init() {
       startNewRound();
     } else if (targetView === 'wheels' || targetView === 'results') {
       // Forward into wheels/results without active state — redirect to channels
-      console.warn('[Activity] Forward nav to', targetView, 'without state, redirecting to channels');
+      console.warn('[Wheelson] Forward nav to', targetView, 'without state, redirecting to channels');
       history.replaceState({ view: 'channels' }, '', VIEW_TO_ROUTE.channels);
       showView('channels');
       if (guildData?.voiceChannels) {
         renderChannelPicker(guildData.voiceChannels);
       }
     } else {
-      console.warn('[Activity] Unexpected popstate transition:', currentView, '->', targetView);
+      console.warn('[Wheelson] Unexpected popstate transition:', currentView, '->', targetView);
       showView(targetView);
     }
 
@@ -327,13 +328,13 @@ async function init() {
     if (discordContext) {
       currentGuildId = discordContext.guildId;
       discordChannelId = discordContext.channelId;
-      console.log('[Activity] Discord SDK context:', discordContext);
+      console.log('[Wheelson] Discord SDK context:', discordContext);
     } else {
-      console.warn('[Activity] Discord SDK returned null context');
+      console.warn('[Wheelson] Discord SDK returned null context');
     }
   }
 
-  console.log('[Activity] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
+  console.log('[Wheelson] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
 
   if (!currentGuildId) {
     showView('home');
@@ -1256,7 +1257,7 @@ async function createGuildEntry() {
 
   // Validate guild ID is a numeric Discord snowflake (no path traversal)
   if (!/^\d+$/.test(currentGuildId)) {
-    console.error('[Activity] Invalid guild ID:', currentGuildId);
+    console.error('[Wheelson] Invalid guild ID:', currentGuildId);
     statusMsg.textContent = 'Invalid guild ID.';
     return;
   }
