@@ -12,20 +12,23 @@ def _tank_name(group: WoWGroup) -> str:
     return group.tank.name if group.tank else "?"
 
 
-# The last set of groups
-# We'll try to match people with new players if possible
-lastGroups = []
+# Per-guild history of last groups — avoids cross-guild contamination.
+_lastGroups: dict[int | None, list[WoWGroup]] = {}
 
 
 def clear():
-    global lastGroups
-    lastGroups = []
+    _lastGroups.clear()
+
+
+def set_last_groups(groups: list[WoWGroup], guild_id: int | None = None) -> None:
+    """Injects group history for testing."""
+    _lastGroups[guild_id] = groups
 
 
 def create_mythic_plus_groups(
-    players: list[WoWPlayer], debug: bool = True
+    players: list[WoWPlayer], debug: bool = True, guild_id: int | None = None
 ) -> list[WoWGroup]:
-    global lastGroups
+    lastGroups = _lastGroups.get(guild_id, [])
 
     # Logging for reproduction
     logger.info("Starting group creation for %d players", len(players))
@@ -77,7 +80,7 @@ def create_mythic_plus_groups(
         main_healers,
         off_healers,
     )
-    offhealersToGrab = len(main_healers) < maximumPossibleGroups
+    offhealersToGrab = max(0, maximumPossibleGroups - len(main_healers))
 
     # DPS
     main_dps = [p for p in players if p.dpsMain]
@@ -446,8 +449,7 @@ def create_mythic_plus_groups(
         )
         groups.append(remainderGroup)
 
-    lastGroups.clear()
-    lastGroups = groups
+    _lastGroups[guild_id] = groups
 
     # Log final results
     logger.info("Group creation complete. Formed %d groups.", len(groups))
