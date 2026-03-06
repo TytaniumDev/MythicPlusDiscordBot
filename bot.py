@@ -27,6 +27,13 @@ class MythicPlusBot(commands.Bot):
         super().__init__(command_prefix=["!", "/"], intents=intents)
         self.group_service = GroupService()
 
+    async def close(self) -> None:
+        # Shut down Firestore listeners from the Groups cog
+        groups_cog = self.cogs.get("Groups")
+        if groups_cog and hasattr(groups_cog, "session_service"):
+            groups_cog.session_service.shutdown()  # pyright: ignore[reportAttributeAccessIssue]
+        await super().close()
+
     async def _send_error_to_dev(
         self, error: BaseException, context_info: str = "Unknown Context"
     ) -> None:
