@@ -35,6 +35,22 @@ def build_group_embed(group: WoWGroup, group_number: int) -> discord.Embed:
     return embed
 
 
+async def _animate_update(
+    message: discord.Message,
+    channel: discord.abc.GuildChannel | discord.abc.Messageable,
+    embed: discord.Embed,
+    index: int,
+    name: str,
+    value: str,
+    debug: bool,
+) -> discord.Message:
+    """Helper to trigger a typing indicator and update an embed field during the reveal animation."""
+    await show_short_typing(channel, debug_mode=debug)
+    return await message.edit(
+        embed=embed.set_field_at(index=index, name=name, value=value)
+    )
+
+
 async def announce_group(
     ctx: commands.Context[commands.Bot],
     channel: discord.abc.GuildChannel | discord.abc.Messageable,
@@ -93,37 +109,38 @@ async def announce_group(
         )
 
         embedMessage = await ctx.send(embed=embed)
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(index=0, name="Tank", value=f"{tank_name}")
+        embedMessage = await _animate_update(
+            embedMessage, channel, embed, 0, "Tank", f"{tank_name}", debug
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(index=1, name="Healer", value=f"{healer_name}")
+        embedMessage = await _animate_update(
+            embedMessage, channel, embed, 1, "Healer", f"{healer_name}", debug
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
-            )
+        embedMessage = await _animate_update(
+            embedMessage,
+            channel,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {get_masked_name(dps2_name)}, {get_masked_name(dps3_name)}",
+            debug,
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
-            )
+        embedMessage = await _animate_update(
+            embedMessage,
+            channel,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {dps2_name}, {get_masked_name(dps3_name)}",
+            debug,
         )
-        await show_short_typing(channel, debug_mode=debug)
-        embedMessage = await embedMessage.edit(
-            embed=embed.set_field_at(
-                index=2,
-                name="DPS",
-                value=f"{dps1_name}, {dps2_name}, {dps3_name}",
-            )
+        embedMessage = await _animate_update(
+            embedMessage,
+            channel,
+            embed,
+            2,
+            "DPS",
+            f"{dps1_name}, {dps2_name}, {dps3_name}",
+            debug,
         )
         embedMessage = await embedMessage.edit(
             embed=embed.set_field_at(index=3, name="Battle Res", value=f"{brez_player}")
