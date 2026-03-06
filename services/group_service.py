@@ -54,7 +54,8 @@ class GroupService:
             await ctx.send("❌ No players with valid roles found.")
             return None
 
-        groups = create_mythic_plus_groups(players, debug=debug)
+        guild_id = ctx.guild.id if ctx.guild else None
+        groups = create_mythic_plus_groups(players, debug=debug, guild_id=guild_id)
 
         return {"players": list(players), "groups": list(groups)}
 
