@@ -6,11 +6,7 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.models import WoWGroup, WoWPlayer
-from core.parallel_group_creator import (
-    clear,
-    create_mythic_plus_groups,
-    set_last_groups,
-)
+from core.parallel_group_creator import clear, create_mythic_plus_groups
 from tests.prebuilt_classes import (
     BalanceDruid,
     FeralDruid,
@@ -268,8 +264,11 @@ class TestGroupCreator(unittest.TestCase):
         g1.dps = [dps1, dps2, dps3]
         # Healer was not in this group, so Healer is fresh to everyone
 
-        # Inject the history (keyed by guild_id=None for tests)
-        set_last_groups([g1])
+        # Inject the history
+        import core.parallel_group_creator
+
+        # IMPORTANT: Assign a copy or new list because the function clears it
+        core.parallel_group_creator.lastGroups = [g1]
 
         # Now run creation with all players available
         # The algorithm should form 1 complete group (8 players -> 1 group)

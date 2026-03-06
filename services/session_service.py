@@ -32,31 +32,6 @@ class SessionService:
         self._collection_watch: Any = None
         self._guild_collection_watch: Any = None
 
-    def shutdown(self) -> None:
-        """Unsubscribes all Firestore listeners and clears tracking state."""
-        if self._collection_watch is not None:
-            self._collection_watch.unsubscribe()
-            self._collection_watch = None
-
-        if self._guild_collection_watch is not None:
-            self._guild_collection_watch.unsubscribe()
-            self._guild_collection_watch = None
-
-        for watch in self.channel_listeners.values():
-            if watch:
-                watch.unsubscribe()
-        self.channel_listeners.clear()
-
-        for watch in self.guild_listeners.values():
-            if watch:
-                watch.unsubscribe()
-        self.guild_listeners.clear()
-
-        self.active_channels.clear()
-        self.active_guilds.clear()
-
-        logger.info("SessionService shutdown complete — all listeners unsubscribed.")
-
     def _run_async(self, coro: Any) -> None:
         """Schedules a coroutine on the bot loop with error logging."""
         future = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
@@ -390,57 +365,44 @@ class SessionService:
         """Calculates groups and updates Firestore."""
         logger.info("Processing spin request for channel %s", channel_id)
 
-        try:
-            guild = self.bot.get_guild(guild_id)
-            if not guild:
-                logger.error("Guild %d not found.", guild_id)
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            logger.error("Guild %d not found.", guild_id)
+            return
+
+        is_debug = data.get("isDebug", False)
+
+        if is_debug:
+            players_data = data.get("players", [])
+            players = [WoWPlayer.from_dict(p) for p in players_data]
+            logger.info("Using %d debug players from channel data.", len(players))
+        else:
+            channel = guild.get_channel(channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                logger.warning(
+                    "Channel %d not found or not a voice channel.", channel_id
+                )
                 return
 
-            is_debug = data.get("isDebug", False)
+            members = [m for m in channel.members if not m.bot]
+            players = get_player_list(members)
 
-            if is_debug:
-                players_data = data.get("players", [])
-                players = [WoWPlayer.from_dict(p) for p in players_data]
-                logger.info("Using %d debug players from channel data.", len(players))
-            else:
-                channel = guild.get_channel(channel_id)
-                if not channel or not isinstance(channel, discord.VoiceChannel):
-                    logger.warning(
-                        "Channel %d not found or not a voice channel.", channel_id
-                    )
-                    return
+        if not players and not is_debug:
+            groups: list[WoWGroup] = []
+        else:
+            groups = create_mythic_plus_groups(players, debug=is_debug)
 
-                members = [m for m in channel.members if not m.bot]
-                players = get_player_list(members)
+        if hasattr(self.bot, "group_service"):
+            self.bot.group_service.last_results[guild_id] = {
+                "players": list(players),
+                "groups": list(groups),
+            }
 
-            if not players and not is_debug:
-                groups: list[WoWGroup] = []
-            else:
-                groups = create_mythic_plus_groups(
-                    players, debug=is_debug, guild_id=guild_id
-                )
+        groups_data = [g.to_dict() for g in groups]
 
-            if hasattr(self.bot, "group_service"):
-                self.bot.group_service.last_results[guild_id] = {
-                    "players": list(players),
-                    "groups": list(groups),
-                }
-
-            groups_data = [g.to_dict() for g in groups]
-
-            await self.firebase.update_channel_doc(
-                doc_id, {"status": "spinning", "groups": groups_data}
-            )
-        except Exception:
-            logger.exception("Spin request failed for channel %s", channel_id)
-            try:
-                await self.firebase.update_channel_doc(
-                    doc_id, {"status": "lobby", "groups": []}
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to reset channel %s after spin error", channel_id
-                )
+        await self.firebase.update_channel_doc(
+            doc_id, {"status": "spinning", "groups": groups_data}
+        )
 
     async def _announce_completion(
         self, channel_id: int, guild_id: int, data: dict[str, Any]

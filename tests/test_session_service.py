@@ -356,7 +356,7 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
 
         guild.get_channel.assert_called_with(42)
         mock_get_player_list.assert_called_once()
-        mock_create_groups.assert_called_once_with(players, debug=False, guild_id=1)
+        mock_create_groups.assert_called_once_with(players, debug=False)
 
         mock_firebase.update_channel_doc.assert_called_once()
         update_args = mock_firebase.update_channel_doc.call_args[0]

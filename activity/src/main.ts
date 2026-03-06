@@ -144,22 +144,8 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-// ── Listener Retry Helpers ────────────────────────────────────
-const MAX_LISTENER_RETRIES = 5;
-
-function isRecoverableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const code = (error as { code?: string }).code;
-    // Permission errors and not-found are permanent
-    if (code === 'permission-denied' || code === 'not-found' || code === 'unauthenticated') {
-      return false;
-    }
-  }
-  return true;
-}
-
 // ── Guild Listener ───────────────────────────────────────────
-function subscribeToGuild(guildId: string, retryCount = 0) {
+function subscribeToGuild(guildId: string) {
   if (guildUnsubscribe) {
     guildUnsubscribe();
     guildUnsubscribe = null;
@@ -189,20 +175,13 @@ function subscribeToGuild(guildId: string, retryCount = 0) {
     },
     (error) => {
       console.error('[Wheelson] Guild Firestore error:', error);
-      if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
-        const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
-        console.info(`[Wheelson] Retrying guild listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-        statusMsg.textContent = 'Connection lost. Reconnecting...';
-        setTimeout(() => subscribeToGuild(guildId, retryCount + 1), delayMs);
-      } else {
-        statusMsg.textContent = 'Connection lost. Please refresh to try again.';
-      }
+      statusMsg.textContent = 'Connection lost. Please refresh to try again.';
     },
   );
 }
 
 // ── Channel Listener ─────────────────────────────────────────
-function subscribeToChannel(channelId: string, retryCount = 0) {
+function subscribeToChannel(channelId: string) {
   if (channelUnsubscribe) {
     channelUnsubscribe();
     channelUnsubscribe = null;
@@ -220,14 +199,7 @@ function subscribeToChannel(channelId: string, retryCount = 0) {
     },
     (error) => {
       console.error('[Wheelson] Channel Firestore error:', error);
-      if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
-        const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
-        console.info(`[Wheelson] Retrying channel listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-        statusMsg.textContent = 'Connection lost. Reconnecting...';
-        setTimeout(() => subscribeToChannel(channelId, retryCount + 1), delayMs);
-      } else {
-        statusMsg.textContent = 'Connection lost. Please refresh to try again.';
-      }
+      statusMsg.textContent = 'Connection lost. Please refresh to try again.';
     },
   );
 }
@@ -438,11 +410,7 @@ async function init() {
     if (isDemoMode) return;
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    try {
-      await updateDoc(docRef, { announceResults: announceCheckbox.checked });
-    } catch (err) {
-      console.error('[Wheelson] Failed to update announce setting:', err);
-    }
+    await updateDoc(docRef, { announceResults: announceCheckbox.checked });
   });
 
   // Browser back/forward navigation
@@ -688,23 +656,17 @@ async function selectChannel(channelId: string, channelName?: string) {
 
   // Create the channel doc (merge to avoid overwriting bot-owned fields like players)
   const channelDocRef = doc(db, 'channels', channelId);
-  try {
-    await setDoc(channelDocRef, {
-      channelId,
-      channelName: channelName || '',
-      guildId: currentGuildId,
-      status: 'lobby',
-      groups: [],
-      isDebug: false,
-      announceResults: true,
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-    }, { merge: true });
-  } catch (err) {
-    console.error('[Wheelson] Failed to create channel doc:', err);
-    statusMsg.textContent = 'Failed to start session. Please try again.';
-    return;
-  }
+  await setDoc(channelDocRef, {
+    channelId,
+    channelName: channelName || '',
+    guildId: currentGuildId,
+    status: 'lobby',
+    groups: [],
+    isDebug: false,
+    announceResults: true,
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp(),
+  }, { merge: true });
 
   // Subscribe to the channel doc
   subscribeToChannel(channelId);
@@ -897,12 +859,7 @@ async function requestSpin() {
 
   if (!currentChannelId) return;
   const docRef = doc(db, 'channels', currentChannelId);
-  try {
-    await updateDoc(docRef, { status: 'request_spin' });
-  } catch (err) {
-    console.error('[Wheelson] Failed to request spin:', err);
-    throw err; // Re-throw so the caller's .catch() navigates back to lobby
-  }
+  await updateDoc(docRef, { status: 'request_spin' });
 }
 
 // ── Group Completeness Check ─────────────────────────────────
@@ -969,12 +926,7 @@ async function cancelAndReturnToLobby() {
 
   if (!currentChannelId) return;
   const docRef = doc(db, 'channels', currentChannelId);
-  try {
-    await updateDoc(docRef, { status: 'lobby', groups: [] });
-  } catch (err) {
-    console.error('[Wheelson] Failed to return to lobby:', err);
-    statusMsg.textContent = 'Failed to reset session. Please refresh.';
-  }
+  await updateDoc(docRef, { status: 'lobby', groups: [] });
 }
 
 function updateNextButton() {
@@ -1148,12 +1100,7 @@ async function finishSpinSequence() {
     channelData = { ...channelData, status: 'completed' };
   } else if (currentChannelId) {
     const docRef = doc(db, 'channels', currentChannelId);
-    try {
-      await updateDoc(docRef, { status: 'completed' });
-    } catch (err) {
-      console.error('[Wheelson] Failed to mark session completed:', err);
-      statusMsg.textContent = 'Failed to announce results. Please refresh.';
-    }
+    await updateDoc(docRef, { status: 'completed' });
   }
 }
 
@@ -1313,42 +1260,30 @@ async function createGuildEntry(guildId?: string) {
 
   // Create guild doc with refreshRequest so bot populates voice channels
   const guildDocRef = doc(db, 'guilds', id);
-  try {
-    await setDoc(guildDocRef, {
-      guildId: id,
-      voiceChannels: [],
-      refreshRequest: serverTimestamp(),
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-    });
-  } catch (err) {
-    console.error('[Wheelson] Failed to create guild doc:', err);
-    statusMsg.textContent = 'Failed to set up session. Please try again.';
-    throw err; // Re-throw so callers (.catch in subscribeToGuild) can handle it
-  }
+  await setDoc(guildDocRef, {
+    guildId: id,
+    voiceChannels: [],
+    refreshRequest: serverTimestamp(),
+    createdAt: serverTimestamp(),
+    lastActive: serverTimestamp(),
+  });
 
   // If we have a channel from Discord SDK, also create a channel doc
   if (discordChannelId) {
     currentChannelId = discordChannelId;
     const channelDocRef = doc(db, 'channels', discordChannelId);
-    try {
-      await setDoc(channelDocRef, {
-        channelId: discordChannelId,
-        channelName: '',
-        guildId: id,
-        status: 'lobby',
-        players: [],
-        groups: [],
-        isDebug: false,
-        announceResults: true,
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-      });
-    } catch (err) {
-      console.error('[Wheelson] Failed to create channel doc:', err);
-      statusMsg.textContent = 'Failed to start session. Please try again.';
-      return;
-    }
+    await setDoc(channelDocRef, {
+      channelId: discordChannelId,
+      channelName: '',
+      guildId: id,
+      status: 'lobby',
+      players: [],
+      groups: [],
+      isDebug: false,
+      announceResults: true,
+      createdAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
+    });
     subscribeToChannel(discordChannelId);
   }
 }

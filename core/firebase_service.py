@@ -60,11 +60,7 @@ class FirebaseService:
                 return
 
             cred = credentials.Certificate(cred_dict)
-            try:
-                firebase_admin.initialize_app(cred)
-            except ValueError:
-                # App already initialized (e.g. previous __init__ succeeded partially)
-                pass
+            firebase_admin.initialize_app(cred)
             self.db = firestore.client()
             logger.info("Firebase initialized successfully.")
         except Exception as e:
