@@ -501,6 +501,7 @@ body {
 .role-column-header.tank { color: var(--color-tank); border-color: var(--color-tank); }
 .role-column-header.healer { color: var(--color-healer); border-color: var(--color-healer); }
 .role-column-header.dps { color: var(--color-dps); border-color: var(--color-dps); }
+.role-column-header.unassigned { color: var(--text-secondary); border-color: var(--text-secondary); }
 
 .player-chip {
   display: flex;
@@ -530,6 +531,7 @@ body {
 .role-dot.tank { background: var(--color-tank); }
 .role-dot.healer { background: var(--color-healer); }
 .role-dot.dps { background: var(--color-dps); }
+.role-dot.unassigned { background: var(--text-secondary); }
 
 .chip-tags {
   display: flex;
@@ -582,6 +584,12 @@ body {
   background: color-mix(in srgb, var(--color-purple) 20%, transparent);
   color: var(--color-purple);
   border: 1px solid color-mix(in srgb, var(--color-purple) 40%, transparent);
+}
+
+.role-tag.tag-unassigned {
+  background: color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  color: var(--text-secondary);
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 40%, transparent);
 }
 
 #view-lobby .btn {

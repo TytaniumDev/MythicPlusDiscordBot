@@ -412,6 +412,7 @@ class SessionService:
 
                 members = [m for m in channel.members if not m.bot]
                 players = get_player_list(members)
+                players = [p for p in players if p.hasRoles()]
 
             if not players and not is_debug:
                 groups: list[WoWGroup] = []

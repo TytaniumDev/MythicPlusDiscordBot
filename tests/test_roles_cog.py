@@ -84,33 +84,27 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
     @patch("cogs.roles.get_wow_name")
     @patch("cogs.roles.get_player_preference")
-    async def test_rolecheck_discord_roles_only(
+    async def test_rolecheck_no_saved_roles(
         self, mock_get_pref: MagicMock, mock_wowname: MagicMock
     ):
-        """Test rolecheck with a user who has no saved roles but has Discord roles."""
+        """Test rolecheck with a user who has no saved roles shows 'No roles set'."""
         ctx = AsyncMock()
         member = MagicMock()
         member.bot = False
-        role = MagicMock()
-        # Ensure the role name is in ALL_ROLES
-        role.name = "Tank"
-        member.roles = [role]
         ctx.author.voice.channel.members = [member]
 
-        mock_wowname.return_value = "DiscordUser"
+        mock_wowname.return_value = "NewUser"
         mock_get_pref.return_value = None
 
-        # Ensure Tank is in ALL_ROLES for the test context
-        with patch("cogs.roles.ALL_ROLES", ["Tank"]):
-            await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
+        await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
 
         ctx.send.assert_called_once()
         call_args = ctx.send.call_args
         embed = call_args.kwargs.get("embed")
 
         self.assertIsNotNone(embed)
-        self.assertIn("DiscordUser (Discord Only)", embed.fields[0].name)
-        self.assertIn("Tank", embed.fields[0].value)
+        self.assertEqual(embed.fields[0].name, "NewUser")
+        self.assertIn("No roles set", embed.fields[0].value)
 
     async def test_rolecheck_empty_channel(self):
         """Test rolecheck when no members are found."""

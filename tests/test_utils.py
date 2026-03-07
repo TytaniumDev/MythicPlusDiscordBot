@@ -50,27 +50,18 @@ class TestUtils(unittest.TestCase):
 
     @patch("core.utils.get_player_preference")
     def test_get_player_list(self, mock_get_pref: MagicMock):
-        """Test that get_player_list correctly creates WoWPlayer objects from members."""
+        """Test that get_player_list returns all members, with or without roles."""
         # Setup members
-        role_everyone = MagicMock()
-        role_everyone.name = "@everyone"
-
-        role_dps = MagicMock()
-        role_dps.name = "DPS"
-
         member_saved = MagicMock()
         member_saved.nick = "SavedPlayer"
-        member_saved.roles = [role_everyone]
 
-        member_discord = MagicMock()
-        member_discord.nick = "DiscordPlayer"
-        member_discord.roles = [role_everyone, role_dps]
+        member_no_roles = MagicMock()
+        member_no_roles.nick = "NoRolesPlayer"
 
-        member_invalid = MagicMock()
-        member_invalid.nick = "InvalidPlayer"
-        member_invalid.roles = [role_everyone]  # No saved roles, no extra discord roles
+        member_another = MagicMock()
+        member_another.nick = "AnotherPlayer"
 
-        members = [member_saved, member_discord, member_invalid]
+        members = [member_saved, member_no_roles, member_another]
 
         # Setup mock preferences
         def get_pref_side_effect(name: str):
@@ -83,22 +74,23 @@ class TestUtils(unittest.TestCase):
         # Call function
         players = get_player_list(cast(list[discord.Member], members))
 
-        # Assertions
-        self.assertEqual(len(players), 2)
+        # All 3 members are returned
+        self.assertEqual(len(players), 3)
 
-        # Verify SavedPlayer
+        # Verify SavedPlayer has roles
         p1 = next((p for p in players if p.name == "SavedPlayer"), None)
         assert p1 is not None
         self.assertTrue(p1.tankMain)
+        self.assertTrue(p1.hasRoles())
 
-        # Verify DiscordPlayer
-        p2 = next((p for p in players if p.name == "DiscordPlayer"), None)
+        # Verify players without saved roles have no roles
+        p2 = next((p for p in players if p.name == "NoRolesPlayer"), None)
         assert p2 is not None
-        self.assertTrue(p2.dpsMain)
+        self.assertFalse(p2.hasRoles())
 
-        # Verify InvalidPlayer is skipped
-        p3 = next((p for p in players if p.name == "InvalidPlayer"), None)
-        self.assertIsNone(p3)
+        p3 = next((p for p in players if p.name == "AnotherPlayer"), None)
+        assert p3 is not None
+        self.assertFalse(p3.hasRoles())
 
 
 class TestMaskedName(unittest.TestCase):
