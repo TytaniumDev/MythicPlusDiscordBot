@@ -203,14 +203,11 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
             "**Offspec** (pick any)",
             "**Utilities**",
         ]
-        state.messages = [MagicMock()]
-
         interaction = MagicMock(spec=discord.Interaction)
         interaction.response = MagicMock()
         interaction.response.edit_message = AsyncMock()
-        mock_followup_msg = MagicMock()
         interaction.followup = MagicMock()
-        interaction.followup.send = AsyncMock(return_value=mock_followup_msg)
+        interaction.followup.send = AsyncMock(return_value=MagicMock())
 
         next_button = next(
             item for item in main_view.children if isinstance(item, NextButton)
@@ -229,8 +226,23 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
             ephemeral=True,
             wait=True,
         )
-        # New message should be appended
-        self.assertIn(mock_followup_msg, state.messages)
+
+    async def test_none_button_initial_highlight(self):
+        # No offspec roles selected — NoneButton should start highlighted
+        state = RoleSelectionState("TestPlayer", "12345", set())
+        offspec_view = OffspecView(state, "test_off")
+        none_button = next(
+            item for item in offspec_view.children if isinstance(item, NoneButton)
+        )
+        self.assertEqual(none_button.style, discord.ButtonStyle.primary)
+
+        # With offspec roles selected — NoneButton should start secondary
+        state2 = RoleSelectionState("TestPlayer", "12345", {ROLE_TANK_OFFSPEC})
+        offspec_view2 = OffspecView(state2, "test_off2")
+        none_button2 = next(
+            item for item in offspec_view2.children if isinstance(item, NoneButton)
+        )
+        self.assertEqual(none_button2.style, discord.ButtonStyle.secondary)
 
     async def test_none_button(self):
         state = RoleSelectionState(

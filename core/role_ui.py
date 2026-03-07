@@ -43,7 +43,6 @@ class RoleSelectionState:
         Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
     ) = None
     views: list[discord.ui.View] = field(default_factory=list)
-    messages: list[Any] = field(default_factory=list)
     step_contents: list[str] = field(default_factory=list)
 
 
@@ -125,16 +124,15 @@ class NextButton(discord.ui.Button[discord.ui.View]):
         # Send next step
         next_view = self.state.views[next_idx]
         content = self.state.step_contents[next_idx]
-        msg = await interaction.followup.send(
+        await interaction.followup.send(
             content, view=next_view, ephemeral=True, wait=True
         )
-        self.state.messages.append(msg)
 
 
 class NoneButton(discord.ui.Button[discord.ui.View]):
     def __init__(
         self,
-        clear_roles: set[str],
+        clear_roles: frozenset[str],
         state: RoleSelectionState,
         custom_id: str,
     ):
@@ -196,12 +194,14 @@ class MainSpecView(discord.ui.View):
 
 
 class OffspecView(discord.ui.View):
-    OFFSPEC_ROLES = {
-        ROLE_TANK_OFFSPEC,
-        ROLE_HEALER_OFFSPEC,
-        ROLE_RANGED_OFFSPEC,
-        ROLE_MELEE_OFFSPEC,
-    }
+    OFFSPEC_ROLES: frozenset[str] = frozenset(
+        {
+            ROLE_TANK_OFFSPEC,
+            ROLE_HEALER_OFFSPEC,
+            ROLE_RANGED_OFFSPEC,
+            ROLE_MELEE_OFFSPEC,
+        }
+    )
 
     def __init__(self, state: RoleSelectionState, prefix: str):
         super().__init__(timeout=60)
@@ -227,7 +227,11 @@ class OffspecView(discord.ui.View):
                     row=0,
                 )
             )
-        self.add_item(NoneButton(self.OFFSPEC_ROLES, state, f"{prefix}:none"))
+        has_offspec = bool(state.selected_roles & self.OFFSPEC_ROLES)
+        none_btn = NoneButton(self.OFFSPEC_ROLES, state, f"{prefix}:none")
+        if not has_offspec:
+            none_btn.style = discord.ButtonStyle.primary
+        self.add_item(none_btn)
         self.add_item(NextButton(state, f"{prefix}:next"))
 
 
@@ -333,13 +337,12 @@ class RoleBoardView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
 
-        msg1 = await interaction.followup.send(
+        await interaction.followup.send(
             state.step_contents[0],
             view=main_view,
             ephemeral=True,
             wait=True,
         )
-        state.messages = [msg1]
 
 
 def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
