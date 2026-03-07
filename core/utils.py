@@ -75,36 +75,21 @@ def get_masked_name(name: str) -> str:
     return "?" * len(name)
 
 
-def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
+def _get_player_from_member(member: discord.Member) -> WoWPlayer:
     """
     Creates a WoWPlayer instance from a Discord member.
-    Prioritizes saved preferences over Discord roles.
+    Uses saved preferences only — no Discord role fallback.
     """
     name = get_wow_name(member)
-    # Check for persistent preferences first
     saved_roles = get_player_preference(name)
-
     if saved_roles:
         return WoWPlayer.create(name=name, roles=saved_roles)
-
-    if len(member.roles) > 1:
-        player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
-        if player.hasRoles():
-            return player
-        else:
-            logger.info("No valid roles found for %s, skipping.", name)
-
-    return None
+    return WoWPlayer(name=name)
 
 
 def get_player_list(members: list[discord.Member]) -> list[WoWPlayer]:
     """Gathers the player info from the discord and returns a list of WoWPlayer objects."""
-    players = []
-    for member in members:
-        player = _get_player_from_member(member)
-        if player:
-            players.append(player)
-    return players
+    return [_get_player_from_member(member) for member in members]
 
 
 def get_debug_players() -> list[WoWPlayer]:

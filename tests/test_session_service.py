@@ -9,7 +9,7 @@ import discord
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.models import WoWGroup  # noqa: E402
+from core.models import WoWGroup, WoWPlayer  # noqa: E402
 from services.session_service import ActiveChannel, SessionService  # noqa: E402
 from tests.prebuilt_classes import (  # noqa: E402
     HealerPriest,
@@ -364,6 +364,54 @@ class TestSessionServiceProcessSpinRequest(unittest.IsolatedAsyncioTestCase):
         update_data = update_args[1]
         self.assertEqual(update_data["status"], "spinning")
         self.assertEqual(len(update_data["groups"]), 1)
+
+    @patch("services.session_service.FirebaseService")
+    @patch("services.session_service.create_mythic_plus_groups")
+    @patch("services.session_service.get_player_list")
+    async def test_process_spin_request_filters_roleless_players(
+        self,
+        mock_get_player_list: MagicMock,
+        mock_create_groups: MagicMock,
+        mock_firebase_cls: MagicMock,
+    ) -> None:
+        """Roleless players are filtered out before group creation during spin."""
+        mock_firebase = MagicMock()
+        mock_firebase.update_channel_doc = AsyncMock()
+        mock_firebase_cls.return_value = mock_firebase
+
+        bot = MagicMock()
+        guild = MagicMock()
+        guild.id = 1
+        bot.get_guild.return_value = guild
+
+        channel = MagicMock(spec=discord.VoiceChannel)
+        channel.id = 42
+        member1 = MagicMock()
+        member1.bot = False
+        channel.members = [member1]
+        guild.get_channel.return_value = channel
+
+        service = SessionService(bot)
+
+        # Return a mix of players with and without roles
+        mock_get_player_list.return_value = [
+            TankPaladin("Tank"),
+            WoWPlayer(name="Roleless"),
+        ]
+        mock_create_groups.return_value = []
+
+        bot.group_service = MagicMock()
+        bot.group_service.last_results = {}
+
+        await service._process_spin_request(  # pyright: ignore[reportPrivateUsage]
+            "42", 42, 1, {"status": "request_spin"}
+        )
+
+        # Only the player with roles should be passed to group creation
+        mock_create_groups.assert_called_once()
+        actual_players = mock_create_groups.call_args[0][0]
+        self.assertEqual(len(actual_players), 1)
+        self.assertEqual(actual_players[0].name, "Tank")
 
     @patch("services.session_service.FirebaseService")
     async def test_process_spin_request_no_guild(

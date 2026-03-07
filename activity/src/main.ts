@@ -763,6 +763,7 @@ function renderLobby(players: WoWPlayer[]) {
   const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
   const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
   const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
+  const unassigned = players.filter((p) => !hasAnyRole(p));
 
   // Left column: Tank + Heal sections stacked
   const leftCol = document.createElement('div');
@@ -807,6 +808,26 @@ function renderLobby(players: WoWPlayer[]) {
 
   playerList.appendChild(leftCol);
   playerList.appendChild(rightCol);
+
+  if (unassigned.length > 0) {
+    const unassignedSection = document.createElement('div');
+    unassignedSection.className = 'role-section';
+    unassignedSection.style.gridColumn = '1 / -1';
+
+    const heading = document.createElement('div');
+    heading.className = 'role-column-header unassigned';
+    heading.textContent = `Unassigned (${unassigned.length})`;
+    unassignedSection.appendChild(heading);
+
+    const grid = document.createElement('div');
+    grid.className = 'dps-grid';
+    unassigned.forEach((p) => {
+      grid.appendChild(createPlayerChip(p));
+    });
+    unassignedSection.appendChild(grid);
+
+    playerList.appendChild(unassignedSection);
+  }
 }
 
 function createPlayerChip(p: WoWPlayer): HTMLElement {
@@ -853,8 +874,18 @@ interface RoleTag {
   cssClass: string;
 }
 
+function hasAnyRole(p: WoWPlayer): boolean {
+  return p.roles.tankMain || p.roles.healerMain || p.roles.dpsMain ||
+    p.roles.offtank || p.roles.offhealer || p.roles.offdps;
+}
+
 function getRoleTags(p: WoWPlayer): RoleTag[] {
   const tags: RoleTag[] = [];
+
+  if (!hasAnyRole(p)) {
+    tags.push({ label: 'No roles', cssClass: 'tag-unassigned' });
+    return tags;
+  }
 
   // Main roles
   if (p.roles.tankMain) tags.push({ label: 'Tank', cssClass: 'tag-tank' });
@@ -880,11 +911,13 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
 function getPrimaryRole(p: WoWPlayer): string {
   if (p.roles.tankMain) return 'tank';
   if (p.roles.healerMain) return 'healer';
-  return 'dps';
+  if (p.roles.dpsMain) return 'dps';
+  return 'unassigned';
 }
 
 function formatRoleName(role: string): string {
   if (role.toLowerCase() === 'dps') return 'DPS';
+  if (role === 'unassigned') return 'Unassigned';
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }
 

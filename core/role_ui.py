@@ -35,7 +35,6 @@ class PlayerRoleInfo:
 
     name: str
     roles: list[str]
-    is_discord_roles: bool = False
 
 
 class RoleButton(discord.ui.Button["RoleSelectionView"]):
@@ -233,6 +232,14 @@ def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
             inline=True,
         )
 
+    unassigned = [format_player(p) for p in players if not p.hasRoles()]
+    if unassigned:
+        embed.add_field(
+            name=f"Unassigned ({len(unassigned)})",
+            value=format_list(unassigned),
+            inline=True,
+        )
+
     # Calculate utility counts
     brez_count = sum(1 for p in players if p.hasBrez)
     lust_count = sum(1 for p in players if p.hasLust)
@@ -255,9 +262,6 @@ def create_role_check_embed(player_infos: list[PlayerRoleInfo]) -> discord.Embed
     embed = discord.Embed(title="Saved Roles Check", color=discord.Color.blue())
 
     for info in player_infos:
-        display_name = (
-            f"{info.name} (Discord Only)" if info.is_discord_roles else info.name
-        )
-        embed.add_field(name=display_name, value=", ".join(info.roles), inline=False)
+        embed.add_field(name=info.name, value=", ".join(info.roles), inline=False)
 
     return embed

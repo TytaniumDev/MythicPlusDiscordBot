@@ -3,7 +3,6 @@ from typing import cast
 import discord
 from discord.ext import commands
 
-from core.config import ALL_ROLES
 from core.role_ui import (
     PlayerRoleInfo,
     RoleBoardView,
@@ -94,20 +93,10 @@ class Roles(commands.Cog):
             if saved_roles:
                 player_infos.append(PlayerRoleInfo(name=name, roles=saved_roles))
             else:
-                # Check if they have discord roles at least
-                discord_roles = [r.name for r in member.roles if r.name in ALL_ROLES]
-                if discord_roles:
-                    player_infos.append(
-                        PlayerRoleInfo(
-                            name=name, roles=discord_roles, is_discord_roles=True
-                        )
-                    )
+                player_infos.append(PlayerRoleInfo(name=name, roles=["No roles set"]))
 
-        if not player_infos:
-            await ctx.send("No saved roles found for anyone in this channel.")
-        else:
-            embed = create_role_check_embed(player_infos)
-            await ctx.send(embed=embed)
+        embed = create_role_check_embed(player_infos)
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def clearrole(

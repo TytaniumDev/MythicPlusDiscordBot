@@ -52,8 +52,8 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         mock_ctx.channel.members = [member1, member2]
 
         mock_get_player_list.return_value = [
-            WoWPlayer(name="Player1"),
-            WoWPlayer(name="Player2"),
+            WoWPlayer(name="Player1", tankMain=True),
+            WoWPlayer(name="Player2", dpsMain=True),
         ]
         mock_create_groups.return_value = [WoWGroup()]
 
@@ -71,6 +71,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
     async def test_get_groups_data_no_valid_roles(
         self, mock_get_player_list: MagicMock
     ):
+        """Players without roles are filtered out, resulting in no valid players."""
         service = GroupService()
         mock_ctx = AsyncMock()
 
@@ -78,7 +79,7 @@ class TestGroupService(unittest.IsolatedAsyncioTestCase):
         member1.bot = False
         mock_ctx.channel.members = [member1]
 
-        mock_get_player_list.return_value = []
+        mock_get_player_list.return_value = [WoWPlayer(name="Roleless")]
 
         result = await service.get_groups_data(mock_ctx, debug=False)
 

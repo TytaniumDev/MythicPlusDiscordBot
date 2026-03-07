@@ -32,7 +32,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
     def test_create_role_check_embed(self):
         player_infos = [
             PlayerRoleInfo(name="Player1", roles=["Tank", "Healer"]),
-            PlayerRoleInfo(name="Player2", roles=["DPS"], is_discord_roles=True),
+            PlayerRoleInfo(name="Player2", roles=["No roles set"]),
         ]
 
         embed = create_role_check_embed(player_infos)
@@ -44,8 +44,8 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.fields[0].name, "Player1")
         self.assertEqual(embed.fields[0].value, "Tank, Healer")
 
-        self.assertEqual(embed.fields[1].name, "Player2 (Discord Only)")
-        self.assertEqual(embed.fields[1].value, "DPS")
+        self.assertEqual(embed.fields[1].name, "Player2")
+        self.assertEqual(embed.fields[1].value, "No roles set")
 
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]

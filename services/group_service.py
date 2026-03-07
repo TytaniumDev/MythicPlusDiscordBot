@@ -50,6 +50,7 @@ class GroupService:
                 return None
 
             players = get_player_list(members)
+            players = [p for p in players if p.hasRoles()]
         if not players:
             await ctx.send("❌ No players with valid roles found.")
             return None
