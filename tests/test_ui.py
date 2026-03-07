@@ -50,8 +50,9 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
     async def test_role_selection_view_initialization(self):
         initial_roles = [ROLE_TANK, "Brez"]
 
-        view = RoleSelectionView("TestPlayer", initial_roles)
+        view = RoleSelectionView("TestPlayer", "12345", initial_roles)
         self.assertEqual(view.player_name, "TestPlayer")
+        self.assertEqual(view.discord_id, "12345")
         self.assertEqual(view.selected_roles, {ROLE_TANK, "Brez"})
 
         tank_button = next(
@@ -69,7 +70,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(healer_button.style, discord.ButtonStyle.secondary)
 
     async def test_role_button_callback(self):
-        view = RoleSelectionView("TestPlayer")
+        view = RoleSelectionView("TestPlayer", "12345")
         tank_button = next(
             item
             for item in view.children
@@ -90,7 +91,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
     async def test_save_method(self):
         with patch("core.role_ui.set_player_preference") as mock_set_pref:
-            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
+            view = RoleSelectionView("TestPlayer", "12345", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
             interaction.response.send_message = AsyncMock()
@@ -101,7 +102,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
             mock_set_pref.assert_called_once()
             args, _ = mock_set_pref.call_args
-            self.assertEqual(args[0], "TestPlayer")
+            self.assertEqual(args[0], "12345")
             self.assertIn(ROLE_TANK, args[1])
 
             interaction.response.send_message.assert_called_once()
@@ -109,7 +110,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
     async def test_clear_method(self):
         with patch("core.role_ui.clear_player_preference") as mock_clear_pref:
-            view = RoleSelectionView("TestPlayer", [ROLE_TANK])
+            view = RoleSelectionView("TestPlayer", "12345", [ROLE_TANK])
             interaction = MagicMock(spec=discord.Interaction)
             interaction.response = MagicMock()
             interaction.response.send_message = AsyncMock()
@@ -117,7 +118,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
 
             await view.clear.callback(interaction)
 
-            mock_clear_pref.assert_called_once_with("TestPlayer")
+            mock_clear_pref.assert_called_once_with("12345")
             self.assertEqual(len(view.selected_roles), 0)
             interaction.response.send_message.assert_called_once()
             interaction.edit_original_response.assert_called_once()

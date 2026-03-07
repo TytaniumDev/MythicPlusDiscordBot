@@ -15,7 +15,11 @@ from core.config import (
     ROLE_TANK_OFFSPEC,
 )
 from core.models import WoWPlayer
-from core.storage import get_player_preference
+from core.storage import (
+    clear_player_preference,
+    get_player_preference,
+    set_player_preference,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +85,24 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
     Prioritizes saved preferences over Discord roles.
     """
     name = get_wow_name(member)
-    # Check for persistent preferences first
-    saved_roles = get_player_preference(name)
+    discord_id = str(member.id)
+
+    # Check for persistent preferences by ID first
+    saved_roles = get_player_preference(discord_id)
+
+    if not saved_roles:
+        # Migration check: check by nickname if no ID-based preference exists
+        saved_roles = get_player_preference(name)
+        if saved_roles:
+            logger.info(
+                "Migrating roles for %s (ID: %s) from NICKNAME to ID", name, discord_id
+            )
+            set_player_preference(discord_id, saved_roles)
+            clear_player_preference(name)
 
     if saved_roles:
         logger.info("Creating WoWPlayer for %s from SAVED roles: %s", name, saved_roles)
-        return WoWPlayer.create(name=name, roles=saved_roles)
+        return WoWPlayer.create(name=name, roles=saved_roles, discord_id=discord_id)
 
     if len(member.roles) > 1:
         logger.info(
@@ -94,7 +110,9 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
             name,
             [role.name for role in member.roles],
         )
-        player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
+        player = WoWPlayer.create(
+            name=name, roles=[role.name for role in member.roles], discord_id=discord_id
+        )
         if player.hasRoles():
             return player
         else:
@@ -120,20 +138,40 @@ def get_debug_players() -> list[WoWPlayer]:
     """
     return [
         WoWPlayer.create(
-            "Martz", [ROLE_HEALER, ROLE_TANK_OFFSPEC, ROLE_DPS_OFFSPEC, ROLE_BREZ]
+            "Martz",
+            [ROLE_HEALER, ROLE_TANK_OFFSPEC, ROLE_DPS_OFFSPEC, ROLE_BREZ],
+            discord_id="debug_1",
         ),
-        WoWPlayer.create("KingofSkillz", [ROLE_DPS, ROLE_RANGED, ROLE_LUST]),
-        WoWPlayer.create("chaoswaffles", [ROLE_DPS, ROLE_TANK_OFFSPEC]),
-        WoWPlayer.create("Upartyhardy", [ROLE_DPS, ROLE_RANGED]),
-        WoWPlayer.create("Pandemonium", [ROLE_TANK, ROLE_DPS_OFFSPEC, ROLE_BREZ]),
-        WoWPlayer.create("Will", [ROLE_DPS]),
         WoWPlayer.create(
-            "Tytanium", [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_RANGED, ROLE_LUST]
+            "KingofSkillz", [ROLE_DPS, ROLE_RANGED, ROLE_LUST], discord_id="debug_2"
         ),
-        WoWPlayer.create("hammer13", [ROLE_DPS]),
-        WoWPlayer.create("Ultra9", [ROLE_DPS, ROLE_RANGED, ROLE_LUST]),
-        WoWPlayer.create("DrZoidberg", [ROLE_DPS, ROLE_RANGED]),
-        WoWPlayer.create("Player1x", [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_LUST]),
-        WoWPlayer.create("lizardtotem", [ROLE_HEALER, ROLE_DPS_OFFSPEC]),
-        WoWPlayer.create("rorschach128", [ROLE_DPS]),
+        WoWPlayer.create(
+            "chaoswaffles", [ROLE_DPS, ROLE_TANK_OFFSPEC], discord_id="debug_3"
+        ),
+        WoWPlayer.create("Upartyhardy", [ROLE_DPS, ROLE_RANGED], discord_id="debug_4"),
+        WoWPlayer.create(
+            "Pandemonium",
+            [ROLE_TANK, ROLE_DPS_OFFSPEC, ROLE_BREZ],
+            discord_id="debug_5",
+        ),
+        WoWPlayer.create("Will", [ROLE_DPS], discord_id="debug_6"),
+        WoWPlayer.create(
+            "Tytanium",
+            [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_RANGED, ROLE_LUST],
+            discord_id="debug_7",
+        ),
+        WoWPlayer.create("hammer13", [ROLE_DPS], discord_id="debug_8"),
+        WoWPlayer.create(
+            "Ultra9", [ROLE_DPS, ROLE_RANGED, ROLE_LUST], discord_id="debug_9"
+        ),
+        WoWPlayer.create("DrZoidberg", [ROLE_DPS, ROLE_RANGED], discord_id="debug_10"),
+        WoWPlayer.create(
+            "Player1x",
+            [ROLE_DPS, ROLE_HEALER_OFFSPEC, ROLE_LUST],
+            discord_id="debug_11",
+        ),
+        WoWPlayer.create(
+            "lizardtotem", [ROLE_HEALER, ROLE_DPS_OFFSPEC], discord_id="debug_12"
+        ),
+        WoWPlayer.create("rorschach128", [ROLE_DPS], discord_id="debug_13"),
     ]

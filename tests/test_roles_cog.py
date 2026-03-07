@@ -66,6 +66,7 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         """Test rolecheck with a user who has saved roles."""
         ctx = AsyncMock()
         member = MagicMock()
+        member.id = 123
         member.bot = False
         ctx.author.voice.channel.members = [member]
 
@@ -126,29 +127,40 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
     async def test_clearrole_self(self, mock_wowname: MagicMock, mock_clear: MagicMock):
         """Test clearing own roles."""
         ctx = AsyncMock()
+        ctx.author.id = 123
         mock_wowname.return_value = "MyName"
         mock_clear.return_value = True
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name=None)
 
-        mock_clear.assert_called_with("MyName")
+        # It should try clearing both ID and name
+        mock_clear.assert_any_call("123")
+        mock_clear.assert_any_call("MyName")
         ctx.send.assert_called_with("✅ Cleared your saved roles, **MyName**.")
 
+    @patch("cogs.roles.get_wow_name")
     @patch("cogs.roles.clear_player_preference")
-    async def test_clearrole_other(self, mock_clear: MagicMock):
+    async def test_clearrole_other(
+        self, mock_clear: MagicMock, mock_wowname: MagicMock
+    ):
         """Test clearing another player's roles."""
         ctx = AsyncMock()
+        member = MagicMock()
+        member.id = 456
+        mock_wowname.return_value = "OtherPlayer"
+        ctx.guild.members = [member]
         mock_clear.return_value = True
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name="OtherPlayer")
 
-        mock_clear.assert_called_with("OtherPlayer")
+        mock_clear.assert_called_with("456")
         ctx.send.assert_called_with("✅ Cleared saved roles for **OtherPlayer**.")
 
     @patch("cogs.roles.clear_player_preference")
     async def test_clearrole_failure(self, mock_clear: MagicMock):
         """Test clearing roles when none exist."""
         ctx = AsyncMock()
+        ctx.guild.members = []
         mock_clear.return_value = False
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name="Unknown")

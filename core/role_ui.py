@@ -34,6 +34,7 @@ class PlayerRoleInfo:
 
     name: str
     roles: list[str]
+    discord_id: str = ""
     is_discord_roles: bool = False
 
 
@@ -66,6 +67,7 @@ class RoleSelectionView(discord.ui.View):
     def __init__(
         self,
         player_name: str,
+        discord_id: str,
         initial_roles: list[str] | None = None,
         on_save_callback: (
             Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
@@ -73,6 +75,7 @@ class RoleSelectionView(discord.ui.View):
     ):
         super().__init__(timeout=60)
         self.player_name = player_name
+        self.discord_id = discord_id
         self.selected_roles = set(initial_roles or [])
         self.on_save_callback = on_save_callback
 
@@ -104,7 +107,7 @@ class RoleSelectionView(discord.ui.View):
         button: discord.ui.Button[RoleSelectionView],
     ):
         await asyncio.to_thread(
-            set_player_preference, self.player_name, list(self.selected_roles)
+            set_player_preference, self.discord_id, list(self.selected_roles)
         )
         await interaction.response.send_message(
             f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}",
@@ -122,7 +125,7 @@ class RoleSelectionView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button[RoleSelectionView],
     ):
-        await asyncio.to_thread(clear_player_preference, self.player_name)
+        await asyncio.to_thread(clear_player_preference, self.discord_id)
         self.selected_roles.clear()
         for item in self.children:
             if isinstance(item, RoleButton):
@@ -159,8 +162,13 @@ class RoleBoardView(discord.ui.View):
     ):
         member = interaction.user
         name = get_wow_name(member)
+        discord_id = str(member.id)
 
-        saved_roles = get_player_preference(name)
+        # Check by ID first, then by name (migration)
+        saved_roles = get_player_preference(discord_id)
+        if not saved_roles:
+            saved_roles = get_player_preference(name)
+
         board_message = interaction.message
         if board_message is None:
             return
@@ -170,7 +178,9 @@ class RoleBoardView(discord.ui.View):
         ) -> None:
             await self.update_callback(save_interaction, board_message)
 
-        view = RoleSelectionView(name, (saved_roles or []), on_save_callback=on_save)
+        view = RoleSelectionView(
+            name, discord_id, (saved_roles or []), on_save_callback=on_save
+        )
         await interaction.response.send_message(
             f"Select your roles for **{name}**:", view=view, ephemeral=True
         )

@@ -48,8 +48,15 @@ class TestUtils(unittest.TestCase):
             self.assertIsNotNone(player.name)
             self.assertTrue(player.hasRoles())
 
+    @patch("core.utils.clear_player_preference")
+    @patch("core.utils.set_player_preference")
     @patch("core.utils.get_player_preference")
-    def test_get_player_list(self, mock_get_pref: MagicMock):
+    def test_get_player_list(
+        self,
+        mock_get_pref: MagicMock,
+        mock_set_pref: MagicMock,
+        mock_clear_pref: MagicMock,
+    ):
         """Test that get_player_list correctly creates WoWPlayer objects from members."""
         # Setup members
         role_everyone = MagicMock()
@@ -59,22 +66,25 @@ class TestUtils(unittest.TestCase):
         role_dps.name = "DPS"
 
         member_saved = MagicMock()
+        member_saved.id = 111
         member_saved.nick = "SavedPlayer"
         member_saved.roles = [role_everyone]
 
         member_discord = MagicMock()
+        member_discord.id = 222
         member_discord.nick = "DiscordPlayer"
         member_discord.roles = [role_everyone, role_dps]
 
         member_invalid = MagicMock()
+        member_invalid.id = 333
         member_invalid.nick = "InvalidPlayer"
         member_invalid.roles = [role_everyone]  # No saved roles, no extra discord roles
 
         members = [member_saved, member_discord, member_invalid]
 
         # Setup mock preferences
-        def get_pref_side_effect(name: str):
-            if name == "SavedPlayer":
+        def get_pref_side_effect(key: str):
+            if key == "111":
                 return ["Tank"]
             return None
 
@@ -99,6 +109,44 @@ class TestUtils(unittest.TestCase):
         # Verify InvalidPlayer is skipped
         p3 = next((p for p in players if p.name == "InvalidPlayer"), None)
         self.assertIsNone(p3)
+
+    @patch("core.utils.clear_player_preference")
+    @patch("core.utils.set_player_preference")
+    @patch("core.utils.get_player_preference")
+    def test_nickname_collision(
+        self,
+        mock_get_pref: MagicMock,
+        mock_set_pref: MagicMock,
+        mock_clear_pref: MagicMock,
+    ):
+        """Test that two members with the same nickname but different IDs are distinct."""
+        role_dps = MagicMock()
+        role_dps.name = "DPS"
+
+        member1 = MagicMock()
+        member1.id = 101
+        member1.nick = "SameName"
+        member1.roles = [MagicMock(), role_dps]
+
+        member2 = MagicMock()
+        member2.id = 102
+        member2.nick = "SameName"
+        member2.roles = [MagicMock(), role_dps]
+
+        members = [member1, member2]
+
+        # No saved roles
+        mock_get_pref.return_value = None
+
+        players = get_player_list(cast(list[discord.Member], members))
+
+        self.assertEqual(len(players), 2)
+        self.assertEqual(players[0].name, "SameName")
+        self.assertEqual(players[1].name, "SameName")
+        self.assertEqual(players[0].discord_id, "101")
+        self.assertEqual(players[1].discord_id, "102")
+        self.assertNotEqual(players[0], players[1])
+        self.assertNotEqual(hash(players[0]), hash(players[1]))
 
 
 class TestMaskedName(unittest.TestCase):

@@ -10,7 +10,10 @@ from core.role_ui import (
     create_role_board_embed,
     create_role_check_embed,
 )
-from core.storage import clear_player_preference, get_player_preference
+from core.storage import (
+    clear_player_preference,
+    get_player_preference,
+)
 from core.utils import get_player_list, get_wow_name
 
 
@@ -90,9 +93,16 @@ class Roles(commands.Cog):
         player_infos: list[PlayerRoleInfo] = []
         for member in members:
             name = get_wow_name(cast(discord.Member, member))
-            saved_roles = get_player_preference(name)
+            discord_id = str(member.id)
+            # Check by ID first, then fallback to name for migration visibility
+            saved_roles = get_player_preference(discord_id)
+            if not saved_roles:
+                saved_roles = get_player_preference(name)
+
             if saved_roles:
-                player_infos.append(PlayerRoleInfo(name=name, roles=saved_roles))
+                player_infos.append(
+                    PlayerRoleInfo(name=name, roles=saved_roles, discord_id=discord_id)
+                )
             else:
                 # Check if they have discord roles at least
                 discord_roles = [r.name for r in member.roles if r.name in ALL_ROLES]
@@ -115,15 +125,38 @@ class Roles(commands.Cog):
     ) -> None:
         """Clear your saved roles, or a specific character's roles."""
         if name is None:
-            name = get_wow_name(ctx.author)
-            success = clear_player_preference(name)
-            if success:
-                await ctx.send(f"✅ Cleared your saved roles, **{name}**.")
+            author_name = get_wow_name(ctx.author)
+            author_id = str(ctx.author.id)
+            # Clear both ID and name just in case
+            success_id = clear_player_preference(author_id)
+            success_name = clear_player_preference(author_name)
+            if success_id or success_name:
+                await ctx.send(f"✅ Cleared your saved roles, **{author_name}**.")
             else:
-                await ctx.send(f"❌ You had no saved roles, **{name}**.")
+                await ctx.send(f"❌ You had no saved roles, **{author_name}**.")
         else:
-            # Check if they have permission to clear others? Assuming guild context for now.
-            success = clear_player_preference(name)
+            # 1. Try to find a member in the guild with this name (nick or name)
+            target_id = None
+            if ctx.guild:
+                # Basic search by nickname or name
+                member = discord.utils.find(
+                    lambda m: get_wow_name(m).lower() == name.lower(), ctx.guild.members
+                )
+                if member:
+                    target_id = str(member.id)
+
+            success = False
+            if target_id:
+                success = clear_player_preference(target_id)
+
+            # 2. Fallback: try clearing by the name string directly (legacy support)
+            if not success:
+                success = clear_player_preference(name)
+
+            # 3. Last ditch: scan storage for any key that matches this name (not recommended for scale)
+            # Currently we skip this as we don't want to perform expensive scans in the command.
+            pass
+
             if success:
                 await ctx.send(f"✅ Cleared saved roles for **{name}**.")
             else:

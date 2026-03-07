@@ -75,14 +75,36 @@ class TestWoWPlayer(unittest.TestCase):
         self.assertTrue(p3.hasRoles())
 
     def test_serialization(self):
-        original = WoWPlayer.create("TestPlayer", [ROLE_TANK, ROLE_BREZ])
+        original = WoWPlayer.create(
+            "TestPlayer", [ROLE_TANK, ROLE_BREZ], discord_id="12345"
+        )
         data = original.to_dict()
         restored = WoWPlayer.from_dict(data)
 
         self.assertEqual(original.name, restored.name)
+        self.assertEqual(original.discord_id, restored.discord_id)
         self.assertEqual(original.tankMain, restored.tankMain)
         self.assertEqual(original.hasBrez, restored.hasBrez)
         self.assertEqual(original, restored)
+
+    def test_equality_and_hash(self):
+        # Same ID, different names
+        p1 = WoWPlayer.create("Name1", [ROLE_TANK], discord_id="ID1")
+        p2 = WoWPlayer.create("Name2", [ROLE_TANK], discord_id="ID1")
+        self.assertEqual(p1, p2)
+        self.assertEqual(hash(p1), hash(p2))
+
+        # Different IDs, same names
+        p3 = WoWPlayer.create("Name1", [ROLE_TANK], discord_id="ID1")
+        p4 = WoWPlayer.create("Name1", [ROLE_TANK], discord_id="ID2")
+        self.assertNotEqual(p3, p4)
+        self.assertNotEqual(hash(p3), hash(p4))
+
+        # No IDs, same names (fallback)
+        p5 = WoWPlayer.create("Name1", [ROLE_TANK])
+        p6 = WoWPlayer.create("Name1", [ROLE_TANK])
+        self.assertEqual(p5, p6)
+        self.assertEqual(hash(p5), hash(p6))
 
 
 class TestWoWGroup(unittest.TestCase):
