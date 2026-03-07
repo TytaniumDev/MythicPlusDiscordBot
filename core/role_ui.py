@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
@@ -43,8 +44,10 @@ class RoleButton(discord.ui.Button["RoleSelectionView"]):
         role_name: str,
         label: str,
         style: discord.ButtonStyle = discord.ButtonStyle.secondary,
+        custom_id_prefix: str = "",
     ):
-        super().__init__(label=label, style=style, custom_id=role_name)
+        custom_id = f"{custom_id_prefix}:{role_name}" if custom_id_prefix else role_name
+        super().__init__(label=label, style=style, custom_id=custom_id)
         self.role_name = role_name
 
     async def callback(self, interaction: discord.Interaction):
@@ -76,6 +79,9 @@ class RoleSelectionView(discord.ui.View):
         self.selected_roles = set(initial_roles or [])
         self.on_save_callback = on_save_callback
 
+        # Unique prefix prevents ViewStore dispatch collisions between concurrent users
+        prefix = os.urandom(8).hex()
+
         roles = [
             (ROLE_TANK, "🛡️ Tank"),
             (ROLE_HEALER, "🌿 Healer"),
@@ -95,7 +101,7 @@ class RoleSelectionView(discord.ui.View):
                 if role_id in self.selected_roles
                 else discord.ButtonStyle.secondary
             )
-            self.add_item(RoleButton(role_id, label, style))
+            self.add_item(RoleButton(role_id, label, style, custom_id_prefix=prefix))
 
     @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=2)
     async def save(
