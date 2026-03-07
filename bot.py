@@ -127,38 +127,11 @@ class MythicPlusBot(commands.Bot):
         pref_svc = get_preference_service()
         await pref_svc.load_cache()
 
-        # One-time migration: local JSON -> Firestore
-        await self._migrate_preferences(pref_svc)
-
         # Clean up abandoned docs (e.g. frontend closed without completing).
         firebase = FirebaseService()
         if firebase.is_available():
             await firebase.delete_old_docs("guilds", FIREBASE_DOC_MAX_AGE_SECONDS)
             await firebase.delete_old_docs("channels", FIREBASE_DOC_MAX_AGE_SECONDS)
-
-    async def _migrate_preferences(self, pref_svc: Any) -> None:
-        """One-time migration of local JSON preferences to Firestore."""
-        from core.preference_service import PreferenceService
-        from core.utils import get_wow_name
-
-        assert isinstance(pref_svc, PreferenceService)
-
-        if not pref_svc.firebase.is_available():
-            return
-
-        async def resolve_id(name: str) -> str | None:
-            for guild in self.guilds:
-                for member in guild.members:
-                    if get_wow_name(member) == name:
-                        return str(member.id)
-            return None
-
-        try:
-            count = await pref_svc.migrate_local_to_firestore(resolve_id)
-            if count:
-                logger.info("Migrated %d preferences to Firestore", count)
-        except Exception:
-            logger.exception("Preference migration failed")
 
     async def on_app_command_error(
         self, interaction: discord.Interaction, error: app_commands.AppCommandError

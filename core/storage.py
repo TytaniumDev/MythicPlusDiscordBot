@@ -20,35 +20,6 @@ file_lock = threading.RLock()
 _preferences_cache: dict[str, list[str]] | None = None
 
 
-_LEGACY_MIGRATIONS: dict[str, str] = {
-    "DPS": "Melee",
-    "DPS Offspec": "Melee Offspec",
-}
-
-
-def migrate_preferences(
-    prefs: dict[str, list[str]],
-) -> tuple[dict[str, list[str]], bool]:
-    """Converts legacy role strings to their modern equivalents.
-
-    Returns the (possibly-mutated) dict and a flag indicating whether any
-    migration was applied.
-    """
-    changed = False
-    for player, roles in prefs.items():
-        new_roles = []
-        for role in roles:
-            replacement = _LEGACY_MIGRATIONS.get(role)
-            if replacement is not None:
-                new_roles.append(replacement)
-                changed = True
-            else:
-                new_roles.append(role)
-        if changed:
-            prefs[player] = new_roles
-    return prefs, changed
-
-
 def _ensure_loaded() -> None:
     """Ensures the preferences cache is loaded from disk if necessary."""
     global _preferences_cache
@@ -71,11 +42,6 @@ def _ensure_loaded() -> None:
                 _preferences_cache = {}
         else:
             _preferences_cache = {}
-
-        # Migrate legacy role strings on first load
-        _preferences_cache, migrated = migrate_preferences(_preferences_cache)
-        if migrated:
-            save_preferences(_preferences_cache)
 
 
 def load_preferences() -> dict[str, list[str]]:

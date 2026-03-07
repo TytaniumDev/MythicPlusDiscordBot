@@ -73,7 +73,9 @@ class PreferenceService:
         def _run() -> dict[str, dict[str, Any]]:
             result: dict[str, dict[str, Any]] = {}
             for doc_snap in db.collection("preferences").stream():
-                result[doc_snap.id] = doc_snap.to_dict()
+                data = doc_snap.to_dict()
+                if data is not None:
+                    result[doc_snap.id] = data
             return result
 
         return await asyncio.to_thread(_run)
@@ -117,15 +119,13 @@ class PreferenceService:
     async def clear_preference(self, discord_id: str) -> None:
         """Delete from Firestore + cache + local JSON."""
         # Find name for local cleanup
-        name = None
-        for n, did in self._name_to_id.items():
-            if did == discord_id:
-                name = n
-                break
+        name = next(
+            (n for n, did in self._name_to_id.items() if did == discord_id), None
+        )
 
         self._cache.pop(discord_id, None)
+        self._clear_name_mapping(discord_id)
         if name:
-            self._name_to_id.pop(name, None)
             clear_player_preference(name)
 
         if self._firebase_ok():
@@ -135,6 +135,32 @@ class PreferenceService:
                 logger.exception("Firestore delete failed for %s", discord_id)
 
     # ── Sync Methods (cache-only, hot-path reads) ─────────────
+
+    def _clear_name_mapping(self, discord_id: str) -> None:
+        """Remove any existing name→id entry for this discord_id."""
+        for n, did in list(self._name_to_id.items()):
+            if did == discord_id:
+                del self._name_to_id[n]
+                break
+
+    async def refresh_preference(self, discord_id: str) -> None:
+        """Re-read a single preference from Firestore into the cache."""
+        if not self._firebase_ok():
+            return
+        try:
+            data = await self._read_firestore_pref(discord_id)
+            if data is not None:
+                roles = data.get("roles", [])
+                name = data.get("wowName", "")
+                self._cache[discord_id] = roles
+                self._clear_name_mapping(discord_id)
+                if name:
+                    self._name_to_id[name] = discord_id
+            else:
+                self._cache.pop(discord_id, None)
+                self._clear_name_mapping(discord_id)
+        except Exception:
+            logger.exception("Firestore refresh failed for %s", discord_id)
 
     def get_preference_sync(self, discord_id: str) -> list[str] | None:
         """Cache-only lookup by discord ID."""
@@ -169,8 +195,8 @@ class PreferenceService:
     ) -> None:
         if not self.firebase.db:
             return
-        from firebase_admin import (
-            firestore as fs,  # pyright: ignore[reportMissingTypeStubs]
+        from firebase_admin import (  # pyright: ignore[reportMissingTypeStubs]
+            firestore as fs,
         )
 
         db = self.firebase.db
@@ -186,35 +212,3 @@ class PreferenceService:
         db = self.firebase.db
         ref = db.collection("preferences").document(discord_id)
         await asyncio.to_thread(ref.delete)
-
-    # ── Migration ─────────────────────────────────────────────
-
-    async def migrate_local_to_firestore(
-        self,
-        resolve_id: Any,
-    ) -> int:
-        """Migrate local JSON preferences to Firestore.
-
-        ``resolve_id`` is an async callable ``(name: str) -> str | None``
-        that resolves a player name to a Discord user ID. Entries that
-        cannot be resolved are skipped.
-
-        Returns the number of migrated entries.
-        """
-        if not self._firebase_ok():
-            return 0
-
-        local = get_all_preferences()
-        count = 0
-        for name, roles in local.items():
-            discord_id = await resolve_id(name)
-            if not discord_id:
-                continue
-            if discord_id in self._cache:
-                continue  # Already in Firestore
-            await self.set_preference(discord_id, name, roles)
-            count += 1
-
-        if count:
-            logger.info("Migrated %d local preferences to Firestore", count)
-        return count

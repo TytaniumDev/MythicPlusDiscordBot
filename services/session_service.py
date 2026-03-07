@@ -10,6 +10,7 @@ from core.firebase_service import FirebaseService
 from core.group_ui import build_group_embed
 from core.models import WoWGroup, WoWPlayer
 from core.parallel_group_creator import create_mythic_plus_groups
+from core.preference_service import get_preference_service
 from core.utils import get_player_list
 
 logger = logging.getLogger(__name__)
@@ -390,8 +391,16 @@ class SessionService:
     ) -> None:
         """Re-reads voice members + preferences and updates the channel doc."""
         try:
+            # Refresh the preference cache from Firestore so newly-saved
+            # roles from the frontend are picked up before rebuilding players.
             guild = self.bot.get_guild(guild_id)
             if guild:
+                channel = guild.get_channel(channel_id)
+                if channel and isinstance(channel, discord.VoiceChannel):
+                    pref_svc = get_preference_service()
+                    for member in channel.members:
+                        if not member.bot:
+                            await pref_svc.refresh_preference(str(member.id))
                 await self.update_channel_players(channel_id, guild)
         except Exception:
             logger.exception("Player refresh failed for channel %s", channel_id)

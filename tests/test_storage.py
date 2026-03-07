@@ -15,7 +15,6 @@ from core.storage import (
     get_all_preferences,
     get_player_preference,
     load_preferences,
-    migrate_preferences,
     save_preferences,
     set_player_preference,
 )
@@ -119,37 +118,6 @@ class TestStorage(unittest.TestCase):
             with self.assertLogs("core.storage", level="ERROR") as cm:
                 save_preferences(prefs)
                 self.assertTrue(any("Error saving preferences" in o for o in cm.output))
-
-    def test_migrate_dps_to_melee(self):
-        """Test that legacy 'DPS' is migrated to 'Melee'."""
-        prefs = {"Player1": ["DPS", "Lust"]}
-        result, changed = migrate_preferences(prefs)
-        self.assertTrue(changed)
-        self.assertEqual(result["Player1"], ["Melee", "Lust"])
-
-    def test_migrate_dps_offspec_to_melee_offspec(self):
-        """Test that legacy 'DPS Offspec' is migrated to 'Melee Offspec'."""
-        prefs = {"Player1": ["DPS Offspec"]}
-        result, changed = migrate_preferences(prefs)
-        self.assertTrue(changed)
-        self.assertEqual(result["Player1"], ["Melee Offspec"])
-
-    def test_migrate_no_change(self):
-        """Test that already-migrated preferences are not changed."""
-        prefs = {"Player1": ["Melee", "Lust"]}
-        result, changed = migrate_preferences(prefs)
-        self.assertFalse(changed)
-        self.assertEqual(result["Player1"], ["Melee", "Lust"])
-
-    def test_migrate_on_load(self):
-        """Test that migration runs automatically when loading from disk."""
-        legacy_data = {"Player1": ["DPS", "Brez"], "Player2": ["Tank"]}
-        with open(STORAGE_FILE, "w") as f:
-            json.dump(legacy_data, f)
-
-        loaded = load_preferences()
-        self.assertEqual(loaded["Player1"], ["Melee", "Brez"])
-        self.assertEqual(loaded["Player2"], ["Tank"])
 
 
 if __name__ == "__main__":

@@ -1,14 +1,6 @@
 import logging
 import random
 
-from .config import (
-    ROLE_BREZ,
-    ROLE_HEALER,
-    ROLE_LUST,
-    ROLE_MELEE,
-    ROLE_RANGED,
-    ROLE_TANK,
-)
 from .models import WoWGroup, WoWPlayer
 
 logger = logging.getLogger(__name__)
@@ -164,9 +156,7 @@ def create_mythic_plus_groups(
 
     def grabNextAvailablePlayer(
         availablePlayers: list[WoWPlayer],
-        role: str,
         group: WoWGroup,
-        debug: bool = True,
     ) -> WoWPlayer | None:
         # Filter out players that were in the same group as any of the current group members last time
         teammates = group.players
@@ -220,9 +210,7 @@ def create_mythic_plus_groups(
     # Fill out each full group in stages, parallelized
     # Grab a tank
     for currentGroup in groups:
-        currentGroup.tank = grabNextAvailablePlayer(
-            available_tanks, ROLE_TANK, currentGroup, debug
-        )
+        currentGroup.tank = grabNextAvailablePlayer(available_tanks, currentGroup)
         logger.debug("Selected tank: %s", currentGroup.tank)
         logger.debug(
             "After tank selection - Have brez: %s, have lust: %s",
@@ -240,9 +228,7 @@ def create_mythic_plus_groups(
         if not currentGroup.has_lust:
             lust_player = grabNextAvailablePlayer(
                 [p for p in lust_players if p not in available_tanks],
-                ROLE_LUST,
                 currentGroup,
-                debug,
             )
 
             if lust_player is not None:
@@ -290,17 +276,13 @@ def create_mythic_plus_groups(
                         for p in brez_players
                         if p not in available_tanks and p not in available_healers
                     ],
-                    ROLE_BREZ,
                     currentGroup,
-                    debug,
                 )
             else:
                 # We don't have a healer, so grab any brez
                 brez_player = grabNextAvailablePlayer(
                     [p for p in brez_players if p not in available_tanks],
-                    ROLE_BREZ,
                     currentGroup,
-                    debug,
                 )
 
             if brez_player is not None:
@@ -339,9 +321,7 @@ def create_mythic_plus_groups(
     # If we still don't have a healer, grab one now
     for currentGroup in groups:
         if currentGroup.healer is None:
-            mainHealer = grabNextAvailablePlayer(
-                list(main_healers), ROLE_HEALER, currentGroup, debug
-            )
+            mainHealer = grabNextAvailablePlayer(list(main_healers), currentGroup)
             if mainHealer is not None:
                 currentGroup.healer = mainHealer
                 logger.debug(
@@ -351,7 +331,7 @@ def create_mythic_plus_groups(
                 )
             else:
                 offHealer = grabNextAvailablePlayer(
-                    list(available_healers), ROLE_HEALER, currentGroup, debug
+                    list(available_healers), currentGroup
                 )
                 if offHealer is not None:
                     currentGroup.healer = offHealer
@@ -386,7 +366,7 @@ def create_mythic_plus_groups(
     for currentGroup in groups:
         if not currentGroup.has_ranged:
             ranged_dps = grabNextAvailablePlayer(
-                [p for p in available_dps if p.ranged], ROLE_RANGED, currentGroup, debug
+                [p for p in available_dps if p.ranged], currentGroup
             )
             if ranged_dps is not None:
                 currentGroup.dps.append(ranged_dps)
@@ -399,9 +379,7 @@ def create_mythic_plus_groups(
     # Fill the rest of the dps slots with anyone left
     for currentGroup in groups:
         while len(currentGroup.dps) < 3:
-            dps_player = grabNextAvailablePlayer(
-                available_dps, ROLE_MELEE, currentGroup, debug
-            )
+            dps_player = grabNextAvailablePlayer(available_dps, currentGroup)
             if dps_player is None:
                 break
             currentGroup.dps.append(dps_player)
@@ -421,9 +399,7 @@ def create_mythic_plus_groups(
         while len(usedPlayers) < len(players):
             player = grabNextAvailablePlayer(
                 [p for p in players if p not in usedPlayers],
-                "remainder",
                 remainderGroup,
-                debug,
             )
             if player is not None:
                 if remainderGroup.tank is None and (player.tankMain or player.offtank):
