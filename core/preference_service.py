@@ -117,15 +117,13 @@ class PreferenceService:
     async def clear_preference(self, discord_id: str) -> None:
         """Delete from Firestore + cache + local JSON."""
         # Find name for local cleanup
-        name = None
-        for n, did in self._name_to_id.items():
-            if did == discord_id:
-                name = n
-                break
+        name = next(
+            (n for n, did in self._name_to_id.items() if did == discord_id), None
+        )
 
         self._cache.pop(discord_id, None)
+        self._clear_name_mapping(discord_id)
         if name:
-            self._name_to_id.pop(name, None)
             clear_player_preference(name)
 
         if self._firebase_ok():
@@ -135,6 +133,13 @@ class PreferenceService:
                 logger.exception("Firestore delete failed for %s", discord_id)
 
     # ── Sync Methods (cache-only, hot-path reads) ─────────────
+
+    def _clear_name_mapping(self, discord_id: str) -> None:
+        """Remove any existing name→id entry for this discord_id."""
+        for n, did in list(self._name_to_id.items()):
+            if did == discord_id:
+                del self._name_to_id[n]
+                break
 
     async def refresh_preference(self, discord_id: str) -> None:
         """Re-read a single preference from Firestore into the cache."""
@@ -146,10 +151,12 @@ class PreferenceService:
                 roles = data.get("roles", [])
                 name = data.get("wowName", "")
                 self._cache[discord_id] = roles
+                self._clear_name_mapping(discord_id)
                 if name:
                     self._name_to_id[name] = discord_id
             else:
                 self._cache.pop(discord_id, None)
+                self._clear_name_mapping(discord_id)
         except Exception:
             logger.exception("Firestore refresh failed for %s", discord_id)
 
