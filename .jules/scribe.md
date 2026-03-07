@@ -60,6 +60,10 @@ Any future updates to README must preserve this skeleton.
     -   **Mock/Static Mode:** Automated testing injection.
 3.  **Visual Verification:** Frontend changes require running `scripts/verify-activity.sh`. Visual regression tests (Playwright) enforce UI consistency via committed snapshots in `activity/tests/visual.spec.ts-snapshots`.
 
+### [2024-05-24] Firestore Collection Security Rules
+**Context:** Role data saving in the activity frontend failed because the Firestore `preferences` collection was not covered by the documented security rules.
+**Learning:** The `preferences` collection must be explicitly included in the Firestore security rules to allow the Activity UI's role editor to function. The required rules structure in `FIREBASE_SETUP.md` must always cover `guilds`, `channels`, and `preferences`.
+
 ### [2024-05-24] Drift Prevention and CI Linkage
 **Context:** Important standards (like docstrings, type hints, and CI secrets checking) were implicitly expected but missing from the main developer entry point (`CONTRIBUTING.md`).
 **Learning:**

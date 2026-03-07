@@ -53,10 +53,13 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
        match /channels/{channelId} {
          allow read, write: if true;
        }
+       match /preferences/{userId} {
+         allow read, write: if true;
+       }
      }
    }
    ```
-   *Warning: This allows anyone to read/write guild and channel documents. For a production app, you should restrict writes to only the fields the frontend needs to update (like status).*
+   *Warning: This allows anyone to read/write these documents if they have your Project ID. For a production app, you should implement [Firebase Authentication](https://firebase.google.com/docs/auth) and restrict writes (e.g., `allow write: if request.auth != null && request.auth.uid == userId`).*
 
 ## 6. Document cleanup (database growth)
 
