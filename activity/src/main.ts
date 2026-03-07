@@ -365,8 +365,10 @@ function handleGuildUpdate(data: GuildData) {
 function handleChannelUpdate(data: ChannelData) {
   channelData = data;
 
-  // Auto-navigate all clients based on Firestore status (skip demo mode)
-  if (!isDemoMode) {
+  // Auto-navigate all clients based on Firestore status (skip demo mode).
+  // Guard on currentChannelId: it is cleared when the user explicitly navigates
+  // to the channel picker, preventing stale snapshots from pulling them away.
+  if (!isDemoMode && currentChannelId) {
     const targetView = statusToView(data.status);
     if (currentView !== targetView) {
       navigateTo(targetView, { replace: true });
@@ -1016,11 +1018,16 @@ async function spinForCurrentGroup() {
 
   // Live mode: write to Firestore — animation is triggered by onSnapshot for all clients
   if (!currentChannelId) return;
+
+  nextBtn.disabled = true;
+
   const docRef = doc(db, 'channels', currentChannelId);
   try {
     await updateDoc(docRef, { revealedGroups: currentGroupIndex + 1 });
   } catch (err) {
     console.error('[Wheelson] Failed to reveal group:', err);
+    wheelStatus.textContent = 'Failed to spin. Please try again.';
+    nextBtn.disabled = false;
   }
 }
 
