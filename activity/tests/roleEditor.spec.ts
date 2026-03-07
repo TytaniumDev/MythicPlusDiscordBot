@@ -99,6 +99,18 @@ test.describe('Role Editor Screenshots', () => {
     await expect(page).toHaveScreenshot('role-editor-toggled-open.png');
   });
 
+  test('Role editor with Lust active (Tytanium)', async ({ page }) => {
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('.identity-chips')).toBeVisible();
+
+    // Select Tytanium (Ranged DPS, Healer Offspec, Lust)
+    await page.locator('.identity-chip', { hasText: 'Tytanium' }).click();
+    await page.locator('.btn-change-roles').click();
+    await expect(page.locator('#role-editor')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('role-editor-lust-active.png');
+  });
+
   test('Role editor width is self-contained (not full width)', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyWithNoRolesPlayer)}`);
     await expect(page.locator('.identity-chips')).toBeVisible();
