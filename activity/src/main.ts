@@ -94,13 +94,13 @@ let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 let guildDocCreationInFlight = false;
-let awaitingInitialChannelSnapshot = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
 let remainderGroups: WoWGroup[] = [];
 let currentGroupIndex = 0;
 let spinSequenceStarted = false;
+let isSpinAnimating = false;
 
 // Candidate pools (filtered between groups)
 let poolTanks: WheelEntry[] = [];
@@ -365,13 +365,12 @@ function handleGuildUpdate(data: GuildData) {
 function handleChannelUpdate(data: ChannelData) {
   channelData = data;
 
-  // First snapshot after init with a pre-resolved channel (Discord Activity):
-  // navigate to the view matching the channel's current status.
-  if (awaitingInitialChannelSnapshot) {
-    awaitingInitialChannelSnapshot = false;
-    const view = statusToView(data.status);
-    navigateTo(view, { replace: true });
-    // Fall through to apply view-specific state (e.g., startSpinSequence for spinning)
+  // Auto-navigate all clients based on Firestore status (skip demo mode)
+  if (!isDemoMode) {
+    const targetView = statusToView(data.status);
+    if (currentView !== targetView) {
+      navigateTo(targetView, { replace: true });
+    }
   }
 
   // Re-render lobby if we're on lobby view
@@ -383,16 +382,26 @@ function handleChannelUpdate(data: ChannelData) {
     }
   }
 
-  // If groups arrived and we're on wheels, start animation
+  // If groups arrived and we're on wheels, handle spin sequence
   if (currentView === 'wheels' && data.status === 'spinning') {
     if ((data as unknown as Record<string, unknown>).staticWheel) {
       initPools(data.players);
       wheelsGrid?.initWheels({ tanks: poolTanks, healers: poolHealers, dps: poolDps });
       wheelStatus.textContent = 'Static preview';
       nextBtn.classList.add('hidden');
-    } else if (!spinSequenceStarted && data.groups && data.groups.length > 0) {
-      spinSequenceStarted = true;
-      startSpinSequence(data.groups, data.players);
+    } else if (data.groups && data.groups.length > 0) {
+      if (!spinSequenceStarted) {
+        spinSequenceStarted = true;
+        startSpinSequence(data.groups, data.players);
+      }
+
+      // Process revealed groups (Firestore-driven spin synchronization)
+      if (!isDemoMode) {
+        const revealed = data.revealedGroups ?? 0;
+        if (revealed > currentGroupIndex && !isSpinAnimating) {
+          processRevealedGroups(revealed);
+        }
+      }
     }
   }
 
@@ -411,15 +420,13 @@ async function init() {
 
   // Event listeners
   spinBtn.addEventListener('click', () => {
-    navigateTo('wheels');
     requestSpin().catch(() => {
-      navigateTo('lobby');
       statusMsg.textContent = 'Spin request failed. Please try again.';
     });
   });
   nextBtn.addEventListener('click', spinForCurrentGroup);
   startDemoBtn.addEventListener('click', startDemo);
-  newRoundBtn.addEventListener('click', () => navigateTo('channels'));
+  newRoundBtn.addEventListener('click', handleNewRound);
   startSessionBtn.addEventListener('click', () => createGuildEntry());
   changeChannelBtn.addEventListener('click', () => navigateTo('channels'));
   wheelsBackBtn.addEventListener('click', cancelAndReturnToLobby);
@@ -532,7 +539,6 @@ async function init() {
   const resolvedChannelId = urlChannelId || discordChannelId;
   if (resolvedChannelId) {
     currentChannelId = resolvedChannelId;
-    awaitingInitialChannelSnapshot = true;
     subscribeToChannel(resolvedChannelId);
     // Show channels view as loading placeholder until first snapshot arrives
     showView('channels');
@@ -883,6 +889,7 @@ function formatRoleName(role: string): string {
 // ── Spin Request ─────────────────────────────────────────────
 async function requestSpin() {
   if (isDemoMode && channelData) {
+    navigateTo('wheels');
     const currentData = { ...channelData };
     // Simulate bot processing after delay
     setTimeout(() => {
@@ -890,6 +897,7 @@ async function requestSpin() {
         ...currentData,
         status: 'spinning',
         groups: mockGroups,
+        revealedGroups: 0,
       } as ChannelData);
     }, 1500);
     return;
@@ -950,6 +958,7 @@ function resetSpinState() {
   fullGroups = [];
   remainderGroups = [];
   currentGroupIndex = 0;
+  isSpinAnimating = false;
   if (wheelsGrid) {
     wheelsGrid.isAnimating = false;
   }
@@ -960,17 +969,17 @@ function resetSpinState() {
 }
 
 async function cancelAndReturnToLobby() {
-  navigateTo('lobby');
+  navigateTo('lobby');  // Immediate feedback for initiating user
 
   if (isDemoMode && channelData) {
-    channelData = { ...channelData, status: 'lobby', groups: [] };
+    channelData = { ...channelData, status: 'lobby', groups: [], revealedGroups: 0 };
     return;
   }
 
   if (!currentChannelId) return;
   const docRef = doc(db, 'channels', currentChannelId);
   try {
-    await updateDoc(docRef, { status: 'lobby', groups: [] });
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
   } catch (err) {
     console.error('[Wheelson] Failed to return to lobby:', err);
     statusMsg.textContent = 'Failed to reset session. Please refresh.';
@@ -993,18 +1002,32 @@ function updateNextButton() {
 }
 
 async function spinForCurrentGroup() {
-  if (!wheelsGrid || wheelsGrid.isAnimating || currentGroupIndex >= fullGroups.length) return;
+  if (!wheelsGrid || isSpinAnimating || currentGroupIndex >= fullGroups.length) return;
 
-  if (wheelsGrid.isCarouselMode()) {
-    await spinForCurrentGroupCarousel();
-  } else {
-    await spinForCurrentGroupGrid();
+  if (isDemoMode) {
+    // Demo mode: animate directly (no Firestore)
+    if (wheelsGrid.isCarouselMode()) {
+      await spinForCurrentGroupCarousel();
+    } else {
+      await spinForCurrentGroupGrid();
+    }
+    return;
+  }
+
+  // Live mode: write to Firestore — animation is triggered by onSnapshot for all clients
+  if (!currentChannelId) return;
+  const docRef = doc(db, 'channels', currentChannelId);
+  try {
+    await updateDoc(docRef, { revealedGroups: currentGroupIndex + 1 });
+  } catch (err) {
+    console.error('[Wheelson] Failed to reveal group:', err);
   }
 }
 
 // ── Grid Mode Spin (all wheels simultaneously) ───────────────
 async function spinForCurrentGroupGrid() {
   if (!wheelsGrid) return;
+  isSpinAnimating = true;
   wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
@@ -1044,6 +1067,7 @@ async function spinForCurrentGroupGrid() {
     await Promise.all(spinPromises);
   } catch {
     // Spin was cancelled — bail out silently
+    isSpinAnimating = false;
     return;
   }
 
@@ -1059,11 +1083,14 @@ async function spinForCurrentGroupGrid() {
   appendGroupCard(group, currentGroupIndex);
 
   advanceAfterSpin(group);
+  isSpinAnimating = false;
+  checkForPendingReveals();
 }
 
 // ── Carousel Mode Spin (sequential per-wheel) ────────────────
 async function spinForCurrentGroupCarousel() {
   if (!wheelsGrid) return;
+  isSpinAnimating = true;
   wheelsGrid.isAnimating = true;
   nextBtn.disabled = true;
   const group = fullGroups[currentGroupIndex];
@@ -1107,6 +1134,7 @@ async function spinForCurrentGroupCarousel() {
     }
   } catch {
     // Spin was cancelled — bail out silently
+    isSpinAnimating = false;
     return;
   }
 
@@ -1121,6 +1149,8 @@ async function spinForCurrentGroupCarousel() {
   appendGroupCard(group, currentGroupIndex);
 
   advanceAfterSpin(group);
+  isSpinAnimating = false;
+  checkForPendingReveals();
 }
 
 function advanceAfterSpin(_group: WoWGroup) {
@@ -1135,6 +1165,50 @@ function advanceAfterSpin(_group: WoWGroup) {
   }
 
   updateNextButton();
+}
+
+// ── Firestore-Driven Spin Synchronization ────────────────────
+function processRevealedGroups(revealed: number) {
+  if (revealed > currentGroupIndex + 1) {
+    // Late joiner or missed updates: show all revealed groups as static cards
+    catchUpRevealedGroups(revealed);
+  } else if (revealed === currentGroupIndex + 1) {
+    // Normal: animate this one group
+    runSpinAnimation();
+  }
+}
+
+function catchUpRevealedGroups(count: number) {
+  for (let i = currentGroupIndex; i < count && i < fullGroups.length; i++) {
+    appendGroupCard(fullGroups[i], i);
+  }
+  currentGroupIndex = Math.min(count, fullGroups.length);
+
+  // Show remainder groups if all full groups are caught up
+  if (currentGroupIndex >= fullGroups.length && remainderGroups.length > 0) {
+    remainderGroups.forEach((rg, i) => {
+      appendGroupCard(rg, fullGroups.length + i, 'Remainder', true);
+    });
+  }
+
+  updateNextButton();
+}
+
+async function runSpinAnimation() {
+  if (!wheelsGrid || isSpinAnimating || currentGroupIndex >= fullGroups.length) return;
+  if (wheelsGrid.isCarouselMode()) {
+    await spinForCurrentGroupCarousel();
+  } else {
+    await spinForCurrentGroupGrid();
+  }
+}
+
+function checkForPendingReveals() {
+  if (!channelData || isDemoMode) return;
+  const revealed = channelData.revealedGroups ?? 0;
+  if (revealed > currentGroupIndex && !isSpinAnimating) {
+    processRevealedGroups(revealed);
+  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -1155,6 +1229,25 @@ async function finishSpinSequence() {
       statusMsg.textContent = 'Failed to announce results. Please refresh.';
     }
   }
+}
+
+// ── New Round ────────────────────────────────────────────────
+async function handleNewRound() {
+  if (isDemoMode && channelData) {
+    channelData = { ...channelData, status: 'lobby', groups: [], revealedGroups: 0 };
+    navigateTo('lobby');
+    return;
+  }
+
+  if (!currentChannelId) return;
+  const docRef = doc(db, 'channels', currentChannelId);
+  try {
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
+  } catch (err) {
+    console.error('[Wheelson] Failed to start new round:', err);
+    statusMsg.textContent = 'Failed to start new round. Please refresh.';
+  }
+  // Auto-nav handles navigation for all clients when status changes to 'lobby'
 }
 
 // ── Utility Icons ────────────────────────────────────────────

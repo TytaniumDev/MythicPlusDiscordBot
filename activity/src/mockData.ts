@@ -260,6 +260,7 @@ export const mockChannelData: ChannelData = {
   status: 'lobby',
   players: mockPlayers,
   groups: [],
+  revealedGroups: 0,
   isDebug: false,
   announceResults: true,
   createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
