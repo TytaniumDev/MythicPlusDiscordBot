@@ -1069,12 +1069,8 @@ function renderIdentityConfirmed() {
   const nameSpan = document.createElement('span');
   nameSpan.className = 'identity-name';
   nameSpan.textContent = currentPlayerName ?? 'Unknown';
-  row.appendChild(nameSpan);
-
-  const changeBtn = document.createElement('button');
-  changeBtn.className = 'identity-change-btn';
-  changeBtn.textContent = 'Not you? Change';
-  changeBtn.onclick = () => {
+  nameSpan.title = 'Click to change';
+  nameSpan.onclick = () => {
     currentPlayerId = null;
     currentPlayerName = null;
     identityResolved = false;
@@ -1086,7 +1082,7 @@ function renderIdentityConfirmed() {
       renderLobby(channelData.players);
     }
   };
-  row.appendChild(changeBtn);
+  row.appendChild(nameSpan);
 
   identitySelector.appendChild(row);
 
@@ -1139,8 +1135,8 @@ const OFFSPEC_BUTTONS: RoleButtonDef[] = [
 ];
 
 const UTILITY_BUTTONS: RoleButtonDef[] = [
-  { id: 'Brez', label: 'Brez', activeClass: 'active-utility' },
-  { id: 'Lust', label: 'Lust', activeClass: 'active-utility' },
+  { id: 'Brez', label: 'Brez', activeClass: 'active-brez' },
+  { id: 'Lust', label: 'Lust', activeClass: 'active-lust' },
 ];
 
 // Map WoWPlayer boolean fields to role string IDs

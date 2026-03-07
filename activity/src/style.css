@@ -657,21 +657,15 @@ body {
 .identity-current .identity-name {
   font-weight: 700;
   color: var(--color-gold);
-}
-
-.identity-change-btn {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  background: none;
-  border: none;
   cursor: pointer;
   text-decoration: underline;
-  font-family: var(--font-family);
-  padding: 0;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s;
 }
 
-.identity-change-btn:hover {
-  color: var(--text-primary);
+.identity-current .identity-name:hover {
+  text-decoration-color: var(--color-gold);
 }
 
 .btn-change-roles {
@@ -715,12 +709,14 @@ body {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   margin-bottom: 6px;
+  text-align: center;
 }
 
 .role-editor-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  justify-content: center;
 }
 
 .role-btn {
@@ -762,10 +758,16 @@ body {
   border-color: color-mix(in srgb, var(--color-dps) 50%, transparent);
 }
 
-.role-btn.active-utility {
-  background: color-mix(in srgb, var(--color-purple) 20%, transparent);
-  color: var(--color-purple);
-  border-color: color-mix(in srgb, var(--color-purple) 50%, transparent);
+.role-btn.active-brez {
+  background: color-mix(in srgb, var(--color-gold) 20%, transparent);
+  color: var(--color-gold);
+  border-color: color-mix(in srgb, var(--color-gold) 50%, transparent);
+}
+
+.role-btn.active-lust {
+  background: color-mix(in srgb, #e85d26 20%, transparent);
+  color: #e85d26;
+  border-color: color-mix(in srgb, #e85d26 50%, transparent);
 }
 
 .role-editor-actions {
