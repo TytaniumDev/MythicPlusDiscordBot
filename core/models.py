@@ -19,6 +19,7 @@ from .config import (
 @dataclass(frozen=True, eq=False)
 class WoWPlayer:
     name: str
+    discord_id: str = ""
     # Main roles
     tankMain: bool = False
     healerMain: bool = False
@@ -38,11 +39,13 @@ class WoWPlayer:
     hasLust: bool = False
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.discord_id) if self.discord_id else hash(self.name)
 
     def __eq__(self, other: object) -> bool | NotImplementedType:
         if not isinstance(other, WoWPlayer):
             return NotImplemented
+        if self.discord_id and other.discord_id:
+            return self.discord_id == other.discord_id
         return self.name == other.name
 
     def __str__(self):
@@ -52,7 +55,7 @@ class WoWPlayer:
         return self.__str__()
 
     @classmethod
-    def create(cls, name: str, roles: list[str]) -> "WoWPlayer":
+    def create(cls, name: str, roles: list[str], discord_id: str = "") -> "WoWPlayer":
         # Calculate all the boolean flags
         tankMain = ROLE_TANK in roles
         healerMain = ROLE_HEALER in roles
@@ -68,6 +71,7 @@ class WoWPlayer:
         # Create the instance with all flags set
         return cls(
             name=name,
+            discord_id=discord_id,
             tankMain=tankMain,
             healerMain=healerMain,
             dpsMain=dpsMain,
@@ -114,7 +118,9 @@ class WoWPlayer:
             roles.append(ROLE_BREZ)
         if self.hasLust:
             roles.append(ROLE_LUST)
-        return f'WoWPlayer.create("{self.name}", {roles})'
+        return (
+            f'WoWPlayer.create("{self.name}", {roles}, discord_id="{self.discord_id}")'
+        )
 
     def toUtilitiesString(self) -> str:
         utilities = []
@@ -130,6 +136,7 @@ class WoWPlayer:
         """Serializable dictionary representation for Firestore."""
         return {
             "name": self.name,
+            "discord_id": self.discord_id,
             "roles": {
                 "tankMain": self.tankMain,
                 "healerMain": self.healerMain,
@@ -150,6 +157,7 @@ class WoWPlayer:
         roles_data = data.get("roles", {})
         return cls(
             name=data["name"],
+            discord_id=data.get("discord_id", ""),
             tankMain=roles_data.get("tankMain", False),
             healerMain=roles_data.get("healerMain", False),
             dpsMain=roles_data.get("dpsMain", False),
