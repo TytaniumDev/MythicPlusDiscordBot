@@ -48,6 +48,7 @@ export interface ChannelData {
   status: 'lobby' | 'request_spin' | 'spinning' | 'completed';
   players: WoWPlayer[];
   groups: WoWGroup[];
+  revealedGroups?: number;
   isDebug: boolean;
   announceResults: boolean;
   createdAt: unknown;
