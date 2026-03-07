@@ -763,7 +763,7 @@ function renderLobby(players: WoWPlayer[]) {
   const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
   const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
   const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
-  const unassigned = players.filter((p) => getPrimaryRole(p) === 'unassigned');
+  const unassigned = players.filter((p) => !hasAnyRole(p));
 
   // Left column: Tank + Heal sections stacked
   const leftCol = document.createElement('div');
@@ -874,10 +874,15 @@ interface RoleTag {
   cssClass: string;
 }
 
+function hasAnyRole(p: WoWPlayer): boolean {
+  return p.roles.tankMain || p.roles.healerMain || p.roles.dpsMain ||
+    p.roles.offtank || p.roles.offhealer || p.roles.offdps;
+}
+
 function getRoleTags(p: WoWPlayer): RoleTag[] {
   const tags: RoleTag[] = [];
 
-  if (getPrimaryRole(p) === 'unassigned') {
+  if (!hasAnyRole(p)) {
     tags.push({ label: 'No roles', cssClass: 'tag-unassigned' });
     return tags;
   }
