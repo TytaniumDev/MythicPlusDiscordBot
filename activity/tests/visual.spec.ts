@@ -262,9 +262,9 @@ test.describe('Functional Tests', () => {
     const healerChip = page.locator('.player-chip', { hasText: 'Martz' });
     await expect(healerChip.locator('.role-dot')).toHaveClass(/healer/);
 
-    // KingofSkillz is DPS main
+    // KingofSkillz is Ranged DPS
     const dpsChip = page.locator('.player-chip', { hasText: 'KingofSkillz' });
-    await expect(dpsChip.locator('.role-dot')).toHaveClass(/dps/);
+    await expect(dpsChip.locator('.role-dot')).toHaveClass(/ranged/);
   });
 
   test('Results show correct group composition', async ({ page }) => {
