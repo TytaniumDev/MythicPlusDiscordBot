@@ -85,20 +85,14 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer | None:
     saved_roles = get_player_preference(name)
 
     if saved_roles:
-        logger.info("Creating WoWPlayer for %s from SAVED roles: %s", name, saved_roles)
         return WoWPlayer.create(name=name, roles=saved_roles)
 
     if len(member.roles) > 1:
-        logger.info(
-            "Creating WoWPlayer for %s from DISCORD roles: %s",
-            name,
-            [role.name for role in member.roles],
-        )
         player = WoWPlayer.create(name=name, roles=[role.name for role in member.roles])
         if player.hasRoles():
             return player
         else:
-            logger.info(" - No valid roles found for %s, skipping.", name)
+            logger.info("No valid roles found for %s, skipping.", name)
 
     return None
 
