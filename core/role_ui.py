@@ -36,6 +36,7 @@ class PlayerRoleInfo:
     name: str
     roles: list[str]
 
+
 class RoleButton(discord.ui.Button["RoleSelectionView"]):
     def __init__(
         self,

@@ -93,9 +93,7 @@ class Roles(commands.Cog):
             if saved_roles:
                 player_infos.append(PlayerRoleInfo(name=name, roles=saved_roles))
             else:
-                player_infos.append(
-                    PlayerRoleInfo(name=name, roles=["No roles set"])
-                )
+                player_infos.append(PlayerRoleInfo(name=name, roles=["No roles set"]))
 
         embed = create_role_check_embed(player_infos)
         await ctx.send(embed=embed)
