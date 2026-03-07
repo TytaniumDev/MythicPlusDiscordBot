@@ -1,7 +1,14 @@
 import logging
 import random
 
-from .config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_RANGED, ROLE_TANK
+from .config import (
+    ROLE_BREZ,
+    ROLE_HEALER,
+    ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+)
 from .models import WoWGroup, WoWPlayer
 
 logger = logging.getLogger(__name__)
@@ -393,7 +400,7 @@ def create_mythic_plus_groups(
     for currentGroup in groups:
         while len(currentGroup.dps) < 3:
             dps_player = grabNextAvailablePlayer(
-                available_dps, ROLE_DPS, currentGroup, debug
+                available_dps, ROLE_MELEE, currentGroup, debug
             )
             if dps_player is None:
                 break

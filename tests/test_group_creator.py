@@ -29,7 +29,7 @@ class TestGroupCreator(unittest.TestCase):
     def setUp(self):
         clear()
         # Real examples
-        self.cynoc = WoWPlayer.create("Cynoc", ["Tank", "DPS Offspec"])
+        self.cynoc = WoWPlayer.create("Cynoc", ["Tank", "Melee Offspec"])
         self.gazzi = WoWPlayer.create("Gazzi", ["Tank", "Brez"])
         self.temma = WoWPlayer.create("Temma", ["Tank", "Melee", "Brez"])
         self.moriim = WoWPlayer.create(

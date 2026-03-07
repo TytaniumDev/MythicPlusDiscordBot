@@ -10,13 +10,13 @@ import discord
 
 from .config import (
     ROLE_BREZ,
-    ROLE_DPS,
-    ROLE_DPS_OFFSPEC,
     ROLE_HEALER,
     ROLE_HEALER_OFFSPEC,
     ROLE_LUST,
     ROLE_MELEE,
+    ROLE_MELEE_OFFSPEC,
     ROLE_RANGED,
+    ROLE_RANGED_OFFSPEC,
     ROLE_TANK,
     ROLE_TANK_OFFSPEC,
 )
@@ -37,6 +37,9 @@ class PlayerRoleInfo:
     roles: list[str]
 
 
+MAIN_SPEC_ROLES = {ROLE_TANK, ROLE_HEALER, ROLE_RANGED, ROLE_MELEE}
+
+
 class RoleButton(discord.ui.Button["RoleSelectionView"]):
     def __init__(
         self,
@@ -44,9 +47,11 @@ class RoleButton(discord.ui.Button["RoleSelectionView"]):
         label: str,
         style: discord.ButtonStyle = discord.ButtonStyle.secondary,
         custom_id_prefix: str = "",
+        *,
+        row: int | None = None,
     ):
         custom_id = f"{custom_id_prefix}:{role_name}" if custom_id_prefix else role_name
-        super().__init__(label=label, style=style, custom_id=custom_id)
+        super().__init__(label=label, style=style, custom_id=custom_id, row=row)
         self.role_name = role_name
 
     async def callback(self, interaction: discord.Interaction):
@@ -54,10 +59,21 @@ class RoleButton(discord.ui.Button["RoleSelectionView"]):
         if view is None:
             return
         assert isinstance(view, RoleSelectionView)
+
         if self.role_name in view.selected_roles:
             view.selected_roles.remove(self.role_name)
             self.style = discord.ButtonStyle.secondary
         else:
+            # Main spec: mutual exclusivity — deselect other main specs
+            if self.role_name in MAIN_SPEC_ROLES:
+                for item in view.children:
+                    if (
+                        isinstance(item, RoleButton)
+                        and item.role_name in MAIN_SPEC_ROLES
+                        and item.role_name != self.role_name
+                    ):
+                        view.selected_roles.discard(item.role_name)
+                        item.style = discord.ButtonStyle.secondary
             view.selected_roles.add(self.role_name)
             self.style = discord.ButtonStyle.primary
 
@@ -81,28 +97,59 @@ class RoleSelectionView(discord.ui.View):
         # Unique prefix prevents ViewStore dispatch collisions between concurrent users
         prefix = os.urandom(8).hex()
 
-        roles = [
+        # Row 0: Main Spec (pick one)
+        main_roles = [
             (ROLE_TANK, "🛡️ Tank"),
             (ROLE_HEALER, "🌿 Healer"),
-            (ROLE_DPS, "⚔️ DPS"),
-            (ROLE_TANK_OFFSPEC, "🛡️ Tank Off"),
-            (ROLE_HEALER_OFFSPEC, "🌿 Healer Off"),
-            (ROLE_DPS_OFFSPEC, "⚔️ DPS Off"),
             (ROLE_RANGED, "🏹 Ranged"),
             (ROLE_MELEE, "🪓 Melee"),
+        ]
+
+        # Row 1: Offspec (pick 0-3)
+        off_roles = [
+            (ROLE_TANK_OFFSPEC, "🛡️ Tank"),
+            (ROLE_HEALER_OFFSPEC, "🌿 Healer"),
+            (ROLE_RANGED_OFFSPEC, "🏹 Ranged"),
+            (ROLE_MELEE_OFFSPEC, "🪓 Melee"),
+        ]
+
+        # Row 2: Utilities
+        utility_roles = [
             (ROLE_BREZ, "⚰️ Brez"),
             (ROLE_LUST, "🎺 Lust"),
         ]
 
-        for role_id, label in roles:
+        for role_id, label in main_roles:
             style = (
                 discord.ButtonStyle.primary
                 if role_id in self.selected_roles
                 else discord.ButtonStyle.secondary
             )
-            self.add_item(RoleButton(role_id, label, style, custom_id_prefix=prefix))
+            self.add_item(
+                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=0)
+            )
 
-    @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=2)
+        for role_id, label in off_roles:
+            style = (
+                discord.ButtonStyle.primary
+                if role_id in self.selected_roles
+                else discord.ButtonStyle.secondary
+            )
+            self.add_item(
+                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=1)
+            )
+
+        for role_id, label in utility_roles:
+            style = (
+                discord.ButtonStyle.primary
+                if role_id in self.selected_roles
+                else discord.ButtonStyle.secondary
+            )
+            self.add_item(
+                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=2)
+            )
+
+    @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=3)
     async def save(
         self,
         interaction: discord.Interaction,
@@ -121,7 +168,7 @@ class RoleSelectionView(discord.ui.View):
 
         self.stop()
 
-    @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=2)
+    @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=3)
     async def clear(
         self,
         interaction: discord.Interaction,
@@ -177,7 +224,12 @@ class RoleBoardView(discord.ui.View):
 
         view = RoleSelectionView(name, (saved_roles or []), on_save_callback=on_save)
         await interaction.response.send_message(
-            f"Select your roles for **{name}**:", view=view, ephemeral=True
+            f"Select your roles for **{name}**:\n\n"
+            "**Main Spec** (pick one)\n"
+            "**Offspec** (pick any)\n"
+            "**Utilities**",
+            view=view,
+            ephemeral=True,
         )
 
 
@@ -201,11 +253,6 @@ def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
     melee = [format_player(p) for p in players if p.melee]
     ranged = [format_player(p) for p in players if p.ranged]
 
-    # Generic DPS are those who are dpsMain but not specifically melee or ranged
-    generic_dps = [
-        format_player(p) for p in players if p.dpsMain and not p.melee and not p.ranged
-    ]
-
     def format_list(names: list[str]) -> str:
         return "\n".join(names) if names else "-"
 
@@ -224,13 +271,6 @@ def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
         name=f"🏹 Ranged ({len(ranged)})", value=format_list(ranged), inline=True
     )
     embed.add_field(name="\u200b", value="\u200b", inline=True)  # Spacer row 2
-
-    if generic_dps:
-        embed.add_field(
-            name=f"⚔️ DPS ({len(generic_dps)})",
-            value=format_list(generic_dps),
-            inline=True,
-        )
 
     unassigned = [format_player(p) for p in players if not p.hasRoles()]
     if unassigned:

@@ -6,7 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.config import ROLE_BREZ, ROLE_DPS, ROLE_HEALER, ROLE_LUST, ROLE_TANK
+from core.config import (
+    ROLE_BREZ,
+    ROLE_HEALER,
+    ROLE_LUST,
+    ROLE_MELEE,
+    ROLE_RANGED,
+    ROLE_TANK,
+)
 from core.group_ui import announce_group, build_group_embed
 from core.models import WoWGroup, WoWPlayer
 
@@ -18,9 +25,9 @@ class TestGroupUI(unittest.IsolatedAsyncioTestCase):
 
         tank = WoWPlayer.create("TankPlayer", [ROLE_TANK])
         healer = WoWPlayer.create("HealerPlayer", [ROLE_HEALER])
-        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
-        dps2 = WoWPlayer.create("DPS2", [ROLE_DPS])
-        dps3 = WoWPlayer.create("DPS3", [ROLE_DPS])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_MELEE])
+        dps2 = WoWPlayer.create("DPS2", [ROLE_RANGED])
+        dps3 = WoWPlayer.create("DPS3", [ROLE_MELEE])
 
         group = WoWGroup(tank=tank, healer=healer, dps=[dps1, dps2, dps3])
 
@@ -54,9 +61,9 @@ class TestGroupUI(unittest.IsolatedAsyncioTestCase):
 
         tank = WoWPlayer.create("TankPlayer", [ROLE_TANK])
         healer = WoWPlayer.create("HealerPlayer", [ROLE_HEALER])
-        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
-        dps2 = WoWPlayer.create("DPS2", [ROLE_DPS])
-        dps3 = WoWPlayer.create("DPS3", [ROLE_DPS])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_MELEE])
+        dps2 = WoWPlayer.create("DPS2", [ROLE_RANGED])
+        dps3 = WoWPlayer.create("DPS3", [ROLE_MELEE])
 
         group = WoWGroup(tank=tank, healer=healer, dps=[dps1, dps2, dps3])
 
@@ -89,9 +96,9 @@ class TestBuildGroupEmbed(unittest.TestCase):
     def test_build_group_embed_has_all_fields(self):
         tank = WoWPlayer.create("TankPlayer", [ROLE_TANK, ROLE_BREZ])
         healer = WoWPlayer.create("HealerPlayer", [ROLE_HEALER, ROLE_LUST])
-        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
-        dps2 = WoWPlayer.create("DPS2", [ROLE_DPS])
-        dps3 = WoWPlayer.create("DPS3", [ROLE_DPS])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_MELEE])
+        dps2 = WoWPlayer.create("DPS2", [ROLE_RANGED])
+        dps3 = WoWPlayer.create("DPS3", [ROLE_MELEE])
 
         group = WoWGroup(tank=tank, healer=healer, dps=[dps1, dps2, dps3])
         embed = build_group_embed(group, 1)
@@ -107,7 +114,7 @@ class TestBuildGroupEmbed(unittest.TestCase):
     def test_build_group_embed_no_utilities(self):
         tank = WoWPlayer.create("Tank", [ROLE_TANK])
         healer = WoWPlayer.create("Healer", [ROLE_HEALER])
-        dps1 = WoWPlayer.create("DPS1", [ROLE_DPS])
+        dps1 = WoWPlayer.create("DPS1", [ROLE_MELEE])
 
         group = WoWGroup(tank=tank, healer=healer, dps=[dps1])
         embed = build_group_embed(group, 2)

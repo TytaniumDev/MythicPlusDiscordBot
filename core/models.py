@@ -4,13 +4,13 @@ from typing import Any
 
 from .config import (
     ROLE_BREZ,
-    ROLE_DPS,
-    ROLE_DPS_OFFSPEC,
     ROLE_HEALER,
     ROLE_HEALER_OFFSPEC,
     ROLE_LUST,
     ROLE_MELEE,
+    ROLE_MELEE_OFFSPEC,
     ROLE_RANGED,
+    ROLE_RANGED_OFFSPEC,
     ROLE_TANK,
     ROLE_TANK_OFFSPEC,
 )
@@ -28,6 +28,8 @@ class WoWPlayer:
     offtank: bool = False
     offhealer: bool = False
     offdps: bool = False
+    offranged: bool = False
+    offmelee: bool = False
 
     # Types of DPS
     ranged: bool = False
@@ -56,12 +58,14 @@ class WoWPlayer:
         # Calculate all the boolean flags
         tankMain = ROLE_TANK in roles
         healerMain = ROLE_HEALER in roles
-        dpsMain = any(role in roles for role in [ROLE_DPS, ROLE_RANGED, ROLE_MELEE])
-        offtank = ROLE_TANK_OFFSPEC in roles
-        offhealer = ROLE_HEALER_OFFSPEC in roles
-        offdps = ROLE_DPS_OFFSPEC in roles
         ranged = ROLE_RANGED in roles
         melee = ROLE_MELEE in roles
+        dpsMain = ranged or melee
+        offtank = ROLE_TANK_OFFSPEC in roles
+        offhealer = ROLE_HEALER_OFFSPEC in roles
+        offranged = ROLE_RANGED_OFFSPEC in roles
+        offmelee = ROLE_MELEE_OFFSPEC in roles
+        offdps = offranged or offmelee
         hasBrez = ROLE_BREZ in roles
         hasLust = ROLE_LUST in roles
 
@@ -74,6 +78,8 @@ class WoWPlayer:
             offtank=offtank,
             offhealer=offhealer,
             offdps=offdps,
+            offranged=offranged,
+            offmelee=offmelee,
             ranged=ranged,
             melee=melee,
             hasBrez=hasBrez,
@@ -98,18 +104,18 @@ class WoWPlayer:
             roles.append(ROLE_TANK)
         if self.healerMain:
             roles.append(ROLE_HEALER)
-        if self.dpsMain:
-            roles.append(ROLE_DPS)
-        if self.offtank:
-            roles.append(ROLE_TANK_OFFSPEC)
-        if self.offhealer:
-            roles.append(ROLE_HEALER_OFFSPEC)
-        if self.offdps:
-            roles.append(ROLE_DPS_OFFSPEC)
         if self.ranged:
             roles.append(ROLE_RANGED)
         if self.melee:
             roles.append(ROLE_MELEE)
+        if self.offtank:
+            roles.append(ROLE_TANK_OFFSPEC)
+        if self.offhealer:
+            roles.append(ROLE_HEALER_OFFSPEC)
+        if self.offranged:
+            roles.append(ROLE_RANGED_OFFSPEC)
+        if self.offmelee:
+            roles.append(ROLE_MELEE_OFFSPEC)
         if self.hasBrez:
             roles.append(ROLE_BREZ)
         if self.hasLust:
@@ -137,6 +143,8 @@ class WoWPlayer:
                 "offtank": self.offtank,
                 "offhealer": self.offhealer,
                 "offdps": self.offdps,
+                "offranged": self.offranged,
+                "offmelee": self.offmelee,
                 "ranged": self.ranged,
                 "melee": self.melee,
                 "hasBrez": self.hasBrez,
@@ -156,6 +164,8 @@ class WoWPlayer:
             offtank=roles_data.get("offtank", False),
             offhealer=roles_data.get("offhealer", False),
             offdps=roles_data.get("offdps", False),
+            offranged=roles_data.get("offranged", False),
+            offmelee=roles_data.get("offmelee", False),
             ranged=roles_data.get("ranged", False),
             melee=roles_data.get("melee", False),
             hasBrez=roles_data.get("hasBrez", False),

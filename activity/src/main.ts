@@ -762,7 +762,8 @@ function renderLobby(players: WoWPlayer[]) {
   // Group players by main role
   const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
   const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
-  const dps = players.filter((p) => getPrimaryRole(p) === 'dps');
+  const rangedPlayers = players.filter((p) => getPrimaryRole(p) === 'ranged');
+  const meleePlayers = players.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = players.filter((p) => !hasAnyRole(p));
 
   // Left column: Tank + Heal sections stacked
@@ -790,21 +791,33 @@ function renderLobby(players: WoWPlayer[]) {
     leftCol.appendChild(section);
   });
 
-  // Right column: DPS section
+  // Right column: Ranged + Melee sections
   const rightCol = document.createElement('div');
   rightCol.className = 'role-column role-column-dps';
 
-  const dpsHeading = document.createElement('div');
-  dpsHeading.className = 'role-column-header dps';
-  dpsHeading.textContent = `DPS (${dps.length})`;
-  rightCol.appendChild(dpsHeading);
+  const rangedHeading = document.createElement('div');
+  rangedHeading.className = 'role-column-header dps';
+  rangedHeading.textContent = `Ranged (${rangedPlayers.length})`;
+  rightCol.appendChild(rangedHeading);
 
-  const dpsGrid = document.createElement('div');
-  dpsGrid.className = 'dps-grid';
-  dps.forEach((p) => {
-    dpsGrid.appendChild(createPlayerChip(p));
+  const rangedGrid = document.createElement('div');
+  rangedGrid.className = 'dps-grid';
+  rangedPlayers.forEach((p) => {
+    rangedGrid.appendChild(createPlayerChip(p));
   });
-  rightCol.appendChild(dpsGrid);
+  rightCol.appendChild(rangedGrid);
+
+  const meleeHeading = document.createElement('div');
+  meleeHeading.className = 'role-column-header dps';
+  meleeHeading.textContent = `Melee (${meleePlayers.length})`;
+  rightCol.appendChild(meleeHeading);
+
+  const meleeGrid = document.createElement('div');
+  meleeGrid.className = 'dps-grid';
+  meleePlayers.forEach((p) => {
+    meleeGrid.appendChild(createPlayerChip(p));
+  });
+  rightCol.appendChild(meleeGrid);
 
   playerList.appendChild(leftCol);
   playerList.appendChild(rightCol);
@@ -876,7 +889,8 @@ interface RoleTag {
 
 function hasAnyRole(p: WoWPlayer): boolean {
   return p.roles.tankMain || p.roles.healerMain || p.roles.dpsMain ||
-    p.roles.offtank || p.roles.offhealer || p.roles.offdps;
+    p.roles.offtank || p.roles.offhealer || p.roles.offdps ||
+    p.roles.offranged || p.roles.offmelee;
 }
 
 function getRoleTags(p: WoWPlayer): RoleTag[] {
@@ -890,16 +904,14 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
   // Main roles
   if (p.roles.tankMain) tags.push({ label: 'Tank', cssClass: 'tag-tank' });
   if (p.roles.healerMain) tags.push({ label: 'Healer', cssClass: 'tag-healer' });
-  if (p.roles.dpsMain) tags.push({ label: 'DPS', cssClass: 'tag-dps' });
+  if (p.roles.ranged) tags.push({ label: 'Ranged', cssClass: 'tag-dps' });
+  if (p.roles.melee) tags.push({ label: 'Melee', cssClass: 'tag-dps' });
 
   // Offspecs (only show if the corresponding main spec is not active)
   if (p.roles.offtank && !p.roles.tankMain) tags.push({ label: 'Offtank', cssClass: 'tag-tank tag-offspec' });
   if (p.roles.offhealer && !p.roles.healerMain) tags.push({ label: 'Offheal', cssClass: 'tag-healer tag-offspec' });
-  if (p.roles.offdps && !p.roles.dpsMain) tags.push({ label: 'OffDPS', cssClass: 'tag-dps tag-offspec' });
-
-  // DPS subtypes
-  if (p.roles.ranged) tags.push({ label: 'Ranged', cssClass: 'tag-subtype' });
-  if (p.roles.melee) tags.push({ label: 'Melee', cssClass: 'tag-subtype' });
+  if (p.roles.offranged && !p.roles.ranged) tags.push({ label: 'Off Ranged', cssClass: 'tag-dps tag-offspec' });
+  if (p.roles.offmelee && !p.roles.melee) tags.push({ label: 'Off Melee', cssClass: 'tag-dps tag-offspec' });
 
   // Utilities
   if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-utility' });
@@ -911,12 +923,12 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
 function getPrimaryRole(p: WoWPlayer): string {
   if (p.roles.tankMain) return 'tank';
   if (p.roles.healerMain) return 'healer';
-  if (p.roles.dpsMain) return 'dps';
+  if (p.roles.ranged) return 'ranged';
+  if (p.roles.melee) return 'melee';
   return 'unassigned';
 }
 
 function formatRoleName(role: string): string {
-  if (role.toLowerCase() === 'dps') return 'DPS';
   if (role === 'unassigned') return 'Unassigned';
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }

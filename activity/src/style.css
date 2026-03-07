@@ -531,6 +531,8 @@ body {
 .role-dot.tank { background: var(--color-tank); }
 .role-dot.healer { background: var(--color-healer); }
 .role-dot.dps { background: var(--color-dps); }
+.role-dot.ranged { background: var(--color-dps); }
+.role-dot.melee { background: var(--color-dps); }
 .role-dot.unassigned { background: var(--text-secondary); }
 
 .chip-tags {

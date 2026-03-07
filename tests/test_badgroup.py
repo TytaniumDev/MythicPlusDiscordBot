@@ -17,9 +17,9 @@ class TestBadGroup(unittest.IsolatedAsyncioTestCase):
         # Create dummy players and groups
         self.p1 = WoWPlayer.create("Player1", ["Tank"])
         self.p2 = WoWPlayer.create("Player2", ["Healer"])
-        self.p3 = WoWPlayer.create("Player3", ["DPS"])
-        self.p4 = WoWPlayer.create("Player4", ["DPS"])
-        self.p5 = WoWPlayer.create("Player5", ["DPS"])
+        self.p3 = WoWPlayer.create("Player3", ["Melee"])
+        self.p4 = WoWPlayer.create("Player4", ["Ranged"])
+        self.p5 = WoWPlayer.create("Player5", ["Melee"])
 
         self.players = [self.p1, self.p2, self.p3, self.p4, self.p5]
         self.group = WoWGroup(

@@ -1,7 +1,7 @@
 import { GuildData, ChannelData, WoWGroup, WoWPlayer } from './types';
 
 export const mockPlayers: WoWPlayer[] = [
-  // 1. Martz: Healer, Tank Offspec, DPS Offspec, Brez
+  // 1. Martz: Healer, Tank Offspec, Melee Offspec, Brez
   {
     name: 'Martz',
     roles: {
@@ -11,13 +11,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: true,
       offhealer: false,
       offdps: true,
+      offranged: false,
+      offmelee: true,
       ranged: false,
       melee: false,
       hasBrez: true,
       hasLust: false
     }
   },
-  // 2. KingofSkillz: DPS, Ranged, Lust
+  // 2. KingofSkillz: Ranged, Lust
   {
     name: 'KingofSkillz',
     roles: {
@@ -27,13 +29,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: true
     }
   },
-  // 3. chaoswaffles: DPS, Tank Offspec
+  // 3. chaoswaffles: Melee, Tank Offspec
   {
     name: 'chaoswaffles',
     roles: {
@@ -43,13 +47,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: true,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: false,
-      melee: false,
+      melee: true,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 4. Upartyhardy: DPS, Ranged
+  // 4. Upartyhardy: Ranged
   {
     name: 'Upartyhardy',
     roles: {
@@ -59,13 +65,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 5. Pandemonium: Tank, DPS Offspec, Brez
+  // 5. Pandemonium: Tank, Melee Offspec, Brez
   {
     name: 'Pandemonium',
     roles: {
@@ -75,13 +83,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: true,
+      offranged: false,
+      offmelee: true,
       ranged: false,
       melee: false,
       hasBrez: true,
       hasLust: false
     }
   },
-  // 6. Will: DPS
+  // 6. Will: Melee
   {
     name: 'Will',
     roles: {
@@ -91,13 +101,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: false,
-      melee: false,
+      melee: true,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 7. Tytanium: DPS, Healer Offspec, Ranged, Lust
+  // 7. Tytanium: Ranged, Healer Offspec, Lust
   {
     name: 'Tytanium',
     roles: {
@@ -107,13 +119,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: true,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: true
     }
   },
-  // 8. hammer13: DPS
+  // 8. hammer13: Melee
   {
     name: 'hammer13',
     roles: {
@@ -123,13 +137,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: false,
-      melee: false,
+      melee: true,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 9. Ultra9: DPS, Ranged, Lust
+  // 9. Ultra9: Ranged, Lust
   {
     name: 'Ultra9',
     roles: {
@@ -139,13 +155,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: true
     }
   },
-  // 10. DrZoidberg: DPS, Ranged
+  // 10. DrZoidberg: Ranged
   {
     name: 'DrZoidberg',
     roles: {
@@ -155,13 +173,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 11. Player1x: DPS, Healer Offspec, Lust
+  // 11. Player1x: Ranged, Healer Offspec, Lust
   {
     name: 'Player1x',
     roles: {
@@ -171,13 +191,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: true,
       offdps: false,
-      ranged: false,
+      offranged: false,
+      offmelee: false,
+      ranged: true,
       melee: false,
       hasBrez: false,
       hasLust: true
     }
   },
-  // 12. lizardtotem: Healer, DPS Offspec
+  // 12. lizardtotem: Healer, Melee Offspec
   {
     name: 'lizardtotem',
     roles: {
@@ -187,13 +209,15 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: true,
+      offranged: false,
+      offmelee: true,
       ranged: false,
       melee: false,
       hasBrez: false,
       hasLust: false
     }
   },
-  // 13. rorschach128: DPS
+  // 13. rorschach128: Melee
   {
     name: 'rorschach128',
     roles: {
@@ -203,8 +227,10 @@ export const mockPlayers: WoWPlayer[] = [
       offtank: false,
       offhealer: false,
       offdps: false,
+      offranged: false,
+      offmelee: false,
       ranged: false,
-      melee: false,
+      melee: true,
       hasBrez: false,
       hasLust: false
     }
@@ -216,27 +242,27 @@ export const mockGroups: WoWGroup[] = [
     tank: mockPlayers[4], // Pandemonium (Tank)
     healer: mockPlayers[0], // Martz (Healer)
     dps: [
-      mockPlayers[1], // KingofSkillz (DPS, Ranged, Lust)
-      mockPlayers[3], // Upartyhardy (DPS, Ranged)
-      mockPlayers[8]  // Ultra9 (DPS, Ranged, Lust)
+      mockPlayers[1], // KingofSkillz (Ranged, Lust)
+      mockPlayers[3], // Upartyhardy (Ranged)
+      mockPlayers[8]  // Ultra9 (Ranged, Lust)
     ]
   },
   {
     tank: mockPlayers[2], // chaoswaffles (Tank Offspec)
     healer: mockPlayers[11], // lizardtotem (Healer)
     dps: [
-      mockPlayers[6], // Tytanium (DPS, Ranged, Lust)
-      mockPlayers[9], // DrZoidberg (DPS, Ranged)
-      mockPlayers[5]  // Will (DPS)
+      mockPlayers[6], // Tytanium (Ranged, Lust)
+      mockPlayers[9], // DrZoidberg (Ranged)
+      mockPlayers[5]  // Will (Melee)
     ]
   },
   {
     tank: null,
     healer: null,
     dps: [
-      mockPlayers[7],  // hammer13 (DPS)
-      mockPlayers[10], // Player1x (DPS, Healer Offspec, Lust)
-      mockPlayers[12]  // rorschach128 (DPS)
+      mockPlayers[7],  // hammer13 (Melee)
+      mockPlayers[10], // Player1x (Ranged, Healer Offspec, Lust)
+      mockPlayers[12]  // rorschach128 (Melee)
     ]
   }
 ];

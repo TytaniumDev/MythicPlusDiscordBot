@@ -12,6 +12,8 @@ export interface WoWPlayer {
     offtank: boolean;
     offhealer: boolean;
     offdps: boolean;
+    offranged: boolean;
+    offmelee: boolean;
     ranged: boolean;
     melee: boolean;
     hasBrez: boolean;
