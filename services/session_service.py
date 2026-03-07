@@ -429,7 +429,8 @@ class SessionService:
             groups_data = [g.to_dict() for g in groups]
 
             await self.firebase.update_channel_doc(
-                doc_id, {"status": "spinning", "groups": groups_data}
+                doc_id,
+                {"status": "spinning", "groups": groups_data, "revealedGroups": 0},
             )
         except Exception:
             logger.exception("Spin request failed for channel %s", channel_id)
