@@ -195,8 +195,8 @@ class PreferenceService:
     ) -> None:
         if not self.firebase.db:
             return
-        from firebase_admin import (
-            firestore as fs,  # pyright: ignore[reportMissingTypeStubs]
+        from firebase_admin import (  # pyright: ignore[reportMissingTypeStubs]
+            firestore as fs,
         )
 
         db = self.firebase.db

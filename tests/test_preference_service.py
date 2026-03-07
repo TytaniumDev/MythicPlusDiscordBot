@@ -12,7 +12,7 @@ class TestPreferenceService(unittest.IsolatedAsyncioTestCase):
         # Reset singleton
         import core.preference_service as mod
 
-        mod._instance = None
+        mod._instance = None  # pyright: ignore[reportPrivateUsage]
 
     @patch("core.preference_service.FirebaseService")
     async def test_set_and_get_sync(self, mock_fb_cls: MagicMock):
