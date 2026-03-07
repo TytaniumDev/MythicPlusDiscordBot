@@ -751,31 +751,31 @@ body {
 .role-btn.active-tank {
   background: color-mix(in srgb, var(--color-tank) 20%, transparent);
   color: var(--color-tank);
-  border-color: color-mix(in srgb, var(--color-tank) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-tank) 40%, transparent);
 }
 
 .role-btn.active-healer {
   background: color-mix(in srgb, var(--color-healer) 20%, transparent);
   color: var(--color-healer);
-  border-color: color-mix(in srgb, var(--color-healer) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-healer) 40%, transparent);
 }
 
 .role-btn.active-dps {
   background: color-mix(in srgb, var(--color-dps) 20%, transparent);
   color: var(--color-dps);
-  border-color: color-mix(in srgb, var(--color-dps) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-dps) 40%, transparent);
 }
 
 .role-btn.active-brez {
   background: color-mix(in srgb, var(--color-brez) 20%, transparent);
   color: var(--color-brez);
-  border-color: color-mix(in srgb, var(--color-brez) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-brez) 40%, transparent);
 }
 
 .role-btn.active-lust {
   background: color-mix(in srgb, var(--color-lust) 20%, transparent);
   color: var(--color-lust);
-  border-color: color-mix(in srgb, var(--color-lust) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-lust) 40%, transparent);
 }
 
 .role-editor-actions {
@@ -896,9 +896,9 @@ body {
   border: 1px solid var(--border-subtle);
 }
 
-.label-tank { color: var(--color-tank); border-color: rgba(59, 130, 246, 0.3); }
-.label-healer { color: var(--color-healer); border-color: rgba(34, 197, 94, 0.3); }
-.label-dps { color: var(--color-dps); border-color: rgba(239, 68, 68, 0.3); }
+.label-tank { color: var(--color-tank); border-color: color-mix(in srgb, var(--color-tank) 30%, transparent); }
+.label-healer { color: var(--color-healer); border-color: color-mix(in srgb, var(--color-healer) 30%, transparent); }
+.label-dps { color: var(--color-dps); border-color: color-mix(in srgb, var(--color-dps) 30%, transparent); }
 
 .wheel-frame {
   position: relative;
