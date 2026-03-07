@@ -53,10 +53,13 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
        match /channels/{channelId} {
          allow read, write: if true;
        }
+       match /preferences/{docId} {
+         allow read, write: if true;
+       }
      }
    }
    ```
-   *Warning: This allows anyone to read/write guild and channel documents. For a production app, you should restrict writes to only the fields the frontend needs to update (like status).*
+   *Warning: This allows anyone to read/write guild, channel, and preference documents. For a production app, you should restrict writes to only the fields the frontend needs to update (like status and role preferences).*
 
 ## 6. Document cleanup (database growth)
 
