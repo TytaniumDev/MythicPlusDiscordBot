@@ -136,6 +136,23 @@ class PreferenceService:
 
     # ── Sync Methods (cache-only, hot-path reads) ─────────────
 
+    async def refresh_preference(self, discord_id: str) -> None:
+        """Re-read a single preference from Firestore into the cache."""
+        if not self._firebase_ok():
+            return
+        try:
+            data = await self._read_firestore_pref(discord_id)
+            if data is not None:
+                roles = data.get("roles", [])
+                name = data.get("wowName", "")
+                self._cache[discord_id] = roles
+                if name:
+                    self._name_to_id[name] = discord_id
+            else:
+                self._cache.pop(discord_id, None)
+        except Exception:
+            logger.exception("Firestore refresh failed for %s", discord_id)
+
     def get_preference_sync(self, discord_id: str) -> list[str] | None:
         """Cache-only lookup by discord ID."""
         return self._cache.get(discord_id)
@@ -186,35 +203,3 @@ class PreferenceService:
         db = self.firebase.db
         ref = db.collection("preferences").document(discord_id)
         await asyncio.to_thread(ref.delete)
-
-    # ── Migration ─────────────────────────────────────────────
-
-    async def migrate_local_to_firestore(
-        self,
-        resolve_id: Any,
-    ) -> int:
-        """Migrate local JSON preferences to Firestore.
-
-        ``resolve_id`` is an async callable ``(name: str) -> str | None``
-        that resolves a player name to a Discord user ID. Entries that
-        cannot be resolved are skipped.
-
-        Returns the number of migrated entries.
-        """
-        if not self._firebase_ok():
-            return 0
-
-        local = get_all_preferences()
-        count = 0
-        for name, roles in local.items():
-            discord_id = await resolve_id(name)
-            if not discord_id:
-                continue
-            if discord_id in self._cache:
-                continue  # Already in Firestore
-            await self.set_preference(discord_id, name, roles)
-            count += 1
-
-        if count:
-            logger.info("Migrated %d local preferences to Firestore", count)
-        return count

@@ -84,30 +84,6 @@ class TestPreferenceService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(svc.get_preference_by_name_sync("Martz"), ["Tank"])
         self.assertEqual(svc.get_preference_by_name_sync("Tytanium"), ["Ranged"])
 
-    @patch("core.preference_service.FirebaseService")
-    async def test_migrate_skips_existing(self, mock_fb_cls: MagicMock):
-        mock_fb = MagicMock()
-        mock_fb.is_available.return_value = False
-        mock_fb_cls.return_value = mock_fb
-
-        from core.preference_service import PreferenceService
-
-        svc = PreferenceService()
-
-        # Pre-populate cache
-        svc._cache["123"] = ["Tank"]
-
-        with patch("core.preference_service.get_all_preferences") as mock_all:
-            mock_all.return_value = {"Martz": ["Tank"]}
-
-            async def resolve(name: str):
-                return "123"
-
-            count = await svc.migrate_local_to_firestore(resolve)
-
-        # Should skip because 123 is already in cache
-        self.assertEqual(count, 0)
-
 
 if __name__ == "__main__":
     unittest.main()

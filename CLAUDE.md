@@ -116,6 +116,12 @@ Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, role name overrides (see `core/config.
 
 When touching GitHub Actions workflows: read the **Secrets in workflows** section in [AGENTS.md](AGENTS.md). Never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
+## Git Workflow
+
+- **Never push directly to `main`.** Always create a feature branch and open a PR for code review.
+- When asked to ship/deploy/push changes, use the `/ship-it` skill to create a PR — do not push to `main` directly.
+- Branch protection rules require PRs and status checks before merging to `main`.
+
 ## Code Style
 
 - Ruff enforces formatting and linting (see `pyproject.toml` for rules)
