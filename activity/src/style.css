@@ -674,13 +674,22 @@ body {
   color: var(--text-primary);
 }
 
+.btn-change-roles {
+  display: block;
+  margin: 8px auto 0;
+  padding: 4px 16px;
+  font-size: 0.75rem;
+}
+
 /* ── Role Editor ── */
 .role-editor {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 12px;
-  margin-bottom: 12px;
+  width: fit-content;
+  max-width: 400px;
+  margin: 0 auto 12px;
 }
 
 .role-editor-title {
