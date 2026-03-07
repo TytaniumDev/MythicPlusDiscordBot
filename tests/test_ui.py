@@ -8,9 +8,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import discord
 
-from core.config import ROLE_HEALER, ROLE_HEALER_OFFSPEC, ROLE_TANK
+from core.config import (
+    ROLE_HEALER,
+    ROLE_HEALER_OFFSPEC,
+    ROLE_TANK,
+    ROLE_TANK_OFFSPEC,
+)
 from core.role_ui import (
     MainSpecView,
+    NextButton,
+    NoneButton,
     OffspecView,
     PlayerRoleInfo,
     RoleBoardView,
@@ -151,7 +158,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertIn(ROLE_HEALER_OFFSPEC, state.selected_roles)
 
     @patch("core.role_ui.get_preference_service")
-    async def test_save_method(self, mock_get_svc: MagicMock):
+    async def test_done_method(self, mock_get_svc: MagicMock):
         mock_svc = MagicMock()
         mock_svc.set_preference = AsyncMock()
         mock_get_svc.return_value = mock_svc
@@ -171,7 +178,7 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         offspec_view.stop = MagicMock()
         utilities_view.stop = MagicMock()
 
-        await utilities_view.save.callback(interaction)
+        await utilities_view.done.callback(interaction)
 
         mock_svc.set_preference.assert_called_once()
         args = mock_svc.set_preference.call_args
@@ -185,44 +192,100 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         offspec_view.stop.assert_called_once()
         utilities_view.stop.assert_called_once()
 
-    @patch("core.role_ui.get_preference_service")
-    async def test_clear_method(self, mock_get_svc: MagicMock):
-        mock_svc = MagicMock()
-        mock_svc.clear_preference = AsyncMock()
-        mock_get_svc.return_value = mock_svc
-
-        state = RoleSelectionState("TestPlayer", "12345", {ROLE_TANK})
+    async def test_next_button(self):
+        state = RoleSelectionState("TestPlayer", "12345", set())
         main_view = MainSpecView(state, "test_main")
         offspec_view = OffspecView(state, "test_off")
         utilities_view = UtilitiesView(state, "test_util")
         state.views = [main_view, offspec_view, utilities_view]
-
-        # Mock messages for the other views
-        mock_msg1 = MagicMock()
-        mock_msg1.edit = AsyncMock()
-        mock_msg2 = MagicMock()
-        mock_msg2.edit = AsyncMock()
-        mock_msg3 = MagicMock()
-        mock_msg3.edit = AsyncMock()
-        state.messages = [mock_msg1, mock_msg2, mock_msg3]
+        state.step_contents = [
+            "Select your roles for **TestPlayer**:\n**Main Spec** (pick one)",
+            "**Offspec** (pick any)",
+            "**Utilities**",
+        ]
+        state.messages = [MagicMock()]
 
         interaction = MagicMock(spec=discord.Interaction)
         interaction.response = MagicMock()
         interaction.response.edit_message = AsyncMock()
+        mock_followup_msg = MagicMock()
         interaction.followup = MagicMock()
-        interaction.followup.send = AsyncMock()
+        interaction.followup.send = AsyncMock(return_value=mock_followup_msg)
 
-        await utilities_view.clear.callback(interaction)
+        next_button = next(
+            item for item in main_view.children if isinstance(item, NextButton)
+        )
 
-        mock_svc.clear_preference.assert_called_once_with("12345")
-        self.assertEqual(len(state.selected_roles), 0)
-        # Utilities message updated via interaction response
-        interaction.response.edit_message.assert_called_once()
-        # Other messages updated via stored references
-        mock_msg1.edit.assert_called_once()
-        mock_msg2.edit.assert_called_once()
-        # Confirmation sent via followup
-        interaction.followup.send.assert_called_once()
+        await next_button.callback(interaction)
+
+        # Button should be disabled
+        self.assertTrue(next_button.disabled)
+        # Current message should be edited
+        interaction.response.edit_message.assert_called_once_with(view=main_view)
+        # Next view should be sent via followup
+        interaction.followup.send.assert_called_once_with(
+            "**Offspec** (pick any)",
+            view=offspec_view,
+            ephemeral=True,
+            wait=True,
+        )
+        # New message should be appended
+        self.assertIn(mock_followup_msg, state.messages)
+
+    async def test_none_button(self):
+        state = RoleSelectionState(
+            "TestPlayer",
+            "12345",
+            {ROLE_TANK_OFFSPEC, ROLE_HEALER_OFFSPEC},
+        )
+        offspec_view = OffspecView(state, "test_off")
+
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.edit_message = AsyncMock()
+
+        none_button = next(
+            item for item in offspec_view.children if isinstance(item, NoneButton)
+        )
+
+        await none_button.callback(interaction)
+
+        # All offspec roles should be cleared
+        self.assertNotIn(ROLE_TANK_OFFSPEC, state.selected_roles)
+        self.assertNotIn(ROLE_HEALER_OFFSPEC, state.selected_roles)
+        # None button highlighted
+        self.assertEqual(none_button.style, discord.ButtonStyle.primary)
+        # All role buttons reset
+        for item in offspec_view.children:
+            if isinstance(item, RoleButton):
+                self.assertEqual(item.style, discord.ButtonStyle.secondary)
+
+    async def test_role_button_deselects_none(self):
+        state = RoleSelectionState("TestPlayer", "12345", set())
+        offspec_view = OffspecView(state, "test_off")
+
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.response = MagicMock()
+        interaction.response.edit_message = AsyncMock()
+
+        none_button = next(
+            item for item in offspec_view.children if isinstance(item, NoneButton)
+        )
+        # Simulate None being selected
+        none_button.style = discord.ButtonStyle.primary
+
+        # Click an offspec role
+        tank_off_button = next(
+            item
+            for item in offspec_view.children
+            if isinstance(item, RoleButton) and item.role_name == ROLE_TANK_OFFSPEC
+        )
+        await tank_off_button.callback(interaction)
+
+        # None should be deselected
+        self.assertEqual(none_button.style, discord.ButtonStyle.secondary)
+        # Role should be selected
+        self.assertIn(ROLE_TANK_OFFSPEC, state.selected_roles)
 
     async def test_role_board_view_initialization(self):
         mock_callback = AsyncMock()
