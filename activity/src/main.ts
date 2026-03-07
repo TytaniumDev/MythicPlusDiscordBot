@@ -932,8 +932,8 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
   if (p.roles.offmelee && !p.roles.melee) tags.push({ label: 'Off Melee', cssClass: 'tag-dps tag-offspec' });
 
   // Utilities
-  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-utility' });
-  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-utility' });
+  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-brez' });
+  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-lust' });
 
   return tags;
 }

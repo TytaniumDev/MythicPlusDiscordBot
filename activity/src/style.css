@@ -34,6 +34,8 @@
   --color-tank: #3b82f6;
   --color-healer: #22c55e;
   --color-dps: #ef4444;
+  --color-brez: var(--color-gold);
+  --color-lust: #e85d26;
 
   --text-primary: #e5e7eb;
   --text-secondary: #9ca3af;
@@ -582,10 +584,16 @@ body {
   border: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
 }
 
-.role-tag.tag-utility {
-  background: color-mix(in srgb, var(--color-purple) 20%, transparent);
-  color: var(--color-purple);
-  border: 1px solid color-mix(in srgb, var(--color-purple) 40%, transparent);
+.role-tag.tag-brez {
+  background: color-mix(in srgb, var(--color-brez) 20%, transparent);
+  color: var(--color-brez);
+  border: 1px solid color-mix(in srgb, var(--color-brez) 40%, transparent);
+}
+
+.role-tag.tag-lust {
+  background: color-mix(in srgb, var(--color-lust) 20%, transparent);
+  color: var(--color-lust);
+  border: 1px solid color-mix(in srgb, var(--color-lust) 40%, transparent);
 }
 
 .role-tag.tag-unassigned {
@@ -759,15 +767,15 @@ body {
 }
 
 .role-btn.active-brez {
-  background: color-mix(in srgb, var(--color-gold) 20%, transparent);
-  color: var(--color-gold);
-  border-color: color-mix(in srgb, var(--color-gold) 50%, transparent);
+  background: color-mix(in srgb, var(--color-brez) 20%, transparent);
+  color: var(--color-brez);
+  border-color: color-mix(in srgb, var(--color-brez) 50%, transparent);
 }
 
 .role-btn.active-lust {
-  background: color-mix(in srgb, #e85d26 20%, transparent);
-  color: #e85d26;
-  border-color: color-mix(in srgb, #e85d26 50%, transparent);
+  background: color-mix(in srgb, var(--color-lust) 20%, transparent);
+  color: var(--color-lust);
+  border-color: color-mix(in srgb, var(--color-lust) 50%, transparent);
 }
 
 .role-editor-actions {
