@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import discord
@@ -32,159 +32,195 @@ class PlayerRoleInfo:
     roles: list[str]
 
 
-MAIN_SPEC_ROLES = {ROLE_TANK, ROLE_HEALER, ROLE_RANGED, ROLE_MELEE}
+@dataclass
+class RoleSelectionState:
+    """Shared mutable state across the 3 role selection views."""
+
+    player_name: str
+    discord_id: str
+    selected_roles: set[str]
+    on_save_callback: (
+        Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
+    ) = None
+    views: list[discord.ui.View] = field(default_factory=list)
+    messages: list[Any] = field(default_factory=list)
 
 
-class RoleButton(discord.ui.Button["RoleSelectionView"]):
+class RoleButton(discord.ui.Button[discord.ui.View]):
     def __init__(
         self,
         role_name: str,
         label: str,
+        state: RoleSelectionState,
         style: discord.ButtonStyle = discord.ButtonStyle.secondary,
         custom_id_prefix: str = "",
         *,
         row: int | None = None,
+        is_main_spec: bool = False,
     ):
         custom_id = f"{custom_id_prefix}:{role_name}" if custom_id_prefix else role_name
         super().__init__(label=label, style=style, custom_id=custom_id, row=row)
         self.role_name = role_name
+        self.state = state
+        self.is_main_spec = is_main_spec
 
     async def callback(self, interaction: discord.Interaction):
         view = self.view
         if view is None:
             return
-        assert isinstance(view, RoleSelectionView)
 
-        if self.role_name in view.selected_roles:
-            view.selected_roles.remove(self.role_name)
+        if self.role_name in self.state.selected_roles:
+            self.state.selected_roles.remove(self.role_name)
             self.style = discord.ButtonStyle.secondary
         else:
             # Main spec: mutual exclusivity — deselect other main specs
-            if self.role_name in MAIN_SPEC_ROLES:
+            if self.is_main_spec:
                 for item in view.children:
                     if (
                         isinstance(item, RoleButton)
-                        and item.role_name in MAIN_SPEC_ROLES
                         and item.role_name != self.role_name
                     ):
-                        view.selected_roles.discard(item.role_name)
+                        self.state.selected_roles.discard(item.role_name)
                         item.style = discord.ButtonStyle.secondary
-            view.selected_roles.add(self.role_name)
+            self.state.selected_roles.add(self.role_name)
             self.style = discord.ButtonStyle.primary
 
         await interaction.response.edit_message(view=view)
 
 
-class RoleSelectionView(discord.ui.View):
-    def __init__(
-        self,
-        player_name: str,
-        initial_roles: list[str] | None = None,
-        on_save_callback: (
-            Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
-        ) = None,
-        discord_id: str = "",
-    ):
+class MainSpecView(discord.ui.View):
+    def __init__(self, state: RoleSelectionState, prefix: str):
         super().__init__(timeout=60)
-        self.player_name = player_name
-        self.discord_id = discord_id
-        self.selected_roles = set(initial_roles or [])
-        self.on_save_callback = on_save_callback
-
-        # Unique prefix prevents ViewStore dispatch collisions between concurrent users
-        prefix = os.urandom(8).hex()
-
-        # Row 0: Main Spec (pick one)
-        main_roles = [
+        self.state = state
+        for role_id, label in [
             (ROLE_TANK, "🛡️ Tank"),
             (ROLE_HEALER, "🌿 Healer"),
             (ROLE_RANGED, "🏹 Ranged"),
             (ROLE_MELEE, "🪓 Melee"),
-        ]
+        ]:
+            style = (
+                discord.ButtonStyle.primary
+                if role_id in state.selected_roles
+                else discord.ButtonStyle.secondary
+            )
+            self.add_item(
+                RoleButton(
+                    role_id,
+                    label,
+                    state,
+                    style,
+                    custom_id_prefix=prefix,
+                    row=0,
+                    is_main_spec=True,
+                )
+            )
 
-        # Row 1: Offspec (pick 0-3)
-        off_roles = [
+
+class OffspecView(discord.ui.View):
+    def __init__(self, state: RoleSelectionState, prefix: str):
+        super().__init__(timeout=60)
+        self.state = state
+        for role_id, label in [
             (ROLE_TANK_OFFSPEC, "🛡️ Tank"),
             (ROLE_HEALER_OFFSPEC, "🌿 Healer"),
             (ROLE_RANGED_OFFSPEC, "🏹 Ranged"),
             (ROLE_MELEE_OFFSPEC, "🪓 Melee"),
-        ]
+        ]:
+            style = (
+                discord.ButtonStyle.primary
+                if role_id in state.selected_roles
+                else discord.ButtonStyle.secondary
+            )
+            self.add_item(
+                RoleButton(
+                    role_id,
+                    label,
+                    state,
+                    style,
+                    custom_id_prefix=prefix,
+                    row=0,
+                )
+            )
 
-        # Row 2: Utilities
-        utility_roles = [
+
+class UtilitiesView(discord.ui.View):
+    def __init__(self, state: RoleSelectionState, prefix: str):
+        super().__init__(timeout=60)
+        self.state = state
+        for role_id, label in [
             (ROLE_BREZ, "⚰️ Brez"),
             (ROLE_LUST, "🎺 Lust"),
-        ]
-
-        for role_id, label in main_roles:
+        ]:
             style = (
                 discord.ButtonStyle.primary
-                if role_id in self.selected_roles
+                if role_id in state.selected_roles
                 else discord.ButtonStyle.secondary
             )
             self.add_item(
-                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=0)
+                RoleButton(
+                    role_id,
+                    label,
+                    state,
+                    style,
+                    custom_id_prefix=prefix,
+                    row=0,
+                )
             )
 
-        for role_id, label in off_roles:
-            style = (
-                discord.ButtonStyle.primary
-                if role_id in self.selected_roles
-                else discord.ButtonStyle.secondary
-            )
-            self.add_item(
-                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=1)
-            )
-
-        for role_id, label in utility_roles:
-            style = (
-                discord.ButtonStyle.primary
-                if role_id in self.selected_roles
-                else discord.ButtonStyle.secondary
-            )
-            self.add_item(
-                RoleButton(role_id, label, style, custom_id_prefix=prefix, row=2)
-            )
-
-    @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=3)
+    @discord.ui.button(label="Save", style=discord.ButtonStyle.success, row=1)
     async def save(
         self,
         interaction: discord.Interaction,
-        button: discord.ui.Button[RoleSelectionView],
+        button: discord.ui.Button[UtilitiesView],
     ):
         pref_svc = get_preference_service()
         await pref_svc.set_preference(
-            self.discord_id, self.player_name, list(self.selected_roles)
+            self.state.discord_id,
+            self.state.player_name,
+            sorted(self.state.selected_roles),
         )
         await interaction.response.send_message(
-            f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}",
+            f"✅ Saved roles for **{self.state.player_name}**: "
+            f"{', '.join(sorted(self.state.selected_roles)) if self.state.selected_roles else 'None'}",
             ephemeral=True,
         )
 
-        if self.on_save_callback:
-            await self.on_save_callback(interaction)
+        if self.state.on_save_callback:
+            await self.state.on_save_callback(interaction)
 
-        self.stop()
+        for view in self.state.views:
+            view.stop()
 
-    @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=3)
+    @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=1)
     async def clear(
         self,
         interaction: discord.Interaction,
-        button: discord.ui.Button[RoleSelectionView],
+        button: discord.ui.Button[UtilitiesView],
     ):
         pref_svc = get_preference_service()
-        await pref_svc.clear_preference(self.discord_id)
-        self.selected_roles.clear()
-        for item in self.children:
-            if isinstance(item, RoleButton):
-                item.style = discord.ButtonStyle.secondary
-        await interaction.response.send_message(
-            f"🗑️ Cleared roles for **{self.player_name}**", ephemeral=True
-        )
-        await interaction.edit_original_response(view=self)
+        await pref_svc.clear_preference(self.state.discord_id)
+        self.state.selected_roles.clear()
 
-        if self.on_save_callback:
-            await self.on_save_callback(interaction)
+        # Reset button styles across all views
+        for view in self.state.views:
+            for item in view.children:
+                if isinstance(item, RoleButton):
+                    item.style = discord.ButtonStyle.secondary
+
+        # Update utilities message via interaction response
+        await interaction.response.edit_message(view=self)
+
+        # Update main spec and offspec messages
+        for view, msg in zip(self.state.views, self.state.messages, strict=False):
+            if view is not self and msg is not None:
+                await msg.edit(view=view)
+
+        await interaction.followup.send(
+            f"🗑️ Cleared roles for **{self.state.player_name}**", ephemeral=True
+        )
+
+        if self.state.on_save_callback:
+            await self.state.on_save_callback(interaction)
 
 
 class RoleBoardView(discord.ui.View):
@@ -225,17 +261,35 @@ class RoleBoardView(discord.ui.View):
         ) -> None:
             await self.update_callback(save_interaction, board_message)
 
-        view = RoleSelectionView(
-            name, (saved_roles or []), on_save_callback=on_save, discord_id=discord_id
-        )
-        await interaction.response.send_message(
-            f"Select your roles for **{name}**:\n\n"
-            "**Main Spec** (pick one)\n"
-            "**Offspec** (pick any)\n"
-            "**Utilities**",
-            view=view,
+        state = RoleSelectionState(name, discord_id, set(saved_roles or []), on_save)
+        prefix = os.urandom(8).hex()
+
+        main_view = MainSpecView(state, f"{prefix}_main")
+        offspec_view = OffspecView(state, f"{prefix}_off")
+        utilities_view = UtilitiesView(state, f"{prefix}_util")
+        state.views = [main_view, offspec_view, utilities_view]
+
+        await interaction.response.defer(ephemeral=True)
+
+        msg1 = await interaction.followup.send(
+            f"Select your roles for **{name}**:\n**Main Spec** (pick one)",
+            view=main_view,
             ephemeral=True,
+            wait=True,
         )
+        msg2 = await interaction.followup.send(
+            "**Offspec** (pick any)",
+            view=offspec_view,
+            ephemeral=True,
+            wait=True,
+        )
+        msg3 = await interaction.followup.send(
+            "**Utilities**",
+            view=utilities_view,
+            ephemeral=True,
+            wait=True,
+        )
+        state.messages = [msg1, msg2, msg3]
 
 
 def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
