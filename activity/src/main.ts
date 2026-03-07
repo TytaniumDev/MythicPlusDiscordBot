@@ -1111,6 +1111,11 @@ function showRoleEditorIfNeeded(players: WoWPlayer[]) {
       roleEditor.classList.add('hidden');
     }
   }
+  // Sync button text to actual visibility
+  const toggleBtn = identitySelector.querySelector('.btn-change-roles');
+  if (toggleBtn) {
+    toggleBtn.textContent = roleEditor.classList.contains('hidden') ? 'Change Roles' : 'Hide Roles';
+  }
 }
 
 interface RoleButtonDef {
