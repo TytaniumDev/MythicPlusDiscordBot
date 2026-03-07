@@ -78,15 +78,37 @@ class TestWoWPlayer(unittest.TestCase):
         p3 = WoWPlayer.create("OffspecOnly", [ROLE_MELEE_OFFSPEC])
         self.assertTrue(p3.hasRoles())
 
+    def test_create_with_discord_id(self):
+        player = WoWPlayer.create("TestPlayer", [ROLE_TANK], discord_id="12345")
+        self.assertEqual(player.discordId, "12345")
+        self.assertTrue(player.tankMain)
+
+    def test_discord_id_default_empty(self):
+        player = WoWPlayer.create("TestPlayer", [ROLE_TANK])
+        self.assertEqual(player.discordId, "")
+
     def test_serialization(self):
-        original = WoWPlayer.create("TestPlayer", [ROLE_TANK, ROLE_BREZ])
+        original = WoWPlayer.create(
+            "TestPlayer", [ROLE_TANK, ROLE_BREZ], discord_id="99999"
+        )
         data = original.to_dict()
         restored = WoWPlayer.from_dict(data)
 
         self.assertEqual(original.name, restored.name)
+        self.assertEqual(original.discordId, restored.discordId)
         self.assertEqual(original.tankMain, restored.tankMain)
         self.assertEqual(original.hasBrez, restored.hasBrez)
         self.assertEqual(original, restored)
+        self.assertEqual(data["discordId"], "99999")
+
+    def test_from_dict_missing_discord_id(self):
+        data: dict[str, Any] = {
+            "name": "Legacy",
+            "roles": {"tankMain": True},
+        }
+        player = WoWPlayer.from_dict(data)
+        self.assertEqual(player.discordId, "")
+        self.assertTrue(player.tankMain)
 
 
 class TestWoWGroup(unittest.TestCase):

@@ -19,6 +19,7 @@ from .config import (
 @dataclass(frozen=True, eq=False)
 class WoWPlayer:
     name: str
+    discordId: str = ""
     # Main roles
     tankMain: bool = False
     healerMain: bool = False
@@ -54,7 +55,7 @@ class WoWPlayer:
         return self.__str__()
 
     @classmethod
-    def create(cls, name: str, roles: list[str]) -> "WoWPlayer":
+    def create(cls, name: str, roles: list[str], discord_id: str = "") -> "WoWPlayer":
         # Calculate all the boolean flags
         tankMain = ROLE_TANK in roles
         healerMain = ROLE_HEALER in roles
@@ -72,6 +73,7 @@ class WoWPlayer:
         # Create the instance with all flags set
         return cls(
             name=name,
+            discordId=discord_id,
             tankMain=tankMain,
             healerMain=healerMain,
             dpsMain=dpsMain,
@@ -136,6 +138,7 @@ class WoWPlayer:
         """Serializable dictionary representation for Firestore."""
         return {
             "name": self.name,
+            "discordId": self.discordId,
             "roles": {
                 "tankMain": self.tankMain,
                 "healerMain": self.healerMain,
@@ -158,6 +161,7 @@ class WoWPlayer:
         roles_data = data.get("roles", {})
         return cls(
             name=data["name"],
+            discordId=data.get("discordId", ""),
             tankMain=roles_data.get("tankMain", False),
             healerMain=roles_data.get("healerMain", False),
             dpsMain=roles_data.get("dpsMain", False),

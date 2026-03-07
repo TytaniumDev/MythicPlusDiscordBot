@@ -594,6 +594,182 @@ body {
   border: 1px solid color-mix(in srgb, var(--text-secondary) 40%, transparent);
 }
 
+/* ── Player Chip: Current user highlight ── */
+.player-chip.is-me {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
+}
+
+/* ── Identity Selector ── */
+.identity-selector {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.identity-selector .identity-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.identity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.identity-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family);
+}
+
+.identity-chip:hover {
+  border-color: var(--color-gold);
+  background: var(--bg-card-hover);
+}
+
+.identity-chip.selected {
+  border-color: var(--color-gold);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-gold);
+}
+
+.identity-current {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.identity-current .identity-name {
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.identity-change-btn {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: var(--font-family);
+  padding: 0;
+}
+
+.identity-change-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ── Role Editor ── */
+.role-editor {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.role-editor-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.role-editor-section {
+  margin-bottom: 8px;
+}
+
+.role-editor-section:last-child {
+  margin-bottom: 0;
+}
+
+.role-editor-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.role-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-family);
+}
+
+.role-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--bg-card-hover);
+}
+
+.role-btn.active-tank {
+  background: color-mix(in srgb, var(--color-tank) 20%, transparent);
+  color: var(--color-tank);
+  border-color: color-mix(in srgb, var(--color-tank) 50%, transparent);
+}
+
+.role-btn.active-healer {
+  background: color-mix(in srgb, var(--color-healer) 20%, transparent);
+  color: var(--color-healer);
+  border-color: color-mix(in srgb, var(--color-healer) 50%, transparent);
+}
+
+.role-btn.active-dps {
+  background: color-mix(in srgb, var(--color-dps) 20%, transparent);
+  color: var(--color-dps);
+  border-color: color-mix(in srgb, var(--color-dps) 50%, transparent);
+}
+
+.role-btn.active-utility {
+  background: color-mix(in srgb, var(--color-purple) 20%, transparent);
+  color: var(--color-purple);
+  border-color: color-mix(in srgb, var(--color-purple) 50%, transparent);
+}
+
+.role-editor-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.role-editor-save {
+  padding: 6px 24px;
+  font-size: 0.8rem;
+}
+
 #view-lobby .btn {
   margin-top: 8px;
 }

@@ -369,6 +369,11 @@ class SessionService:
         """Handles updates from a channel Firestore document."""
         status = data.get("status")
 
+        if data.get("refreshPlayers"):
+            self._run_async(
+                self._handle_player_refresh(doc_id, channel_id, guild_id),
+            )
+
         if status == "request_spin":
             self._run_async(
                 self._process_spin_request(doc_id, channel_id, guild_id, data),
@@ -378,6 +383,27 @@ class SessionService:
             if data.get("announceResults", True):
                 self._run_async(
                     self._announce_completion(channel_id, guild_id, data),
+                )
+
+    async def _handle_player_refresh(
+        self, doc_id: str, channel_id: int, guild_id: int
+    ) -> None:
+        """Re-reads voice members + preferences and updates the channel doc."""
+        try:
+            guild = self.bot.get_guild(guild_id)
+            if guild:
+                await self.update_channel_players(channel_id, guild)
+        except Exception:
+            logger.exception("Player refresh failed for channel %s", channel_id)
+        finally:
+            # Clear the flag so it doesn't re-trigger
+            try:
+                await self.firebase.update_channel_doc(
+                    doc_id, {"refreshPlayers": self.firebase.DELETE_FIELD}
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to clear refreshPlayers for channel %s", channel_id
                 )
 
     async def _process_spin_request(

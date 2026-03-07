@@ -3,13 +3,13 @@ from typing import cast
 import discord
 from discord.ext import commands
 
+from core.preference_service import get_preference_service
 from core.role_ui import (
     PlayerRoleInfo,
     RoleBoardView,
     create_role_board_embed,
     create_role_check_embed,
 )
-from core.storage import clear_player_preference, get_player_preference
 from core.utils import get_player_list, get_wow_name
 
 
@@ -86,10 +86,14 @@ class Roles(commands.Cog):
             await ctx.send("No members found in the channel.")
             return
 
+        pref_svc = get_preference_service()
         player_infos: list[PlayerRoleInfo] = []
         for member in members:
             name = get_wow_name(cast(discord.Member, member))
-            saved_roles = get_player_preference(name)
+            discord_id = str(member.id)
+            saved_roles = pref_svc.get_preference_sync(discord_id)
+            if not saved_roles:
+                saved_roles = pref_svc.get_preference_by_name_sync(name)
             if saved_roles:
                 player_infos.append(PlayerRoleInfo(name=name, roles=saved_roles))
             else:
@@ -103,17 +107,21 @@ class Roles(commands.Cog):
         self, ctx: commands.Context[commands.Bot], name: str | None = None
     ) -> None:
         """Clear your saved roles, or a specific character's roles."""
+        pref_svc = get_preference_service()
         if name is None:
             name = get_wow_name(ctx.author)
-            success = clear_player_preference(name)
-            if success:
+            discord_id = str(ctx.author.id)
+            had_prefs = pref_svc.get_preference_sync(discord_id) is not None
+            await pref_svc.clear_preference(discord_id)
+            if had_prefs:
                 await ctx.send(f"✅ Cleared your saved roles, **{name}**.")
             else:
                 await ctx.send(f"❌ You had no saved roles, **{name}**.")
         else:
-            # Check if they have permission to clear others? Assuming guild context for now.
-            success = clear_player_preference(name)
-            if success:
+            # Clear by name — look up discord ID from name cache
+            discord_id = pref_svc.resolve_discord_id(name)
+            if discord_id:
+                await pref_svc.clear_preference(discord_id)
                 await ctx.send(f"✅ Cleared saved roles for **{name}**.")
             else:
                 await ctx.send(f"❌ No saved roles found for **{name}**.")

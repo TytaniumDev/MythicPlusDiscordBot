@@ -5,6 +5,7 @@ export interface WheelEntry {
 
 export interface WoWPlayer {
   name: string;
+  discordId?: string;
   roles: {
     tankMain: boolean;
     healerMain: boolean;
@@ -51,6 +52,7 @@ export interface ChannelData {
   players: WoWPlayer[];
   groups: WoWGroup[];
   revealedGroups?: number;
+  refreshPlayers?: boolean;
   isDebug: boolean;
   announceResults: boolean;
   createdAt: unknown;

@@ -15,7 +15,7 @@ from core.config import (
     ROLE_TANK_OFFSPEC,
 )
 from core.models import WoWPlayer
-from core.storage import get_player_preference
+from core.preference_service import get_preference_service
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +81,14 @@ def _get_player_from_member(member: discord.Member) -> WoWPlayer:
     Uses saved preferences only — no Discord role fallback.
     """
     name = get_wow_name(member)
-    saved_roles = get_player_preference(name)
+    discord_id = str(member.id)
+    pref_svc = get_preference_service()
+    saved_roles = pref_svc.get_preference_sync(discord_id)
+    if not saved_roles:
+        saved_roles = pref_svc.get_preference_by_name_sync(name)
     if saved_roles:
-        return WoWPlayer.create(name=name, roles=saved_roles)
-    return WoWPlayer(name=name)
+        return WoWPlayer.create(name=name, roles=saved_roles, discord_id=discord_id)
+    return WoWPlayer(name=name, discordId=discord_id)
 
 
 def get_player_list(members: list[discord.Member]) -> list[WoWPlayer]:

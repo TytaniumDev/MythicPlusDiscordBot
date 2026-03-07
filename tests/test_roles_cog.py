@@ -58,19 +58,24 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
         ctx.send.assert_called_with("❌ This command can only be used in a server.")
 
+    @patch("cogs.roles.get_preference_service")
     @patch("cogs.roles.get_wow_name")
-    @patch("cogs.roles.get_player_preference")
     async def test_rolecheck_with_saved_roles(
-        self, mock_get_pref: MagicMock, mock_wowname: MagicMock
+        self, mock_wowname: MagicMock, mock_get_svc: MagicMock
     ):
         """Test rolecheck with a user who has saved roles."""
+        mock_svc = MagicMock()
+        mock_get_svc.return_value = mock_svc
+        mock_svc.get_preference_sync.return_value = ["Tank", "Healer"]
+        mock_svc.get_preference_by_name_sync.return_value = None
+
         ctx = AsyncMock()
         member = MagicMock()
         member.bot = False
+        member.id = 111
         ctx.author.voice.channel.members = [member]
 
         mock_wowname.return_value = "TestPlayer"
-        mock_get_pref.return_value = ["Tank", "Healer"]
 
         await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
 
@@ -82,19 +87,24 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(embed.fields[0].name, "TestPlayer")
         self.assertEqual(embed.fields[0].value, "Tank, Healer")
 
+    @patch("cogs.roles.get_preference_service")
     @patch("cogs.roles.get_wow_name")
-    @patch("cogs.roles.get_player_preference")
     async def test_rolecheck_no_saved_roles(
-        self, mock_get_pref: MagicMock, mock_wowname: MagicMock
+        self, mock_wowname: MagicMock, mock_get_svc: MagicMock
     ):
         """Test rolecheck with a user who has no saved roles shows 'No roles set'."""
+        mock_svc = MagicMock()
+        mock_get_svc.return_value = mock_svc
+        mock_svc.get_preference_sync.return_value = None
+        mock_svc.get_preference_by_name_sync.return_value = None
+
         ctx = AsyncMock()
         member = MagicMock()
         member.bot = False
+        member.id = 222
         ctx.author.voice.channel.members = [member]
 
         mock_wowname.return_value = "NewUser"
-        mock_get_pref.return_value = None
 
         await cast(Any, self.cog.rolecheck.callback)(self.cog, ctx)
 
@@ -115,35 +125,49 @@ class TestRolesCog(unittest.IsolatedAsyncioTestCase):
 
         ctx.send.assert_called_with("No members found in the channel.")
 
-    @patch("cogs.roles.clear_player_preference")
+    @patch("cogs.roles.get_preference_service")
     @patch("cogs.roles.get_wow_name")
-    async def test_clearrole_self(self, mock_wowname: MagicMock, mock_clear: MagicMock):
+    async def test_clearrole_self(
+        self, mock_wowname: MagicMock, mock_get_svc: MagicMock
+    ):
         """Test clearing own roles."""
+        mock_svc = MagicMock()
+        mock_svc.get_preference_sync.return_value = ["Tank"]
+        mock_svc.clear_preference = AsyncMock()
+        mock_get_svc.return_value = mock_svc
+
         ctx = AsyncMock()
+        ctx.author.id = 123
         mock_wowname.return_value = "MyName"
-        mock_clear.return_value = True
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name=None)
 
-        mock_clear.assert_called_with("MyName")
+        mock_svc.clear_preference.assert_called_with("123")
         ctx.send.assert_called_with("✅ Cleared your saved roles, **MyName**.")
 
-    @patch("cogs.roles.clear_player_preference")
-    async def test_clearrole_other(self, mock_clear: MagicMock):
+    @patch("cogs.roles.get_preference_service")
+    async def test_clearrole_other(self, mock_get_svc: MagicMock):
         """Test clearing another player's roles."""
+        mock_svc = MagicMock()
+        mock_svc.resolve_discord_id.return_value = "456"
+        mock_svc.clear_preference = AsyncMock()
+        mock_get_svc.return_value = mock_svc
+
         ctx = AsyncMock()
-        mock_clear.return_value = True
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name="OtherPlayer")
 
-        mock_clear.assert_called_with("OtherPlayer")
+        mock_svc.clear_preference.assert_called_with("456")
         ctx.send.assert_called_with("✅ Cleared saved roles for **OtherPlayer**.")
 
-    @patch("cogs.roles.clear_player_preference")
-    async def test_clearrole_failure(self, mock_clear: MagicMock):
+    @patch("cogs.roles.get_preference_service")
+    async def test_clearrole_failure(self, mock_get_svc: MagicMock):
         """Test clearing roles when none exist."""
+        mock_svc = MagicMock()
+        mock_svc.resolve_discord_id.return_value = None
+        mock_get_svc.return_value = mock_svc
+
         ctx = AsyncMock()
-        mock_clear.return_value = False
 
         await cast(Any, self.cog.clearrole.callback)(self.cog, ctx, name="Unknown")
 

@@ -48,28 +48,35 @@ class TestUtils(unittest.TestCase):
             self.assertIsNotNone(player.name)
             self.assertTrue(player.hasRoles())
 
-    @patch("core.utils.get_player_preference")
-    def test_get_player_list(self, mock_get_pref: MagicMock):
+    @patch("core.utils.get_preference_service")
+    def test_get_player_list(self, mock_get_svc: MagicMock):
         """Test that get_player_list returns all members, with or without roles."""
+        mock_svc = MagicMock()
+        mock_get_svc.return_value = mock_svc
+
         # Setup members
         member_saved = MagicMock()
         member_saved.nick = "SavedPlayer"
+        member_saved.id = 111
 
         member_no_roles = MagicMock()
         member_no_roles.nick = "NoRolesPlayer"
+        member_no_roles.id = 222
 
         member_another = MagicMock()
         member_another.nick = "AnotherPlayer"
+        member_another.id = 333
 
         members = [member_saved, member_no_roles, member_another]
 
         # Setup mock preferences
-        def get_pref_side_effect(name: str):
-            if name == "SavedPlayer":
+        def sync_pref(discord_id: str):
+            if discord_id == "111":
                 return ["Tank"]
             return None
 
-        mock_get_pref.side_effect = get_pref_side_effect
+        mock_svc.get_preference_sync.side_effect = sync_pref
+        mock_svc.get_preference_by_name_sync.return_value = None
 
         # Call function
         players = get_player_list(cast(list[discord.Member], members))
@@ -82,11 +89,13 @@ class TestUtils(unittest.TestCase):
         assert p1 is not None
         self.assertTrue(p1.tankMain)
         self.assertTrue(p1.hasRoles())
+        self.assertEqual(p1.discordId, "111")
 
         # Verify players without saved roles have no roles
         p2 = next((p for p in players if p.name == "NoRolesPlayer"), None)
         assert p2 is not None
         self.assertFalse(p2.hasRoles())
+        self.assertEqual(p2.discordId, "222")
 
         p3 = next((p for p in players if p.name == "AnotherPlayer"), None)
         assert p3 is not None

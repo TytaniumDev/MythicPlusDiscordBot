@@ -4,6 +4,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 1. Martz: Healer, Tank Offspec, Melee Offspec, Brez
   {
     name: 'Martz',
+    discordId: '100000000000000001',
     roles: {
       tankMain: false,
       healerMain: true,
@@ -22,6 +23,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 2. KingofSkillz: Ranged, Lust
   {
     name: 'KingofSkillz',
+    discordId: '100000000000000002',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -40,6 +42,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 3. chaoswaffles: Melee, Tank Offspec
   {
     name: 'chaoswaffles',
+    discordId: '100000000000000003',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -58,6 +61,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 4. Upartyhardy: Ranged
   {
     name: 'Upartyhardy',
+    discordId: '100000000000000004',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -76,6 +80,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 5. Pandemonium: Tank, Melee Offspec, Brez
   {
     name: 'Pandemonium',
+    discordId: '100000000000000005',
     roles: {
       tankMain: true,
       healerMain: false,
@@ -94,6 +99,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 6. Will: Melee
   {
     name: 'Will',
+    discordId: '100000000000000006',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -112,6 +118,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 7. Tytanium: Ranged, Healer Offspec, Lust
   {
     name: 'Tytanium',
+    discordId: '100000000000000007',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -130,6 +137,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 8. hammer13: Melee
   {
     name: 'hammer13',
+    discordId: '100000000000000008',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -148,6 +156,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 9. Ultra9: Ranged, Lust
   {
     name: 'Ultra9',
+    discordId: '100000000000000009',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -166,6 +175,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 10. DrZoidberg: Ranged
   {
     name: 'DrZoidberg',
+    discordId: '100000000000000010',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -184,6 +194,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 11. Player1x: Ranged, Healer Offspec, Lust
   {
     name: 'Player1x',
+    discordId: '100000000000000011',
     roles: {
       tankMain: false,
       healerMain: false,
@@ -202,6 +213,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 12. lizardtotem: Healer, Melee Offspec
   {
     name: 'lizardtotem',
+    discordId: '100000000000000012',
     roles: {
       tankMain: false,
       healerMain: true,
@@ -220,6 +232,7 @@ export const mockPlayers: WoWPlayer[] = [
   // 13. rorschach128: Melee
   {
     name: 'rorschach128',
+    discordId: '100000000000000013',
     roles: {
       tankMain: false,
       healerMain: false,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
@@ -21,11 +20,7 @@ from .config import (
     ROLE_TANK_OFFSPEC,
 )
 from .models import WoWPlayer
-from .storage import (
-    clear_player_preference,
-    get_player_preference,
-    set_player_preference,
-)
+from .preference_service import get_preference_service
 from .utils import get_wow_name
 
 
@@ -88,9 +83,11 @@ class RoleSelectionView(discord.ui.View):
         on_save_callback: (
             Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
         ) = None,
+        discord_id: str = "",
     ):
         super().__init__(timeout=60)
         self.player_name = player_name
+        self.discord_id = discord_id
         self.selected_roles = set(initial_roles or [])
         self.on_save_callback = on_save_callback
 
@@ -155,8 +152,9 @@ class RoleSelectionView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button[RoleSelectionView],
     ):
-        await asyncio.to_thread(
-            set_player_preference, self.player_name, list(self.selected_roles)
+        pref_svc = get_preference_service()
+        await pref_svc.set_preference(
+            self.discord_id, self.player_name, list(self.selected_roles)
         )
         await interaction.response.send_message(
             f"✅ Saved roles for **{self.player_name}**: {', '.join(self.selected_roles) if self.selected_roles else 'None'}",
@@ -174,7 +172,8 @@ class RoleSelectionView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button[RoleSelectionView],
     ):
-        await asyncio.to_thread(clear_player_preference, self.player_name)
+        pref_svc = get_preference_service()
+        await pref_svc.clear_preference(self.discord_id)
         self.selected_roles.clear()
         for item in self.children:
             if isinstance(item, RoleButton):
@@ -211,8 +210,12 @@ class RoleBoardView(discord.ui.View):
     ):
         member = interaction.user
         name = get_wow_name(member)
+        discord_id = str(member.id)
 
-        saved_roles = get_player_preference(name)
+        pref_svc = get_preference_service()
+        saved_roles = pref_svc.get_preference_sync(discord_id)
+        if not saved_roles:
+            saved_roles = pref_svc.get_preference_by_name_sync(name)
         board_message = interaction.message
         if board_message is None:
             return
@@ -222,7 +225,9 @@ class RoleBoardView(discord.ui.View):
         ) -> None:
             await self.update_callback(save_interaction, board_message)
 
-        view = RoleSelectionView(name, (saved_roles or []), on_save_callback=on_save)
+        view = RoleSelectionView(
+            name, (saved_roles or []), on_save_callback=on_save, discord_id=discord_id
+        )
         await interaction.response.send_message(
             f"Select your roles for **{name}**:\n\n"
             "**Main Spec** (pick one)\n"

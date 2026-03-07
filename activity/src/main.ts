@@ -1,6 +1,6 @@
 // Discord SDK must be imported first — it patches fetch/WebSocket for the
 // embedded activity proxy before Firebase opens any connections.
-import { setupDiscordSdk } from './discordSdk';
+import { setupDiscordSdk, getParticipants } from './discordSdk';
 import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, Unsubscribe } from 'firebase/firestore';
 import { db } from './firebase';
 import { RecentGuild, WoWPlayer, WoWGroup, VoiceChannel, WheelEntry, GuildData, ChannelData } from './types';
@@ -46,6 +46,8 @@ const playerList = document.getElementById('player-list') as HTMLDivElement;
 const playerCount = document.getElementById('player-count') as HTMLSpanElement;
 const spinBtn = document.getElementById('spin-btn') as HTMLButtonElement;
 const changeChannelBtn = document.getElementById('change-channel-btn') as HTMLButtonElement;
+const identitySelector = document.getElementById('identity-selector') as HTMLDivElement;
+const roleEditor = document.getElementById('role-editor') as HTMLDivElement;
 
 // Lobby options
 const announceCheckbox = document.getElementById('announce-checkbox') as HTMLInputElement;
@@ -94,6 +96,12 @@ let channelUnsubscribe: Unsubscribe | null = null;
 let isDemoMode = false;
 let discordChannelId: string | null = null;
 let guildDocCreationInFlight = false;
+
+// Identity & role editor state
+let currentPlayerId: string | null = null; // discordId of the identified user
+let currentPlayerName: string | null = null;
+let identityResolved = false;
+let roleEditorSaving = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
@@ -290,6 +298,7 @@ function handleRouteChange(view: ViewName) {
     if (channelUnsubscribe) { channelUnsubscribe(); channelUnsubscribe = null; }
     currentChannelId = null; channelData = null;
     resetSpinState();
+    identityResolved = false;
   }
   if (view === 'lobby') {
     resetSpinState();
@@ -746,8 +755,13 @@ function renderLobby(players: WoWPlayer[]) {
     playerCount.textContent = '0 players';
     spinBtn.disabled = true;
     spinBtn.textContent = 'Waiting for players...';
+    identitySelector.classList.add('hidden');
+    roleEditor.classList.add('hidden');
     return;
   }
+
+  // Resolve identity (async, updates UI when done)
+  resolveIdentity(players).catch(console.error);
 
   playerCount.textContent = players.length === 1 ? '1 player' : `${players.length} players`;
   spinBtn.disabled = false;
@@ -846,6 +860,9 @@ function renderLobby(players: WoWPlayer[]) {
 function createPlayerChip(p: WoWPlayer): HTMLElement {
   const chip = document.createElement('div');
   chip.className = 'player-chip';
+  if (currentPlayerId && p.discordId === currentPlayerId) {
+    chip.classList.add('is-me');
+  }
 
   const roleKey = getPrimaryRole(p);
   const roleName = formatRoleName(roleKey);
@@ -931,6 +948,306 @@ function getPrimaryRole(p: WoWPlayer): string {
 function formatRoleName(role: string): string {
   if (role === 'unassigned') return 'Unassigned';
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
+
+// ── Identity + Role Editor ───────────────────────────────────
+
+function stripDots(s: string): string {
+  return s.replace(/\./g, '');
+}
+
+function getIdentityStorageKey(): string {
+  return `wheelson-player-${currentGuildId ?? 'unknown'}`;
+}
+
+async function resolveIdentity(players: WoWPlayer[]) {
+  if (identityResolved && currentPlayerId) {
+    // Check if the player is still in the lobby
+    const stillHere = players.some((p) => p.discordId === currentPlayerId);
+    if (stillHere) {
+      renderIdentityConfirmed();
+      renderRoleEditor(players);
+      return;
+    }
+    // Player left — re-resolve
+    currentPlayerId = null;
+    currentPlayerName = null;
+    identityResolved = false;
+  }
+
+  // Check localStorage
+  const stored = localStorage.getItem(getIdentityStorageKey());
+  if (stored) {
+    const match = players.find((p) => p.discordId === stored);
+    if (match) {
+      currentPlayerId = match.discordId ?? null;
+      currentPlayerName = match.name;
+      identityResolved = true;
+      renderIdentityConfirmed();
+      renderRoleEditor(players);
+      return;
+    }
+  }
+
+  // Auto-match via Discord participants
+  const participants = await getParticipants();
+  if (participants.length > 0) {
+    for (const participant of participants) {
+      const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
+      const match = players.find((p) => p.name === pName);
+      if (match && match.discordId) {
+        currentPlayerId = match.discordId;
+        currentPlayerName = match.name;
+        identityResolved = true;
+        localStorage.setItem(getIdentityStorageKey(), match.discordId);
+        renderIdentityConfirmed();
+        renderRoleEditor(players);
+        return;
+      }
+    }
+
+    // Try matching by discordId directly
+    const participantIds = new Set(participants.map((p) => p.id));
+    const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
+    if (idMatches.length === 1) {
+      currentPlayerId = idMatches[0].discordId ?? null;
+      currentPlayerName = idMatches[0].name;
+      identityResolved = true;
+      if (currentPlayerId) localStorage.setItem(getIdentityStorageKey(), currentPlayerId);
+      renderIdentityConfirmed();
+      renderRoleEditor(players);
+      return;
+    }
+  }
+
+  // Manual fallback — show selector
+  renderIdentitySelector(players);
+  roleEditor.classList.add('hidden');
+}
+
+function renderIdentitySelector(players: WoWPlayer[]) {
+  identitySelector.classList.remove('hidden');
+  identitySelector.textContent = '';
+  identitySelector.className = 'identity-selector';
+
+  const label = document.createElement('div');
+  label.className = 'identity-label';
+  label.textContent = 'Who are you?';
+  identitySelector.appendChild(label);
+
+  const chips = document.createElement('div');
+  chips.className = 'identity-chips';
+  players.forEach((p) => {
+    const chip = document.createElement('button');
+    chip.className = 'identity-chip';
+    chip.textContent = p.name;
+    chip.onclick = () => {
+      currentPlayerId = p.discordId ?? null;
+      currentPlayerName = p.name;
+      identityResolved = true;
+      if (currentPlayerId) localStorage.setItem(getIdentityStorageKey(), currentPlayerId);
+      renderIdentityConfirmed();
+      if (channelData) renderRoleEditor(channelData.players);
+      // Re-render lobby to highlight current user
+      if (channelData) renderLobby(channelData.players);
+    };
+    chips.appendChild(chip);
+  });
+  identitySelector.appendChild(chips);
+}
+
+function renderIdentityConfirmed() {
+  identitySelector.classList.remove('hidden');
+  identitySelector.textContent = '';
+  identitySelector.className = 'identity-selector';
+
+  const row = document.createElement('div');
+  row.className = 'identity-current';
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'identity-name';
+  nameSpan.textContent = currentPlayerName ?? 'Unknown';
+  row.appendChild(nameSpan);
+
+  const changeBtn = document.createElement('button');
+  changeBtn.className = 'identity-change-btn';
+  changeBtn.textContent = 'Not you? Change';
+  changeBtn.onclick = () => {
+    currentPlayerId = null;
+    currentPlayerName = null;
+    identityResolved = false;
+    localStorage.removeItem(getIdentityStorageKey());
+    roleEditor.classList.add('hidden');
+    if (channelData) {
+      renderIdentitySelector(channelData.players);
+      renderLobby(channelData.players);
+    }
+  };
+  row.appendChild(changeBtn);
+
+  identitySelector.appendChild(row);
+}
+
+interface RoleButtonDef {
+  id: string;
+  label: string;
+  activeClass: string;
+}
+
+const MAIN_SPEC_BUTTONS: RoleButtonDef[] = [
+  { id: 'Tank', label: 'Tank', activeClass: 'active-tank' },
+  { id: 'Healer', label: 'Healer', activeClass: 'active-healer' },
+  { id: 'Ranged', label: 'Ranged', activeClass: 'active-dps' },
+  { id: 'Melee', label: 'Melee', activeClass: 'active-dps' },
+];
+
+const OFFSPEC_BUTTONS: RoleButtonDef[] = [
+  { id: 'Tank Offspec', label: 'Tank', activeClass: 'active-tank' },
+  { id: 'Healer Offspec', label: 'Healer', activeClass: 'active-healer' },
+  { id: 'Ranged Offspec', label: 'Ranged', activeClass: 'active-dps' },
+  { id: 'Melee Offspec', label: 'Melee', activeClass: 'active-dps' },
+];
+
+const UTILITY_BUTTONS: RoleButtonDef[] = [
+  { id: 'Brez', label: 'Brez', activeClass: 'active-utility' },
+  { id: 'Lust', label: 'Lust', activeClass: 'active-utility' },
+];
+
+// Map WoWPlayer boolean fields to role string IDs
+function playerRolesToStringArray(p: WoWPlayer): string[] {
+  const roles: string[] = [];
+  if (p.roles.tankMain) roles.push('Tank');
+  if (p.roles.healerMain) roles.push('Healer');
+  if (p.roles.ranged) roles.push('Ranged');
+  if (p.roles.melee) roles.push('Melee');
+  if (p.roles.offtank) roles.push('Tank Offspec');
+  if (p.roles.offhealer) roles.push('Healer Offspec');
+  if (p.roles.offranged) roles.push('Ranged Offspec');
+  if (p.roles.offmelee) roles.push('Melee Offspec');
+  if (p.roles.hasBrez) roles.push('Brez');
+  if (p.roles.hasLust) roles.push('Lust');
+  return roles;
+}
+
+function renderRoleEditor(players: WoWPlayer[]) {
+  if (!currentPlayerId) {
+    roleEditor.classList.add('hidden');
+    return;
+  }
+
+  const player = players.find((p) => p.discordId === currentPlayerId);
+  const selectedRoles = new Set(player ? playerRolesToStringArray(player) : []);
+
+  roleEditor.classList.remove('hidden');
+  roleEditor.textContent = '';
+  roleEditor.className = 'role-editor';
+
+  const title = document.createElement('div');
+  title.className = 'role-editor-title';
+  title.textContent = 'Your Roles';
+  roleEditor.appendChild(title);
+
+  function createSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
+    const section = document.createElement('div');
+    section.className = 'role-editor-section';
+
+    const sectionLabel = document.createElement('div');
+    sectionLabel.className = 'role-editor-label';
+    sectionLabel.textContent = label;
+    section.appendChild(sectionLabel);
+
+    const row = document.createElement('div');
+    row.className = 'role-editor-row';
+
+    buttons.forEach((btnDef) => {
+      const btn = document.createElement('button');
+      btn.className = 'role-btn';
+      btn.textContent = btnDef.label;
+      btn.dataset.roleId = btnDef.id;
+
+      if (selectedRoles.has(btnDef.id)) {
+        btn.classList.add(btnDef.activeClass);
+      }
+
+      btn.onclick = () => {
+        if (selectedRoles.has(btnDef.id)) {
+          selectedRoles.delete(btnDef.id);
+          btn.classList.remove(btnDef.activeClass);
+        } else {
+          if (mutuallyExclusive) {
+            // Deselect other buttons in this group
+            row.querySelectorAll('.role-btn').forEach((otherBtn) => {
+              const otherId = (otherBtn as HTMLElement).dataset.roleId;
+              if (otherId && otherId !== btnDef.id) {
+                selectedRoles.delete(otherId);
+                // Remove all active classes
+                otherBtn.className = 'role-btn';
+              }
+            });
+          }
+          selectedRoles.add(btnDef.id);
+          btn.classList.add(btnDef.activeClass);
+        }
+      };
+
+      row.appendChild(btn);
+    });
+
+    section.appendChild(row);
+    return section;
+  }
+
+  roleEditor.appendChild(createSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true));
+  roleEditor.appendChild(createSection('Offspec', OFFSPEC_BUTTONS, false));
+  roleEditor.appendChild(createSection('Utilities', UTILITY_BUTTONS, false));
+
+  // Save button
+  const actions = document.createElement('div');
+  actions.className = 'role-editor-actions';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn btn-success role-editor-save';
+  saveBtn.textContent = 'Save';
+  saveBtn.onclick = async () => {
+    if (roleEditorSaving || !currentPlayerId) return;
+    roleEditorSaving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    const rolesArray = Array.from(selectedRoles);
+    try {
+      // Write to Firestore preferences collection
+      const prefRef = doc(db, 'preferences', currentPlayerId);
+      await setDoc(prefRef, {
+        roles: rolesArray,
+        wowName: currentPlayerName ?? '',
+        updatedAt: serverTimestamp(),
+      });
+
+      // Signal the bot to refresh players
+      if (currentChannelId) {
+        const channelRef = doc(db, 'channels', currentChannelId);
+        await updateDoc(channelRef, { refreshPlayers: true });
+      }
+
+      saveBtn.textContent = 'Saved!';
+      setTimeout(() => {
+        saveBtn.textContent = 'Save';
+        saveBtn.disabled = false;
+        roleEditorSaving = false;
+      }, 1500);
+    } catch (err) {
+      console.error('[Wheelson] Failed to save roles:', err);
+      saveBtn.textContent = 'Error';
+      setTimeout(() => {
+        saveBtn.textContent = 'Save';
+        saveBtn.disabled = false;
+        roleEditorSaving = false;
+      }, 2000);
+    }
+  };
+  actions.appendChild(saveBtn);
+  roleEditor.appendChild(actions);
 }
 
 // ── Spin Request ─────────────────────────────────────────────
