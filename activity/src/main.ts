@@ -102,6 +102,7 @@ let currentPlayerId: string | null = null; // discordId of the identified user
 let currentPlayerName: string | null = null;
 let identityResolved = false;
 let roleEditorSaving = false;
+let roleEditorManuallyToggled = false;
 
 // Spin sequence state
 let fullGroups: WoWGroup[] = [];
@@ -931,8 +932,8 @@ function getRoleTags(p: WoWPlayer): RoleTag[] {
   if (p.roles.offmelee && !p.roles.melee) tags.push({ label: 'Off Melee', cssClass: 'tag-dps tag-offspec' });
 
   // Utilities
-  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-utility' });
-  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-utility' });
+  if (p.roles.hasBrez) tags.push({ label: 'Brez', cssClass: 'tag-brez' });
+  if (p.roles.hasLust) tags.push({ label: 'Lust', cssClass: 'tag-lust' });
 
   return tags;
 }
@@ -966,13 +967,14 @@ async function resolveIdentity(players: WoWPlayer[]) {
     const stillHere = players.some((p) => p.discordId === currentPlayerId);
     if (stillHere) {
       renderIdentityConfirmed();
-      renderRoleEditor(players);
+      showRoleEditorIfNeeded(players);
       return;
     }
     // Player left — re-resolve
     currentPlayerId = null;
     currentPlayerName = null;
     identityResolved = false;
+    roleEditorManuallyToggled = false;
   }
 
   // Check localStorage
@@ -984,7 +986,7 @@ async function resolveIdentity(players: WoWPlayer[]) {
       currentPlayerName = match.name;
       identityResolved = true;
       renderIdentityConfirmed();
-      renderRoleEditor(players);
+      showRoleEditorIfNeeded(players);
       return;
     }
   }
@@ -1001,7 +1003,7 @@ async function resolveIdentity(players: WoWPlayer[]) {
         identityResolved = true;
         localStorage.setItem(getIdentityStorageKey(), match.discordId);
         renderIdentityConfirmed();
-        renderRoleEditor(players);
+        showRoleEditorIfNeeded(players);
         return;
       }
     }
@@ -1015,7 +1017,7 @@ async function resolveIdentity(players: WoWPlayer[]) {
       identityResolved = true;
       if (currentPlayerId) localStorage.setItem(getIdentityStorageKey(), currentPlayerId);
       renderIdentityConfirmed();
-      renderRoleEditor(players);
+      showRoleEditorIfNeeded(players);
       return;
     }
   }
@@ -1047,7 +1049,7 @@ function renderIdentitySelector(players: WoWPlayer[]) {
       identityResolved = true;
       if (currentPlayerId) localStorage.setItem(getIdentityStorageKey(), currentPlayerId);
       renderIdentityConfirmed();
-      if (channelData) renderRoleEditor(channelData.players);
+      if (channelData) showRoleEditorIfNeeded(channelData.players);
       // Re-render lobby to highlight current user
       if (channelData) renderLobby(channelData.players);
     };
@@ -1067,15 +1069,12 @@ function renderIdentityConfirmed() {
   const nameSpan = document.createElement('span');
   nameSpan.className = 'identity-name';
   nameSpan.textContent = currentPlayerName ?? 'Unknown';
-  row.appendChild(nameSpan);
-
-  const changeBtn = document.createElement('button');
-  changeBtn.className = 'identity-change-btn';
-  changeBtn.textContent = 'Not you? Change';
-  changeBtn.onclick = () => {
+  nameSpan.title = 'Click to change';
+  nameSpan.onclick = () => {
     currentPlayerId = null;
     currentPlayerName = null;
     identityResolved = false;
+    roleEditorManuallyToggled = false;
     localStorage.removeItem(getIdentityStorageKey());
     roleEditor.classList.add('hidden');
     if (channelData) {
@@ -1083,9 +1082,36 @@ function renderIdentityConfirmed() {
       renderLobby(channelData.players);
     }
   };
-  row.appendChild(changeBtn);
+  row.appendChild(nameSpan);
 
   identitySelector.appendChild(row);
+
+  const changeRolesBtn = document.createElement('button');
+  changeRolesBtn.className = 'btn btn-secondary btn-change-roles';
+  changeRolesBtn.textContent = roleEditor.classList.contains('hidden') ? 'Change Roles' : 'Hide Roles';
+  changeRolesBtn.onclick = () => {
+    roleEditorManuallyToggled = true;
+    const isHidden = roleEditor.classList.toggle('hidden');
+    changeRolesBtn.textContent = isHidden ? 'Change Roles' : 'Hide Roles';
+  };
+  identitySelector.appendChild(changeRolesBtn);
+}
+
+function showRoleEditorIfNeeded(players: WoWPlayer[]) {
+  renderRoleEditor(players);
+  if (!roleEditorManuallyToggled) {
+    const player = players.find((p) => p.discordId === currentPlayerId);
+    if (player && !hasAnyRole(player)) {
+      roleEditor.classList.remove('hidden');
+    } else {
+      roleEditor.classList.add('hidden');
+    }
+  }
+  // Sync button text to actual visibility
+  const toggleBtn = identitySelector.querySelector('.btn-change-roles');
+  if (toggleBtn) {
+    toggleBtn.textContent = roleEditor.classList.contains('hidden') ? 'Change Roles' : 'Hide Roles';
+  }
 }
 
 interface RoleButtonDef {
@@ -1109,8 +1135,8 @@ const OFFSPEC_BUTTONS: RoleButtonDef[] = [
 ];
 
 const UTILITY_BUTTONS: RoleButtonDef[] = [
-  { id: 'Brez', label: 'Brez', activeClass: 'active-utility' },
-  { id: 'Lust', label: 'Lust', activeClass: 'active-utility' },
+  { id: 'Brez', label: 'Brez', activeClass: 'active-brez' },
+  { id: 'Lust', label: 'Lust', activeClass: 'active-lust' },
 ];
 
 // Map WoWPlayer boolean fields to role string IDs
@@ -1138,9 +1164,10 @@ function renderRoleEditor(players: WoWPlayer[]) {
   const player = players.find((p) => p.discordId === currentPlayerId);
   const selectedRoles = new Set(player ? playerRolesToStringArray(player) : []);
 
-  roleEditor.classList.remove('hidden');
+  const wasHidden = roleEditor.classList.contains('hidden');
   roleEditor.textContent = '';
   roleEditor.className = 'role-editor';
+  if (wasHidden) roleEditor.classList.add('hidden');
 
   const title = document.createElement('div');
   title.className = 'role-editor-title';
@@ -1235,6 +1262,10 @@ function renderRoleEditor(players: WoWPlayer[]) {
         saveBtn.textContent = 'Save';
         saveBtn.disabled = false;
         roleEditorSaving = false;
+        roleEditor.classList.add('hidden');
+        roleEditorManuallyToggled = false;
+        const toggleBtn = identitySelector.querySelector('.btn-change-roles');
+        if (toggleBtn) toggleBtn.textContent = 'Change Roles';
       }, 1500);
     } catch (err) {
       console.error('[Wheelson] Failed to save roles:', err);
