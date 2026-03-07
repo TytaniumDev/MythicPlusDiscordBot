@@ -73,7 +73,9 @@ class PreferenceService:
         def _run() -> dict[str, dict[str, Any]]:
             result: dict[str, dict[str, Any]] = {}
             for doc_snap in db.collection("preferences").stream():
-                result[doc_snap.id] = doc_snap.to_dict()
+                data = doc_snap.to_dict()
+                if data is not None:
+                    result[doc_snap.id] = data
             return result
 
         return await asyncio.to_thread(_run)
