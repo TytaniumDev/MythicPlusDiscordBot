@@ -157,13 +157,21 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         mock_get_svc.return_value = mock_svc
 
         state = RoleSelectionState("TestPlayer", "12345", {ROLE_TANK})
-        view = UtilitiesView(state, "test")
+        main_view = MainSpecView(state, "test_main")
+        offspec_view = OffspecView(state, "test_off")
+        utilities_view = UtilitiesView(state, "test_util")
+        state.views = [main_view, offspec_view, utilities_view]
+
         interaction = MagicMock(spec=discord.Interaction)
         interaction.response = MagicMock()
         interaction.response.send_message = AsyncMock()
-        view.stop = MagicMock()
 
-        await view.save.callback(interaction)
+        # Spy on stop for all views
+        main_view.stop = MagicMock()
+        offspec_view.stop = MagicMock()
+        utilities_view.stop = MagicMock()
+
+        await utilities_view.save.callback(interaction)
 
         mock_svc.set_preference.assert_called_once()
         args = mock_svc.set_preference.call_args
@@ -172,7 +180,10 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         self.assertIn(ROLE_TANK, args[0][2])
 
         interaction.response.send_message.assert_called_once()
-        view.stop.assert_called_once()
+        # All views should be stopped
+        main_view.stop.assert_called_once()
+        offspec_view.stop.assert_called_once()
+        utilities_view.stop.assert_called_once()
 
     @patch("core.role_ui.get_preference_service")
     async def test_clear_method(self, mock_get_svc: MagicMock):
@@ -181,18 +192,37 @@ class TestUI(unittest.IsolatedAsyncioTestCase):
         mock_get_svc.return_value = mock_svc
 
         state = RoleSelectionState("TestPlayer", "12345", {ROLE_TANK})
-        view = UtilitiesView(state, "test")
+        main_view = MainSpecView(state, "test_main")
+        offspec_view = OffspecView(state, "test_off")
+        utilities_view = UtilitiesView(state, "test_util")
+        state.views = [main_view, offspec_view, utilities_view]
+
+        # Mock messages for the other views
+        mock_msg1 = MagicMock()
+        mock_msg1.edit = AsyncMock()
+        mock_msg2 = MagicMock()
+        mock_msg2.edit = AsyncMock()
+        mock_msg3 = MagicMock()
+        mock_msg3.edit = AsyncMock()
+        state.messages = [mock_msg1, mock_msg2, mock_msg3]
+
         interaction = MagicMock(spec=discord.Interaction)
         interaction.response = MagicMock()
-        interaction.response.send_message = AsyncMock()
-        interaction.edit_original_response = AsyncMock()
+        interaction.response.edit_message = AsyncMock()
+        interaction.followup = MagicMock()
+        interaction.followup.send = AsyncMock()
 
-        await view.clear.callback(interaction)
+        await utilities_view.clear.callback(interaction)
 
         mock_svc.clear_preference.assert_called_once_with("12345")
         self.assertEqual(len(state.selected_roles), 0)
-        interaction.response.send_message.assert_called_once()
-        interaction.edit_original_response.assert_called_once()
+        # Utilities message updated via interaction response
+        interaction.response.edit_message.assert_called_once()
+        # Other messages updated via stored references
+        mock_msg1.edit.assert_called_once()
+        mock_msg2.edit.assert_called_once()
+        # Confirmation sent via followup
+        interaction.followup.send.assert_called_once()
 
     async def test_role_board_view_initialization(self):
         mock_callback = AsyncMock()

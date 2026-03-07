@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import discord
@@ -42,9 +42,8 @@ class RoleSelectionState:
     on_save_callback: (
         Callable[[discord.Interaction], Coroutine[Any, Any, None]] | None
     ) = None
-
-
-MAIN_SPEC_ROLES = {ROLE_TANK, ROLE_HEALER, ROLE_RANGED, ROLE_MELEE}
+    views: list[discord.ui.View] = field(default_factory=list)
+    messages: list[Any] = field(default_factory=list)
 
 
 class RoleButton(discord.ui.Button[discord.ui.View]):
@@ -178,18 +177,19 @@ class UtilitiesView(discord.ui.View):
         await pref_svc.set_preference(
             self.state.discord_id,
             self.state.player_name,
-            list(self.state.selected_roles),
+            sorted(self.state.selected_roles),
         )
         await interaction.response.send_message(
             f"✅ Saved roles for **{self.state.player_name}**: "
-            f"{', '.join(self.state.selected_roles) if self.state.selected_roles else 'None'}",
+            f"{', '.join(sorted(self.state.selected_roles)) if self.state.selected_roles else 'None'}",
             ephemeral=True,
         )
 
         if self.state.on_save_callback:
             await self.state.on_save_callback(interaction)
 
-        self.stop()
+        for view in self.state.views:
+            view.stop()
 
     @discord.ui.button(label="Clear", style=discord.ButtonStyle.danger, row=1)
     async def clear(
@@ -200,13 +200,24 @@ class UtilitiesView(discord.ui.View):
         pref_svc = get_preference_service()
         await pref_svc.clear_preference(self.state.discord_id)
         self.state.selected_roles.clear()
-        for item in self.children:
-            if isinstance(item, RoleButton):
-                item.style = discord.ButtonStyle.secondary
-        await interaction.response.send_message(
+
+        # Reset button styles across all views
+        for view in self.state.views:
+            for item in view.children:
+                if isinstance(item, RoleButton):
+                    item.style = discord.ButtonStyle.secondary
+
+        # Update utilities message via interaction response
+        await interaction.response.edit_message(view=self)
+
+        # Update main spec and offspec messages
+        for view, msg in zip(self.state.views, self.state.messages, strict=False):
+            if view is not self and msg is not None:
+                await msg.edit(view=view)
+
+        await interaction.followup.send(
             f"🗑️ Cleared roles for **{self.state.player_name}**", ephemeral=True
         )
-        await interaction.edit_original_response(view=self)
 
         if self.state.on_save_callback:
             await self.state.on_save_callback(interaction)
@@ -253,23 +264,32 @@ class RoleBoardView(discord.ui.View):
         state = RoleSelectionState(name, discord_id, set(saved_roles or []), on_save)
         prefix = os.urandom(8).hex()
 
+        main_view = MainSpecView(state, f"{prefix}_main")
+        offspec_view = OffspecView(state, f"{prefix}_off")
+        utilities_view = UtilitiesView(state, f"{prefix}_util")
+        state.views = [main_view, offspec_view, utilities_view]
+
         await interaction.response.defer(ephemeral=True)
 
-        await interaction.followup.send(
+        msg1 = await interaction.followup.send(
             f"Select your roles for **{name}**:\n**Main Spec** (pick one)",
-            view=MainSpecView(state, f"{prefix}_main"),
+            view=main_view,
             ephemeral=True,
+            wait=True,
         )
-        await interaction.followup.send(
+        msg2 = await interaction.followup.send(
             "**Offspec** (pick any)",
-            view=OffspecView(state, f"{prefix}_off"),
+            view=offspec_view,
             ephemeral=True,
+            wait=True,
         )
-        await interaction.followup.send(
+        msg3 = await interaction.followup.send(
             "**Utilities**",
-            view=UtilitiesView(state, f"{prefix}_util"),
+            view=utilities_view,
             ephemeral=True,
+            wait=True,
         )
+        state.messages = [msg1, msg2, msg3]
 
 
 def create_role_board_embed(players: list[WoWPlayer]) -> discord.Embed:
