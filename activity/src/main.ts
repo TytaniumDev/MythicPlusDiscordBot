@@ -1066,11 +1066,11 @@ function renderIdentityConfirmed() {
   const row = document.createElement('div');
   row.className = 'identity-current';
 
-  const nameSpan = document.createElement('span');
-  nameSpan.className = 'identity-name';
-  nameSpan.textContent = currentPlayerName ?? 'Unknown';
-  nameSpan.title = 'Click to change';
-  nameSpan.onclick = () => {
+  const nameBtn = document.createElement('button');
+  nameBtn.className = 'identity-name';
+  nameBtn.textContent = currentPlayerName ?? 'Unknown';
+  nameBtn.title = 'Click to change identity';
+  nameBtn.onclick = () => {
     currentPlayerId = null;
     currentPlayerName = null;
     identityResolved = false;
@@ -1082,7 +1082,7 @@ function renderIdentityConfirmed() {
       renderLobby(channelData.players);
     }
   };
-  row.appendChild(nameSpan);
+  row.appendChild(nameBtn);
 
   identitySelector.appendChild(row);
 
@@ -1706,7 +1706,11 @@ function createRoleRow(
 
   const indicator = document.createElement('span');
   indicator.className = 'role-indicator';
+  indicator.classList.add(label.toLowerCase());
   indicator.style.background = color;
+  indicator.setAttribute('role', 'img');
+  indicator.setAttribute('aria-label', label);
+  indicator.setAttribute('title', label);
 
   const labelSpan = document.createElement('span');
   labelSpan.className = 'role-label';
@@ -1769,6 +1773,7 @@ function createCompactRoleRow(
 
   const indicator = document.createElement('span');
   indicator.className = 'role-indicator';
+  indicator.classList.add(roleLabel.toLowerCase());
   indicator.style.background = color;
   indicator.setAttribute('role', 'img');
   indicator.setAttribute('aria-label', roleLabel);

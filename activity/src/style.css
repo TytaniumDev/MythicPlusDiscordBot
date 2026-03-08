@@ -38,7 +38,7 @@
   --color-lust: #e85d26;
 
   --text-primary: #e5e7eb;
-  --text-secondary: #9ca3af;
+  --text-secondary: #b0b8c4;
   --text-heading: #ffffff;
 
   --font-family: 'Inter', sans-serif;
@@ -115,7 +115,7 @@ body {
   color: var(--text-secondary);
   font-family: monospace;
   text-decoration: none;
-  opacity: 0.6;
+  opacity: 0.75;
   transition: opacity 0.2s;
   margin-left: auto;
 }
@@ -181,7 +181,7 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
 }
@@ -401,7 +401,7 @@ body {
 }
 
 .channel-card.channel-empty {
-  opacity: 0.6;
+  opacity: 0.75;
 }
 
 /* ============================================
@@ -575,7 +575,7 @@ body {
 
 .role-tag.tag-offspec {
   background: transparent;
-  opacity: 0.7;
+  border-style: dashed;
 }
 
 .role-tag.tag-subtype {
@@ -670,6 +670,11 @@ body {
   text-decoration-color: transparent;
   text-underline-offset: 2px;
   transition: text-decoration-color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .identity-current .identity-name:hover {
@@ -711,7 +716,7 @@ body {
 }
 
 .role-editor-label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -975,7 +980,7 @@ body {
 
 .carousel-dot.completed {
   background: var(--dot-color, var(--text-secondary));
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 /* Next/Spin button pinned at bottom */
@@ -1401,5 +1406,44 @@ body {
   .carousel-dot {
     width: 10px;
     height: 10px;
+  }
+}
+
+/* ============================================
+   Colorblind-Friendly Role Dot Shapes
+   ============================================ */
+.role-dot.tank,
+.role-indicator.tank {
+  border-radius: 2px;
+}
+
+.role-dot.healer,
+.role-indicator.healer {
+  position: relative;
+}
+
+.role-dot.healer::after,
+.role-indicator.healer::after {
+  content: '+';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--bg-primary);
+  pointer-events: none;
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -184,7 +184,7 @@ export class Wheel {
       this.ctx.lineWidth = 3;
       this.ctx.stroke();
 
-      this.ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      this.ctx.fillStyle = 'rgba(255,255,255,0.65)';
       this.ctx.font = `bold ${Math.round(size * 0.1)}px 'Inter', sans-serif`;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
