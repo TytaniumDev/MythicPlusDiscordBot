@@ -1706,7 +1706,11 @@ function createRoleRow(
 
   const indicator = document.createElement('span');
   indicator.className = 'role-indicator';
+  indicator.classList.add(label.toLowerCase());
   indicator.style.background = color;
+  indicator.setAttribute('role', 'img');
+  indicator.setAttribute('aria-label', label);
+  indicator.setAttribute('title', label);
 
   const labelSpan = document.createElement('span');
   labelSpan.className = 'role-label';
@@ -1769,6 +1773,7 @@ function createCompactRoleRow(
 
   const indicator = document.createElement('span');
   indicator.className = 'role-indicator';
+  indicator.classList.add(roleLabel.toLowerCase());
   indicator.style.background = color;
   indicator.setAttribute('role', 'img');
   indicator.setAttribute('aria-label', roleLabel);

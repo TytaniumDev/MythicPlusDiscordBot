@@ -1,7 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { mockSession, mockPlayers } from '../src/mockData';
+import AxeBuilder from '@axe-core/playwright';
+import { mockSession, mockPlayers, mockGroups } from '../src/mockData';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
+
+const lobbyData = {
+  ...mockSession,
+  status: 'lobby',
+  players: mockPlayers,
+  selectedChannelId: 'vc-1',
+};
 
 const staticWheelsData = {
   ...mockSession,
@@ -11,15 +19,22 @@ const staticWheelsData = {
   players: mockPlayers,
 };
 
+const resultsData = {
+  ...mockSession,
+  status: 'completed',
+  selectedChannelId: 'vc-1',
+  players: mockPlayers,
+  groups: mockGroups,
+};
+
+// ── Existing tests ──────────────────────────────────────────
+
 test('Wheels have accessible attributes', async ({ page }) => {
-  // Use static wheel mode to inspect initial state
   await page.goto(`/?data=${encodeData(staticWheelsData)}`);
 
-  // Verify Tank Wheel
   const tankCanvas = page.locator('#wheel-tank');
   await expect(tankCanvas).toHaveAttribute('role', 'img');
 
-  // It should contain the label and candidate count
   const label = await tankCanvas.getAttribute('aria-label');
   expect(label).not.toBeNull();
   expect(label).toContain('Tank Selection Wheel');
@@ -33,13 +48,11 @@ test('Wheel result container has aria-live', async ({ page }) => {
 });
 
 test('Lobby player chips have accessible role indicators', async ({ page }) => {
-  const lobbyData = { ...mockSession, status: 'lobby', players: mockPlayers, selectedChannelId: 'vc-1' };
   await page.goto(`/?data=${encodeData(lobbyData)}`);
 
   const firstChipDot = page.locator('.player-chip .role-dot').first();
   await expect(firstChipDot).toHaveAttribute('role', 'img');
 
-  // Check for one of the valid role labels
   const label = await firstChipDot.getAttribute('aria-label');
   expect(label).toBeTruthy();
   expect(['Tank', 'Healer', 'DPS']).toContain(label);
@@ -48,17 +61,101 @@ test('Lobby player chips have accessible role indicators', async ({ page }) => {
 });
 
 test('Clicking Wheelson header navigates back to home', async ({ page }) => {
-  const lobbyData = { ...mockSession, status: 'lobby', players: mockPlayers, selectedChannelId: 'vc-1' };
   await page.goto(`/?data=${encodeData(lobbyData)}`);
 
-  // Verify we're in the lobby view
   await expect(page.locator('#view-lobby')).toBeVisible();
   await expect(page.locator('#view-home')).toBeHidden();
 
-  // Click the Wheelson header
   await page.locator('.app-header h1').click();
 
-  // Should navigate back to home view
   await expect(page.locator('#view-home')).toBeVisible();
   await expect(page.locator('#view-lobby')).toBeHidden();
+});
+
+// ── Axe-core automated scans ────────────────────────────────
+
+// Pre-existing structural issues outside this PR's scope:
+// - aria-allowed-role: h1[role=button] for navigable header
+// - page-has-heading-one: h1 has role=button so axe doesn't see it as heading
+// - landmark-complementary-is-top-level: aside nested in main layout
+// - heading-order: h1 jumps to h4 in group cards (existing structure)
+const AXE_DISABLED_RULES = [
+  'aria-allowed-role',
+  'page-has-heading-one',
+  'landmark-complementary-is-top-level',
+  'heading-order',
+];
+
+test('Lobby view passes axe-core scan', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(lobbyData)}`);
+  await expect(page.locator('#view-lobby')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .exclude('canvas')
+    .disableRules(AXE_DISABLED_RULES)
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test('Wheels view passes axe-core scan', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(staticWheelsData)}`);
+  await expect(page.locator('#view-wheels')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .exclude('canvas')
+    .disableRules(AXE_DISABLED_RULES)
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test('Results view passes axe-core scan', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(resultsData)}`);
+  await expect(page.locator('#view-results')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .exclude('canvas')
+    .disableRules(AXE_DISABLED_RULES)
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+// ── CSS contrast / shape assertions ─────────────────────────
+
+test('Offspec tags do not use opacity', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+  const offspecTags = page.locator('.role-tag.tag-offspec');
+  const count = await offspecTags.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let i = 0; i < count; i++) {
+    const opacity = await offspecTags.nth(i).evaluate(el => getComputedStyle(el).opacity);
+    expect(opacity).toBe('1');
+  }
+});
+
+test('Role dots have shape differentiation', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+  const tankDot = page.locator('.role-dot.tank').first();
+  await expect(tankDot).toBeVisible();
+  const tankRadius = await tankDot.evaluate(el => getComputedStyle(el).borderRadius);
+  expect(tankRadius).toBe('2px');
+});
+
+test('Group card indicators have a11y attributes', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(resultsData)}`);
+  await expect(page.locator('#view-results')).toBeVisible();
+
+  const indicators = page.locator('.role-indicator');
+  const count = await indicators.count();
+  expect(count).toBeGreaterThan(0);
+
+  for (let i = 0; i < count; i++) {
+    const el = indicators.nth(i);
+    await expect(el).toHaveAttribute('role', 'img');
+    const ariaLabel = await el.getAttribute('aria-label');
+    expect(ariaLabel).toBeTruthy();
+    expect(['Tank', 'Healer', 'DPS']).toContain(ariaLabel);
+  }
 });
