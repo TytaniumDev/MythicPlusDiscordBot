@@ -79,6 +79,7 @@ test('Clicking Wheelson header navigates back to home', async ({ page }) => {
 // - page-has-heading-one: h1 has role=button so axe doesn't see it as heading
 // - landmark-complementary-is-top-level: aside nested in main layout
 // - heading-order: h1 jumps to h4 in group cards (existing structure)
+//   TODO: fix h1->h4 heading jump in group cards
 const AXE_DISABLED_RULES = [
   'aria-allowed-role',
   'page-has-heading-one',
@@ -137,10 +138,15 @@ test('Offspec tags do not use opacity', async ({ page }) => {
 test('Role dots have shape differentiation', async ({ page }) => {
   await page.goto(`/?data=${encodeData(lobbyData)}`);
 
+  // Tank: rounded square (border-radius: 2px vs default 50%)
   const tankDot = page.locator('.role-dot.tank').first();
   await expect(tankDot).toBeVisible();
   const tankRadius = await tankDot.evaluate(el => getComputedStyle(el).borderRadius);
   expect(tankRadius).toBe('2px');
+
+  // Note: healer shape uses a ::after pseudo-element with '+' content,
+  // which can't be directly asserted via Playwright DOM queries.
+  // Visual regression tests cover it via screenshot comparison.
 });
 
 test('Group card indicators have a11y attributes', async ({ page }) => {

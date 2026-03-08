@@ -670,6 +670,11 @@ body {
   text-decoration-color: transparent;
   text-underline-offset: 2px;
   transition: text-decoration-color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .identity-current .identity-name:hover {
@@ -1429,6 +1434,7 @@ body {
   font-weight: 900;
   line-height: 1;
   color: var(--bg-primary);
+  pointer-events: none;
 }
 
 /* ============================================
@@ -1439,8 +1445,5 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-  .wheels-container {
-    transition: none;
   }
 }
