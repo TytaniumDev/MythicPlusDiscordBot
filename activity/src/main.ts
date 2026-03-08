@@ -1640,12 +1640,20 @@ async function handleNewRound() {
   }
 
   if (!currentChannelId) return;
+
+  const originalText = newRoundBtn.textContent;
+  newRoundBtn.disabled = true;
+  newRoundBtn.textContent = 'Starting...';
+
   const docRef = doc(db, 'channels', currentChannelId);
   try {
     await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
   } catch (err) {
     console.error('[Wheelson] Failed to start new round:', err);
     statusMsg.textContent = 'Failed to start new round. Please refresh.';
+  } finally {
+    newRoundBtn.disabled = false;
+    newRoundBtn.textContent = originalText;
   }
   // Auto-nav handles navigation for all clients when status changes to 'lobby'
 }
@@ -1676,9 +1684,9 @@ function createGroupCard(group: WoWGroup, index: number, label?: string, hideEmp
   const div = document.createElement('div');
   div.className = 'group-card';
 
-  const h4 = document.createElement('h4');
-  h4.textContent = label ?? `Group ${index + 1}`;
-  div.appendChild(h4);
+  const h3 = document.createElement('h3');
+  h3.textContent = label ?? `Group ${index + 1}`;
+  div.appendChild(h3);
 
   if (!hideEmpty || group.tank) {
     div.appendChild(createRoleRow('var(--color-tank)', 'Tank', group.tank?.name || 'None', group.tank));
@@ -1730,9 +1738,9 @@ function createCompactGroupCard(group: WoWGroup, index: number, label?: string, 
   const div = document.createElement('div');
   div.className = 'group-card-compact';
 
-  const h4 = document.createElement('h4');
-  h4.textContent = label ?? `Group ${index + 1}`;
-  div.appendChild(h4);
+  const h3 = document.createElement('h3');
+  h3.textContent = label ?? `Group ${index + 1}`;
+  div.appendChild(h3);
 
   const roles: { color: string; roleLabel: string; name: string; player?: WoWPlayer | null }[] = [];
   if (!hideEmpty || group.tank) {

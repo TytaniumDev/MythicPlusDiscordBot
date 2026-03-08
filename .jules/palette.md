@@ -13,3 +13,7 @@
 ## 2026-03-01 - Interactive Non-Button Elements
 **Learning:** Adding `cursor: pointer` to elements like `<h1>` that act as navigation isn't enough for accessibility. They need `role="button"`, `tabindex="0"`, a descriptive `aria-label`, a `:focus-visible` state, and a `keydown` handler (for Enter/Space) so keyboard and screen reader users can discover and trigger them properly.
 **Action:** Always verify that custom interactive elements (that aren't native `<button>` or `<a>` tags) implement the full suite of keyboard and ARIA support.
+
+## 2026-10-24 - Semantic HTML Structure for Accessibility
+**Learning:** The structure of HTML elements like landmarks (`<aside>`, `<main>`) and headings (`<h1>`, `<h2>`, `<h3>`) directly dictates the navigation experience for screen reader users. Axe-core rules often catch invalid nesting (like `<aside>` inside non-top-level layouts) or skipped heading levels, which confuse users navigating by headings. Fixing these HTML semantics allows enabling previously disabled Axe rules and provides a more robust tree.
+**Action:** Always ensure heading levels increment sequentially and avoid wrapping landmark elements (`<aside>`, `<nav>`, `<header>`) inside other layout containers unless structurally appropriate.
