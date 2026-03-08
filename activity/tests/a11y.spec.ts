@@ -77,14 +77,9 @@ test('Clicking Wheelson header navigates back to home', async ({ page }) => {
 // Pre-existing structural issues outside this PR's scope:
 // - aria-allowed-role: h1[role=button] for navigable header
 // - page-has-heading-one: h1 has role=button so axe doesn't see it as heading
-// - landmark-complementary-is-top-level: aside nested in main layout
-// - heading-order: h1 jumps to h4 in group cards (existing structure)
-//   TODO: fix h1->h4 heading jump in group cards
 const AXE_DISABLED_RULES = [
   'aria-allowed-role',
   'page-has-heading-one',
-  'landmark-complementary-is-top-level',
-  'heading-order',
 ];
 
 test('Lobby view passes axe-core scan', async ({ page }) => {

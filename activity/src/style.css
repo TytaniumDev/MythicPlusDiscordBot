@@ -1054,7 +1054,7 @@ body {
   animation: fadeSlideIn 0.4s ease-out;
 }
 
-.group-card h4 {
+.group-card h3 {
   font-size: 0.8rem;
   color: var(--color-gold);
   margin-bottom: 6px;
@@ -1097,7 +1097,7 @@ body {
   animation: fadeSlideIn 0.4s ease-out;
 }
 
-.group-card-compact h4 {
+.group-card-compact h3 {
   font-size: 0.65rem;
   color: var(--color-gold);
   margin-bottom: 4px;
@@ -1155,7 +1155,7 @@ body {
   padding: 16px;
 }
 
-#final-groups .group-card h4 {
+#final-groups .group-card h3 {
   font-size: 0.9rem;
 }
 
