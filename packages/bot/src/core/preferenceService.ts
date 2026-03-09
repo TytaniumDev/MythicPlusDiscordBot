@@ -1,5 +1,5 @@
 import logger from './logger.js';
-import { FirebaseService } from './firebaseService.js';
+import { FirebaseService, SERVER_TIMESTAMP } from './firebaseService.js';
 import {
   clearPlayerPreference,
   getAllPreferences,
@@ -83,9 +83,9 @@ export class PreferenceService implements IPreferenceService {
 
     const result: Record<string, Record<string, unknown>> = {};
     const db = this.firebase.db;
-    const docs = db.collection('preferences').stream();
-    for (const docSnap of docs) {
-      const data = docSnap.to_dict();
+    const snapshot = await db.collection('preferences').get();
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
       if (data !== null) {
         result[docSnap.id] = data;
       }
@@ -203,10 +203,10 @@ export class PreferenceService implements IPreferenceService {
     discordId: string,
   ): Promise<Record<string, unknown> | null> {
     if (!this.firebase.db) return null;
-    const ref = this.firebase.db.collection('preferences').document(discordId);
-    const docSnap = ref.get();
+    const ref = this.firebase.db.collection('preferences').doc(discordId);
+    const docSnap = await ref.get();
     if (docSnap.exists) {
-      return docSnap.to_dict();
+      return docSnap.data() as Record<string, unknown>;
     }
     return null;
   }
@@ -217,17 +217,17 @@ export class PreferenceService implements IPreferenceService {
     roles: string[],
   ): Promise<void> {
     if (!this.firebase.db) return;
-    const ref = this.firebase.db.collection('preferences').document(discordId);
-    ref.set({
+    const ref = this.firebase.db.collection('preferences').doc(discordId);
+    await ref.set({
       roles,
       wowName: name,
-      updatedAt: 'SERVER_TIMESTAMP',
+      updatedAt: SERVER_TIMESTAMP,
     });
   }
 
   async _deleteFirestorePref(discordId: string): Promise<void> {
     if (!this.firebase.db) return;
-    const ref = this.firebase.db.collection('preferences').document(discordId);
-    ref.delete();
+    const ref = this.firebase.db.collection('preferences').doc(discordId);
+    await ref.delete();
   }
 }

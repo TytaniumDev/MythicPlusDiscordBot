@@ -29,8 +29,7 @@ export class GroupService {
         (m) => !(m as unknown as { bot: boolean }).bot,
       );
       if (members.length === 0) {
-        await ctx.send({ embed: { title: '', color: 0, fields: [] } });
-        // In the real implementation, this would be ctx.send("❌ No players found in the channel.")
+        await ctx.send('❌ No players found in the channel.');
         return null;
       }
       players = getPlayerList(members).filter((p) => p.hasRoles());

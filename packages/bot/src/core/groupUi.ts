@@ -19,7 +19,7 @@ export interface Message {
 }
 
 export interface Sendable {
-  send(options: { embed: Embed }): Promise<Message>;
+  send(content: string | { embed: Embed }): Promise<Message>;
 }
 
 // Gold color value matching discord.js

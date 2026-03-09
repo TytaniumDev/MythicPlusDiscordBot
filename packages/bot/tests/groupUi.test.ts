@@ -74,8 +74,8 @@ describe('announceGroup', () => {
     await announceGroup(ctx, channel, group, 1, true);
 
     expect(ctx.send).toHaveBeenCalledTimes(1);
-    const sendArgs = vi.mocked(ctx.send).mock.calls[0][0];
-    const embed = sendArgs.embed as Embed;
+    const sendArgs = vi.mocked(ctx.send).mock.calls[0][0] as { embed: Embed };
+    const embed = sendArgs.embed;
     expect(embed.title).toBe('Group 1');
     const fields = Object.fromEntries(embed.fields.map((f) => [f.name, f.value]));
     expect(fields['Tank']).toBe('TankPlayer');

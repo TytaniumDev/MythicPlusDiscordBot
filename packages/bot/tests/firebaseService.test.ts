@@ -5,7 +5,7 @@ import { FirebaseService } from '../src/core/firebaseService.js';
 function createMockDoc(id: string) {
   return {
     id,
-    reference: { delete: vi.fn() },
+    ref: { delete: vi.fn() },
   };
 }
 
@@ -16,15 +16,15 @@ describe('FirebaseService.deleteOldDocs', () => {
   function createMockDb() {
     const mockBatch = {
       delete: vi.fn(),
-      commit: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
     };
     const mockQuery = {
-      stream: vi.fn().mockReturnValue([]),
+      get: vi.fn().mockResolvedValue({ docs: [] }),
     };
     const mockCollection = {
       where: vi.fn().mockReturnValue(mockQuery),
-      stream: vi.fn().mockReturnValue([]),
-      document: vi.fn(),
+      get: vi.fn().mockResolvedValue({ docs: [] }),
+      doc: vi.fn(),
     };
     const db = {
       collection: vi.fn().mockReturnValue(mockCollection),
@@ -41,7 +41,7 @@ describe('FirebaseService.deleteOldDocs', () => {
   });
 
   it('handles no matching docs', async () => {
-    mockDb.mockQuery.stream.mockReturnValue([]);
+    mockDb.mockQuery.get.mockResolvedValue({ docs: [] });
     const deleted = await service.deleteOldDocs('channels', 3600);
     expect(deleted).toBe(0);
   });
@@ -49,7 +49,7 @@ describe('FirebaseService.deleteOldDocs', () => {
   it('deletes single batch (< 500 docs)', async () => {
     const numDocs = 10;
     const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.stream.mockReturnValue(docs);
+    mockDb.mockQuery.get.mockResolvedValue({ docs });
 
     const deleted = await service.deleteOldDocs('guilds', 3600);
     expect(deleted).toBe(numDocs);
@@ -60,10 +60,10 @@ describe('FirebaseService.deleteOldDocs', () => {
   it('handles multi-batch (> 500 docs)', async () => {
     const numDocs = 550;
     const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.stream.mockReturnValue(docs);
+    mockDb.mockQuery.get.mockResolvedValue({ docs });
 
-    const batch1 = { delete: vi.fn(), commit: vi.fn() };
-    const batch2 = { delete: vi.fn(), commit: vi.fn() };
+    const batch1 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
+    const batch2 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
     mockDb.db.batch.mockReturnValueOnce(batch1).mockReturnValueOnce(batch2);
 
     const deleted = await service.deleteOldDocs('channels', 3600);
@@ -78,10 +78,12 @@ describe('FirebaseService.deleteOldDocs', () => {
   it('handles exact batch boundary (500 docs)', async () => {
     const numDocs = 500;
     const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.stream.mockReturnValue(docs);
+    mockDb.mockQuery.get.mockResolvedValue({ docs });
 
-    const batch1 = { delete: vi.fn(), commit: vi.fn() };
-    mockDb.db.batch.mockReturnValueOnce(batch1).mockReturnValueOnce({ delete: vi.fn(), commit: vi.fn() });
+    const batch1 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
+    mockDb.db.batch
+      .mockReturnValueOnce(batch1)
+      .mockReturnValueOnce({ delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) });
 
     const deleted = await service.deleteOldDocs('guilds', 3600);
     expect(deleted).toBe(numDocs);
@@ -90,7 +92,7 @@ describe('FirebaseService.deleteOldDocs', () => {
   });
 
   it('works for both collection names', async () => {
-    mockDb.mockQuery.stream.mockReturnValue([]);
+    mockDb.mockQuery.get.mockResolvedValue({ docs: [] });
     await service.deleteOldDocs('guilds', 3600);
     expect(mockDb.db.collection).toHaveBeenCalledWith('guilds');
 
@@ -105,11 +107,11 @@ describe('FirebaseService.deleteAllInCollection', () => {
   function createMockDb() {
     const mockBatch = {
       delete: vi.fn(),
-      commit: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
     };
     const mockCollection = {
-      stream: vi.fn().mockReturnValue([]),
-      document: vi.fn(),
+      get: vi.fn().mockResolvedValue({ docs: [] }),
+      doc: vi.fn(),
       where: vi.fn(),
     };
     return {
@@ -126,7 +128,7 @@ describe('FirebaseService.deleteAllInCollection', () => {
     service = Object.create(FirebaseService.prototype);
     const mockDb = createMockDb();
     service.db = mockDb.db as unknown as FirebaseService['db'];
-    mockDb.mockCollection.stream.mockReturnValue([]);
+    mockDb.mockCollection.get.mockResolvedValue({ docs: [] });
 
     const deleted = await service.deleteAllInCollection('sessions');
     expect(deleted).toBe(0);
@@ -138,9 +140,9 @@ describe('FirebaseService.deleteAllInCollection', () => {
     service.db = mockDb.db as unknown as FirebaseService['db'];
 
     const docs = Array.from({ length: 3 }, () => ({
-      reference: { delete: vi.fn() },
+      ref: { delete: vi.fn() },
     }));
-    mockDb.mockCollection.stream.mockReturnValue(docs);
+    mockDb.mockCollection.get.mockResolvedValue({ docs });
 
     const deleted = await service.deleteAllInCollection('sessions');
     expect(deleted).toBe(3);
