@@ -17,3 +17,15 @@ jobs:
   test:
     name: CI
     uses: TytaniumDev/.github/.github/workflows/test.yml@main
+
+  verify-ts:
+    name: TypeScript Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: ./scripts/verify-ts.sh

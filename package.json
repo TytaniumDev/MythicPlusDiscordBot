@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "activity"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "eslint": "^9.28.0",
+    "jiti": "^2.6.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.35.0"
+  },
+  "scripts": {
+    "lint": "eslint packages/",
+    "typecheck": "npm -w packages/shared run typecheck && npm -w packages/bot run typecheck",
+    "test": "npm -w packages/bot run test",
+    "verify": "./scripts/verify-ts.sh"
+  }
+}
