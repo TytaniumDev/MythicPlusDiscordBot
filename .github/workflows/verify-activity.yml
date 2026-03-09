@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'activity/**'
+      - 'packages/shared/**'
       - 'scripts/verify-activity.sh'
       - '.github/workflows/verify-activity.yml'
   workflow_dispatch:
@@ -22,9 +23,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 22
           cache: 'npm'
-          cache-dependency-path: 'activity/package-lock.json'
+
+      - name: Install root dependencies (workspace links)
+        run: npm ci
 
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
