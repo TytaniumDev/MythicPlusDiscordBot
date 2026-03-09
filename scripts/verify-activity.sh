@@ -11,9 +11,13 @@ if [ ! -d "node_modules" ]; then
     cd .. && npm ci && cd activity
 fi
 
-# Install Playwright browsers if in CI environment
+# In CI, npm ci uses the lockfile which only has macOS native binaries.
+# Reinstall lightningcss to get the correct platform binary.
 if [ "$CI" = "true" ]; then
-    echo "1.5. Installing Playwright Browsers..."
+    echo "1.5. Fixing platform-specific binaries..."
+    npm install --no-save lightningcss
+
+    echo "1.6. Installing Playwright Browsers..."
     npx playwright install --with-deps chromium
 fi
 

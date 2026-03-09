@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install root dependencies (workspace links)
-        run: npm install
+        run: npm ci
 
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
