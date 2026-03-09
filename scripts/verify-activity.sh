@@ -10,20 +10,9 @@ if [ ! -d "node_modules" ]; then
     cd .. && npm ci && cd activity
 fi
 
+# Install Playwright browsers if in CI environment
 if [ "$CI" = "true" ]; then
-    echo "1.5. Fixing platform-specific native binaries..."
-    # npm hoists lightningcss platform binary to root node_modules/ but lightningcss
-    # itself stays in activity/node_modules/. Symlink so require() can find it.
-    PLATFORM_PKG="lightningcss-$(node -p "process.platform")-$(node -p "process.arch")"
-    if [ "$(node -p "process.platform")" = "linux" ]; then
-        PLATFORM_PKG="${PLATFORM_PKG}-gnu"
-    fi
-    if [ -d "../node_modules/${PLATFORM_PKG}" ] && [ ! -d "node_modules/${PLATFORM_PKG}" ]; then
-        ln -s "../../node_modules/${PLATFORM_PKG}" "node_modules/${PLATFORM_PKG}"
-        echo "   Symlinked ${PLATFORM_PKG} from root node_modules"
-    fi
-
-    echo "1.6. Installing Playwright Browsers..."
+    echo "1.5. Installing Playwright Browsers..."
     npx playwright install --with-deps chromium
 fi
 
