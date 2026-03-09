@@ -1,0 +1,24 @@
+{
+  "name": "@mythicplus/bot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/bot.ts",
+  "scripts": {
+    "dev": "tsx src/bot.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mythicplus/shared": "*",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.5.0",
+    "firebase-admin": "^13.4.0",
+    "tsx": "^4.19.4",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.1",
+    "@types/node": "^22.15.0"
+  }
+}

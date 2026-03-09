@@ -1,20 +1,18 @@
-FROM python:3.11-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libnacl-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:22-slim
 
 WORKDIR /app
 
 ARG GIT_SHA=
 ENV GIT_SHA=${GIT_SHA}
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy workspace configs first for better layer caching
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/bot/package.json packages/bot/
 
-COPY . .
+RUN npm ci --workspace=packages/shared --workspace=packages/bot
 
-CMD ["python", "bot.py"]
+# Copy source code
+COPY packages/ packages/
+
+CMD ["node", "node_modules/.bin/tsx", "packages/bot/src/bot.ts"]

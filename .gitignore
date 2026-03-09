@@ -6,7 +6,7 @@ venv/
 .vscode/
 .idea/
 *.log
-activity/node_modules/
+node_modules/
 activity/dist/
 
 # Project-specific
