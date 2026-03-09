@@ -13,7 +13,9 @@ function getIdentityStorageKey(guildId: string | null): string {
 }
 
 export function useIdentity() {
-  const store = useAppStore();
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const currentPlayerName = useAppStore((s) => s.currentPlayerName);
+  const identityResolved = useAppStore((s) => s.identityResolved);
 
   const resolveIdentity = useCallback(async (players: WoWPlayer[]) => {
     const state = useAppStore.getState();
@@ -107,8 +109,8 @@ export function useIdentity() {
     resolveIdentity,
     selectPlayer,
     clearIdentity,
-    currentPlayerId: store.currentPlayerId,
-    currentPlayerName: store.currentPlayerName,
-    identityResolved: store.identityResolved,
+    currentPlayerId,
+    currentPlayerName,
+    identityResolved,
   };
 }

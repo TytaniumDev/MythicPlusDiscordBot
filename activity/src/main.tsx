@@ -5,30 +5,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { useAppStore } from './store/store';
 import { setupDiscordSdk } from './discordSdk';
+import { statusToView, routeToView } from './lib/routing';
 import type { ChannelData, GuildData } from './types';
-import type { ViewName } from './store/types';
 import './index.css';
-
-function statusToView(status: string): ViewName {
-  switch (status) {
-    case 'lobby':
-    case 'request_spin':
-      return 'lobby';
-    case 'spinning':
-      return 'wheels';
-    case 'completed':
-      return 'results';
-    default:
-      return 'lobby';
-  }
-}
-
-function routeToView(hash: string): { view: ViewName; guildId: string | null } {
-  if (!hash || hash === '#/') return { view: 'home', guildId: null };
-  const match = hash.match(/^#\/guild\/([\w-]+)\/(channels|lobby|wheels|results)$/);
-  if (match) return { view: match[2] as ViewName, guildId: match[1] };
-  return { view: 'home', guildId: null };
-}
 
 // ── Pre-render initialization ──────────────────────────────
 

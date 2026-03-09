@@ -4,20 +4,16 @@ import { useSessionService } from '../hooks/useSession';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
-import { initPools } from '../store/types';
+import { isCompleteGroup } from '../store/types';
+import { initPools } from '../lib/roles';
 import { audio } from '../lib/audio';
 import { delay, CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION } from '../lib/timing';
-import type { WoWGroup } from '../types';
 
 const BackArrow = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
   </svg>
 );
-
-function isCompleteGroup(group: WoWGroup): boolean {
-  return group.tank !== null && group.healer !== null && group.dps.length === 3;
-}
 
 interface WheelsViewProps {
   onNavigate: (view: 'lobby' | 'results', opts?: { replace?: boolean }) => void;
@@ -42,6 +38,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
   const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults !== false);
+
+  // Sync local checkbox state when Firestore announceResults changes
+  useEffect(() => {
+    setAnnounceChecked(channelData?.announceResults !== false);
+  }, [channelData?.announceResults]);
 
   const pools = poolTanks.length > 0 || poolHealers.length > 0 || poolDps.length > 0
     ? { tanks: poolTanks, healers: poolHealers, dps: poolDps }
@@ -146,7 +147,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     updateNextButton(newIdx, store.fullGroups.length);
   }, [updateNextButton]);
 
-  const spinForCurrentGroupGrid = useCallback(async () => {
+  // Ref to hold the latest checkForPendingReveals, breaking the circular
+  // dependency between spin callbacks and checkForPendingReveals.
+  const checkForPendingRevealsRef = useRef<() => void>(() => {});
+
+  const spinForCurrentGroupGrid: () => Promise<void> = useCallback(async () => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
@@ -190,10 +195,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     advanceAfterSpin(idx);
 
     // Check for pending reveals
-    checkForPendingReveals();
+    checkForPendingRevealsRef.current();
   }, [advanceAfterSpin]);
 
-  const spinForCurrentGroupCarousel = useCallback(async () => {
+  const spinForCurrentGroupCarousel: () => Promise<void> = useCallback(async () => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
@@ -243,10 +248,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     store.setSpinAnimating(false);
     advanceAfterSpin(idx);
 
-    checkForPendingReveals();
+    checkForPendingRevealsRef.current();
   }, [advanceAfterSpin]);
 
-  const runSpinAnimation = useCallback(async () => {
+  const runSpinAnimation: () => Promise<void> = useCallback(async () => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
@@ -259,7 +264,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [spinForCurrentGroupGrid, spinForCurrentGroupCarousel]);
 
-  const checkForPendingReveals = useCallback(() => {
+  const checkForPendingReveals: () => void = useCallback(() => {
     const store = useAppStore.getState();
     if (!store.channelData || store.isDemoMode) return;
     const revealed = store.channelData.revealedGroups ?? 0;
@@ -271,6 +276,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       }
     }
   }, [catchUpRevealedGroups, runSpinAnimation]);
+
+  // Keep the ref in sync with the latest checkForPendingReveals
+  checkForPendingRevealsRef.current = checkForPendingReveals;
 
   const handleNextClick = useCallback(async () => {
     const store = useAppStore.getState();
@@ -375,6 +383,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
               {nextBtnText}
             </button>
           )}
+          {/* Hidden ghost button so #next-btn always exists in the DOM for Playwright test selectors */}
           {!nextBtnVisible && (
             <button id="next-btn" className="btn btn-primary btn-large hidden">
               Spin for Group 1

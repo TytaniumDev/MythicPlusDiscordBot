@@ -1,17 +1,9 @@
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { GroupCard } from '../components/GroupCard';
-import type { WoWGroup } from '../types';
+import { isCompleteGroup } from '../store/types';
 
-function isCompleteGroup(group: WoWGroup): boolean {
-  return group.tank !== null && group.healer !== null && group.dps.length === 3;
-}
-
-interface ResultsViewProps {
-  onNavigate: (view: 'lobby', opts?: { replace?: boolean }) => void;
-}
-
-export function ResultsView({ onNavigate: _onNavigate }: ResultsViewProps) {
+export function ResultsView() {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
   const groups = channelData?.groups || [];

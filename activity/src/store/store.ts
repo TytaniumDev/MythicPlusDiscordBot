@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
 import { WoWGroup, WheelEntry, GuildData, ChannelData } from '../types';
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
   currentView: 'home',
 
@@ -87,7 +87,9 @@ export const useAppStore = create<AppState>((set) => ({
       roleEditorManuallyToggled: false,
       roleEditorVisible: false,
     }),
-  resetSession: () =>
+  resetSession: () => {
+    get().resetIdentity();
+    get().resetSpinState();
     set({
       currentGuildId: null,
       currentChannelId: null,
@@ -97,20 +99,7 @@ export const useAppStore = create<AppState>((set) => ({
       discordChannelId: null,
       guildDocCreationInFlight: false,
       statusMessage: '',
-      currentPlayerId: null,
-      currentPlayerName: null,
-      identityResolved: false,
       roleEditorSaving: false,
-      roleEditorManuallyToggled: false,
-      roleEditorVisible: false,
-      fullGroups: [],
-      remainderGroups: [],
-      currentGroupIndex: 0,
-      isSpinAnimating: false,
-      spinSequenceStarted: false,
-      poolTanks: [],
-      poolHealers: [],
-      poolDps: [],
-      groupCards: [],
-    }),
+    });
+  },
 }));

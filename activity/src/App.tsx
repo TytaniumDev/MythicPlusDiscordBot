@@ -2,40 +2,14 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
 import { useGuildSubscription, useChannelSubscription } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
+import { statusToView, routeToView, viewToRoute } from './lib/routing';
+import type { ViewName } from './store/types';
 import { Layout } from './components/Layout';
 import { HomeView } from './views/HomeView';
 import { ChannelsView } from './views/ChannelsView';
 import { LobbyView } from './views/LobbyView';
 import { WheelsView } from './views/WheelsView';
 import { ResultsView } from './views/ResultsView';
-import type { ViewName } from './store/types';
-
-function statusToView(status: string): ViewName {
-  switch (status) {
-    case 'lobby':
-    case 'request_spin':
-      return 'lobby';
-    case 'spinning':
-      return 'wheels';
-    case 'completed':
-      return 'results';
-    default:
-      console.warn('[Wheelson] Unknown channel status:', status);
-      return 'lobby';
-  }
-}
-
-function viewToRoute(view: ViewName, guildId?: string | null): string {
-  if (view === 'home' || !guildId) return '#/';
-  return `#/guild/${guildId}/${view}`;
-}
-
-function routeToView(hash: string): { view: ViewName; guildId: string | null } {
-  if (!hash || hash === '#/') return { view: 'home', guildId: null };
-  const match = hash.match(/^#\/guild\/([\w-]+)\/(channels|lobby|wheels|results)$/);
-  if (match) return { view: match[2] as ViewName, guildId: match[1] };
-  return { view: 'home', guildId: null };
-}
 
 export function App() {
   const currentView = useAppStore((s) => s.currentView);
@@ -59,15 +33,6 @@ export function App() {
       }
     }
   }, [currentGuildId, guildData?.guildName, guildData?.guildIconUrl, isDemoMode, saveRecentGuild]);
-
-  // Auto-navigate based on Firestore channel status
-  useEffect(() => {
-    if (isDemoMode || !channelData || !useAppStore.getState().currentChannelId) return;
-    const targetView = statusToView(channelData.status);
-    if (useAppStore.getState().currentView !== targetView) {
-      navigateTo(targetView, { replace: true });
-    }
-  }, [channelData?.status, isDemoMode]);
 
   const navigateTo = useCallback((view: ViewName, opts?: { replace?: boolean }) => {
     const store = useAppStore.getState();
@@ -98,6 +63,15 @@ export function App() {
       history.pushState({ view }, '', route);
     }
   }, []);
+
+  // Auto-navigate based on Firestore channel status
+  useEffect(() => {
+    if (isDemoMode || !channelData || !useAppStore.getState().currentChannelId) return;
+    const targetView = statusToView(channelData.status);
+    if (useAppStore.getState().currentView !== targetView) {
+      navigateTo(targetView, { replace: true });
+    }
+  }, [channelData?.status, isDemoMode, navigateTo]);
 
   // Browser back/forward navigation
   useEffect(() => {
@@ -149,7 +123,7 @@ export function App() {
       {currentView === 'channels' && <ChannelsView onNavigate={navigateTo} />}
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
-      {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
+      {currentView === 'results' && <ResultsView />}
     </Layout>
   );
 }

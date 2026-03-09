@@ -1,4 +1,4 @@
-import { WoWPlayer } from '../types';
+import { WoWPlayer, WheelEntry } from '../types';
 
 export interface RoleTag {
   label: string;
@@ -98,3 +98,19 @@ export const UTILITY_BUTTONS: RoleButtonDef[] = [
   { id: 'Brez', label: 'Brez', activeClass: 'active-brez' },
   { id: 'Lust', label: 'Lust', activeClass: 'active-lust' },
 ];
+
+export function initPools(players: WoWPlayer[]): { tanks: WheelEntry[]; healers: WheelEntry[]; dps: WheelEntry[] } {
+  const tanks = players
+    .filter((p) => p.roles.tankMain || p.roles.offtank)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.tankMain }));
+
+  const healers = players
+    .filter((p) => p.roles.healerMain || p.roles.offhealer)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.healerMain }));
+
+  const dps = players
+    .filter((p) => p.roles.dpsMain || p.roles.offdps)
+    .map((p) => ({ name: p.name, isOffspec: !p.roles.dpsMain }));
+
+  return { tanks, healers, dps };
+}
