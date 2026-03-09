@@ -35,6 +35,9 @@ export const GITHUB_REPO_NAME = (
 // Container version (commit SHA baked in at build time)
 export const GIT_SHA = process.env.GIT_SHA?.trim() || undefined;
 
+// Sentry error tracking
+export const SENTRY_DSN = process.env.SENTRY_DSN?.trim() || undefined;
+
 // Activity Link
 export const ACTIVITY_URL = (
   process.env.ACTIVITY_URL ?? 'https://tytaniumdev.github.io/MythicPlusDiscordBot/'
