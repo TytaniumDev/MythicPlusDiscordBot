@@ -59,10 +59,10 @@ export class WoWPlayer {
     return this.offspecs.includes('melee');
   }
   get ranged(): boolean {
-    return this.mainRole === 'ranged' || this.offspecs.includes('ranged');
+    return this.mainRole === 'ranged';
   }
   get melee(): boolean {
-    return this.mainRole === 'melee' || this.offspecs.includes('melee');
+    return this.mainRole === 'melee';
   }
   get hasBrez(): boolean {
     return this.utilities.includes('brez');
