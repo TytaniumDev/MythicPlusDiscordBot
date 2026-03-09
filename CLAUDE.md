@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm ci                                   # Install all deps
 
 # Run the bot
-npx -w packages/bot tsx src/bot.ts
+npx -w packages/bot tsx src/main.ts
 
 # Verify everything (preferred over running tools individually)
 ./scripts/verify-ts.sh                   # Backend: lint + typecheck + tests
@@ -52,7 +52,8 @@ packages/
 │       └── parallelGroupCreator.ts  # Group formation algorithm
 ├── bot/                   # Discord bot (TypeScript)
 │   └── src/
-│       ├── bot.ts         # Entry point
+│       ├── main.ts        # Entry point (Discord.js client + command routing)
+│       ├── bot.ts         # Error handling class
 │       ├── commands/      # Slash commands (groups, roles, general, debug)
 │       ├── services/      # GroupService, SessionService
 │       └── core/          # Config, Firebase, UI formatting

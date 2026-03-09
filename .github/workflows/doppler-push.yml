@@ -1,0 +1,38 @@
+name: Push Secrets to Doppler
+
+on:
+  workflow_call:
+    inputs:
+      secrets_json:
+        description: 'JSON object of {"DOPPLER_KEY": "value"} pairs to push'
+        required: true
+        type: string
+    secrets:
+      DOPPLER_TOKEN:
+        required: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Push secrets to Doppler
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          SECRETS_JSON: ${{ inputs.secrets_json }}
+        run: |
+          # Build doppler secrets set arguments from JSON
+          args=()
+          while IFS='=' read -r key value; do
+            args+=("${key}=${value}")
+          done < <(echo "$SECRETS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
+
+          if [ ${#args[@]} -eq 0 ]; then
+            echo "No secrets to push"
+            exit 1
+          fi
+
+          doppler secrets set "${args[@]}" --no-interactive
+          echo "Pushed ${#args[@]} secret(s) to Doppler"
