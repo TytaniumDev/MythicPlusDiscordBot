@@ -1,7 +1,8 @@
-import { mockChannelData, mockPlayers, mockGroups, mockGuildData } from '../lib/mockData';
+import { mockChannelData, mockPlayers, mockGuildData } from '../lib/mockData';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import type { ChannelData } from '../types';
+import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
 
 class DemoSessionService implements SessionService {
   subscribeToGuild(_guildId: string): () => void {
@@ -18,15 +19,21 @@ class DemoSessionService implements SessionService {
     const currentData = store.channelData;
     if (!currentData) return;
 
-    // Simulate bot processing after delay
+    const players = currentData.players
+      .filter(p => p.mainRole !== null || p.offspecs.length > 0)
+      .map(p => WoWPlayer.fromDict(p));
+
+    const groups = createMythicPlusGroups(players, true, null);
+
+    // Simulate brief processing delay
     setTimeout(() => {
       useAppStore.getState().setChannelData({
         ...currentData,
         status: 'spinning',
-        groups: mockGroups,
+        groups: groups.map(g => g.toDict()),
         revealedGroups: 0,
       } as ChannelData);
-    }, 1500);
+    }, 500);
   }
 
   async revealGroup(_index: number): Promise<void> {

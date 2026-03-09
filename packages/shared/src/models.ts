@@ -10,91 +10,99 @@ import {
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
 } from './config.js';
-import type { WoWGroupDict, WoWPlayerDict } from './types.js';
+import type { Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
 
 export class WoWPlayer {
   readonly name: string;
   readonly discordId: string;
-  readonly tankMain: boolean;
-  readonly healerMain: boolean;
-  readonly dpsMain: boolean;
-  readonly offtank: boolean;
-  readonly offhealer: boolean;
-  readonly offdps: boolean;
-  readonly offranged: boolean;
-  readonly offmelee: boolean;
-  readonly ranged: boolean;
-  readonly melee: boolean;
-  readonly hasBrez: boolean;
-  readonly hasLust: boolean;
+  readonly mainRole: Role | null;
+  readonly offspecs: readonly Role[];
+  readonly utilities: readonly Utility[];
 
-  private constructor(params: {
-    name: string;
-    discordId?: string;
-    tankMain?: boolean;
-    healerMain?: boolean;
-    dpsMain?: boolean;
-    offtank?: boolean;
-    offhealer?: boolean;
-    offdps?: boolean;
-    offranged?: boolean;
-    offmelee?: boolean;
-    ranged?: boolean;
-    melee?: boolean;
-    hasBrez?: boolean;
-    hasLust?: boolean;
-  }) {
-    this.name = params.name;
-    this.discordId = params.discordId ?? '';
-    this.tankMain = params.tankMain ?? false;
-    this.healerMain = params.healerMain ?? false;
-    this.dpsMain = params.dpsMain ?? false;
-    this.offtank = params.offtank ?? false;
-    this.offhealer = params.offhealer ?? false;
-    this.offdps = params.offdps ?? false;
-    this.offranged = params.offranged ?? false;
-    this.offmelee = params.offmelee ?? false;
-    this.ranged = params.ranged ?? false;
-    this.melee = params.melee ?? false;
-    this.hasBrez = params.hasBrez ?? false;
-    this.hasLust = params.hasLust ?? false;
+  private constructor(
+    name: string,
+    discordId: string,
+    mainRole: Role | null,
+    offspecs: readonly Role[],
+    utilities: readonly Utility[],
+  ) {
+    this.name = name;
+    this.discordId = discordId;
+    this.mainRole = mainRole;
+    this.offspecs = offspecs;
+    this.utilities = utilities;
+  }
+
+  // Computed boolean getters — algorithm uses these, no algorithm changes needed
+  get tankMain(): boolean {
+    return this.mainRole === 'tank';
+  }
+  get healerMain(): boolean {
+    return this.mainRole === 'healer';
+  }
+  get dpsMain(): boolean {
+    return this.mainRole === 'ranged' || this.mainRole === 'melee';
+  }
+  get offtank(): boolean {
+    return this.offspecs.includes('tank');
+  }
+  get offhealer(): boolean {
+    return this.offspecs.includes('healer');
+  }
+  get offdps(): boolean {
+    return this.offspecs.includes('ranged') || this.offspecs.includes('melee');
+  }
+  get offranged(): boolean {
+    return this.offspecs.includes('ranged');
+  }
+  get offmelee(): boolean {
+    return this.offspecs.includes('melee');
+  }
+  get ranged(): boolean {
+    return this.mainRole === 'ranged' || this.offspecs.includes('ranged');
+  }
+  get melee(): boolean {
+    return this.mainRole === 'melee' || this.offspecs.includes('melee');
+  }
+  get hasBrez(): boolean {
+    return this.utilities.includes('brez');
+  }
+  get hasLust(): boolean {
+    return this.utilities.includes('lust');
   }
 
   static create(name: string, roles: string[], discordId = ''): WoWPlayer {
-    const tankMain = roles.includes(ROLE_TANK);
-    const healerMain = roles.includes(ROLE_HEALER);
-    const ranged = roles.includes(ROLE_RANGED);
-    const melee = roles.includes(ROLE_MELEE);
-    const dpsMain = ranged || melee;
-    const offtank = roles.includes(ROLE_TANK_OFFSPEC);
-    const offhealer = roles.includes(ROLE_HEALER_OFFSPEC);
-    const offranged = roles.includes(ROLE_RANGED_OFFSPEC);
-    const offmelee = roles.includes(ROLE_MELEE_OFFSPEC);
-    const offdps = offranged || offmelee;
-    const hasBrez = roles.includes(ROLE_BREZ);
-    const hasLust = roles.includes(ROLE_LUST);
+    const isTank = roles.includes(ROLE_TANK);
+    const isHealer = roles.includes(ROLE_HEALER);
+    const isRanged = roles.includes(ROLE_RANGED);
+    const isMelee = roles.includes(ROLE_MELEE);
 
-    return new WoWPlayer({
-      name,
-      discordId,
-      tankMain,
-      healerMain,
-      dpsMain,
-      offtank,
-      offhealer,
-      offdps,
-      offranged,
-      offmelee,
-      ranged,
-      melee,
-      hasBrez,
-      hasLust,
-    });
+    const mainRole: Role | null = isTank
+      ? 'tank'
+      : isHealer
+        ? 'healer'
+        : isRanged
+          ? 'ranged'
+          : isMelee
+            ? 'melee'
+            : null;
+
+    const offspecs: Role[] = [];
+    if (roles.includes(ROLE_TANK_OFFSPEC)) offspecs.push('tank');
+    if (roles.includes(ROLE_HEALER_OFFSPEC)) offspecs.push('healer');
+    if (roles.includes(ROLE_RANGED_OFFSPEC)) offspecs.push('ranged');
+    if (roles.includes(ROLE_MELEE_OFFSPEC)) offspecs.push('melee');
+
+    const utilities: Utility[] = [];
+    if (roles.includes(ROLE_BREZ)) utilities.push('brez');
+    if (roles.includes(ROLE_LUST)) utilities.push('lust');
+
+    return new WoWPlayer(name, discordId, mainRole, offspecs, utilities);
   }
 
   /**
    * Direct construction with explicit boolean flags.
-   * Used by prebuilt test helpers and from_dict deserialization.
+   * Used by prebuilt test helpers. Internally derives the enum-based representation.
    */
   static fromFlags(params: {
     name: string;
@@ -112,7 +120,38 @@ export class WoWPlayer {
     hasBrez?: boolean;
     hasLust?: boolean;
   }): WoWPlayer {
-    return new WoWPlayer(params);
+    const tankMain = params.tankMain ?? false;
+    const healerMain = params.healerMain ?? false;
+    const ranged = params.ranged ?? false;
+    const melee = params.melee ?? false;
+
+    const mainRole: Role | null = tankMain
+      ? 'tank'
+      : healerMain
+        ? 'healer'
+        : ranged
+          ? 'ranged'
+          : melee
+            ? 'melee'
+            : null;
+
+    const offspecs: Role[] = [];
+    if (params.offtank ?? false) offspecs.push('tank');
+    if (params.offhealer ?? false) offspecs.push('healer');
+    if (params.offranged ?? false) offspecs.push('ranged');
+    if (params.offmelee ?? false) offspecs.push('melee');
+
+    const utilities: Utility[] = [];
+    if (params.hasBrez ?? false) utilities.push('brez');
+    if (params.hasLust ?? false) utilities.push('lust');
+
+    return new WoWPlayer(
+      params.name,
+      params.discordId ?? '',
+      mainRole,
+      offspecs,
+      utilities,
+    );
   }
 
   equals(other: WoWPlayer): boolean {
@@ -121,12 +160,7 @@ export class WoWPlayer {
 
   hasRoles(): boolean {
     return (
-      this.tankMain ||
-      this.healerMain ||
-      this.dpsMain ||
-      this.offtank ||
-      this.offhealer ||
-      this.offdps
+      this.mainRole !== null || this.offspecs.length > 0
     );
   }
 
@@ -163,38 +197,37 @@ export class WoWPlayer {
     return {
       name: this.name,
       discordId: this.discordId,
-      roles: {
-        tankMain: this.tankMain,
-        healerMain: this.healerMain,
-        dpsMain: this.dpsMain,
-        offtank: this.offtank,
-        offhealer: this.offhealer,
-        offdps: this.offdps,
-        offranged: this.offranged,
-        offmelee: this.offmelee,
-        ranged: this.ranged,
-        melee: this.melee,
-        hasBrez: this.hasBrez,
-        hasLust: this.hasLust,
-      },
+      mainRole: this.mainRole,
+      offspecs: [...this.offspecs],
+      utilities: [...this.utilities],
     };
   }
 
-  static fromDict(data: Record<string, unknown>): WoWPlayer {
+  static fromDict(data: WoWPlayerDict | Record<string, unknown>): WoWPlayer {
+    const name = data.name as string;
+    const discordId = (data.discordId as string) ?? '';
+
+    // New compact format: mainRole/offspecs/utilities
+    if ('mainRole' in data || 'offspecs' in data || 'utilities' in data) {
+      const mainRole = (data.mainRole as Role | null) ?? null;
+      const offspecs = (data.offspecs as Role[]) ?? [];
+      const utilities = (data.utilities as Utility[]) ?? [];
+      return new WoWPlayer(name, discordId, mainRole, offspecs, utilities);
+    }
+
+    // Legacy format: nested roles object with boolean flags
     const roles = (data.roles ?? {}) as Record<string, boolean>;
-    return new WoWPlayer({
-      name: data.name as string,
-      discordId: (data.discordId as string) ?? '',
+    return WoWPlayer.fromFlags({
+      name,
+      discordId,
       tankMain: roles.tankMain ?? false,
       healerMain: roles.healerMain ?? false,
-      dpsMain: roles.dpsMain ?? false,
-      offtank: roles.offtank ?? false,
-      offhealer: roles.offhealer ?? false,
-      offdps: roles.offdps ?? false,
-      offranged: roles.offranged ?? false,
-      offmelee: roles.offmelee ?? false,
       ranged: roles.ranged ?? false,
       melee: roles.melee ?? false,
+      offtank: roles.offtank ?? false,
+      offhealer: roles.offhealer ?? false,
+      offranged: roles.offranged ?? false,
+      offmelee: roles.offmelee ?? false,
       hasBrez: roles.hasBrez ?? false,
       hasLust: roles.hasLust ?? false,
     });

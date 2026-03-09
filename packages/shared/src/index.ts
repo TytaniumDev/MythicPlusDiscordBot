@@ -23,7 +23,8 @@ export {
 
 export type {
   SessionStatus,
-  WoWPlayerRolesDict,
+  Role,
+  Utility,
   WoWPlayerDict,
   WoWGroupDict,
 } from './types.js';

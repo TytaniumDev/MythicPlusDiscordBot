@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
+import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
 
 const MAX_LISTENER_RETRIES = 5;
 
@@ -111,10 +112,22 @@ class FirestoreSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+    const { currentChannelId, channelData } = useAppStore.getState();
+    if (!currentChannelId || !channelData) return;
+
+    const players = channelData.players
+      .filter(p => p.mainRole !== null || p.offspecs.length > 0)
+      .map(p => WoWPlayer.fromDict(p));
+
+    const guildId = parseInt(channelData.guildId, 10) || null;
+    const groups = createMythicPlusGroups(players, true, guildId);
+
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'request_spin' });
+    await updateDoc(docRef, {
+      status: 'spinning',
+      groups: groups.map(g => g.toDict()),
+      revealedGroups: 0,
+    });
   }
 
   async revealGroup(index: number): Promise<void> {
