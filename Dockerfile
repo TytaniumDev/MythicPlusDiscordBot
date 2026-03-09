@@ -15,4 +15,4 @@ RUN npm ci --workspace=packages/shared --workspace=packages/bot
 # Copy source code
 COPY packages/ packages/
 
-CMD ["npx", "-w", "packages/bot", "tsx", "src/bot.ts"]
+CMD ["node", "node_modules/.bin/tsx", "packages/bot/src/bot.ts"]

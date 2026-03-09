@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import logger from './logger.js';
 import * as config from './config.js';
 
@@ -103,10 +104,9 @@ export class FirebaseService implements IFirebaseService {
         return;
       }
 
-      // Dynamic require to avoid issues when firebase-admin is not available.
-      // TODO: Replace with dynamic import when the constructor is refactored to async init.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const admin = require('firebase-admin');
+      // Use createRequire for CJS interop in ESM context
+      const esmRequire = createRequire(import.meta.url);
+      const admin = esmRequire('firebase-admin');
       const cert = admin.credential.cert(credDict);
       try {
         admin.initializeApp({ credential: cert });
