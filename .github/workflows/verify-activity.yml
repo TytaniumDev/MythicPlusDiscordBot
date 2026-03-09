@@ -27,9 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules activity/node_modules
-          npm install
+        run: npm ci
 
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
