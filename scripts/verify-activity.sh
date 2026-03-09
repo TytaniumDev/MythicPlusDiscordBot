@@ -11,11 +11,12 @@ if [ ! -d "node_modules" ]; then
     cd .. && npm ci && cd activity
 fi
 
-# In CI, npm ci uses the lockfile which only has macOS native binaries.
-# Reinstall lightningcss to get the correct platform binary.
+# In CI, npm ci uses the lockfile which only has macOS native binaries resolved.
+# Delete and reinstall lightningcss to get the correct platform binary.
 if [ "$CI" = "true" ]; then
     echo "1.5. Fixing platform-specific binaries..."
-    npm install --no-save lightningcss
+    rm -rf node_modules/lightningcss
+    npm install --no-save --install-strategy=nested lightningcss
 
     echo "1.6. Installing Playwright Browsers..."
     npx playwright install --with-deps chromium
