@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/mockData';
+import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 
 // Helper to encode data for URL
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');

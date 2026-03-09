@@ -1,4 +1,4 @@
-import { WheelEntry } from './types';
+import { WheelEntry } from '../types';
 import { audio } from './audio';
 
 const COLORS = [

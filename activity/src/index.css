@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* ============================================
    Bundled Fonts — deterministic rendering
    ============================================ */
@@ -860,7 +862,7 @@ body {
   min-height: 0;
 }
 
-/* ── Grid Mode (≥600px) — 6-column, 2-row, fit-to-container ── */
+/* ── Grid Mode (>=600px) — 6-column, 2-row, fit-to-container ── */
 .wheels-container {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -1054,7 +1056,7 @@ body {
   animation: fadeSlideIn 0.4s ease-out;
 }
 
-.group-card h3 {
+.group-card h4 {
   font-size: 0.8rem;
   color: var(--color-gold);
   margin-bottom: 6px;
@@ -1097,7 +1099,7 @@ body {
   animation: fadeSlideIn 0.4s ease-out;
 }
 
-.group-card-compact h3 {
+.group-card-compact h4 {
   font-size: 0.65rem;
   color: var(--color-gold);
   margin-bottom: 4px;
@@ -1155,7 +1157,7 @@ body {
   padding: 16px;
 }
 
-#final-groups .group-card h3 {
+#final-groups .group-card h4 {
   font-size: 0.9rem;
 }
 
@@ -1348,7 +1350,7 @@ body {
 }
 
 /* ============================================
-   Responsive: Height-constrained (≤500px tall)
+   Responsive: Height-constrained (<=500px tall)
    ============================================ */
 @media (max-height: 500px) {
   .app-header {
@@ -1384,7 +1386,7 @@ body {
 }
 
 /* ============================================
-   Responsive: Very small square (e.g. 380×380 Discord)
+   Responsive: Very small square (e.g. 380x380 Discord)
    ============================================ */
 @media (max-width: 599px) and (max-height: 500px) {
   :root {

@@ -1,5 +1,5 @@
 import { Wheel } from './wheel';
-import { WheelEntry } from './types';
+import { WheelEntry } from '../types';
 
 /** Media query that determines carousel vs grid mode */
 const CAROUSEL_MQ = window.matchMedia('(max-width: 599px)');
