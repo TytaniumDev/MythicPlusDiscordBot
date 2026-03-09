@@ -109,6 +109,7 @@ export class WoWPlayer {
     discordId?: string;
     tankMain?: boolean;
     healerMain?: boolean;
+    /** @deprecated Redundant — use `ranged` or `melee` instead. Accepted for backward compat. */
     dpsMain?: boolean;
     offtank?: boolean;
     offhealer?: boolean;
@@ -140,6 +141,10 @@ export class WoWPlayer {
     if (params.offhealer ?? false) offspecs.push('healer');
     if (params.offranged ?? false) offspecs.push('ranged');
     if (params.offmelee ?? false) offspecs.push('melee');
+    // offdps shorthand: adds 'melee' offspec if no specific DPS offspec was set
+    if ((params.offdps ?? false) && !offspecs.includes('ranged') && !offspecs.includes('melee')) {
+      offspecs.push('melee');
+    }
 
     const utilities: Utility[] = [];
     if (params.hasBrez ?? false) utilities.push('brez');

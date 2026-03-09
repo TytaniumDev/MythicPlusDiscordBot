@@ -119,8 +119,7 @@ class FirestoreSessionService implements SessionService {
       .filter(p => p.mainRole !== null || p.offspecs.length > 0)
       .map(p => WoWPlayer.fromDict(p));
 
-    const guildId = parseInt(channelData.guildId, 10) || null;
-    const groups = createMythicPlusGroups(players, true, guildId);
+    const groups = createMythicPlusGroups(players, true, channelData.guildId || null);
 
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, {

@@ -42,6 +42,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       await service.requestSpin();
     } catch {
       useAppStore.getState().setStatusMessage('Spin request failed. Please try again.');
+    } finally {
       setIsCalculating(false);
     }
   };
