@@ -21,7 +21,7 @@ export function ChannelCard({ channel, onClick }: ChannelCardProps) {
     >
       <span className="channel-name">{channel.name}</span>
       <span className="channel-count">
-        {channel.userCount === 0 ? 'Empty' : `${channel.userCount} users`}
+        {channel.userCount === 0 ? 'Empty' : `${channel.userCount} ${channel.userCount === 1 ? 'user' : 'users'}`}
       </span>
     </div>
   );

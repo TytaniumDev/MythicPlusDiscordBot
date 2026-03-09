@@ -123,7 +123,7 @@ export function App() {
       {currentView === 'channels' && <ChannelsView onNavigate={navigateTo} />}
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
-      {currentView === 'results' && <ResultsView />}
+      {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
     </Layout>
   );
 }
