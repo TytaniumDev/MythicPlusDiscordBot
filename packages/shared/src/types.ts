@@ -1,26 +1,15 @@
 export type SessionStatus = 'lobby' | 'request_spin' | 'spinning' | 'completed';
 
-export interface WoWPlayerRolesDict {
-  [key: string]: boolean;
-  tankMain: boolean;
-  healerMain: boolean;
-  dpsMain: boolean;
-  offtank: boolean;
-  offhealer: boolean;
-  offdps: boolean;
-  offranged: boolean;
-  offmelee: boolean;
-  ranged: boolean;
-  melee: boolean;
-  hasBrez: boolean;
-  hasLust: boolean;
-}
+export type Role = 'tank' | 'healer' | 'ranged' | 'melee';
+export type Utility = 'brez' | 'lust';
 
 export interface WoWPlayerDict {
   [key: string]: unknown;
   name: string;
   discordId: string;
-  roles: WoWPlayerRolesDict;
+  mainRole: Role | null;
+  offspecs: Role[];
+  utilities: Utility[];
 }
 
 export interface WoWGroupDict {

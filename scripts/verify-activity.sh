@@ -6,7 +6,9 @@ echo "Starting Frontend Verification..."
 cd activity
 
 echo "1. Installing Dependencies..."
-npm ci
+if [ ! -d "node_modules" ]; then
+    cd .. && npm ci && cd activity
+fi
 
 # Install Playwright browsers if in CI environment
 if [ "$CI" = "true" ]; then

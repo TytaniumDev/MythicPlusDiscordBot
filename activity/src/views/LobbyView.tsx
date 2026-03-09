@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentity } from '../hooks/useIdentity';
@@ -30,8 +30,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     }
   }, [players, resolveIdentity]);
 
+  const [isCalculating, setIsCalculating] = useState(false);
+
   const handleSpin = async () => {
     try {
+      setIsCalculating(true);
       // In demo mode, navigate immediately then simulate
       if (useAppStore.getState().isDemoMode) {
         onNavigate('wheels');
@@ -39,6 +42,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       await service.requestSpin();
     } catch {
       useAppStore.getState().setStatusMessage('Spin request failed. Please try again.');
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -79,8 +84,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const rangedPlayers = players.filter((p) => getPrimaryRole(p) === 'ranged');
   const meleePlayers = players.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = players.filter((p) => !hasAnyRole(p));
-
-  const isCalculating = channelData?.status === 'request_spin';
 
   return (
     <div className="main-layout">

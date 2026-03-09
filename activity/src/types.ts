@@ -1,32 +1,12 @@
+import type { WoWPlayerDict, WoWGroupDict, SessionStatus } from '@mythicplus/shared';
+
 export interface WheelEntry {
   name: string;
   isOffspec: boolean;
 }
 
-export interface WoWPlayer {
-  name: string;
-  discordId?: string;
-  roles: {
-    tankMain: boolean;
-    healerMain: boolean;
-    dpsMain: boolean;
-    offtank: boolean;
-    offhealer: boolean;
-    offdps: boolean;
-    offranged: boolean;
-    offmelee: boolean;
-    ranged: boolean;
-    melee: boolean;
-    hasBrez: boolean;
-    hasLust: boolean;
-  };
-}
-
-export interface WoWGroup {
-  tank: WoWPlayer | null;
-  healer: WoWPlayer | null;
-  dps: WoWPlayer[];
-}
+export type WoWPlayer = WoWPlayerDict;
+export type WoWGroup = WoWGroupDict;
 
 export interface VoiceChannel {
   id: string;
@@ -48,7 +28,7 @@ export interface ChannelData {
   channelId: string;
   channelName: string;
   guildId: string;
-  status: 'lobby' | 'request_spin' | 'spinning' | 'completed';
+  status: SessionStatus;
   players: WoWPlayer[];
   groups: WoWGroup[];
   revealedGroups?: number;

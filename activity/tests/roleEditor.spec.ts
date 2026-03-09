@@ -8,20 +8,9 @@ const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString
 const noRolesPlayer: WoWPlayer = {
   name: 'Newbie',
   discordId: '100000000000000099',
-  roles: {
-    tankMain: false,
-    healerMain: false,
-    dpsMain: false,
-    offtank: false,
-    offhealer: false,
-    offdps: false,
-    offranged: false,
-    offmelee: false,
-    ranged: false,
-    melee: false,
-    hasBrez: false,
-    hasLust: false,
-  },
+  mainRole: null,
+  offspecs: [],
+  utilities: [],
 };
 
 const lobbyData = {

@@ -238,17 +238,17 @@ test.describe('Carousel Mode Tests', () => {
 
 // ── Functional Tests (viewport-independent) ──────────────────
 test.describe('Functional Tests', () => {
-  test('Request spin shows calculating state', async ({ page }) => {
+  test('Lobby spin button starts enabled', async ({ page }) => {
     const data = {
       ...mockChannelData,
-      status: 'request_spin',
+      status: 'lobby',
       players: mockPlayers,
     };
     await page.goto(`/?data=${encodeData(data)}`);
 
     const spinBtn = page.locator('#spin-btn');
-    await expect(spinBtn).toBeDisabled();
-    await expect(spinBtn).toHaveText('Calculating...');
+    await expect(spinBtn).toBeEnabled();
+    await expect(spinBtn).toHaveText('SPIN THE WHEEL!');
   });
 
   test('Player chips show correct role colors', async ({ page }) => {

@@ -4,6 +4,7 @@ export function isCompleteGroup(group: WoWGroup): boolean {
   return group.tank !== null && group.healer !== null && group.dps.length === 3;
 }
 
+
 export type ViewName = 'home' | 'channels' | 'lobby' | 'wheels' | 'results';
 
 export interface AppState {

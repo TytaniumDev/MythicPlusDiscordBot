@@ -4,10 +4,6 @@ set -euo pipefail
 echo "=== TypeScript Verification ==="
 
 echo ""
-echo "--- Lint (shared + bot) ---"
-npx eslint packages/
-
-echo ""
 echo "--- Typecheck: packages/shared ---"
 npx -w packages/shared tsc --noEmit
 

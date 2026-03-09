@@ -1,13 +1,13 @@
 import { WoWGroup, WoWPlayer } from './models.js';
 
 /** Per-guild history of last groups — avoids cross-guild contamination. */
-const lastGroups = new Map<number | null, WoWGroup[]>();
+const lastGroups = new Map<string | number | null, WoWGroup[]>();
 
 export function clear(): void {
   lastGroups.clear();
 }
 
-export function setLastGroups(groups: WoWGroup[], guildId: number | null = null): void {
+export function setLastGroups(groups: WoWGroup[], guildId: string | number | null = null): void {
   lastGroups.set(guildId, groups);
 }
 
@@ -34,7 +34,7 @@ function isInList(list: WoWPlayer[], player: WoWPlayer): boolean {
 export function createMythicPlusGroups(
   players: WoWPlayer[],
   _debug = true,
-  guildId: number | null = null,
+  guildId: string | number | null = null,
 ): WoWGroup[] {
   const previousGroups = lastGroups.get(guildId) ?? [];
 

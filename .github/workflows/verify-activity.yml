@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'activity/**'
+      - 'packages/shared/**'
       - 'scripts/verify-activity.sh'
       - '.github/workflows/verify-activity.yml'
   workflow_dispatch:
@@ -22,9 +23,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 22
           cache: 'npm'
-          cache-dependency-path: 'activity/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fix native bindings (npm workspace bug npm/cli#4828)
+        run: |
+          cd activity
+          for pkg in lightningcss @tailwindcss/oxide; do
+            VER=$(node -p "require('./node_modules/$pkg/package.json').version")
+            rm -rf "node_modules/$pkg"
+            npm install --no-save --install-strategy=nested "$pkg@$VER"
+          done
 
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
