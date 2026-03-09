@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockChannelData, mockPlayers } from '../src/mockData';
+import { mockChannelData, mockPlayers } from '../src/lib/mockData';
 import type { WoWPlayer } from '../src/types';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');

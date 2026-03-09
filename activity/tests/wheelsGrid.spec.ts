@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mockSession, mockPlayers, mockGroups } from '../src/mockData';
+import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
@@ -25,7 +25,7 @@ const VIEWPORTS = {
 } as const;
 
 const staticWheelsData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'spinning',
   staticWheel: true,
   selectedChannelId: 'vc-1',
@@ -33,7 +33,7 @@ const staticWheelsData = {
 };
 
 const spinningReadyData = {
-  ...mockSession,
+  ...mockChannelData,
   status: 'spinning',
   selectedChannelId: 'vc-1',
   players: mockPlayers,

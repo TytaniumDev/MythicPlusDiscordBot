@@ -1,0 +1,83 @@
+import { mockChannelData, mockPlayers, mockGroups, mockGuildData } from '../lib/mockData';
+import { useAppStore } from '../store/store';
+import type { SessionService } from './types';
+import type { ChannelData } from '../types';
+
+class DemoSessionService implements SessionService {
+  subscribeToGuild(_guildId: string): () => void {
+    useAppStore.getState().setGuildData(mockGuildData);
+    return () => {};
+  }
+
+  subscribeToChannel(_channelId: string): () => void {
+    return () => {};
+  }
+
+  async requestSpin(): Promise<void> {
+    const store = useAppStore.getState();
+    const currentData = store.channelData;
+    if (!currentData) return;
+
+    // Simulate bot processing after delay
+    setTimeout(() => {
+      useAppStore.getState().setChannelData({
+        ...currentData,
+        status: 'spinning',
+        groups: mockGroups,
+        revealedGroups: 0,
+      } as ChannelData);
+    }, 1500);
+  }
+
+  async revealGroup(_index: number): Promise<void> {
+    // Demo mode: animation handled directly, no Firestore needed
+  }
+
+  async finishSequence(): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      store.setChannelData({ ...store.channelData, status: 'completed' });
+    }
+  }
+
+  async newRound(): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0 } as ChannelData);
+    }
+  }
+
+  async cancelToLobby(): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0 } as ChannelData);
+    }
+  }
+
+  async updateAnnounce(_value: boolean): Promise<void> {
+    // No-op in demo
+  }
+
+  async saveRoles(_playerId: string, _playerName: string, _roles: string[]): Promise<void> {
+    // No-op in demo
+  }
+
+  async refreshChannels(_guildId: string): Promise<void> {
+    // No-op in demo
+  }
+
+  async selectChannel(channelId: string, channelName?: string): Promise<void> {
+    useAppStore.getState().setChannelData({
+      ...mockChannelData,
+      channelId,
+      channelName: channelName || 'Demo Channel',
+      players: mockPlayers,
+    });
+  }
+
+  async createGuildEntry(_guildId: string): Promise<void> {
+    // No-op in demo
+  }
+}
+
+export const demoService = new DemoSessionService();

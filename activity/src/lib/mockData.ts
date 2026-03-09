@@ -1,4 +1,4 @@
-import { GuildData, ChannelData, WoWGroup, WoWPlayer } from './types';
+import { GuildData, ChannelData, WoWGroup, WoWPlayer } from '../types';
 
 export const mockPlayers: WoWPlayer[] = [
   // 1. Martz: Healer, Tank Offspec, Melee Offspec, Brez

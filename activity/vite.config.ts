@@ -1,5 +1,7 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 const commitHash = process.env.PLAYWRIGHT_TEST
   ? 'abc1234'
@@ -12,6 +14,7 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
   },
+  plugins: [react(), tailwindcss()],
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },
