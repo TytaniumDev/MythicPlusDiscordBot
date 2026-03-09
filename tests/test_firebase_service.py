@@ -3,11 +3,81 @@
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.firebase_service import FirebaseService
+
+
+class TestFirebaseServiceInit(unittest.TestCase):
+    """Tests for FirebaseService initialization."""
+
+    def setUp(self):
+        # Reset the singleton instance before each test
+        FirebaseService._instance = None  # pyright: ignore[reportPrivateUsage]
+        self.service = FirebaseService.__new__(FirebaseService)
+
+    @patch("core.config.FIREBASE_CREDENTIALS_JSON", "")
+    def test_init_missing_credentials(self):
+        self.service.db = None
+        self.service._initialize_firebase()  # pyright: ignore[reportPrivateUsage]
+        self.assertIsNone(self.service.db)
+
+    @patch("core.config.FIREBASE_CREDENTIALS_JSON", "invalid json")
+    def test_init_invalid_json(self):
+        self.service.db = None
+        self.service._initialize_firebase()  # pyright: ignore[reportPrivateUsage]
+        self.assertIsNone(self.service.db)
+
+    @patch("core.config.FIREBASE_CREDENTIALS_JSON", '{"project_id": "test"}')
+    @patch("firebase_admin.credentials.Certificate")
+    @patch("firebase_admin.initialize_app")
+    @patch("firebase_admin.firestore.client")
+    def test_init_success(
+        self, mock_client: MagicMock, mock_init: MagicMock, mock_cert: MagicMock
+    ):
+        mock_db = MagicMock()
+        mock_client.return_value = mock_db
+
+        self.service._initialize_firebase()  # pyright: ignore[reportPrivateUsage]
+
+        mock_cert.assert_called_once_with({"project_id": "test"})
+        mock_init.assert_called_once()
+        self.assertEqual(self.service.db, mock_db)
+
+    @patch("core.config.FIREBASE_CREDENTIALS_JSON", '{"project_id": "test"}')
+    @patch("firebase_admin.credentials.Certificate")
+    @patch("firebase_admin.initialize_app")
+    @patch("firebase_admin.firestore.client")
+    def test_init_already_initialized_app(
+        self, mock_client: MagicMock, mock_init: MagicMock, mock_cert: MagicMock
+    ):
+        mock_db = MagicMock()
+        mock_client.return_value = mock_db
+        mock_init.side_effect = ValueError("The default Firebase app already exists.")
+
+        self.service._initialize_firebase()  # pyright: ignore[reportPrivateUsage]
+
+        mock_cert.assert_called_once_with({"project_id": "test"})
+        mock_init.assert_called_once()
+        self.assertEqual(self.service.db, mock_db)
+
+    @patch("core.config.FIREBASE_CREDENTIALS_JSON", '{"project_id": "test"}')
+    @patch("firebase_admin.credentials.Certificate")
+    def test_init_failure(self, mock_cert: MagicMock):
+        mock_cert.side_effect = Exception("Test Error")
+
+        self.service._initialize_firebase()  # pyright: ignore[reportPrivateUsage]
+
+        self.assertIsNone(self.service.db)
+
+    def test_is_available(self):
+        self.service.db = MagicMock()
+        self.assertTrue(self.service.is_available())
+
+        self.service.db = None
+        self.assertFalse(self.service.is_available())
 
 
 class TestFirebaseServiceDeleteOldDocs(unittest.IsolatedAsyncioTestCase):
