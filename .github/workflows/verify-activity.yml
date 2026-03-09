@@ -29,6 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fix lightningcss platform binary (npm workspace bug npm/cli#4828)
+        run: |
+          cd activity
+          LCSS_VERSION=$(node -p "require('./node_modules/lightningcss/package.json').version")
+          rm -rf node_modules/lightningcss
+          npm install --no-save --install-strategy=nested "lightningcss@${LCSS_VERSION}"
+
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
         env:
