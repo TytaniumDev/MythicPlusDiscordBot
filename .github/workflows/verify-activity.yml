@@ -26,8 +26,10 @@ jobs:
           node-version: 22
           cache: 'npm'
 
-      - name: Install root dependencies (workspace links)
-        run: npm ci
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules activity/node_modules
+          npm install
 
       - name: Run Activity Verification (update snapshots)
         run: ./scripts/verify-activity.sh
