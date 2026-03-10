@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 import { onReady } from '../../src/events/ready.js';
 import { FirebaseService } from '../../src/core/firebaseService.js';
 import { getPreferenceService } from '../../src/core/preferenceService.js';
@@ -28,25 +29,25 @@ vi.mock('../../src/core/logger.js', () => {
 });
 
 describe('onReady', () => {
-  let mockLoadCache: any;
-  let mockIsAvailable: any;
-  let mockDeleteOldDocs: any;
+  let mockLoadCache: Mock;
+  let mockIsAvailable: Mock;
+  let mockDeleteOldDocs: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockLoadCache = vi.fn().mockResolvedValue(undefined);
-    (getPreferenceService as any).mockReturnValue({
-      loadCache: mockLoadCache
-    });
+    vi.mocked(getPreferenceService).mockReturnValue({
+      loadCache: mockLoadCache,
+    } as unknown as ReturnType<typeof getPreferenceService>);
 
     mockIsAvailable = vi.fn().mockReturnValue(true);
     mockDeleteOldDocs = vi.fn().mockResolvedValue(undefined);
 
-    (FirebaseService.getInstance as any).mockReturnValue({
+    vi.mocked(FirebaseService.getInstance).mockReturnValue({
       isAvailable: mockIsAvailable,
-      deleteOldDocs: mockDeleteOldDocs
-    });
+      deleteOldDocs: mockDeleteOldDocs,
+    } as unknown as FirebaseService);
   });
 
   it('loads preference cache and cleans up old docs when firebase is available', async () => {
