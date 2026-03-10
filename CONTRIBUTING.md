@@ -4,26 +4,30 @@ Thank you for your interest in contributing! This guide covers the technical sta
 
 ## Development Environment
 
-This project uses **[uv](https://github.com/astral-sh/uv)** for fast Python package management and virtual environment handling.
+This project is a monorepo that uses **npm workspaces** for package management, encompassing both a Discord bot backend and a React frontend.
 
-1.  **Install uv**: Follow the [official instructions](https://github.com/astral-sh/uv).
-2.  **Sync dependencies**:
+1.  **Install Node.js**: Ensure you are using the Node.js version specified in the `Dockerfile` or your local development environment.
+2.  **Install dependencies**:
     ```bash
-    uv sync
+    npm install
     ```
-    This creates a virtual environment and installs all dependencies defined in `pyproject.toml` (and `uv.lock`).
+    This installs dependencies for all packages in the workspace (`packages/bot`, `packages/shared`, and `activity/`).
 
 ## Verification
 
-Before submitting a PR, you **must** run the verification script. This script handles linting, formatting, type checking, and testing.
+Before submitting a PR, you **must** run the backend verification script. This script handles linting, formatting, type checking, and testing for the bot and shared packages.
 
 ```bash
-./scripts/verify.sh
+./scripts/verify-ts.sh
+```
+Or use the npm script:
+```bash
+npm run verify
 ```
 
--   **Linting/Formatting**: Uses `ruff` (automatically fixes issues).
--   **Type Checking**: Uses `pyright`.
--   **Tests**: Runs standard `unittest` discovery.
+-   **Linting/Formatting**: Uses `eslint` and `prettier` (or built-in formatters).
+-   **Type Checking**: Uses `tsc --noEmit`.
+-   **Tests**: Runs tests via `vitest`.
 
 ## Frontend Verification
 
@@ -47,8 +51,9 @@ The project uses Playwright for visual regression testing.
 
 ## Coding Standards
 
-- **Docstrings**: All Python backend code must use **Google-style docstrings**, including explicit `Args:` and `Returns:` sections for functions and methods.
-- **Type Hints**: Full type hints are mandatory for all Python code. This ensures strict validation by `pyright` during verification.
+- **Type Safety**: Use strict TypeScript definitions. Avoid `any` whenever possible.
+- **Shared Code**: Business logic that can be reused (like group creation algorithms or shared models) should be placed in `packages/shared/`.
+- **Formatting**: Adhere to the existing linting and formatting rules enforced by `eslint`.
 
 ## Security & CI Standards
 
@@ -58,19 +63,20 @@ This project has strict requirements to prevent secret leaks and ensure CI relia
 
 ## Project Structure
 
--   `core/`: Core business logic (Group algorithm, models, configuration).
--   `cogs/`: Discord bot commands and event listeners.
--   `services/`: Bridges between Cogs, Core logic, and Firebase.
--   `activity/`: Frontend code for the Discord Activity (TypeScript/Vite).
--   `tests/`: Unit tests and mock classes for the Python backend.
--   `scripts/`: Utility scripts for verification and deployment.
+-   `packages/bot/`: The Discord bot backend (TypeScript).
+    -   `src/commands/`: Discord slash command handlers.
+    -   `src/core/`: Core configuration, utilities, and integrations.
+    -   `src/services/`: Services bridging commands and external systems (Firebase, state).
+    -   `tests/`: Unit tests using Vitest.
+-   `packages/shared/`: Shared models and business logic (e.g., `parallelGroupCreator.ts`).
+-   `activity/`: Frontend code for the Discord Activity (React/TypeScript/Vite).
+-   `scripts/`: Utility scripts for verification and CI.
 
 ## Production vs. Development
 
--   **Development**: Uses `uv` and `pyproject.toml`.
--   **Production (Docker)**: Uses `requirements.txt`.
-    -   *Note: If you add a dependency, ensure it is reflected in `requirements.txt` for the production build.*
+-   **Development**: Run the bot locally using `npm -w @mythicplus/bot run dev` (uses `tsx`).
+-   **Production (Docker)**: The `Dockerfile` compiles the TypeScript bot to JS and runs it natively with Node for improved startup speed and memory performance.
 
 ## Command Style
 
-When documenting or adding commands, prefer **Slash Commands** (e.g., `/activity`, `/wheel`) as the primary interface. Prefix commands (e.g., `!activity`) are supported for legacy compatibility but should not be the focus of documentation.
+All new commands should be implemented as **Slash Commands**. Prefix commands are deprecated. Define your commands using Discord's `SlashCommandBuilder` in `packages/bot/src/main.ts` and handle them within the dedicated `src/commands/` handler classes.
