@@ -45,14 +45,14 @@ import { createRoleBoardEmbed } from '../src/core/roleUi.js';
 
 function makeCtx(overrides: Partial<RolesContext> = {}): RolesContext {
   return {
-    guild: overrides.guild === undefined ? { id: 1 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '1' } : overrides.guild,
     author: overrides.author ?? {
       id: '111',
       nick: 'TestUser',
       toString: () => 'TestUser',
       voice: {
         channel: {
-          id: 42,
+          id: '42',
           members: [],
         },
       },

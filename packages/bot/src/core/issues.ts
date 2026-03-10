@@ -147,7 +147,7 @@ export interface GitHubIssueModalData {
   extraInfo: string;
   includeLogs: boolean;
   reporterName: string;
-  reporterId: string | number;
+  reporterId: string;
 }
 
 export async function submitGithubIssueModal(
@@ -181,7 +181,7 @@ export async function submitGithubIssueModal(
 
 export interface BadGroupReportData {
   reporterName: string;
-  reporterId: string | number;
+  reporterId: string;
   title: string;
   description: string;
   players: { toTestString(): string }[];

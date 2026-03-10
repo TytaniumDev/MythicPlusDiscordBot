@@ -5,13 +5,13 @@ import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
 
 export interface GroupsContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   author: {
-    id: string | number;
+    id: string;
     name: string;
     voice?: {
       channel?: {
-        id: number;
+        id: string;
         name: string;
         members?: { bot: boolean }[];
         createInvite?(): Promise<{ url: string }>;
@@ -24,7 +24,7 @@ export interface GroupsContext {
 }
 
 export interface VoiceState {
-  channel: { id: number; members: { bot: boolean }[] } | null;
+  channel: { id: string; members: { bot: boolean }[] } | null;
 }
 
 export class GroupsHandler {
@@ -129,7 +129,7 @@ export class GroupsHandler {
     try {
       const issue = await reportBadGroup({
         reporterName: ctx.author.name,
-        reporterId: Number(ctx.author.id),
+        reporterId: ctx.author.id,
         title,
         description,
         players: lastResults.players,

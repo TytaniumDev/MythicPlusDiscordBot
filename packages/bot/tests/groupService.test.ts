@@ -38,14 +38,14 @@ import { createMythicPlusGroups } from '@mythicplus/shared';
 
 function makeCtx(overrides: {
   members?: { bot: boolean; nick?: string; id?: string; toString?: () => string }[];
-  guild?: { id: number } | null;
+  guild?: { id: string } | null;
 } = {}): CommandContext {
   return {
     channel: {
       members: overrides.members ?? [],
       sendTyping: vi.fn().mockResolvedValue(undefined),
     },
-    guild: overrides.guild === undefined ? { id: 1 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '1' } : overrides.guild,
     send: vi.fn().mockResolvedValue({ edit: vi.fn() }),
   } as unknown as CommandContext;
 }
@@ -136,14 +136,14 @@ describe('GroupService.coreWheel', () => {
 
   it('executes and releases lock on success', async () => {
     const service = new GroupService();
-    const ctx = makeCtx({ guild: { id: 123 } });
+    const ctx = makeCtx({ guild: { id: '123' } });
 
     const executeSpy = vi.spyOn(service, '_executeCoreWheel').mockResolvedValue(undefined);
 
     await service.coreWheel(ctx);
 
     expect(executeSpy).toHaveBeenCalledOnce();
-    expect(executeSpy).toHaveBeenCalledWith(ctx, ctx.channel, 123, false);
+    expect(executeSpy).toHaveBeenCalledWith(ctx, ctx.channel, '123', false);
 
     // Lock should be released — a second call should succeed
     await service.coreWheel(ctx);
@@ -152,7 +152,7 @@ describe('GroupService.coreWheel', () => {
 
   it('prevents concurrent execution for same guild', async () => {
     const service = new GroupService();
-    const ctx = makeCtx({ guild: { id: 123 } });
+    const ctx = makeCtx({ guild: { id: '123' } });
 
     let resolveFirst!: () => void;
     const firstPromise = new Promise<void>((r) => {
@@ -180,7 +180,7 @@ describe('GroupService._executeCoreWheel', () => {
   it('stores results and announces groups', async () => {
     const service = new GroupService();
     const ctx = makeCtx();
-    const guildId = 123;
+    const guildId = '123';
 
     const players = [WoWPlayer.create('P1', ['Tank'])];
     const groups = [
@@ -200,7 +200,7 @@ describe('GroupService._executeCoreWheel', () => {
   it('does nothing when getGroupsData returns null', async () => {
     const service = new GroupService();
     const ctx = makeCtx();
-    const guildId = 123;
+    const guildId = '123';
 
     vi.spyOn(service, 'getGroupsData').mockResolvedValue(null);
 

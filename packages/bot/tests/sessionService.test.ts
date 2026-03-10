@@ -90,7 +90,7 @@ function makeMember(name: string, bot = false) {
 }
 
 function makeVoiceChannel(
-  id: number,
+  id: string,
   name: string,
   members: ReturnType<typeof makeMember>[] = [],
 ): VoiceChannel {
@@ -103,7 +103,7 @@ function makeVoiceChannel(
 }
 
 function makeGuild(
-  id: number,
+  id: string,
   channels: VoiceChannel[] = [],
   overrides: Partial<Guild> = {},
 ): Guild {
@@ -112,7 +112,7 @@ function makeGuild(
     name: 'Test Guild',
     icon: { url: 'http://icon' },
     voice_channels: channels,
-    get_channel: vi.fn((chId: number) => channels.find((c) => c.id === chId) ?? null),
+    get_channel: vi.fn((chId: string) => channels.find((c) => c.id === chId) ?? null),
     ...overrides,
   };
 }
@@ -140,8 +140,8 @@ beforeEach(() => {
 
 describe('SessionService.getOrCreateSession', () => {
   it('creates guild and channel docs and returns IDs', async () => {
-    const vc = makeVoiceChannel(99, 'Raid', [makeMember('P1')]);
-    const guild = makeGuild(1, [vc]);
+    const vc = makeVoiceChannel('99', 'Raid', [makeMember('P1')]);
+    const guild = makeGuild('1', [vc]);
     const firebase = createMockFirebase();
     firebase.getOrCreateGuildDoc.mockResolvedValue('1');
     firebase.getOrCreateChannelDoc.mockResolvedValue('99');
@@ -154,7 +154,7 @@ describe('SessionService.getOrCreateSession', () => {
 
     const ctx = {
       guild,
-      author: { voice: { channel: { id: 99, name: 'Raid' } } },
+      author: { voice: { channel: { id: '99', name: 'Raid' } } },
     };
 
     const result = await service.getOrCreateSession(ctx);
@@ -163,11 +163,11 @@ describe('SessionService.getOrCreateSession', () => {
     const [guildDocId, channelDocId] = result!;
     expect(guildDocId).toBe('1');
     expect(channelDocId).toBe('99');
-    expect(service.activeGuilds.has(1)).toBe(true);
-    expect(service.activeChannels.has(99)).toBe(true);
+    expect(service.activeGuilds.has('1')).toBe(true);
+    expect(service.activeChannels.has('99')).toBe(true);
 
-    expect(firebase.getOrCreateGuildDoc).toHaveBeenCalledWith(1, 'Test Guild', 'http://icon');
-    expect(firebase.getOrCreateChannelDoc).toHaveBeenCalledWith(99, 1, 'Raid', false);
+    expect(firebase.getOrCreateGuildDoc).toHaveBeenCalledWith('1', 'Test Guild', 'http://icon');
+    expect(firebase.getOrCreateChannelDoc).toHaveBeenCalledWith('99', '1', 'Raid', false);
   });
 
   it('returns null when firebase is unavailable', async () => {
@@ -178,8 +178,8 @@ describe('SessionService.getOrCreateSession', () => {
     const service = new SessionService(makeBot(), firebase as any);
 
     const ctx = {
-      guild: makeGuild(1),
-      author: { voice: { channel: { id: 99, name: 'Raid' } } },
+      guild: makeGuild('1'),
+      author: { voice: { channel: { id: '99', name: 'Raid' } } },
     };
 
     const result = await service.getOrCreateSession(ctx);
@@ -188,7 +188,7 @@ describe('SessionService.getOrCreateSession', () => {
 
   it('returns null when guild is null', async () => {
     const { service } = makeService();
-    const ctx = { guild: null, author: { voice: { channel: { id: 99, name: 'Raid' } } } };
+    const ctx = { guild: null, author: { voice: { channel: { id: '99', name: 'Raid' } } } };
 
     const result = await service.getOrCreateSession(ctx);
     expect(result).toBeNull();
@@ -196,7 +196,7 @@ describe('SessionService.getOrCreateSession', () => {
 
   it('returns null when author is not in a voice channel', async () => {
     const firebase = createMockFirebase();
-    const guild = makeGuild(1);
+    const guild = makeGuild('1');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
@@ -213,15 +213,15 @@ describe('SessionService.updateChannelPlayers', () => {
     const firebase = createMockFirebase();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
 
-    const vc = makeVoiceChannel(42, 'Raid', [makeMember('Tank1')]);
-    const guild = makeGuild(1, [vc]);
+    const vc = makeVoiceChannel('42', 'Raid', [makeMember('Tank1')]);
+    const guild = makeGuild('1', [vc]);
 
     const player = TankPaladin('Tank1');
     vi.mocked(getPlayerList).mockReturnValue([player]);
 
-    await service.updateChannelPlayers(42, guild);
+    await service.updateChannelPlayers('42', guild);
 
     expect(firebase.updateChannelDoc).toHaveBeenCalledOnce();
     const [docId, data] = firebase.updateChannelDoc.mock.calls[0];
@@ -235,8 +235,8 @@ describe('SessionService.updateChannelPlayers', () => {
     const service = new SessionService(makeBot(), firebase as any);
     // No active channels
 
-    const guild = makeGuild(1);
-    await service.updateChannelPlayers(42, guild);
+    const guild = makeGuild('1');
+    await service.updateChannelPlayers('42', guild);
 
     expect(firebase.updateChannelDoc).not.toHaveBeenCalled();
   });
@@ -245,12 +245,12 @@ describe('SessionService.updateChannelPlayers', () => {
     const firebase = createMockFirebase();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
 
     // Guild returns null for channel
-    const guild = makeGuild(1);
+    const guild = makeGuild('1');
 
-    await service.updateChannelPlayers(42, guild);
+    await service.updateChannelPlayers('42', guild);
 
     const data = firebase.updateChannelDoc.mock.calls[0][1];
     expect(data.players).toEqual([]);
@@ -265,9 +265,9 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    const vc1 = makeVoiceChannel(42, 'Raid', [makeMember('P1'), makeMember('P2')]);
-    const vc2 = makeVoiceChannel(43, 'AFK', []);
-    const guild = makeGuild(1, [vc1, vc2]);
+    const vc1 = makeVoiceChannel('42', 'Raid', [makeMember('P1'), makeMember('P2')]);
+    const vc2 = makeVoiceChannel('43', 'AFK', []);
+    const guild = makeGuild('1', [vc1, vc2]);
 
     await service.refreshGuildVoiceChannels(guild);
 
@@ -288,18 +288,18 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    const vc1 = makeVoiceChannel(42, 'Small', [makeMember('P1')]);
+    const vc1 = makeVoiceChannel('42', 'Small', [makeMember('P1')]);
     const vc2 = makeVoiceChannel(
-      43,
+      '43',
       'Big',
       Array.from({ length: 5 }, (_, i) => makeMember(`P${i}`)),
     );
     const vc3 = makeVoiceChannel(
-      44,
+      '44',
       'Medium',
       Array.from({ length: 3 }, (_, i) => makeMember(`Q${i}`)),
     );
-    const guild = makeGuild(1, [vc1, vc2, vc3]);
+    const guild = makeGuild('1', [vc1, vc2, vc3]);
 
     await service.refreshGuildVoiceChannels(guild);
 
@@ -316,10 +316,10 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    const vc1 = makeVoiceChannel(42, 'Zeta', []);
-    const vc2 = makeVoiceChannel(43, 'Alpha', []);
-    const vc3 = makeVoiceChannel(44, 'Mango', []);
-    const guild = makeGuild(1, [vc1, vc2, vc3]);
+    const vc1 = makeVoiceChannel('42', 'Zeta', []);
+    const vc2 = makeVoiceChannel('43', 'Alpha', []);
+    const vc3 = makeVoiceChannel('44', 'Mango', []);
+    const guild = makeGuild('1', [vc1, vc2, vc3]);
 
     await service.refreshGuildVoiceChannels(guild);
 
@@ -334,11 +334,11 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    const vc = makeVoiceChannel(42, 'Raid', [
+    const vc = makeVoiceChannel('42', 'Raid', [
       makeMember('Human'),
       makeMember('Bot', true),
     ]);
-    const guild = makeGuild(1, [vc]);
+    const guild = makeGuild('1', [vc]);
 
     await service.refreshGuildVoiceChannels(guild);
 
@@ -350,35 +350,7 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
 // ---------- announceCompletion ----------
 
 describe('SessionService.announceCompletion', () => {
-  it('uses last results when available', async () => {
-    const firebase = createMockFirebase();
-
-    const tank = TankPaladin('Tank1');
-    const healer = HealerPriest('Healer1');
-    const dps = [Warrior('D1'), Mage('D2'), Rogue('D3')];
-    const group = new WoWGroup(tank, healer, dps);
-
-    const vc = makeVoiceChannel(42, 'Raid');
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = {
-      lastResults: new Map([[1, { players: [], groups: [group] }]]),
-    } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    const mockEmbed = { title: 'Group 1', color: 0, fields: [] };
-    vi.mocked(buildGroupEmbed).mockReturnValue(mockEmbed);
-
-    await service.announceCompletion(42, 1, { groups: [] });
-
-    expect(buildGroupEmbed).toHaveBeenCalledWith(group, 1);
-    expect(vc.send).toHaveBeenCalledWith({ embed: mockEmbed });
-  });
-
-  it('falls back to firestore data when no last results', async () => {
+  it('deserializes groups from Firestore data', async () => {
     const firebase = createMockFirebase();
 
     const tank = TankPaladin('Tank1');
@@ -386,11 +358,8 @@ describe('SessionService.announceCompletion', () => {
     const group = new WoWGroup(tank, healer, [Warrior('D1')]);
     const groupDict = group.toDict();
 
-    const vc = makeVoiceChannel(42, 'Raid');
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = { lastResults: new Map() } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const vc = makeVoiceChannel('42', 'Raid');
+    const bot = makeBot();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(bot, firebase as any);
@@ -398,7 +367,7 @@ describe('SessionService.announceCompletion', () => {
     const mockEmbed = { title: 'Group 1', color: 0, fields: [] };
     vi.mocked(buildGroupEmbed).mockReturnValue(mockEmbed);
 
-    await service.announceCompletion(42, 1, { groups: [groupDict] });
+    await service.announceCompletion(vc, { groups: [groupDict] });
 
     expect(buildGroupEmbed).toHaveBeenCalledOnce();
     const reconstructed = vi.mocked(buildGroupEmbed).mock.calls[0][0];
@@ -410,31 +379,15 @@ describe('SessionService.announceCompletion', () => {
   it('sends fallback message when no groups', async () => {
     const firebase = createMockFirebase();
 
-    const vc = makeVoiceChannel(42, 'Raid');
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = { lastResults: new Map() } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const vc = makeVoiceChannel('42', 'Raid');
+    const bot = makeBot();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(bot, firebase as any);
 
-    await service.announceCompletion(42, 1, { groups: [] });
+    await service.announceCompletion(vc, { groups: [] });
 
     expect(vc.send).toHaveBeenCalledWith('No groups were formed this round.');
-  });
-
-  it('skips when guild not found', async () => {
-    const firebase = createMockFirebase();
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(null) });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    await service.announceCompletion(42, 1, { groups: [] });
-
-    expect(bot.get_guild).toHaveBeenCalledWith(1);
   });
 
   it('sends one embed per group', async () => {
@@ -443,13 +396,8 @@ describe('SessionService.announceCompletion', () => {
     const group1 = new WoWGroup(TankPaladin('T1'), HealerPriest('H1'), [Warrior('D1')]);
     const group2 = new WoWGroup(TankPaladin('T2'), HealerPriest('H2'), [Mage('D2')]);
 
-    const vc = makeVoiceChannel(42, 'Raid');
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = {
-      lastResults: new Map([[1, { players: [], groups: [group1, group2] }]]),
-    } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const vc = makeVoiceChannel('42', 'Raid');
+    const bot = makeBot();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(bot, firebase as any);
@@ -457,11 +405,11 @@ describe('SessionService.announceCompletion', () => {
     const mockEmbed = { title: '', color: 0, fields: [] };
     vi.mocked(buildGroupEmbed).mockReturnValue(mockEmbed);
 
-    await service.announceCompletion(42, 1, { groups: [] });
+    await service.announceCompletion(vc, {
+      groups: [group1.toDict(), group2.toDict()],
+    });
 
     expect(buildGroupEmbed).toHaveBeenCalledTimes(2);
-    expect(buildGroupEmbed).toHaveBeenCalledWith(group1, 1);
-    expect(buildGroupEmbed).toHaveBeenCalledWith(group2, 2);
     expect(vc.send).toHaveBeenCalledTimes(2);
   });
 });
@@ -475,20 +423,20 @@ describe('SessionService.cleanupChannel', () => {
     const service = new SessionService(makeBot(), firebase as any);
 
     const mockWatch = { unsubscribe: vi.fn() };
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeGuilds.add('1');
     service.channelListeners.set('42', mockWatch);
-    service.guildListeners.set(1, { unsubscribe: vi.fn() });
+    service.guildListeners.set('1', { unsubscribe: vi.fn() });
 
-    await service.cleanupChannel(42);
+    await service.cleanupChannel('42');
 
-    expect(service.activeChannels.has(42)).toBe(false);
+    expect(service.activeChannels.has('42')).toBe(false);
     expect(service.channelListeners.has('42')).toBe(false);
     expect(mockWatch.unsubscribe).toHaveBeenCalledOnce();
     expect(firebase.deleteChannelDoc).toHaveBeenCalledWith('42');
 
     // Last channel for guild → guild also cleaned up
-    expect(service.activeGuilds.has(1)).toBe(false);
+    expect(service.activeGuilds.has('1')).toBe(false);
     expect(firebase.deleteGuildDoc).toHaveBeenCalledWith('1');
   });
 
@@ -497,16 +445,16 @@ describe('SessionService.cleanupChannel', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeChannels.set(43, { docId: '43', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeChannels.set('43', { docId: '43', guildId: '1' });
+    service.activeGuilds.add('1');
     service.channelListeners.set('42', { unsubscribe: vi.fn() });
 
-    await service.cleanupChannel(42);
+    await service.cleanupChannel('42');
 
-    expect(service.activeChannels.has(42)).toBe(false);
-    expect(service.activeChannels.has(43)).toBe(true);
-    expect(service.activeGuilds.has(1)).toBe(true);
+    expect(service.activeChannels.has('42')).toBe(false);
+    expect(service.activeChannels.has('43')).toBe(true);
+    expect(service.activeGuilds.has('1')).toBe(true);
     expect(firebase.deleteGuildDoc).not.toHaveBeenCalled();
   });
 
@@ -515,7 +463,7 @@ describe('SessionService.cleanupChannel', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
 
-    await service.cleanupChannel(999);
+    await service.cleanupChannel('999');
 
     expect(firebase.deleteChannelDoc).not.toHaveBeenCalled();
   });
@@ -527,18 +475,18 @@ describe('SessionService.getActiveChannelIdsForGuild', () => {
   it('returns matching channel IDs', () => {
     const { service } = makeService();
 
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeChannels.set(43, { docId: '43', guildId: 1 });
-    service.activeChannels.set(99, { docId: '99', guildId: 2 });
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeChannels.set('43', { docId: '43', guildId: '1' });
+    service.activeChannels.set('99', { docId: '99', guildId: '2' });
 
-    const result = service.getActiveChannelIdsForGuild(1);
-    expect(result.sort()).toEqual([42, 43]);
+    const result = service.getActiveChannelIdsForGuild('1');
+    expect(result.sort()).toEqual(['42', '43']);
   });
 
   it('returns empty for unknown guild', () => {
     const { service } = makeService();
 
-    const result = service.getActiveChannelIdsForGuild(999);
+    const result = service.getActiveChannelIdsForGuild('999');
     expect(result).toEqual([]);
   });
 });
@@ -550,51 +498,51 @@ describe('SessionService.handleCollectionRemoved', () => {
     const { service } = makeService();
 
     const mockWatch = { unsubscribe: vi.fn() };
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeGuilds.add('1');
     service.channelListeners.set('42', mockWatch);
 
     service.handleCollectionRemoved({ document: { id: '42' } });
 
-    expect(service.activeChannels.has(42)).toBe(false);
+    expect(service.activeChannels.has('42')).toBe(false);
     expect(service.channelListeners.has('42')).toBe(false);
     expect(mockWatch.unsubscribe).toHaveBeenCalledOnce();
     // Guild also cleaned up (last channel)
-    expect(service.activeGuilds.has(1)).toBe(false);
+    expect(service.activeGuilds.has('1')).toBe(false);
   });
 
   it('handles removed event even without channel listener', () => {
     const { service } = makeService();
 
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeGuilds.add('1');
     // No channel listener set
 
     service.handleCollectionRemoved({ document: { id: '42' } });
 
-    expect(service.activeChannels.has(42)).toBe(false);
-    expect(service.activeGuilds.has(1)).toBe(false);
+    expect(service.activeChannels.has('42')).toBe(false);
+    expect(service.activeGuilds.has('1')).toBe(false);
   });
 
   it('keeps guild when other channels exist', () => {
     const { service } = makeService();
 
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeChannels.set(43, { docId: '43', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeChannels.set('43', { docId: '43', guildId: '1' });
+    service.activeGuilds.add('1');
     service.channelListeners.set('42', { unsubscribe: vi.fn() });
 
     service.handleCollectionRemoved({ document: { id: '42' } });
 
-    expect(service.activeChannels.has(42)).toBe(false);
-    expect(service.activeChannels.has(43)).toBe(true);
-    expect(service.activeGuilds.has(1)).toBe(true);
+    expect(service.activeChannels.has('42')).toBe(false);
+    expect(service.activeChannels.has('43')).toBe(true);
+    expect(service.activeGuilds.has('1')).toBe(true);
   });
 
-  it('ignores non-numeric doc IDs', () => {
+  it('ignores unknown channel IDs', () => {
     const { service } = makeService();
 
-    service.handleCollectionRemoved({ document: { id: 'not-a-number' } });
+    service.handleCollectionRemoved({ document: { id: 'not-tracked' } });
 
     // Should not throw or modify state
     expect(service.activeChannels.size).toBe(0);
@@ -610,10 +558,10 @@ describe('SessionService.shutdown', () => {
     const channelWatch = { unsubscribe: vi.fn() };
     const guildWatch = { unsubscribe: vi.fn() };
 
-    service.activeChannels.set(42, { docId: '42', guildId: 1 });
-    service.activeGuilds.add(1);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+    service.activeGuilds.add('1');
     service.channelListeners.set('42', channelWatch);
-    service.guildListeners.set(1, guildWatch);
+    service.guildListeners.set('1', guildWatch);
 
     service.shutdown();
 

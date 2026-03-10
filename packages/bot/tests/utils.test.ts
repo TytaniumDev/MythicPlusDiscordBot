@@ -75,9 +75,9 @@ describe('getPlayerList', () => {
     vi.mocked(mockSvc.getPreferenceByNameSync).mockReturnValue(null);
 
     const members: DiscordMember[] = [
-      { nick: 'SavedPlayer', id: 111, toString: () => 'SavedPlayer' },
-      { nick: 'NoRolesPlayer', id: 222, toString: () => 'NoRolesPlayer' },
-      { nick: 'AnotherPlayer', id: 333, toString: () => 'AnotherPlayer' },
+      { nick: 'SavedPlayer', id: '111', toString: () => 'SavedPlayer' },
+      { nick: 'NoRolesPlayer', id: '222', toString: () => 'NoRolesPlayer' },
+      { nick: 'AnotherPlayer', id: '333', toString: () => 'AnotherPlayer' },
     ];
 
     const players = getPlayerList(members);

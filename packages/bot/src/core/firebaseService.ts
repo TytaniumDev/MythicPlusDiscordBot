@@ -51,15 +51,15 @@ export interface IFirebaseService {
   db: FirebaseDb | null;
   isAvailable(): boolean;
   getOrCreateGuildDoc(
-    guildId: number,
+    guildId: string,
     guildName?: string,
     guildIconUrl?: string,
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
   getOrCreateChannelDoc(
-    channelId: number,
-    guildId: number,
+    channelId: string,
+    guildId: string,
     channelName: string,
     debug?: boolean,
   ): Promise<string>;
@@ -151,13 +151,13 @@ export class FirebaseService implements IFirebaseService {
   // Guild Doc Operations
 
   async getOrCreateGuildDoc(
-    guildId: number,
+    guildId: string,
     guildName?: string,
     guildIconUrl?: string,
   ): Promise<string> {
     if (!this.db) throw new Error('Firebase is not initialized.');
 
-    const docId = String(guildId);
+    const docId = guildId;
     const docRef = this.db.collection('guilds').doc(docId);
 
     const guildFields: Record<string, unknown> = {};
@@ -199,14 +199,14 @@ export class FirebaseService implements IFirebaseService {
   // Channel Doc Operations
 
   async getOrCreateChannelDoc(
-    channelId: number,
-    guildId: number,
+    channelId: string,
+    guildId: string,
     channelName: string,
     debug = false,
   ): Promise<string> {
     if (!this.db) throw new Error('Firebase is not initialized.');
 
-    const docId = String(channelId);
+    const docId = channelId;
     const docRef = this.db.collection('channels').doc(docId);
 
     const doc = await docRef.get();
@@ -214,7 +214,7 @@ export class FirebaseService implements IFirebaseService {
       await docRef.set({
         channelId: docId,
         channelName,
-        guildId: String(guildId),
+        guildId,
         status: 'lobby',
         players: [],
         groups: [],
@@ -346,7 +346,7 @@ export class FirebaseService implements IFirebaseService {
         for (const change of snapshot.docChanges()) {
           if (change.type === 'modified') {
             const data = change.doc.data();
-            if (data && data.status === 'completed') {
+            if (data && (data.status === 'completed' || data.status === 'lobby')) {
               callback(change.doc.id, data);
             }
           }

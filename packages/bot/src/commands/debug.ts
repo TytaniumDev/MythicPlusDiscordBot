@@ -2,7 +2,7 @@ import type { GroupService } from '../services/groupService.js';
 import logger from '../core/logger.js';
 
 export interface DebugContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   channel: { send(content: string): Promise<unknown> };
   send(content: string): Promise<unknown>;
 }
