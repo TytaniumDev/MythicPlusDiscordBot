@@ -110,7 +110,7 @@ Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, role name overrides (see `packages/bot
 
 When touching GitHub Actions workflows: read the **Secrets in workflows** section in [AGENTS.md](AGENTS.md). Never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
-**CI job naming constraint:** Our CI is split into two workflows to meet branch protection requirements. The `.github/workflows/ci-shared.yml` file is a reusable workflow that defines three jobs: `Lint`, `Build`, and `Test`. This is called by `.github/workflows/ci.yml` (named `CI`), which is triggered on pull requests. This structure creates the required check names: `CI / Lint`, `CI / Build`, and `CI / Test`. To prevent breaking PR merges, do not add extra triggers to `ci.yml` or rename the job IDs in `ci-shared.yml`.
+**CI job naming constraint:** `.github/workflows/ci.yml` (name: `CI`, trigger: `pull_request` only) defines three jobs: `Lint`, `Build`, `Test`. This produces check names `CI / Lint`, `CI / Build`, `CI / Test` that branch protection requires. `.github/workflows/ci-shared.yml` (trigger: `workflow_call` only) mirrors the same jobs for reuse by `deploy.yml`. Do not add extra triggers to `ci.yml` (adding `workflow_call` causes GitHub to append `(pull_request)` to check names, breaking branch protection). Keep job definitions in both files in sync.
 
 ## Git Workflow
 
