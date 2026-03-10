@@ -1,4 +1,4 @@
-import { WoWGroup, WoWPlayer } from '@mythicplus/shared';
+import { WoWGroup } from '@mythicplus/shared';
 import { FirebaseService } from '../core/firebaseService.js';
 import { buildGroupEmbed } from '../core/groupUi.js';
 import logger from '../core/logger.js';
