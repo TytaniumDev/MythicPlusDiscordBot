@@ -203,7 +203,7 @@ export async function reportBadGroup(
     `**Resulting Groups:**\n\`\`\`python\n[${data.groups.map((g) => g.toTestString()).join(', ')}]\n\`\`\`\n`;
 
   let body =
-    `**Reporter:** ${safeReporterName} (\`${data.reporterId}\`)\n` +
+    `**Reporter:** ${safeReporterName} (\`${sanitizeForGithub(String(data.reporterId))}\`)\n` +
     `**Version:** ${versionStr}\n\n` +
     `**Description:**\n${safeDescription}\n\n` +
     reproInfo;

@@ -368,21 +368,19 @@ async function main() {
 
     // Listen for bad group reports from the activity frontend
     const firebase = FirebaseService.getInstance();
-    const reportCooldowns = new Map<string, number>(); // guildId -> last report timestamp
-    const REPORT_COOLDOWN_MS = 60_000; // 1 minute per guild
+    let lastReportTimestamp = 0; // global rate limit (guildId is untrusted client data)
+    const REPORT_COOLDOWN_MS = 60_000; // 1 minute between any reports
 
     badGroupReportListener = firebase.listenForBadGroupReports(async (docId, data) => {
       try {
-        // Rate limit: one report per guild per minute
-        const guildId = String(data.guildId ?? 'unknown');
+        // Global rate limit: one report per minute across all sources
         const now = Date.now();
-        const lastReport = reportCooldowns.get(guildId) ?? 0;
-        if (now - lastReport < REPORT_COOLDOWN_MS) {
-          logger.warn(`Rate-limited bad group report from guild ${guildId}, skipping`);
+        if (now - lastReportTimestamp < REPORT_COOLDOWN_MS) {
+          logger.warn(`Rate-limited bad group report (doc ${docId}), skipping`);
           await firebase.deleteDoc('badGroupReports', docId);
           return;
         }
-        reportCooldowns.set(guildId, now);
+        lastReportTimestamp = now;
 
         const playersData = (data.players ?? []) as Record<string, unknown>[];
         const groupsData = (data.groups ?? []) as Record<string, unknown>[];
