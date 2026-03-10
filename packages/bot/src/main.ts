@@ -412,6 +412,26 @@ async function main() {
     if (badGroupReportListener) {
       logger.info('Listening for bad group reports from activity frontend');
     }
+
+    // Listen for guild refresh requests from the activity frontend
+    const guildRefreshListener = firebase.listenForGuildRefreshRequests(async (guildId) => {
+      try {
+        const guild = botAdapter.get_guild(Number(guildId));
+        if (!guild) {
+          logger.warn(`Guild ${guildId} not found in cache for refresh request`);
+          return;
+        }
+        await sessionService.refreshGuildVoiceChannels(guild);
+        await firebase.updateGuildDoc(guildId, { refreshRequest: null });
+        logger.debug(`Refreshed voice channels for guild ${guildId}`);
+      } catch (e) {
+        logger.error(`Failed to refresh voice channels for guild ${guildId}: ${e}`);
+      }
+    });
+
+    if (guildRefreshListener) {
+      logger.info('Listening for guild refresh requests from activity frontend');
+    }
   });
 
   // -- Interaction handler --
