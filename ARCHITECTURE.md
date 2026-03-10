@@ -69,23 +69,24 @@ flowchart TB
 
 ## Main Components
 
-### 1. Discord Bot (Python)
+### 1. Discord Bot (TypeScript)
 
-- **Entrypoint**: `bot.py` — creates `MythicPlusBot`, loads cogs, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
-- **Cogs** (in `cogs/`):
-  - **groups**: `/wheel` (text groups), `/activity` (interactive wheel), `/badgroup` (report bad logic), and `on_voice_state_update` (lobby sync).
-  - **roles**: `/roles` (interactive Role Board), `/readycheck`, `/rolecheck` (audit saved roles). Uses `role_ui.py` for interactive elements.
+- **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
+- **Commands** (in `packages/bot/src/commands/`):
+  - **groups**: `/wheel` (text groups), `/activity` (interactive wheel), `/badgroup` (report bad logic), and `onVoiceStateUpdate` (lobby sync).
+  - **roles**: `/roles` (interactive Role Board), `/readycheck` (audit saved roles). Uses `roleUi.ts` for interactive elements.
   - **general**: `/bug` & `/featurerequest` (GitHub integration), `/version`, `/status`, `/invite`.
   - **debug**: Debugging utilities.
-- **Services** (in `services/`):
-  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`create_mythic_plus_groups`), and handles the “wheel” flows.
+- **Services** (in `packages/bot/src/services/`):
+  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`createMythicPlusGroups`), and handles the “wheel” flows.
   - **SessionService**: creates a Firestore session when `/activity` is run, keeps a map of voice channel → session, subscribes to that session’s document, and reacts to status changes.
-- **Core** (in `core/`):
-  - **FirebaseService**: singleton; initializes the Firebase Admin SDK, exposes session management.
-  - **issues.py**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
-  - **role_ui.py**: **UI Components**. Contains the Discord Views, Buttons, and Modals for the interactive Role Board.
-  - **storage.py**: **Persistence**. Manages local JSON storage (`player_preferences.json`) for user role preferences.
-  - **parallel_group_creator**, **models**, **utils**, **config**: group algorithm, `WoWPlayer`/`WoWGroup`, and app config.
+- **Core** (in `packages/bot/src/core/`):
+  - **FirebaseService**: initializes the Firebase Admin SDK, exposes session management.
+  - **issues.ts**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
+  - **roleUi.ts**: **UI Components**. Contains the Discord MessageActionRow, Buttons, and Modals for the interactive Role Board.
+  - **storage.ts**: **Persistence**. Manages local JSON storage (`player_preferences.json`) for user role preferences.
+- **Shared** (in `packages/shared/src/`):
+  - **parallelGroupCreator**, **models**: shared group algorithm and data models used by both the bot and frontend mock data.
 
 The bot does **not** serve the Activity UI; it only creates sessions, reacts to Firestore updates, and posts messages/embeds in Discord.
 
@@ -217,15 +218,15 @@ sequenceDiagram
 
 | Concern | Where it lives |
 |--------|-----------------|
-| Slash commands (`/activity`, `/wheel`) | `cogs/groups.py` |
-| Role Board / Saved Roles | `cogs/roles.py`, `core/role_ui.py`, `core/storage.py` |
-| GitHub Issues (`/bug`, `/badgroup`) | `core/issues.py`, `cogs/general.py`, `cogs/groups.py` |
-| Voice → lobby sync | `cogs/groups.py` (`on_voice_state_update`) → `SessionService.update_lobby_players` |
+| Slash commands (`/activity`, `/wheel`) | `packages/bot/src/commands/groups.ts` |
+| Role Board / Saved Roles | `packages/bot/src/commands/roles.ts`, `packages/bot/src/core/roleUi.ts`, `packages/bot/src/core/storage.ts` |
+| GitHub Issues (`/bug`, `/badgroup`) | `packages/bot/src/core/issues.ts`, `packages/bot/src/commands/general.ts`, `packages/bot/src/commands/groups.ts` |
+| Voice → lobby sync | `packages/bot/src/commands/groups.ts` (`onVoiceStateUpdate`) → `SessionService.updateChannelPlayers` |
 | Session create/listen/update | `SessionService` + `FirebaseService` |
-| Group algorithm | `core/parallel_group_creator.py` |
-| “Spin” handling | `SessionService._process_spin_request` |
+| Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
+| “Spin” handling | `SessionService.processSpinRequest` |
 | Activity UI and wheel | `activity/src/main.ts`, `activity/src/wheel.ts` |
-| Session cleanup | `bot.py` (startup), `SessionService._cleanup_session_immediately` |
+| Session cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
 
 ---
 
