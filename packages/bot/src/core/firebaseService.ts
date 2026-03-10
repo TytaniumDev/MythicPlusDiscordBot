@@ -66,6 +66,12 @@ export interface IFirebaseService {
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
+  listenForGuildRefreshRequests(
+    callback: (guildId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
+  listenForChannelPlayerRefreshRequests(
+    callback: (channelId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
 }
 
@@ -282,6 +288,33 @@ export class FirebaseService implements IFirebaseService {
       },
       (...errArgs: unknown[]) => {
         logger.error(`Guild refresh listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
+  listenForChannelPlayerRefreshRequests(
+    callback: (channelId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('channels');
+
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data = change.doc.data();
+            if (data && data.refreshPlayers) {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Channel player refresh listener error: ${errArgs[0]}`);
       },
     );
 

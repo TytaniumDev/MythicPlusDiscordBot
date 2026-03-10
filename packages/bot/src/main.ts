@@ -27,7 +27,7 @@ import { GroupsHandler } from './commands/groups.js';
 import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
-import { getWowName, type DiscordMember } from './core/utils.js';
+import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
 import { reportBadGroup } from './core/issues.js';
@@ -337,6 +337,7 @@ async function main() {
   // Track listeners for shutdown cleanup
   let badGroupReportListener: { unsubscribe(): void } | null = null;
   let guildRefreshListener: { unsubscribe(): void } | null = null;
+  let channelRefreshListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -417,6 +418,7 @@ async function main() {
         const discordGuild = readyClient.guilds.cache.get(guildId);
         if (!discordGuild) {
           logger.warn(`Guild ${guildId} not found in cache for refresh request`);
+          await firebase.updateGuildDoc(guildId, { refreshRequest: null });
           return;
         }
 
@@ -444,6 +446,73 @@ async function main() {
 
     if (guildRefreshListener) {
       logger.info('Listening for guild refresh requests from activity frontend');
+    }
+
+    // Listen for channel player refresh requests from the activity frontend.
+    // When a user selects a voice channel in the embedded app, the frontend
+    // creates a channel doc with refreshPlayers=true. The bot responds by
+    // populating the players array from the Discord voice channel.
+    channelRefreshListener = firebase.listenForChannelPlayerRefreshRequests(async (channelId, data) => {
+      try {
+        const guildId = String(data.guildId ?? '');
+        if (!guildId) {
+          logger.warn(`Channel ${channelId} refresh request missing guildId`);
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          return;
+        }
+
+        const discordGuild = readyClient.guilds.cache.get(guildId);
+        if (!discordGuild) {
+          logger.warn(`Guild ${guildId} not found in cache for channel player refresh`);
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          return;
+        }
+
+        const voiceChannel = discordGuild.channels.cache.get(channelId);
+        if (!voiceChannel || !voiceChannel.isVoiceBased()) {
+          logger.warn(`Voice channel ${channelId} not found in guild ${guildId}`);
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          return;
+        }
+
+        const vc = voiceChannel as import('discord.js').VoiceChannel;
+        const members = vc.members.filter((m) => !m.user.bot);
+
+        // Refresh preference cache for these members so roles are up-to-date
+        const prefSvc = getPreferenceService();
+        await Promise.all(
+          members.map((m) => prefSvc.refreshPreference(m.id)),
+        );
+
+        const players = getPlayerList(members.map((m) => adaptMember(m)));
+        const playersData = players.map((p) => p.toDict());
+
+        await firebase.updateChannelDoc(channelId, {
+          players: playersData,
+          refreshPlayers: null,
+        });
+
+        // Register the channel as active so voice state changes are tracked.
+        // NOTE: Number() conversion can lose precision on large snowflake IDs.
+        // This matches the existing SessionService Map<number, ...> type —
+        // migrating to string keys is tracked as separate tech debt.
+        const numChannelId = Number(channelId);
+        if (!sessionService.activeChannels.has(numChannelId)) {
+          sessionService.activeChannels.set(numChannelId, {
+            docId: channelId,
+            guildId: Number(guildId),
+          });
+          sessionService.activeGuilds.add(Number(guildId));
+        }
+
+        logger.debug(`Refreshed players for channel ${channelId} (${playersData.length} players)`);
+      } catch (e) {
+        logger.error(`Failed to refresh players for channel ${channelId}: ${e}`);
+      }
+    });
+
+    if (channelRefreshListener) {
+      logger.info('Listening for channel player refresh requests from activity frontend');
     }
   });
 
@@ -809,6 +878,7 @@ async function main() {
     logger.info('Shutting down...');
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
+    channelRefreshListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);
