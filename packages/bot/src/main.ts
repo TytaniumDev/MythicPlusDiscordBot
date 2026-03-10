@@ -651,7 +651,7 @@ async function main() {
           : null;
         await groupsHandler.activity(
           {
-            guild: activityGuild as { id: number } | null,
+            guild: activityGuild,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,
