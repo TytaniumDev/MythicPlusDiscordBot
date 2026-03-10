@@ -1,4 +1,4 @@
-import { WoWGroup, WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
+import { WoWGroup } from '@mythicplus/shared';
 import { FirebaseService } from '../core/firebaseService.js';
 import { buildGroupEmbed } from '../core/groupUi.js';
 import logger from '../core/logger.js';
@@ -145,68 +145,6 @@ export class SessionService {
     await this.firebase.updateGuildDoc(guildIdStr, {
       voiceChannels: voiceChannelsData,
     });
-  }
-
-  async processSpinRequest(
-    docId: string,
-    channelId: number,
-    guildId: number,
-    data: Record<string, unknown>,
-  ): Promise<void> {
-    logger.info(`Processing spin request for channel ${channelId}`);
-
-    try {
-      const guild = this.bot.get_guild(guildId);
-      if (!guild) {
-        logger.error(`Guild ${guildId} not found.`);
-        return;
-      }
-
-      const isDebug = (data.isDebug as boolean) ?? false;
-      let players: WoWPlayer[];
-
-      if (isDebug) {
-        const playersData = (data.players ?? []) as Record<string, unknown>[];
-        players = playersData.map((p) => WoWPlayer.fromDict(p));
-      } else {
-        const channel = guild.get_channel(channelId);
-        if (!channel) return;
-
-        const members = channel.members.filter((m) => !m.bot);
-        players = getPlayerList(members).filter((p) => p.hasRoles());
-      }
-
-      let groups: WoWGroup[];
-      if (players.length === 0 && !isDebug) {
-        groups = [];
-      } else {
-        groups = createMythicPlusGroups(players, isDebug, guildId);
-      }
-
-      if (this.bot.groupService) {
-        this.bot.groupService.lastResults.set(guildId, {
-          players: [...players],
-          groups: [...groups],
-        });
-      }
-
-      const groupsData = groups.map((g) => g.toDict());
-      await this.firebase.updateChannelDoc(docId, {
-        status: 'spinning',
-        groups: groupsData,
-        revealedGroups: 0,
-      });
-    } catch (e) {
-      logger.error(`Spin request failed for channel ${channelId}: ${e}`);
-      try {
-        await this.firebase.updateChannelDoc(docId, {
-          status: 'lobby',
-          groups: [],
-        });
-      } catch (e2) {
-        logger.error(`Failed to reset channel ${channelId} after spin error: ${e2}`);
-      }
-    }
   }
 
   async announceCompletion(

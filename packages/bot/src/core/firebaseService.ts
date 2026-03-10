@@ -4,7 +4,11 @@ import * as config from './config.js';
 
 // Sentinel for Firestore server timestamps.
 // Replaced with FieldValue.serverTimestamp() at initialization time.
-export const SERVER_TIMESTAMP = { __sentinel: 'serverTimestamp' } as const;
+export let SERVER_TIMESTAMP: unknown = { __sentinel: 'serverTimestamp' };
+
+// Sentinel for Firestore field deletion.
+// Replaced with FieldValue.delete() at initialization time.
+export let DELETE_FIELD: unknown = null;
 
 // Firebase Admin SDK types — imported dynamically to allow mocking
 type FirebaseDb = {
@@ -76,6 +80,9 @@ export interface IFirebaseService {
     callback: (channelId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
+  listenForChannelRemovedDocs(
+    callback: (docId: string) => void,
+  ): { unsubscribe(): void } | null;
 }
 
 let instance: FirebaseService | null = null;
@@ -127,6 +134,8 @@ export class FirebaseService implements IFirebaseService {
         // App already initialized
       }
       this.db = admin.firestore() as FirebaseDb;
+      SERVER_TIMESTAMP = admin.firestore.FieldValue.serverTimestamp();
+      DELETE_FIELD = admin.firestore.FieldValue.delete();
       logger.info('Firebase initialized successfully.');
     } catch (e) {
       const errType = e instanceof Error ? e.constructor.name : String(e);
@@ -355,6 +364,30 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection(collectionName).doc(docId);
     await docRef.delete();
+  }
+
+  listenForChannelRemovedDocs(
+    callback: (docId: string) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('channels');
+
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'removed') {
+            callback(change.doc.id);
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Channel removed listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
   }
 
   // Collection Operations

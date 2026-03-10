@@ -108,7 +108,7 @@ describe('GroupService.getGroupsData', () => {
     expect(createMythicPlusGroups).toHaveBeenCalledOnce();
   });
 
-  it('returns null when no players have valid roles', async () => {
+  it('returns null and sends error when no players have valid roles', async () => {
     const service = new GroupService();
     const member1 = { bot: false, nick: 'P1', id: '1', toString: () => 'P1' };
     const ctx = makeCtx({ members: [member1] });
@@ -118,6 +118,7 @@ describe('GroupService.getGroupsData', () => {
     const result = await service.getGroupsData(ctx, false);
 
     expect(result).toBeNull();
+    expect(ctx.send).toHaveBeenCalledWith('❌ No players with valid roles found.');
   });
 });
 

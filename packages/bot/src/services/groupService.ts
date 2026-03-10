@@ -36,6 +36,7 @@ export class GroupService {
     }
 
     if (players.length === 0) {
+      await ctx.send('❌ No players with valid roles found.');
       return null;
     }
 

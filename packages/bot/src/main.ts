@@ -12,14 +12,18 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle as DjsButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  InviteTargetType,
   type ChatInputCommandInteraction,
   type ButtonInteraction,
+  type ModalSubmitInteraction,
   type Message as DjsMessage,
   type Interaction,
 } from 'discord.js';
 import * as config from './core/config.js';
 import logger from './core/logger.js';
-import { MythicPlusBot } from './bot.js';
 import { GroupService } from './services/groupService.js';
 import { SessionService, type Bot, type Guild, type VoiceChannel } from './services/sessionService.js';
 import { GeneralHandler } from './commands/general.js';
@@ -28,9 +32,9 @@ import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
-import { FirebaseService } from './core/firebaseService.js';
+import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
-import { reportBadGroup } from './core/issues.js';
+import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import {
   createMainSpecView,
@@ -220,6 +224,9 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('description').setDescription('Issue description').setRequired(false),
     ),
+  new SlashCommandBuilder().setName('roles').setDescription('Show the Mythic+ role board for the current channel'),
+  new SlashCommandBuilder().setName('bug').setDescription('Report a bug'),
+  new SlashCommandBuilder().setName('featurerequest').setDescription('Request a feature'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
   new SlashCommandBuilder().setName('testcase').setDescription('[Debug] Print last wheel result as test data'),
 ];
@@ -308,32 +315,6 @@ async function main() {
   const botAdapter = createBotAdapter(client, groupService);
   const sessionService = new SessionService(botAdapter);
 
-  new MythicPlusBot({
-    getUser: (id) => {
-      const user = client.users.cache.get(String(id));
-      if (!user) return null;
-      return {
-        async send(content, opts) {
-          await user.send({
-            content,
-            files: opts?.files?.map((f) => ({ name: f.filename, attachment: f.content })),
-          });
-        },
-      };
-    },
-    async fetchUser(id) {
-      const user = await client.users.fetch(String(id));
-      return {
-        async send(content, opts) {
-          await user.send({
-            content,
-            files: opts?.files?.map((f) => ({ name: f.filename, attachment: f.content })),
-          });
-        },
-      };
-    },
-  });
-
   const generalHandler = new GeneralHandler(0, config.DISCORD_APPLICATION_ID);
   const groupsHandler = new GroupsHandler(botAdapter, groupService, sessionService);
   const rolesHandler = new RolesHandler();
@@ -344,6 +325,7 @@ async function main() {
   let guildRefreshListener: { unsubscribe(): void } | null = null;
   let channelRefreshListener: { unsubscribe(): void } | null = null;
   let channelStatusListener: { unsubscribe(): void } | null = null;
+  let channelRemovedListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -424,9 +406,11 @@ async function main() {
         const discordGuild = readyClient.guilds.cache.get(guildId);
         if (!discordGuild) {
           logger.warn(`Guild ${guildId} not found in cache for refresh request`);
-          await firebase.updateGuildDoc(guildId, { refreshRequest: null });
           return;
         }
+
+        const guildName = discordGuild.name;
+        const guildIconUrl = discordGuild.iconURL();
 
         const voiceChannelsData = discordGuild.channels.cache
           .filter((ch) => ch.isVoiceBased())
@@ -440,13 +424,22 @@ async function main() {
             return a.name.localeCompare(b.name);
           });
 
-        await firebase.updateGuildDoc(guildId, {
+        const updateData: Record<string, unknown> = {
           voiceChannels: voiceChannelsData,
-          refreshRequest: null,
-        });
+          guildName,
+        };
+        if (guildIconUrl) updateData.guildIconUrl = guildIconUrl;
+
+        await firebase.updateGuildDoc(guildId, updateData);
         logger.debug(`Refreshed voice channels for guild ${guildId}`);
       } catch (e) {
         logger.error(`Failed to refresh voice channels for guild ${guildId}: ${e}`);
+      } finally {
+        try {
+          await firebase.updateGuildDoc(guildId, { refreshRequest: DELETE_FIELD });
+        } catch {
+          // best effort
+        }
       }
     });
 
@@ -463,21 +456,21 @@ async function main() {
         const guildId = String(data.guildId ?? '');
         if (!guildId) {
           logger.warn(`Channel ${channelId} refresh request missing guildId`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
           return;
         }
 
         const discordGuild = readyClient.guilds.cache.get(guildId);
         if (!discordGuild) {
           logger.warn(`Guild ${guildId} not found in cache for channel player refresh`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
           return;
         }
 
         const voiceChannel = discordGuild.channels.cache.get(channelId);
         if (!voiceChannel || !voiceChannel.isVoiceBased()) {
           logger.warn(`Voice channel ${channelId} not found in guild ${guildId}`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: null });
+          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
           return;
         }
 
@@ -495,7 +488,7 @@ async function main() {
 
         await firebase.updateChannelDoc(channelId, {
           players: playersData,
-          refreshPlayers: null,
+          refreshPlayers: DELETE_FIELD,
         });
 
         // Register the channel as active so voice state changes are tracked.
@@ -549,6 +542,15 @@ async function main() {
     if (channelStatusListener) {
       logger.info('Listening for channel status changes from activity frontend');
     }
+
+    // Listen for channel docs being removed (e.g. frontend cleanup or TTL expiry)
+    channelRemovedListener = firebase.listenForChannelRemovedDocs((docId) => {
+      sessionService.handleCollectionRemoved({ document: { id: docId } });
+    });
+
+    if (channelRemovedListener) {
+      logger.info('Listening for channel doc removals');
+    }
   });
 
   // -- Interaction handler --
@@ -558,6 +560,8 @@ async function main() {
         await handleSlashCommand(interaction);
       } else if (interaction.isButton()) {
         await handleButton(interaction);
+      } else if (interaction.isModalSubmit()) {
+        await handleModalSubmit(interaction);
       }
     } catch (e) {
       logger.error(`Interaction error: ${e}`);
@@ -661,6 +665,7 @@ async function main() {
         break;
       }
 
+      case 'roles':
       case 'readycheck': {
         if (!member) {
           await sender.send('❌ This command can only be used in a server.');
@@ -694,6 +699,43 @@ async function main() {
       case 'badgroup': {
         const title = interaction.options.getString('title');
         const description = interaction.options.getString('description');
+
+        // If no title provided, show a modal for the user to fill in
+        if (title == null) {
+          const guildId = guildObj?.id ?? null;
+          const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
+          if (!lastResults) {
+            await sender.send(
+              '❌ No group creation data found for this server. Run /wheel first.',
+            );
+            break;
+          }
+
+          const modal = new ModalBuilder()
+            .setCustomId('badgroup_modal')
+            .setTitle('Report Bad Group');
+
+          modal.addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('title')
+                .setLabel('Title')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true),
+            ),
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('description')
+                .setLabel('Description')
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(true),
+            ),
+          );
+
+          await interaction.showModal(modal);
+          break;
+        }
+
         await groupsHandler.badgroup(
           {
             guild: guildObj,
@@ -703,12 +745,84 @@ async function main() {
             },
             send: sender.send,
             defer: sender.defer,
-            // Modal not supported in activity context; no-op stub
-            interaction: { response: { sendModal: async () => {} } },
           },
           title,
           description,
         );
+        break;
+      }
+
+      case 'bug': {
+        const modal = new ModalBuilder()
+          .setCustomId('bug_modal')
+          .setTitle('Report a Bug');
+
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('title')
+              .setLabel('Title')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('description')
+              .setLabel('Description')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('steps')
+              .setLabel('Reproduction Steps')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('include_logs')
+              .setLabel('Include recent logs? (yes/no)')
+              .setStyle(TextInputStyle.Short)
+              .setValue('yes')
+              .setRequired(false),
+          ),
+        );
+
+        await interaction.showModal(modal);
+        break;
+      }
+
+      case 'featurerequest': {
+        const modal = new ModalBuilder()
+          .setCustomId('feature_modal')
+          .setTitle('Request a Feature');
+
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('title')
+              .setLabel('Title')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('description')
+              .setLabel('Description')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(true),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('impact')
+              .setLabel('Benefit / Impact')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false),
+          ),
+        );
+
+        await interaction.showModal(modal);
         break;
       }
 
@@ -846,14 +960,23 @@ async function main() {
         components: [],
       });
 
-      // Refresh the role board embed in the original message if possible
+      // Sync updated roles to Firebase for any active sessions in this guild
       try {
-        const originalMsg = interaction.message;
-        if (originalMsg.reference?.messageId) {
-          // This was a reply; update the original role board
+        const guild = interaction.guild;
+        if (guild) {
+          const guildId = Number(guild.id);
+          const channelIds = sessionService.getActiveChannelIdsForGuild(guildId);
+          if (channelIds.length > 0) {
+            const guildAdapter = createBotAdapter(client, groupService).get_guild(guildId);
+            if (guildAdapter) {
+              await Promise.all(
+                channelIds.map((chId) => sessionService.updateChannelPlayers(chId, guildAdapter)),
+              );
+            }
+          }
         }
       } catch {
-        // best effort
+        // best effort — role was already saved locally
       }
       return;
     }
@@ -865,6 +988,77 @@ async function main() {
       const rows = buildRoleButtons(state);
       await interaction.update({ components: rows });
     }
+  }
+
+  // -- Modal submit handler --
+  async function handleModalSubmit(interaction: ModalSubmitInteraction) {
+    const customId = interaction.customId;
+    const member = interaction.member as import('discord.js').GuildMember | null;
+    const reporterName = member?.displayName ?? interaction.user.displayName;
+    const reporterId = interaction.user.id;
+
+    if (customId === 'bug_modal' || customId === 'feature_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const title = interaction.fields.getTextInputValue('title');
+        const description = interaction.fields.getTextInputValue('description');
+        const extraInfo = customId === 'bug_modal'
+          ? interaction.fields.getTextInputValue('steps')
+          : interaction.fields.getTextInputValue('impact');
+        const includeLogs = customId === 'bug_modal'
+          ? interaction.fields.getTextInputValue('include_logs').toLowerCase().startsWith('y')
+          : false;
+
+        const issue = await submitGithubIssueModal({
+          issueType: customId === 'bug_modal' ? 'bug' : 'feature',
+          title,
+          description,
+          extraInfo,
+          includeLogs,
+          reporterName,
+          reporterId,
+        });
+        await interaction.editReply(`✅ Issue created: ${issue.html_url}`);
+      } catch (e) {
+        logger.error(`Failed to submit ${customId}: ${e}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+      }
+      return;
+    }
+
+    if (customId === 'badgroup_modal') {
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const guildId = interaction.guild ? Number(interaction.guild.id) : null;
+        const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
+        if (!lastResults) {
+          await interaction.editReply('❌ No group data found. Run /wheel first.');
+          return;
+        }
+
+        const title = interaction.fields.getTextInputValue('title');
+        const description = interaction.fields.getTextInputValue('description');
+
+        const issue = await reportBadGroup({
+          reporterName,
+          reporterId,
+          title,
+          description,
+          players: lastResults.players,
+          groups: lastResults.groups,
+        });
+        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}`);
+      } catch (e) {
+        logger.error(`Failed to submit badgroup modal: ${e}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+      }
+      return;
+    }
+
+    // Unknown modal — acknowledge to avoid Discord "did not respond" error
+    await interaction.reply({ content: '❌ Unknown modal.', ephemeral: true });
   }
 
   // -- Voice state update --
@@ -927,6 +1121,7 @@ async function main() {
     guildRefreshListener?.unsubscribe();
     channelRefreshListener?.unsubscribe();
     channelStatusListener?.unsubscribe();
+    channelRemovedListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);
@@ -949,7 +1144,11 @@ function adaptVoiceChannelForCtx(ch: import('discord.js').VoiceChannel) {
     name: ch.name,
     members: ch.members.map((m) => adaptMember(m)),
     async createInvite() {
-      const invite = await ch.createInvite({ maxAge: 86400 });
+      const invite = await ch.createInvite({
+        targetType: InviteTargetType.EmbeddedApplication,
+        targetApplication: config.DISCORD_APPLICATION_ID,
+        maxAge: 300,
+      });
       return { url: invite.url };
     },
   };
