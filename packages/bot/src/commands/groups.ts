@@ -18,7 +18,12 @@ export interface GroupsContext {
       } | null;
     } | null;
   };
-  send(content: string, options?: { ephemeral?: boolean }): Promise<unknown>;
+  channel?: {
+    members: { bot: boolean; id: string | number; toString(): string }[];
+    sendTyping(): Promise<void>;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  send(content: string, options?: { ephemeral?: boolean }): Promise<any>;
   defer(options?: { ephemeral?: boolean }): Promise<void>;
   interaction?: { response: { sendModal(modal: unknown): Promise<void> } } | null;
 }
@@ -41,8 +46,10 @@ export class GroupsHandler {
   async wheel(ctx: GroupsContext): Promise<void> {
     await ctx.defer();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await this.groupService.coreWheel(ctx as any, false);
+      if (!ctx.channel) {
+        throw new Error('Channel context is required for coreWheel');
+      }
+      await this.groupService.coreWheel(ctx as GroupsContext & { channel: NonNullable<GroupsContext['channel']> }, false);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
       logger.error(`Error in wheel command: ${e}`);
