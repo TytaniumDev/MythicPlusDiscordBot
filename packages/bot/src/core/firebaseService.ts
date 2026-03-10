@@ -267,15 +267,11 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return null;
 
     const collectionRef = this.db.collection('guilds');
-    let initialSnapshotDone = false;
 
     const unsubscribe = collectionRef.onSnapshot(
       (...args: unknown[]) => {
         const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
         for (const change of snapshot.docChanges()) {
-          // Skip the initial snapshot to avoid re-processing all existing docs on startup
-          if (!initialSnapshotDone) continue;
-
           if (change.type === 'added' || change.type === 'modified') {
             const data = change.doc.data();
             if (data && data.refreshRequest) {
@@ -283,7 +279,6 @@ export class FirebaseService implements IFirebaseService {
             }
           }
         }
-        initialSnapshotDone = true;
       },
       (...errArgs: unknown[]) => {
         logger.error(`Guild refresh listener error: ${errArgs[0]}`);

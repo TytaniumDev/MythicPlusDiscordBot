@@ -334,8 +334,9 @@ async function main() {
   const rolesHandler = new RolesHandler();
   const debugHandler = new DebugHandler(groupService);
 
-  // Track report listener for shutdown cleanup
+  // Track listeners for shutdown cleanup
   let badGroupReportListener: { unsubscribe(): void } | null = null;
+  let guildRefreshListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -413,16 +414,33 @@ async function main() {
       logger.info('Listening for bad group reports from activity frontend');
     }
 
-    // Listen for guild refresh requests from the activity frontend
-    const guildRefreshListener = firebase.listenForGuildRefreshRequests(async (guildId) => {
+    // Listen for guild refresh requests from the activity frontend.
+    // Look up guilds by string ID directly to avoid Number() precision loss
+    // on 64-bit Discord snowflake IDs.
+    guildRefreshListener = firebase.listenForGuildRefreshRequests(async (guildId) => {
       try {
-        const guild = botAdapter.get_guild(Number(guildId));
-        if (!guild) {
+        const discordGuild = readyClient.guilds.cache.get(guildId);
+        if (!discordGuild) {
           logger.warn(`Guild ${guildId} not found in cache for refresh request`);
           return;
         }
-        await sessionService.refreshGuildVoiceChannels(guild);
-        await firebase.updateGuildDoc(guildId, { refreshRequest: null });
+
+        const voiceChannelsData = discordGuild.channels.cache
+          .filter((ch) => ch.isVoiceBased())
+          .map((ch) => {
+            const vc = ch as import('discord.js').VoiceChannel;
+            const count = vc.members.filter((m) => !m.user.bot).size;
+            return { id: ch.id, name: ch.name, userCount: count };
+          })
+          .sort((a, b) => {
+            if (b.userCount !== a.userCount) return b.userCount - a.userCount;
+            return a.name.localeCompare(b.name);
+          });
+
+        await firebase.updateGuildDoc(guildId, {
+          voiceChannels: voiceChannelsData,
+          refreshRequest: null,
+        });
         logger.debug(`Refreshed voice channels for guild ${guildId}`);
       } catch (e) {
         logger.error(`Failed to refresh voice channels for guild ${guildId}: ${e}`);
@@ -795,6 +813,7 @@ async function main() {
   async function shutdown() {
     logger.info('Shutting down...');
     badGroupReportListener?.unsubscribe();
+    guildRefreshListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

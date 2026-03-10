@@ -19,7 +19,7 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
   useEffect(() => {
     if (!hasAutoRefreshed.current && guildData && channels.length === 0 && currentGuildId) {
       hasAutoRefreshed.current = true;
-      service.refreshChannels(currentGuildId).catch(() => {});
+      service.refreshChannels(currentGuildId).catch((err) => console.error('[Wheelson] Auto-refresh failed:', err));
     }
   }, [guildData, channels.length, currentGuildId, service]);
 
