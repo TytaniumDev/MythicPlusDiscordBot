@@ -423,6 +423,7 @@ async function main() {
         const discordGuild = readyClient.guilds.cache.get(guildId);
         if (!discordGuild) {
           logger.warn(`Guild ${guildId} not found in cache for refresh request`);
+          await firebase.updateGuildDoc(guildId, { refreshRequest: null });
           return;
         }
 
@@ -496,7 +497,10 @@ async function main() {
           refreshPlayers: null,
         });
 
-        // Register the channel as active so voice state changes are tracked
+        // Register the channel as active so voice state changes are tracked.
+        // NOTE: Number() conversion can lose precision on large snowflake IDs.
+        // This matches the existing SessionService Map<number, ...> type —
+        // migrating to string keys is tracked as separate tech debt.
         const numChannelId = Number(channelId);
         if (!sessionService.activeChannels.has(numChannelId)) {
           sessionService.activeChannels.set(numChannelId, {

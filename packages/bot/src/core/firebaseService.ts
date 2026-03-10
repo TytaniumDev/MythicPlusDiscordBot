@@ -66,6 +66,12 @@ export interface IFirebaseService {
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
+  listenForGuildRefreshRequests(
+    callback: (guildId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
+  listenForChannelPlayerRefreshRequests(
+    callback: (channelId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
 }
 
