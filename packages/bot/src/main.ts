@@ -334,6 +334,9 @@ async function main() {
   const rolesHandler = new RolesHandler();
   const debugHandler = new DebugHandler(groupService);
 
+  // Track report listener for shutdown cleanup
+  let badGroupReportListener: { unsubscribe(): void } | null = null;
+
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
     logger.info(`Logged in as ${readyClient.user.tag}`);
@@ -365,8 +368,22 @@ async function main() {
 
     // Listen for bad group reports from the activity frontend
     const firebase = FirebaseService.getInstance();
-    const reportListener = firebase.listenForBadGroupReports(async (docId, data) => {
+    const reportCooldowns = new Map<string, number>(); // guildId -> last report timestamp
+    const REPORT_COOLDOWN_MS = 60_000; // 1 minute per guild
+
+    badGroupReportListener = firebase.listenForBadGroupReports(async (docId, data) => {
       try {
+        // Rate limit: one report per guild per minute
+        const guildId = String(data.guildId ?? 'unknown');
+        const now = Date.now();
+        const lastReport = reportCooldowns.get(guildId) ?? 0;
+        if (now - lastReport < REPORT_COOLDOWN_MS) {
+          logger.warn(`Rate-limited bad group report from guild ${guildId}, skipping`);
+          await firebase.deleteDoc('badGroupReports', docId);
+          return;
+        }
+        reportCooldowns.set(guildId, now);
+
         const playersData = (data.players ?? []) as Record<string, unknown>[];
         const groupsData = (data.groups ?? []) as Record<string, unknown>[];
         const players = playersData.map((p) => WoWPlayer.fromDict(p));
@@ -382,13 +399,19 @@ async function main() {
         });
 
         logger.info(`Bad group report processed: ${issue.html_url}`);
-        await firebase.deleteDoc('badGroupReports', docId);
       } catch (e) {
         logger.error(`Failed to process bad group report ${docId}: ${e}`);
+      } finally {
+        // Always delete the report doc to prevent reprocessing on restart
+        try {
+          await firebase.deleteDoc('badGroupReports', docId);
+        } catch (delErr) {
+          logger.error(`Failed to delete bad group report doc ${docId}: ${delErr}`);
+        }
       }
     });
 
-    if (reportListener) {
+    if (badGroupReportListener) {
       logger.info('Listening for bad group reports from activity frontend');
     }
   });
@@ -534,6 +557,7 @@ async function main() {
             },
             send: sender.send,
             defer: sender.defer,
+            // Modal not supported in activity context; no-op stub
             interaction: { response: { sendModal: async () => {} } },
           },
           title,
@@ -752,6 +776,7 @@ async function main() {
   // -- Graceful shutdown --
   async function shutdown() {
     logger.info('Shutting down...');
+    badGroupReportListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

@@ -36,6 +36,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     try {
       await service.reportBadGroup(reportTitle.trim(), reportDescription.trim());
       setReportSubmitted(true);
+      setTimeout(() => setReportSubmitted(false), 5000);
       setShowReportForm(false);
       setReportTitle('');
       setReportDescription('');
@@ -114,7 +115,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
               </div>
             ) : (
               <button
-                className="btn btn-back"
+                className="btn btn-secondary"
                 onClick={() => setShowReportForm(true)}
               >
                 Report Bad Group

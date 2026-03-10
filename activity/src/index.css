@@ -1203,6 +1203,9 @@ body {
   font-family: var(--font-family);
   font-size: 0.85rem;
   margin-bottom: 8px;
+}
+
+.report-textarea {
   resize: vertical;
 }
 

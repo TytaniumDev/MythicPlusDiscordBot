@@ -191,7 +191,11 @@ export interface BadGroupReportData {
 export async function reportBadGroup(
   data: BadGroupReportData,
 ): Promise<Record<string, unknown>> {
-  const formattedTitle = `[Bad Group] ${data.title}`;
+  const safeTitle = sanitizeForGithub(data.title);
+  const safeDescription = sanitizeForGithub(data.description);
+  const safeReporterName = sanitizeForGithub(data.reporterName);
+
+  const formattedTitle = `[Bad Group] ${safeTitle}`;
   const versionStr = getVersionString();
 
   const reproInfo =
@@ -199,9 +203,9 @@ export async function reportBadGroup(
     `**Resulting Groups:**\n\`\`\`python\n[${data.groups.map((g) => g.toTestString()).join(', ')}]\n\`\`\`\n`;
 
   let body =
-    `**Reporter:** ${data.reporterName} (\`${data.reporterId}\`)\n` +
+    `**Reporter:** ${safeReporterName} (\`${data.reporterId}\`)\n` +
     `**Version:** ${versionStr}\n\n` +
-    `**Description:**\n${data.description}\n\n` +
+    `**Description:**\n${safeDescription}\n\n` +
     reproInfo;
 
   const lastLines = await getRecentLogs();

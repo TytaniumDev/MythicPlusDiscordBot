@@ -16,7 +16,7 @@ type FirebaseCollection = {
   doc: (id: string) => FirebaseDocRef;
   where: (field: string, op: string, value: unknown) => FirebaseQuery;
   get: () => Promise<{ docs: FirebaseDocSnapshot[] }>;
-  onSnapshot: (callback: (...args: unknown[]) => void) => unknown;
+  onSnapshot: (callback: (...args: unknown[]) => void, onError?: (...args: unknown[]) => void) => unknown;
 };
 
 type FirebaseQuery = {
@@ -63,6 +63,10 @@ export interface IFirebaseService {
   deleteChannelDoc(channelId: string): Promise<void>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
   deleteAllInCollection(collection: string): Promise<number>;
+  listenForBadGroupReports(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
+  deleteDoc(collectionName: string, docId: string): Promise<void>;
 }
 
 let instance: FirebaseService | null = null;
@@ -237,17 +241,22 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return null;
 
     const collectionRef = this.db.collection('badGroupReports');
-    const unsubscribe = collectionRef.onSnapshot((...args: unknown[]) => {
-      const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
-      for (const change of snapshot.docChanges()) {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (data) {
-            callback(change.doc.id, data);
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data) {
+              callback(change.doc.id, data);
+            }
           }
         }
-      }
-    });
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Bad group report listener error: ${errArgs[0]}`);
+      },
+    );
 
     return { unsubscribe: unsubscribe as () => void };
   }
