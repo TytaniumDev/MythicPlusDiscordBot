@@ -6,6 +6,7 @@ on:
       - 'activity/**'
       - 'packages/shared/**'
       - 'scripts/verify-activity.sh'
+      - 'scripts/playwright-docker.sh'
       - '.github/workflows/verify-activity.yml'
   workflow_dispatch:
 
@@ -29,20 +30,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Fix native bindings (npm workspace bug npm/cli#4828)
+      - name: Typecheck and build
         run: |
           cd activity
-          for pkg in lightningcss @tailwindcss/oxide; do
-            VER=$(node -p "require('./node_modules/$pkg/package.json').version")
-            rm -rf "node_modules/$pkg"
-            npm install --no-save --install-strategy=nested "$pkg@$VER"
-          done
+          npm run typecheck
+          npm run build
 
-      - name: Run Activity Verification (update snapshots)
-        run: ./scripts/verify-activity.sh
-        env:
-          CI: true
-          UPDATE_SNAPSHOTS: true
+      - name: Update snapshots (Docker)
+        run: ./scripts/playwright-docker.sh --update-snapshots=all
 
       - name: Commit updated snapshots
         run: |
@@ -52,6 +47,9 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: update visual test snapshots"
+            git commit -m "chore: update visual test snapshots [skip ci]"
             git push
           fi
+
+      - name: Verify snapshots (Docker)
+        run: ./scripts/playwright-docker.sh
