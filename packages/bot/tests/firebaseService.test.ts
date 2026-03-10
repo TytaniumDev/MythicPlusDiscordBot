@@ -218,13 +218,12 @@ describe('FirebaseService.getPreviousGroups', () => {
     service.db = db as unknown as FirebaseService['db'];
     mockDocRef.get.mockResolvedValue({
       exists: true,
-      data: () => ({ guildId: '123', previousGroups: [groupDicts] }),
+      data: () => ({ guildId: '123', previousGroups: groupDicts }),
     });
 
     const result = await service.getPreviousGroups('123');
     expect(result).toHaveLength(1);
-    expect(result[0]).toHaveLength(1);
-    expect(result[0][0]).toEqual(group.toDict());
+    expect(result[0]).toEqual(group.toDict());
   });
 });
 
@@ -262,19 +261,21 @@ describe('FirebaseService.savePreviousGroups', () => {
     // No error thrown
   });
 
-  it('updates guild doc with previousGroups wrapped in array', async () => {
+  it('upserts guild doc with previousGroups using set with merge', async () => {
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const group = new WoWGroup(tank, null, []);
     const groupDicts = [group.toDict() as Record<string, unknown>];
 
     const { db, mockDocRef } = createMockDbWithDocRef();
+    mockDocRef.set.mockResolvedValue(undefined);
     service.db = db as unknown as FirebaseService['db'];
 
     await service.savePreviousGroups('456', groupDicts);
 
     expect(db.collection).toHaveBeenCalledWith('guilds');
-    expect(mockDocRef.update).toHaveBeenCalledWith({
-      previousGroups: [groupDicts],
-    });
+    expect(mockDocRef.set).toHaveBeenCalledWith(
+      { previousGroups: groupDicts },
+      { merge: true },
+    );
   });
 });

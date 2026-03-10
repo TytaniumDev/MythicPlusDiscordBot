@@ -249,7 +249,7 @@ describe('GroupService Firebase previousGroups integration', () => {
 
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const prevGroupDict = new WoWGroup(tank, null, []).toDict();
-    mockFirebaseInstance.getPreviousGroups.mockResolvedValue([[prevGroupDict]]);
+    mockFirebaseInstance.getPreviousGroups.mockResolvedValue([prevGroupDict]);
 
     vi.mocked(getDebugPlayers).mockReturnValue([tank]);
     vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);

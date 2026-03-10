@@ -122,9 +122,9 @@ class FirestoreSessionService implements SessionService {
     // Restore previous groups from Firestore so the algorithm avoids repeat groupings
     if (guildData?.previousGroups?.length) {
       const previousGroups = guildData.previousGroups.map(
-        groupDicts => groupDicts.map(g => WoWGroup.fromDict(g as Record<string, unknown>))
+        g => WoWGroup.fromDict(g as Record<string, unknown>),
       );
-      setLastGroups(previousGroups.flat(), guildId);
+      setLastGroups(previousGroups, guildId);
     }
 
     const players = channelData.players
@@ -133,11 +133,12 @@ class FirestoreSessionService implements SessionService {
 
     const groups = createMythicPlusGroups(players, true, guildId);
 
-    // Persist computed groups to guild doc for cross-session history
+    // Persist computed groups to guild doc for cross-session history.
+    // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
       updateDoc(guildDocRef, {
-        previousGroups: [groups.map(g => g.toDict())],
+        previousGroups: groups.map(g => g.toDict()),
       }).catch(err => console.error('[Wheelson] Failed to save previousGroups:', err));
     }
 

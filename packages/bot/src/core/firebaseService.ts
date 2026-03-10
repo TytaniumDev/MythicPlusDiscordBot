@@ -29,7 +29,7 @@ type FirebaseQuery = {
 
 type FirebaseDocRef = {
   get: () => Promise<FirebaseDocSnapshot>;
-  set: (data: Record<string, unknown>) => Promise<void>;
+  set: (data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
   update: (data: Record<string, unknown>) => Promise<void>;
   delete: () => Promise<void>;
   onSnapshot: (callback: (...args: unknown[]) => void) => unknown;
@@ -57,7 +57,7 @@ export interface IFirebaseService {
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
-  getPreviousGroups(guildId: string): Promise<Record<string, unknown>[][]>;
+  getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]>;
   savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void>;
   getOrCreateChannelDoc(
     channelId: number,
@@ -362,19 +362,19 @@ export class FirebaseService implements IFirebaseService {
     return { unsubscribe: unsubscribe as () => void };
   }
 
-  async getPreviousGroups(guildId: string): Promise<Record<string, unknown>[][]> {
+  async getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]> {
     if (!this.db) return [];
     const docRef = this.db.collection('guilds').doc(guildId);
     const doc = await docRef.get();
     if (!doc.exists) return [];
     const data = doc.data();
-    return (data?.previousGroups as Record<string, unknown>[][] | undefined) ?? [];
+    return (data?.previousGroups as Record<string, unknown>[] | undefined) ?? [];
   }
 
   async savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
-    await docRef.update({ previousGroups: [groups] });
+    await docRef.set({ previousGroups: groups }, { merge: true });
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {
