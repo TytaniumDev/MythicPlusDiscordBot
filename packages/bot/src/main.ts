@@ -839,8 +839,7 @@ async function main() {
                 await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
               }
             },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
+          },
           send: sender.send,
         });
         break;
@@ -852,6 +851,12 @@ async function main() {
           channel: {
             async send(content: string) {
               return textChannel ? await textChannel.send(content) : undefined;
+            },
+            members: [],
+            async sendTyping() {
+              if (textChannel && 'sendTyping' in textChannel) {
+                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
+              }
             },
           },
           send: sender.send,
