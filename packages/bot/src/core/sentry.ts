@@ -6,7 +6,7 @@ export function initSentry() {
 
   Sentry.init({
     dsn: SENTRY_DSN,
-    release: GIT_SHA ?? 'unknown',
+    release: GIT_SHA ? `mythicplus-bot@${GIT_SHA}` : undefined,
     environment: process.env.NODE_ENV ?? 'production',
     tracesSampleRate: 0,
   });
