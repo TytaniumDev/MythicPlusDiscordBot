@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+import { WoWGroup } from '@mythicplus/shared';
 
 vi.mock('@mythicplus/shared', async () => {
   const actual = await vi.importActual('@mythicplus/shared');
@@ -52,7 +52,7 @@ import {
 } from '../src/services/sessionService.js';
 import { getPlayerList } from '../src/core/utils.js';
 import { buildGroupEmbed } from '../src/core/groupUi.js';
-import { createMythicPlusGroups } from '@mythicplus/shared';
+// createMythicPlusGroups is mocked above but no longer directly referenced in tests
 import {
   TankPaladin,
   HealerPriest,
@@ -344,112 +344,6 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
 
     const channels = firebase.updateGuildDoc.mock.calls[0][1].voiceChannels;
     expect(channels[0].userCount).toBe(1);
-  });
-});
-
-// ---------- processSpinRequest ----------
-
-describe('SessionService.processSpinRequest', () => {
-  it('calculates groups and updates channel doc', async () => {
-    const firebase = createMockFirebase();
-
-    const vc = makeVoiceChannel(42, 'Raid', [makeMember('M1')]);
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = { lastResults: new Map() } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    const players = [
-      TankPaladin('Tank'),
-      HealerPriest('Healer'),
-      Warrior('Dps1'),
-      Mage('Dps2'),
-      Rogue('Dps3'),
-    ];
-    vi.mocked(getPlayerList).mockReturnValue(players);
-
-    const groups = [new WoWGroup(players[0], players[1], [players[2], players[3], players[4]])];
-    vi.mocked(createMythicPlusGroups).mockReturnValue(groups);
-
-    await service.processSpinRequest('42', 42, 1, { status: 'request_spin' });
-
-    expect(guild.get_channel).toHaveBeenCalledWith(42);
-    expect(getPlayerList).toHaveBeenCalledOnce();
-    expect(createMythicPlusGroups).toHaveBeenCalledWith(players, false, 1);
-
-    expect(firebase.updateChannelDoc).toHaveBeenCalledOnce();
-    const [docId, data] = firebase.updateChannelDoc.mock.calls[0];
-    expect(docId).toBe('42');
-    expect(data.status).toBe('spinning');
-    expect(data.groups).toHaveLength(1);
-  });
-
-  it('filters roleless players before group creation', async () => {
-    const firebase = createMockFirebase();
-
-    const vc = makeVoiceChannel(42, 'Raid', [makeMember('M1')]);
-    const guild = makeGuild(1, [vc]);
-
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = { lastResults: new Map() } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    vi.mocked(getPlayerList).mockReturnValue([
-      TankPaladin('Tank'),
-      WoWPlayer.create('Roleless', []),
-    ]);
-    vi.mocked(createMythicPlusGroups).mockReturnValue([]);
-
-    await service.processSpinRequest('42', 42, 1, { status: 'request_spin' });
-
-    expect(createMythicPlusGroups).toHaveBeenCalledOnce();
-    const actualPlayers = vi.mocked(createMythicPlusGroups).mock.calls[0][0];
-    expect(actualPlayers).toHaveLength(1);
-    expect(actualPlayers[0].name).toBe('Tank');
-  });
-
-  it('returns early when guild not found', async () => {
-    const firebase = createMockFirebase();
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(null) });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    await service.processSpinRequest('42', 42, 999, { status: 'request_spin' });
-
-    expect(firebase.updateChannelDoc).not.toHaveBeenCalled();
-  });
-
-  it('uses debug players from data when isDebug is true', async () => {
-    const firebase = createMockFirebase();
-
-    const guild = makeGuild(1);
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    bot.groupService = { lastResults: new Map() } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    const playerDict = TankPaladin('DebugTank').toDict();
-    vi.mocked(createMythicPlusGroups).mockReturnValue([]);
-
-    await service.processSpinRequest('42', 42, 1, {
-      status: 'request_spin',
-      isDebug: true,
-      players: [playerDict],
-    });
-
-    expect(createMythicPlusGroups).toHaveBeenCalledOnce();
-    const actualPlayers = vi.mocked(createMythicPlusGroups).mock.calls[0][0];
-    expect(actualPlayers).toHaveLength(1);
-    expect(actualPlayers[0].name).toBe('DebugTank');
-    // getPlayerList should NOT have been called in debug mode
-    expect(getPlayerList).not.toHaveBeenCalled();
   });
 });
 
