@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
-import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
 
 const MAX_LISTENER_RETRIES = 5;
 
@@ -114,17 +114,36 @@ class FirestoreSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const { currentChannelId, channelData } = useAppStore.getState();
+    const { currentChannelId, channelData, guildData } = useAppStore.getState();
     if (!currentChannelId || !channelData) return;
+
+    const guildId = channelData.guildId || null;
+
+    // Restore previous groups from Firestore so the algorithm avoids repeat groupings
+    if (guildData?.previousGroups?.length) {
+      const previousGroups = guildData.previousGroups.map(
+        g => WoWGroup.fromDict(g as Record<string, unknown>),
+      );
+      setLastGroups(previousGroups, guildId);
+    }
 
     const players = channelData.players
       .filter(p => p.mainRole !== null || p.offspecs.length > 0)
       .map(p => WoWPlayer.fromDict(p));
 
-    const groups = createMythicPlusGroups(players, true, channelData.guildId || null);
+    const groups = createMythicPlusGroups(players, true, guildId);
 
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, {
+    // Persist computed groups to guild doc for cross-session history.
+    // Intentionally not awaited — history save should not block the spin.
+    if (guildId) {
+      const guildDocRef = doc(db, 'guilds', guildId);
+      updateDoc(guildDocRef, {
+        previousGroups: groups.map(g => g.toDict()),
+      }).catch(err => console.error('[Wheelson] Failed to save previousGroups:', err));
+    }
+
+    const channelRef = doc(db, 'channels', currentChannelId);
+    await updateDoc(channelRef, {
       status: 'spinning',
       groups: groups.map(g => g.toDict()),
       revealedGroups: 0,

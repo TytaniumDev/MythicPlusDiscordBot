@@ -1,13 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
 
+const { mockFirebaseInstance } = vi.hoisted(() => {
+  const mockFirebaseInstance = {
+    isAvailable: vi.fn().mockReturnValue(false),
+    getPreviousGroups: vi.fn().mockResolvedValue([]),
+    savePreviousGroups: vi.fn().mockResolvedValue(undefined),
+  };
+  return { mockFirebaseInstance };
+});
+
 vi.mock('@mythicplus/shared', async () => {
   const actual = await vi.importActual('@mythicplus/shared');
   return {
     ...(actual as Record<string, unknown>),
     createMythicPlusGroups: vi.fn(),
+    setLastGroups: vi.fn(),
   };
 });
+
+vi.mock('../src/core/firebaseService.js', () => ({
+  FirebaseService: {
+    getInstance: vi.fn().mockReturnValue(mockFirebaseInstance),
+  },
+}));
+
+vi.mock('../src/core/logger.js', () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 vi.mock('../src/core/utils.js', () => ({
   getPlayerList: vi.fn(),
@@ -34,7 +59,7 @@ vi.mock('../src/core/preferenceService.js', () => ({
 import { GroupService, type CommandContext } from '../src/services/groupService.js';
 import { getPlayerList, getDebugPlayers } from '../src/core/utils.js';
 import { announceGroup } from '../src/core/groupUi.js';
-import { createMythicPlusGroups } from '@mythicplus/shared';
+import { createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
 
 function makeCtx(overrides: {
   members?: { bot: boolean; nick?: string; id?: string; toString?: () => string }[];
@@ -208,5 +233,126 @@ describe('GroupService._executeCoreWheel', () => {
 
     expect(service.lastResults.has(guildId)).toBe(false);
     expect(announceGroup).not.toHaveBeenCalled();
+  });
+});
+
+describe('GroupService Firebase previousGroups integration', () => {
+  beforeEach(() => {
+    mockFirebaseInstance.isAvailable.mockReturnValue(true);
+    mockFirebaseInstance.getPreviousGroups.mockResolvedValue([]);
+    mockFirebaseInstance.savePreviousGroups.mockResolvedValue(undefined);
+  });
+
+  it('loads previous groups from Firebase before creating groups', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    const prevGroupDict = new WoWGroup(tank, null, []).toDict();
+    mockFirebaseInstance.getPreviousGroups.mockResolvedValue([prevGroupDict]);
+
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    await service.getGroupsData(ctx, true);
+
+    expect(mockFirebaseInstance.getPreviousGroups).toHaveBeenCalledWith('42');
+    expect(setLastGroups).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.any(WoWGroup)]),
+      42,
+    );
+    // Verify the deserialized group has the right player
+    const calledGroups = vi.mocked(setLastGroups).mock.calls[0][0] as WoWGroup[];
+    expect(calledGroups[0].tank?.name).toBe('Tank1');
+  });
+
+  it('saves computed groups to Firebase after creating groups', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    const group = new WoWGroup(tank, null, []);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
+
+    await service.getGroupsData(ctx, true);
+
+    expect(mockFirebaseInstance.savePreviousGroups).toHaveBeenCalledWith(
+      '42',
+      [expect.objectContaining({ tank: expect.objectContaining({ name: 'Tank1' }) })],
+    );
+  });
+
+  it('skips Firebase when guild is null', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: null });
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    await service.getGroupsData(ctx, true);
+
+    expect(mockFirebaseInstance.getPreviousGroups).not.toHaveBeenCalled();
+    expect(mockFirebaseInstance.savePreviousGroups).not.toHaveBeenCalled();
+  });
+
+  it('skips Firebase when not available', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+    mockFirebaseInstance.isAvailable.mockReturnValue(false);
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    await service.getGroupsData(ctx, true);
+
+    expect(mockFirebaseInstance.getPreviousGroups).not.toHaveBeenCalled();
+    expect(mockFirebaseInstance.savePreviousGroups).not.toHaveBeenCalled();
+  });
+
+  it('does not call setLastGroups when no previous groups exist', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+    mockFirebaseInstance.getPreviousGroups.mockResolvedValue([]);
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    await service.getGroupsData(ctx, true);
+
+    expect(mockFirebaseInstance.getPreviousGroups).toHaveBeenCalled();
+    expect(setLastGroups).not.toHaveBeenCalled();
+  });
+
+  it('gracefully handles Firebase load errors', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+    mockFirebaseInstance.getPreviousGroups.mockRejectedValue(new Error('network error'));
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    // Should not throw
+    const result = await service.getGroupsData(ctx, true);
+    expect(result).not.toBeNull();
+    expect(createMythicPlusGroups).toHaveBeenCalled();
+  });
+
+  it('gracefully handles Firebase save errors', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: 42 } });
+    mockFirebaseInstance.savePreviousGroups.mockRejectedValue(new Error('write error'));
+
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    vi.mocked(getDebugPlayers).mockReturnValue([tank]);
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup(tank, null, [])]);
+
+    // Should not throw
+    const result = await service.getGroupsData(ctx, true);
+    expect(result).not.toBeNull();
   });
 });
