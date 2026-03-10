@@ -627,17 +627,18 @@ async function main() {
       case 'wheelson': {
         const voiceChannel = member?.voice.channel;
         // activity's getOrCreateSession needs extra guild fields; cast to satisfy handler
-        const activityIconUrl = interaction.guild?.iconURL();
-        const activityGuild = interaction.guild
+        const djsGuild = interaction.guild;
+        const activityIconUrl = djsGuild?.iconURL();
+        const activityGuild = djsGuild
           ? {
-              id: Number(interaction.guild.id),
-              name: interaction.guild.name,
+              id: Number(djsGuild.id),
+              name: djsGuild.name,
               icon: activityIconUrl ? { url: activityIconUrl } : null,
-              voice_channels: interaction.guild.channels.cache
+              voice_channels: djsGuild.channels.cache
                 .filter((ch) => ch.isVoiceBased())
                 .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
               get_channel(chId: number): VoiceChannel | null {
-                const ch = interaction.guild!.channels.cache.find((c) => c.id === String(chId));
+                const ch = djsGuild.channels.cache.find((c) => c.id === String(chId));
                 if (!ch || !ch.isVoiceBased()) return null;
                 return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
               },
