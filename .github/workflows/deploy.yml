@@ -114,7 +114,7 @@ jobs:
           echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
       - name: Deploy to Raspberry Pi
         env:
-          GITHUB_TOKEN: ${{ env.GH_ISSUE_TOKEN }}
+          GH_ISSUE_TOKEN: ${{ env.GH_ISSUE_TOKEN }}
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
             "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
@@ -136,7 +136,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="$BOT_TOKEN"
             export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
-            export GITHUB_TOKEN="$GITHUB_TOKEN"
+            export GITHUB_TOKEN="$GH_ISSUE_TOKEN"
             FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
             export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
 

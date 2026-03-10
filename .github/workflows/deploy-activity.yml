@@ -33,7 +33,9 @@ jobs:
         run: |
           DELIM=$(openssl rand -hex 16)
           doppler secrets download --no-file --format json | jq -r --arg d "$DELIM" '
-            to_entries[] | "\(.key)<<\($d)\n\(.value)\n\($d)"
+            to_entries[]
+            | select(.key == "DISCORD_APPLICATION_ID" or (.key | startswith("VITE_FIREBASE_")))
+            | "\(.key)<<\($d)\n\(.value)\n\($d)"
           ' >> "$GITHUB_ENV"
 
       - name: Setup Node
