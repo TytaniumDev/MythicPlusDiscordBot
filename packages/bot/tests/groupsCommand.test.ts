@@ -61,7 +61,7 @@ vi.mock('../src/core/preferenceService.js', () => ({
   }),
 }));
 
-import { GroupsHandler, type GroupsContext } from '../src/commands/groups.js';
+import { GroupsHandler, type GroupsContext, type ActivityContext } from '../src/commands/groups.js';
 import { GroupService } from '../src/services/groupService.js';
 import type { SessionService } from '../src/services/sessionService.js';
 import { reportBadGroup } from '../src/core/issues.js';
@@ -167,7 +167,7 @@ describe('GroupsHandler.activity', () => {
       makeMockSessionService(),
     );
 
-    const ctx = makeCtx();
+    const ctx = makeCtx() as unknown as ActivityContext;
     await handler.activity(ctx);
 
     const calls = vi.mocked(ctx.send).mock.calls;
@@ -187,7 +187,7 @@ describe('GroupsHandler.activity', () => {
       makeMockSessionService(),
     );
 
-    const ctx = makeCtx();
+    const ctx = makeCtx() as unknown as ActivityContext;
     await handler.activity(ctx, true);
 
     const calls = vi.mocked(ctx.send).mock.calls;

@@ -58,7 +58,6 @@ import {
   HealerPriest,
   Warrior,
   Mage,
-  Rogue,
 } from './prebuiltClasses.js';
 
 // ---------- helpers ----------

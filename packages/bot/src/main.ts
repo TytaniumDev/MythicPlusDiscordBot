@@ -129,11 +129,12 @@ function createBotAdapter(client: Client): Bot {
 }
 
 function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel {
+  const members = ch.members.map((m) => adaptMember(m));
   return {
     id: ch.id,
     name: ch.name,
     get members() {
-      return ch.members.map((m) => adaptMember(m));
+      return members;
     },
     async send(content: string | { embed: PlainEmbed }) {
       if (typeof content === 'string') {
@@ -623,6 +624,9 @@ async function main() {
 
       case 'wheel': {
         const voiceChannel = member?.voice.channel;
+        const voiceMembers = voiceChannel
+          ? voiceChannel.members.map((m) => adaptMember(m))
+          : [];
         await groupsHandler.wheel({
           guild: guildObj,
           author: {
@@ -631,6 +635,14 @@ async function main() {
             voice: voiceChannel
               ? { channel: adaptVoiceChannelForCtx(voiceChannel as import('discord.js').VoiceChannel) }
               : null,
+          },
+          channel: {
+            members: voiceMembers,
+            async sendTyping() {
+              if (textChannel && 'sendTyping' in textChannel) {
+                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
+              }
+            },
           },
           send: sender.send,
           defer: sender.defer,
@@ -661,7 +673,7 @@ async function main() {
           : null;
         await groupsHandler.activity(
           {
-            guild: activityGuild as { id: string } | null,
+            guild: activityGuild,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,
@@ -850,8 +862,7 @@ async function main() {
                 await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
               }
             },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
+          },
           send: sender.send,
         });
         break;
@@ -863,6 +874,12 @@ async function main() {
           channel: {
             async send(content: string) {
               return textChannel ? await textChannel.send(content) : undefined;
+            },
+            members: [],
+            async sendTyping() {
+              if (textChannel && 'sendTyping' in textChannel) {
+                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
+              }
             },
           },
           send: sender.send,

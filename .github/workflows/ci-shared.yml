@@ -13,7 +13,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx eslint packages/ --max-warnings 0
+      - run: npm run lint
 
   Build:
     runs-on: ubuntu-latest

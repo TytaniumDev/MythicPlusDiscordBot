@@ -251,17 +251,39 @@ const GOLD = 0xf1c40f;
 const BLUE = 0x3498db;
 
 export function createRoleBoardEmbed(players: WoWPlayer[]): EmbedData {
-  function formatPlayer(p: WoWPlayer): string {
-    let icons = '';
-    if (p.hasBrez) icons += '⚰️';
-    if (p.hasLust) icons += '🎺';
-    return `${p.name} ${icons}`.trim();
-  }
+  const tanks: string[] = [];
+  const healers: string[] = [];
+  const melee: string[] = [];
+  const ranged: string[] = [];
+  const unassigned: string[] = [];
+  let brezCount = 0;
+  let lustCount = 0;
 
-  const tanks = players.filter((p) => p.tankMain).map(formatPlayer);
-  const healers = players.filter((p) => p.healerMain).map(formatPlayer);
-  const melee = players.filter((p) => p.melee).map(formatPlayer);
-  const ranged = players.filter((p) => p.ranged).map(formatPlayer);
+  for (const p of players) {
+    let icons = '';
+    if (p.hasBrez) {
+      icons += '⚰️';
+      brezCount++;
+    }
+    if (p.hasLust) {
+      icons += '🎺';
+      lustCount++;
+    }
+
+    const formatted = `${p.name} ${icons}`.trim();
+
+    if (p.tankMain) {
+      tanks.push(formatted);
+    } else if (p.healerMain) {
+      healers.push(formatted);
+    } else if (p.melee) {
+      melee.push(formatted);
+    } else if (p.ranged) {
+      ranged.push(formatted);
+    } else if (!p.hasRoles()) {
+      unassigned.push(formatted);
+    }
+  }
 
   const formatList = (names: string[]) => (names.length > 0 ? names.join('\n') : '-');
 
@@ -274,7 +296,6 @@ export function createRoleBoardEmbed(players: WoWPlayer[]): EmbedData {
     { name: '\u200b', value: '\u200b', inline: true },
   ];
 
-  const unassigned = players.filter((p) => !p.hasRoles()).map(formatPlayer);
   if (unassigned.length > 0) {
     fields.push({
       name: `Unassigned (${unassigned.length})`,
@@ -282,9 +303,6 @@ export function createRoleBoardEmbed(players: WoWPlayer[]): EmbedData {
       inline: true,
     });
   }
-
-  const brezCount = players.filter((p) => p.hasBrez).length;
-  const lustCount = players.filter((p) => p.hasLust).length;
 
   return {
     title: 'Mythic+ Role Board',
