@@ -517,17 +517,12 @@ async function main() {
     }
 
     // Listen for channel status changes to announce completion to Discord.
-    // Tracks last-seen status per channel to only act on transitions to 'completed'.
-    const channelStatusTracker = new Map<string, string>();
-
+    // Uses sessionService.announcedChannels to deduplicate (cleared on channel cleanup/shutdown).
     channelStatusListener = firebase.listenForChannelStatusChanges(async (channelId, data) => {
       try {
-        const currentStatus = data.status as string;
-        const previousStatus = channelStatusTracker.get(channelId);
-        channelStatusTracker.set(channelId, currentStatus);
-
-        // Only act on transition to 'completed' (not if already completed)
-        if (previousStatus === 'completed') return;
+        // Only announce once per completion (prevents duplicates if doc is modified again)
+        if (sessionService.announcedChannels.has(channelId)) return;
+        sessionService.announcedChannels.add(channelId);
 
         const numChannelId = Number(channelId);
         const active = sessionService.activeChannels.get(numChannelId);

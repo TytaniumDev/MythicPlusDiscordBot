@@ -38,6 +38,7 @@ export class SessionService {
   activeChannels = new Map<number, ActiveChannel>();
   channelListeners = new Map<string, { unsubscribe(): void }>();
   guildListeners = new Map<number, { unsubscribe(): void } | null>();
+  announcedChannels = new Set<string>();
 
   constructor(bot: Bot, firebase?: FirebaseService) {
     this.bot = bot;
@@ -57,6 +58,7 @@ export class SessionService {
 
     this.activeChannels.clear();
     this.activeGuilds.clear();
+    this.announcedChannels.clear();
 
     logger.info('SessionService shutdown complete — all listeners unsubscribed.');
   }
@@ -247,6 +249,7 @@ export class SessionService {
     if (!active) return;
 
     this.activeChannels.delete(channelId);
+    this.announcedChannels.delete(active.docId);
 
     if (this.channelListeners.has(active.docId)) {
       const watch = this.channelListeners.get(active.docId);
@@ -288,6 +291,7 @@ export class SessionService {
     const active = this.activeChannels.get(channelId);
     if (active) {
       this.activeChannels.delete(channelId);
+      this.announcedChannels.delete(docId);
       if (this.channelListeners.has(docId)) {
         const watch = this.channelListeners.get(docId);
         watch?.unsubscribe();

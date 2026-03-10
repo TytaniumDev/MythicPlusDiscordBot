@@ -1160,6 +1160,10 @@ body {
   margin-bottom: 12px;
 }
 
+#final-groups .group-card:last-child {
+  margin-bottom: 0;
+}
+
 #final-groups .group-card h4 {
   font-size: 0.9rem;
 }
