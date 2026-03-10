@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getWowName,
   getMaskedName,
@@ -113,17 +113,38 @@ describe('Typing functions', () => {
 
   beforeEach(() => {
     channel = { sendTyping: vi.fn().mockResolvedValue(undefined) };
+    vi.useFakeTimers();
   });
 
-  it('showLongTyping calls sendTyping unless debug', async () => {
-    // In debug mode, nothing happens
-    await showLongTyping(channel, true);
-    expect(channel.sendTyping).not.toHaveBeenCalled();
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('showShortTyping calls sendTyping unless debug', async () => {
-    // In debug mode, nothing happens
-    await showShortTyping(channel, true);
-    expect(channel.sendTyping).not.toHaveBeenCalled();
+  describe('showLongTyping', () => {
+    it('does not call sendTyping in debug mode', async () => {
+      await showLongTyping(channel, true);
+      expect(channel.sendTyping).not.toHaveBeenCalled();
+    });
+
+    it('calls sendTyping and waits 2000ms in non-debug mode', async () => {
+      const promise = showLongTyping(channel, false);
+      expect(channel.sendTyping).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(2000);
+      await promise;
+    });
+  });
+
+  describe('showShortTyping', () => {
+    it('does not call sendTyping in debug mode', async () => {
+      await showShortTyping(channel, true);
+      expect(channel.sendTyping).not.toHaveBeenCalled();
+    });
+
+    it('calls sendTyping and waits 1000ms in non-debug mode', async () => {
+      const promise = showShortTyping(channel, false);
+      expect(channel.sendTyping).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1000);
+      await promise;
+    });
   });
 });
