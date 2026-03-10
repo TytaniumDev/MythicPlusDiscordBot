@@ -23,30 +23,4 @@ export class DebugHandler {
     }
   }
 
-  async testcase(ctx: DebugContext): Promise<void> {
-    try {
-      const guildId = ctx.guild?.id ?? null;
-      if (!guildId) {
-        await ctx.send('❌ This command can only be used in a server.');
-        return;
-      }
-
-      const result = this.groupService.lastResults.get(guildId);
-      if (!result) {
-        await ctx.send('❌ No previous results found for this server. Run `!wheel` first.');
-        return;
-      }
-      const { players, groups } = result;
-
-      await ctx.channel.send(
-        `players = [${players.map((p) => p.toTestString()).join(', ')}]`,
-      );
-      await ctx.channel.send(
-        `Groups:\n\n${groups.map((g) => g.toTestString()).join('\n\n')}`,
-      );
-    } catch (e) {
-      await ctx.send('❌ An unexpected error occurred. Please try again later.');
-      logger.error(`Error in testcase command: ${e}`);
-    }
-  }
 }
