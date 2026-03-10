@@ -16,7 +16,7 @@ type FirebaseCollection = {
   doc: (id: string) => FirebaseDocRef;
   where: (field: string, op: string, value: unknown) => FirebaseQuery;
   get: () => Promise<{ docs: FirebaseDocSnapshot[] }>;
-  onSnapshot: (callback: (...args: unknown[]) => void) => unknown;
+  onSnapshot: (callback: (...args: unknown[]) => void, onError?: (...args: unknown[]) => void) => unknown;
 };
 
 type FirebaseQuery = {
@@ -63,6 +63,10 @@ export interface IFirebaseService {
   deleteChannelDoc(channelId: string): Promise<void>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
   deleteAllInCollection(collection: string): Promise<number>;
+  listenForBadGroupReports(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
+  deleteDoc(collectionName: string, docId: string): Promise<void>;
 }
 
 let instance: FirebaseService | null = null;
@@ -227,6 +231,67 @@ export class FirebaseService implements IFirebaseService {
     const docRef = this.db.collection('channels').doc(channelId);
     await docRef.delete();
     logger.debug(`Deleted channel doc ${channelId} from Firestore`);
+  }
+
+  // Bad Group Report Listener
+
+  listenForBadGroupReports(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('badGroupReports');
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data) {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Bad group report listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
+  listenForGuildRefreshRequests(
+    callback: (guildId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('guilds');
+
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data = change.doc.data();
+            if (data && data.refreshRequest) {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Guild refresh listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
+  async deleteDoc(collectionName: string, docId: string): Promise<void> {
+    if (!this.db) return;
+    const docRef = this.db.collection(collectionName).doc(docId);
+    await docRef.delete();
   }
 
   // Collection Operations
