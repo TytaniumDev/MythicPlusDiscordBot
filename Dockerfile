@@ -10,9 +10,18 @@ COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/bot/package.json packages/bot/
 
-RUN npm ci --workspace=packages/shared --workspace=packages/bot
+# Install dependencies (including devDependencies for tsc)
+RUN npm ci
 
 # Copy source code
 COPY packages/ packages/
+COPY tsconfig*.json ./
 
-CMD ["node", "node_modules/.bin/tsx", "packages/bot/src/main.ts"]
+# Build the TypeScript code
+RUN npm run build
+
+# Only keep production dependencies to save space
+RUN npm ci --omit=dev
+
+# Run the compiled JS output directly with node
+CMD ["node", "packages/bot/dist/src/main.js"]

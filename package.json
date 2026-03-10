@@ -12,6 +12,7 @@
     "typescript-eslint": "^8.35.0"
   },
   "scripts": {
+    "build": "npm -w packages/shared run build && npm -w packages/bot run build",
     "lint": "eslint packages/",
     "typecheck": "npm -w packages/shared run typecheck && npm -w packages/bot run typecheck",
     "test": "npm -w packages/bot run test",
