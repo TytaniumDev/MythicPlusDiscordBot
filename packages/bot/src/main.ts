@@ -130,11 +130,12 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
 }
 
 function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel {
+  const members = ch.members.map((m) => adaptMember(m));
   return {
     id: Number(ch.id),
     name: ch.name,
     get members() {
-      return ch.members.map((m) => adaptMember(m));
+      return members;
     },
     async send(content: string | { embed: PlainEmbed }) {
       if (typeof content === 'string') {
