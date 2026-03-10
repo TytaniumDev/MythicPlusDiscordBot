@@ -4,6 +4,8 @@ import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
 
+import { type VoiceChannel } from '../services/sessionService.js';
+
 export interface GroupsContext {
   guild: { id: number } | null;
   author: {
@@ -22,6 +24,15 @@ export interface GroupsContext {
   defer(options?: { ephemeral?: boolean }): Promise<void>;
   interaction?: { response: { sendModal(modal: unknown): Promise<void> } } | null;
 }
+
+export type ActivityContext = Omit<GroupsContext, 'guild'> & {
+  guild: {
+    id: number;
+    name: string;
+    icon?: { url: string } | null;
+    voice_channels: VoiceChannel[];
+  } | null;
+};
 
 export interface VoiceState {
   channel: { id: number; members: { bot: boolean }[] } | null;
@@ -49,7 +60,7 @@ export class GroupsHandler {
     }
   }
 
-  async activity(ctx: GroupsContext, debug = false): Promise<void> {
+  async activity(ctx: ActivityContext, debug = false): Promise<void> {
     await ctx.defer();
     try {
       if (!ctx.author.voice?.channel) {
@@ -57,8 +68,7 @@ export class GroupsHandler {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await this.sessionService.getOrCreateSession(ctx as any, debug);
+      const result = await this.sessionService.getOrCreateSession(ctx, debug);
       if (!result) {
         await ctx.send('❌ Failed to create/get session. Is Firebase configured?');
         return;

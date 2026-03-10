@@ -3,33 +3,33 @@
 This file provides the necessary context and operational standards for AI agents working on this codebase.
 
 ## Project Overview
-**MythicPlusDiscordBot** is a Python-based application designed to integrate World of Warcraft Mythic Plus data into Discord, with a web-based activity frontend.
+**MythicPlusDiscordBot** is a TypeScript monorepo application designed to integrate World of Warcraft Mythic Plus data into Discord, with a web-based activity frontend. It uses npm workspaces across `@mythicplus/bot`, `@mythicplus/shared`, and `activity`.
 
 ## Mandatory Development Standards
 
 ### 1. Code Quality & Verification
 To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes:
 
-- **Backend (`core/`, `cogs/`):** Run the verification script:
+- **Backend (`packages/`):** Run the verification script:
   ```bash
-  ./scripts/verify.sh
+  ./scripts/verify-ts.sh
   ```
-  Runs `ruff check --fix` (Lint), `ruff format` (Format), `pyright` (Type Check), and `unittest` (Tests).
+  Runs ESLint, `tsc` (Type Check), and Vitest (Tests).
 - **Frontend (`activity/`):** Run the verification script:
   ```bash
   ./scripts/verify-activity.sh
   ```
-  Runs `npm run typecheck` (TypeScript), `npm run build` (Build), and `npx playwright test` (E2E Tests).
+  Runs TypeScript typecheck, Vite build, and Playwright E2E Tests.
 - **Verification:** Do not submit code unless the relevant script passes successfully.
 
-### 2. Python Conventions
-- Use Python type hints for all function arguments and return values.
-- Follow PEP 8 guidelines for naming conventions and structure.
-- Ensure all new features or logic changes are accompanied by basic unit tests.
+### 2. TypeScript Conventions
+- Use strict TypeScript typing for all function arguments, return values, and interfaces.
+- Avoid `any` whenever possible.
+- Ensure all new features or logic changes are accompanied by Vitest unit tests.
 
-### 3. Discord.py Implementation
+### 3. discord.js Implementation
 - All bot commands, events, and API interactions must be implemented using `async/await` syntax.
-- Maintain proper error handling for Discord API interactions to ensure bot stability.
+- Extract complex UI generation logic (embeds, etc.) into dedicated UI modules (e.g., `roleUi.ts`) to decouple presentation from business logic.
 
 ### 4. CI/CD & Security Standards
 Detailed guidelines for writing GitHub Actions workflows and handling secrets are available in:
@@ -40,19 +40,14 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
 2. **Environment:** Ensure the environment is set up and dependencies are installed.
-   - **Backend:**
-     ```bash
-     uv sync
-     ```
-   - **Frontend:**
-     ```bash
-     cd activity && npm ci
-     ```
+   ```bash
+   npm ci
+   ```
 3. **Develop:** Implement the requested changes.
 4. **Verify:** Execute the relevant verification script(s).
    - **Backend:**
      ```bash
-     ./scripts/verify.sh
+     ./scripts/verify-ts.sh
      ```
    - **Frontend:**
      ```bash
@@ -61,4 +56,4 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
    - **Crucial:** You must use these scripts when the `pre_commit_instructions` tool asks you to "Run Relevant Tests".
 
 ## Self-Correction
-If you notice a tool or command in this file is outdated (e.g., `uv` replaced `pip`), you **MUST** update this file immediately to reflect the current technical reality.
+If you notice a tool or command in this file is outdated, you **MUST** update this file immediately to reflect the current technical reality.
