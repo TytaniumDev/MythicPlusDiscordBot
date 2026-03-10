@@ -28,7 +28,6 @@ import { GroupService } from './services/groupService.js';
 import { SessionService, type Bot, type Guild, type VoiceChannel } from './services/sessionService.js';
 import { GeneralHandler } from './commands/general.js';
 import { GroupsHandler } from './commands/groups.js';
-import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
@@ -215,7 +214,6 @@ const commands = [
   new SlashCommandBuilder().setName('invite').setDescription('Get the bot invite link'),
   new SlashCommandBuilder().setName('wheel').setDescription('Create Mythic+ groups from voice channel members'),
   new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity'),
-  new SlashCommandBuilder().setName('readycheck').setDescription('Show the Mythic+ role board for the current channel'),
   new SlashCommandBuilder()
     .setName('badgroup')
     .setDescription('Report a bad group formation')
@@ -223,11 +221,9 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('description').setDescription('Issue description').setRequired(false),
     ),
-  new SlashCommandBuilder().setName('roles').setDescription('Show the Mythic+ role board for the current channel'),
   new SlashCommandBuilder().setName('bug').setDescription('Report a bug'),
   new SlashCommandBuilder().setName('featurerequest').setDescription('Request a feature'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
-  new SlashCommandBuilder().setName('testcase').setDescription('[Debug] Print last wheel result as test data'),
 ];
 
 // ---------------------------------------------------------------------------
@@ -316,7 +312,6 @@ async function main() {
 
   const generalHandler = new GeneralHandler(0, config.DISCORD_APPLICATION_ID);
   const groupsHandler = new GroupsHandler(botAdapter, groupService, sessionService);
-  const rolesHandler = new RolesHandler();
   const debugHandler = new DebugHandler(groupService);
 
   // Track listeners for shutdown cleanup
@@ -701,37 +696,6 @@ async function main() {
         break;
       }
 
-      case 'roles':
-      case 'readycheck': {
-        if (!member) {
-          await sender.send('❌ This command can only be used in a server.');
-          break;
-        }
-        const voiceChannel = member.voice.channel;
-        const channelMembers = voiceChannel
-          ? voiceChannel.members.map((m) => adaptMember(m))
-          : [];
-
-        await rolesHandler.launchRoleBoard({
-          guild: guildObj,
-          author: {
-            ...adaptMember(member),
-            voice: voiceChannel
-              ? {
-                  channel: {
-                    id: voiceChannel.id,
-                    members: voiceChannel.members.map((m) => adaptMember(m)),
-                  },
-                }
-              : null,
-          },
-          channel: { members: channelMembers },
-          send: sender.send,
-          interaction: interaction,
-        });
-        break;
-      }
-
       case 'badgroup': {
         const title = interaction.options.getString('title');
         const description = interaction.options.getString('description');
@@ -881,24 +845,6 @@ async function main() {
         break;
       }
 
-      case 'testcase': {
-        await debugHandler.testcase({
-          guild: guildObj,
-          channel: {
-            async send(content: string) {
-              return textChannel ? await textChannel.send(content) : undefined;
-            },
-            members: [],
-            async sendTyping() {
-              if (textChannel && 'sendTyping' in textChannel) {
-                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
-              }
-            },
-          },
-          send: sender.send,
-        });
-        break;
-      }
     }
   }
 

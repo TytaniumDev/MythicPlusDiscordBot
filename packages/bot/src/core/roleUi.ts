@@ -1,4 +1,3 @@
-import type { WoWPlayer } from '@mythicplus/shared';
 import {
   ROLE_BREZ,
   ROLE_HEALER,
@@ -11,11 +10,6 @@ import {
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
 } from './config.js';
-
-export interface PlayerRoleInfo {
-  name: string;
-  roles: string[];
-}
 
 export type ButtonStyle = 'primary' | 'secondary' | 'success';
 
@@ -237,90 +231,3 @@ export function createUtilitiesView(
   return { type: 'utilities', buttons, stopped: false };
 }
 
-// -- Embed building --
-
-export interface EmbedData {
-  title: string;
-  description?: string;
-  color: number;
-  fields: { name: string; value: string; inline?: boolean }[];
-  footer?: string;
-}
-
-const GOLD = 0xf1c40f;
-const BLUE = 0x3498db;
-
-export function createRoleBoardEmbed(players: WoWPlayer[]): EmbedData {
-  const tanks: string[] = [];
-  const healers: string[] = [];
-  const melee: string[] = [];
-  const ranged: string[] = [];
-  const unassigned: string[] = [];
-  let brezCount = 0;
-  let lustCount = 0;
-
-  for (const p of players) {
-    let icons = '';
-    if (p.hasBrez) {
-      icons += '⚰️';
-      brezCount++;
-    }
-    if (p.hasLust) {
-      icons += '🎺';
-      lustCount++;
-    }
-
-    const formatted = `${p.name} ${icons}`.trim();
-
-    if (p.tankMain) {
-      tanks.push(formatted);
-    } else if (p.healerMain) {
-      healers.push(formatted);
-    } else if (p.melee) {
-      melee.push(formatted);
-    } else if (p.ranged) {
-      ranged.push(formatted);
-    } else if (!p.hasRoles()) {
-      unassigned.push(formatted);
-    }
-  }
-
-  const formatList = (names: string[]) => (names.length > 0 ? names.join('\n') : '-');
-
-  const fields = [
-    { name: `🛡️ Tank (${tanks.length})`, value: formatList(tanks), inline: true },
-    { name: `🌿 Healer (${healers.length})`, value: formatList(healers), inline: true },
-    { name: '\u200b', value: '\u200b', inline: true },
-    { name: `🪓 Melee (${melee.length})`, value: formatList(melee), inline: true },
-    { name: `🏹 Ranged (${ranged.length})`, value: formatList(ranged), inline: true },
-    { name: '\u200b', value: '\u200b', inline: true },
-  ];
-
-  if (unassigned.length > 0) {
-    fields.push({
-      name: `Unassigned (${unassigned.length})`,
-      value: formatList(unassigned),
-      inline: true,
-    });
-  }
-
-  return {
-    title: 'Mythic+ Role Board',
-    description: 'Current channel roster',
-    color: GOLD,
-    fields,
-    footer: `Utilities: ${brezCount} Brez, ${lustCount} Lust`,
-  };
-}
-
-export function createRoleCheckEmbed(playerInfos: PlayerRoleInfo[]): EmbedData {
-  return {
-    title: 'Saved Roles Check',
-    color: BLUE,
-    fields: playerInfos.map((info) => ({
-      name: info.name,
-      value: info.roles.join(', '),
-      inline: false,
-    })),
-  };
-}
