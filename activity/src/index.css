@@ -1074,7 +1074,8 @@ body {
   padding: 2px 0;
 }
 
-.group-card .group-role .role-indicator {
+.group-card .group-role .role-indicator,
+.group-card-compact .compact-role .role-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -1082,7 +1083,7 @@ body {
   box-sizing: border-box;
 }
 
-.group-card .group-role .role-indicator.offspec {
+.role-indicator.offspec {
   background: transparent;
   border: 2px solid;
 }
@@ -1122,19 +1123,6 @@ body {
   font-size: 0.7rem;
   padding: 1px 0;
   color: var(--text-primary);
-}
-
-.group-card-compact .compact-role .role-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-
-.group-card-compact .compact-role .role-indicator.offspec {
-  background: transparent;
-  border: 2px solid;
 }
 
 .group-card-compact .compact-role .role-name {
