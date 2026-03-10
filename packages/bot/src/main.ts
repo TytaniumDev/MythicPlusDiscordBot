@@ -239,8 +239,8 @@ function buildRoleButtons(
 
   for (const btn of view.buttons) {
     const row = btn.row;
-    const arr = groups.get(row) ?? [];
-    if (!groups.has(row)) groups.set(row, arr);
+    let arr = groups.get(row);
+    if (!arr) { arr = []; groups.set(row, arr); }
 
     let style: DjsButtonStyle;
     switch (btn.style) {
@@ -261,8 +261,8 @@ function buildRoleButtons(
   // Add save button on last view
   if (state.currentViewIndex === state.views.length - 1) {
     const saveRow = state.views.length; // use a new row number
-    const saveArr = groups.get(saveRow) ?? [];
-    if (!groups.has(saveRow)) groups.set(saveRow, saveArr);
+    let saveArr = groups.get(saveRow);
+    if (!saveArr) { saveArr = []; groups.set(saveRow, saveArr); }
     saveArr.push(
       new ButtonBuilder()
         .setCustomId(`role:${state.discordId}:save`)
