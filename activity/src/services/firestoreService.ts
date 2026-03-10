@@ -122,7 +122,7 @@ class FirestoreSessionService implements SessionService {
     // Restore previous groups from Firestore so the algorithm avoids repeat groupings
     if (guildData?.previousGroups?.length) {
       const previousGroups = guildData.previousGroups.map(
-        g => WoWGroup.fromDict(g as Record<string, unknown>),
+        g => WoWGroup.fromDict(g),
       );
       setLastGroups(previousGroups, guildId);
     }
@@ -137,9 +137,9 @@ class FirestoreSessionService implements SessionService {
     // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
-      updateDoc(guildDocRef, {
+      setDoc(guildDocRef, {
         previousGroups: groups.map(g => g.toDict()),
-      }).catch(err => console.error('[Wheelson] Failed to save previousGroups:', err));
+      }, { merge: true }).catch(err => console.error('[Wheelson] Failed to save previousGroups:', err));
     }
 
     const channelRef = doc(db, 'channels', currentChannelId);
