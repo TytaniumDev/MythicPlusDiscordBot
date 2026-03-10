@@ -5,11 +5,8 @@ set -e
 sudo apt-get update
 sudo apt-get install -y ffmpeg libnacl-dev
 
-# Install Python dependencies
-uv sync
+# Install project dependencies
+npm ci
 
-# Install pre-commit hook (Ruff lint + format on commit)
-uv run pre-commit install
-
-# Run tests to verify setup
-uv run python -m unittest discover tests
+# Run verification to ensure setup
+./scripts/verify-ts.sh
