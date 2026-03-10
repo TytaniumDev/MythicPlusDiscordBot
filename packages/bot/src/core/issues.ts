@@ -154,16 +154,21 @@ export async function submitGithubIssueModal(
   data: GitHubIssueModalData,
 ): Promise<Record<string, unknown>> {
   const versionStr = getVersionString();
+  const safeReporterName = sanitizeForGithub(data.reporterName);
+  const safeReporterId = sanitizeForGithub(data.reporterId);
+  const safeTitle = sanitizeForGithub(data.title);
+  const safeDescription = sanitizeForGithub(data.description);
 
   let body =
-    `**Reporter:** ${data.reporterName} (\`${data.reporterId}\`)\n` +
+    `**Reporter:** ${safeReporterName} (\`${safeReporterId}\`)\n` +
     `**Version:** ${versionStr}\n\n` +
-    `**Description:**\n${data.description}\n`;
+    `**Description:**\n${safeDescription}\n`;
 
   if (data.extraInfo) {
+    const safeExtraInfo = sanitizeForGithub(data.extraInfo);
     const sectionTitle =
       data.issueType === 'bug' ? 'Reproduction Steps' : 'Benefit/Impact';
-    body += `\n**${sectionTitle}:**\n${data.extraInfo}\n`;
+    body += `\n**${sectionTitle}:**\n${safeExtraInfo}\n`;
   }
 
   if (data.issueType === 'bug' && data.includeLogs) {
@@ -176,7 +181,7 @@ export async function submitGithubIssueModal(
 
   const labels =
     data.issueType === 'bug' ? ['bug', 'jules'] : ['enhancement', 'jules'];
-  return createGithubIssue(data.title, body, labels);
+  return createGithubIssue(safeTitle, body, labels);
 }
 
 export interface BadGroupReportData {
