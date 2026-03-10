@@ -418,19 +418,22 @@ export class FirebaseService implements IFirebaseService {
     const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
     let batch = db.batch();
     let count = 0;
+    const promises: Promise<any>[] = [];
 
     for (const doc of snapshot.docs) {
       batch.delete(doc.ref);
       count++;
       if (count % 500 === 0) {
-        await batch.commit();
+        promises.push(batch.commit());
         batch = db.batch();
       }
     }
 
     if (count % 500 !== 0) {
-      await batch.commit();
+      promises.push(batch.commit());
     }
+
+    await Promise.all(promises);
 
     if (count > 0) {
       logger.info(
@@ -449,19 +452,22 @@ export class FirebaseService implements IFirebaseService {
 
     let batch = db.batch();
     let count = 0;
+    const promises: Promise<any>[] = [];
 
     for (const docSnap of snapshot.docs) {
       batch.delete(docSnap.ref);
       count++;
       if (count % 500 === 0) {
-        await batch.commit();
+        promises.push(batch.commit());
         batch = db.batch();
       }
     }
 
     if (count % 500 !== 0) {
-      await batch.commit();
+      promises.push(batch.commit());
     }
+
+    await Promise.all(promises);
 
     if (count > 0) {
       logger.info(`Deleted all ${count} doc(s) from ${collection} collection`);
