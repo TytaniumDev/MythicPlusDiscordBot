@@ -18,9 +18,9 @@ export {
 // Bot-specific environment variables
 export const BOT_TOKEN = process.env.BOT_TOKEN ?? undefined;
 export const DISCORD_APPLICATION_ID = process.env.DISCORD_APPLICATION_ID ?? undefined;
-export const DEVELOPER_ID = parseInt(process.env.DEVELOPER_ID ?? '202184987469021184', 10);
+export const DEVELOPER_ID = parseInt(process.env.DEVELOPER_ID, 10);
 export const BOT_INVITE_PERMISSIONS = parseInt(
-  process.env.BOT_INVITE_PERMISSIONS ?? '3263489',
+  process.env.BOT_INVITE_PERMISSIONS ?? '551903415361',
   10,
 );
 
