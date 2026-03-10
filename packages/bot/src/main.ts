@@ -1021,7 +1021,8 @@ async function main() {
         await interaction.editReply(`✅ Issue created: ${issue.html_url}`);
       } catch (e) {
         logger.error(`Failed to submit ${customId}: ${e}`);
-        await interaction.editReply(`❌ Failed to create issue: ${e}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
       }
       return;
     }
@@ -1050,10 +1051,14 @@ async function main() {
         await interaction.editReply(`✅ Bad group reported: ${issue.html_url}`);
       } catch (e) {
         logger.error(`Failed to submit badgroup modal: ${e}`);
-        await interaction.editReply(`❌ Failed to create issue: ${e}`);
+        const msg = e instanceof Error ? e.message : String(e);
+        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
       }
       return;
     }
+
+    // Unknown modal — acknowledge to avoid Discord "did not respond" error
+    await interaction.reply({ content: '❌ Unknown modal.', ephemeral: true });
   }
 
   // -- Voice state update --
