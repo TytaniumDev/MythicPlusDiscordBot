@@ -18,3 +18,4 @@ jobs:
     uses: TytaniumDev/.github/.github/workflows/auto-approve.yml@main
     with:
       owner: TytaniumDev
+      required_checks: "Lint,Build,Test"
