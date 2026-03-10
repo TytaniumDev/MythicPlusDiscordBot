@@ -102,6 +102,52 @@ describe('FirebaseService.deleteOldDocs', () => {
   });
 });
 
+describe('FirebaseService.deleteDoc', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn().mockResolvedValue(undefined),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('does nothing when db is null', async () => {
+    service.db = null;
+    await service.deleteDoc('test-collection', 'test-doc-id');
+    // No error thrown
+  });
+
+  it('deletes document with given collection and docId', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+
+    await service.deleteDoc('test-collection', 'test-doc-id');
+
+    expect(db.collection).toHaveBeenCalledWith('test-collection');
+    expect(db.collection('test-collection').doc).toHaveBeenCalledWith('test-doc-id');
+    expect(mockDocRef.delete).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('FirebaseService.deleteAllInCollection', () => {
   let service: FirebaseService;
 
