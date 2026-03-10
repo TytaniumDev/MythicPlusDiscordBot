@@ -636,6 +636,11 @@ async function main() {
               voice_channels: interaction.guild.channels.cache
                 .filter((ch) => ch.isVoiceBased())
                 .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
+              get_channel(chId: number): VoiceChannel | null {
+                const ch = interaction.guild!.channels.cache.find((c) => c.id === String(chId));
+                if (!ch || !ch.isVoiceBased()) return null;
+                return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
+              },
             }
           : null;
         await groupsHandler.activity(
