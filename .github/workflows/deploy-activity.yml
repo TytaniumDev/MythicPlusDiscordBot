@@ -24,6 +24,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Load Doppler secrets
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          DELIM=$(openssl rand -hex 16)
+          doppler secrets download --no-file --format json | jq -r --arg d "$DELIM" '
+            to_entries[]
+            | select(.key == "DISCORD_APPLICATION_ID" or (.key | startswith("VITE_FIREBASE_")))
+            | "\(.key)<<\($d)\n\(.value)\n\($d)"
+          ' >> "$GITHUB_ENV"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -36,13 +50,7 @@ jobs:
 
       - name: Build Activity
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_DISCORD_CLIENT_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+          VITE_DISCORD_CLIENT_ID: ${{ env.DISCORD_APPLICATION_ID }}
         run: |
           cd activity
           npm run build

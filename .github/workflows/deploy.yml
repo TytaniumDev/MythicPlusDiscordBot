@@ -51,13 +51,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Load Doppler secrets
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          DELIM=$(openssl rand -hex 16)
+          doppler secrets download --no-file --format json | jq -r --arg d "$DELIM" '
+            to_entries[] | "\(.key)<<\($d)\n\(.value)\n\($d)"
+          ' >> "$GITHUB_ENV"
+
       - name: Connect to Tailscale
         id: tailscale
         continue-on-error: true
         uses: tailscale/github-action@v3
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
           tags: tag:ci-runner
       - name: Verify Tailscale connection
         run: |
@@ -70,7 +82,7 @@ jobs:
             echo "::error::To fix this:"
             echo "::error::1. Go to Tailscale Admin Console → Settings → OAuth clients"
             echo "::error::2. Create/verify OAuth client with 'devices:write' scope"
-            echo "::error::3. Ensure TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET are set in GitHub secrets"
+            echo "::error::3. Ensure TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET are set in Doppler"
             echo "::error::4. Verify ACLs allow tag:ci-runner"
             echo "::error::============================================"
             exit 1
@@ -79,9 +91,6 @@ jobs:
           echo "Tailscale status:"
           tailscale status
       - name: Setup SSH key
-        env:
-          PI_SSH_KEY: ${{ secrets.PI_SSH_KEY }}
-          PI_HOST: ${{ secrets.PI_HOST }}
         run: |
           mkdir -p ~/.ssh
           echo "$PI_SSH_KEY" > ~/.ssh/deploy_key
@@ -89,17 +98,12 @@ jobs:
           # Add Pi to known hosts (get the host key)
           ssh-keyscan -H "$PI_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
       - name: Test SSH connection
-        env:
-          PI_HOST: ${{ secrets.PI_HOST }}
-          PI_USER: ${{ secrets.PI_USER }}
         run: |
           echo "Testing SSH connection to $PI_HOST..."
           ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
             "$PI_USER@$PI_HOST" "echo 'SSH connection successful!'"
       - name: Encode Firebase credentials
         id: firebase_b64
-        env:
-          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
         run: |
           # Encode as single-line base64 so multiline JSON is not inlined in the deploy script
           # (inlining would break bash and can leak secrets in error messages)
@@ -110,13 +114,7 @@ jobs:
           echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
       - name: Deploy to Raspberry Pi
         env:
-          PI_USER: ${{ secrets.PI_USER }}
-          PI_HOST: ${{ secrets.PI_HOST }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
-          GITHUB_TOKEN: ${{ secrets.GH_ISSUE_TOKEN }}
-          PI_APP_DIR: ${{ secrets.PI_APP_DIR }}
+          GH_ISSUE_TOKEN: ${{ env.GH_ISSUE_TOKEN }}
         run: |
           ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
             "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
@@ -138,7 +136,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             export BOT_TOKEN="$BOT_TOKEN"
             export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
-            export GITHUB_TOKEN="$GITHUB_TOKEN"
+            export GITHUB_TOKEN="$GH_ISSUE_TOKEN"
             FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
             export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
 
