@@ -9,20 +9,21 @@ interface GroupCardProps {
   compact?: boolean;
 }
 
-function RoleRow({ color, roleLabel, name, player }: {
+function RoleRow({ color, roleLabel, name, player, isOffspec }: {
   color: string;
   roleLabel: string;
   name: string;
   player?: WoWPlayer | null;
+  isOffspec?: boolean;
 }) {
   return (
     <div className="group-role">
       <span
-        className={`role-indicator ${roleLabel.toLowerCase()}`}
-        style={{ background: color }}
+        className={`role-indicator ${roleLabel.toLowerCase()}${isOffspec ? ' offspec' : ''}`}
+        style={isOffspec ? { borderColor: color } : { background: color }}
         role="img"
-        aria-label={roleLabel}
-        title={roleLabel}
+        aria-label={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
+        title={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
       />
       <span className="role-label">{roleLabel}</span>
       <span className="role-name">{name}{utilityIcons(player)}</span>
@@ -30,20 +31,21 @@ function RoleRow({ color, roleLabel, name, player }: {
   );
 }
 
-function CompactRoleRow({ color, roleLabel, name, player }: {
+function CompactRoleRow({ color, roleLabel, name, player, isOffspec }: {
   color: string;
   roleLabel: string;
   name: string;
   player?: WoWPlayer | null;
+  isOffspec?: boolean;
 }) {
   return (
     <div className="compact-role">
       <span
-        className={`role-indicator ${roleLabel.toLowerCase()}`}
-        style={{ background: color }}
+        className={`role-indicator ${roleLabel.toLowerCase()}${isOffspec ? ' offspec' : ''}`}
+        style={isOffspec ? { borderColor: color } : { background: color }}
         role="img"
-        aria-label={roleLabel}
-        title={roleLabel}
+        aria-label={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
+        title={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
       />
       <span className="role-name">{name}{utilityIcons(player)}</span>
     </div>
@@ -64,6 +66,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           roleLabel="Tank"
           name={group.tank?.name || 'None'}
           player={group.tank}
+          isOffspec={group.tank ? group.tank.mainRole !== 'tank' : false}
         />
       )}
       {(!hideEmpty || group.healer) && (
@@ -72,6 +75,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           roleLabel="Healer"
           name={group.healer?.name || 'None'}
           player={group.healer}
+          isOffspec={group.healer ? group.healer.mainRole !== 'healer' : false}
         />
       )}
       {group.dps.map((d, i) => (
@@ -81,6 +85,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           roleLabel="DPS"
           name={d.name}
           player={d}
+          isOffspec={d.mainRole !== 'ranged' && d.mainRole !== 'melee'}
         />
       ))}
     </div>
