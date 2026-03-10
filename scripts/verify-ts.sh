@@ -4,6 +4,10 @@ set -euo pipefail
 echo "=== TypeScript Verification ==="
 
 echo ""
+echo "--- Linting: Backend Packages ---"
+npm run lint
+
+echo ""
 echo "--- Typecheck: packages/shared ---"
 npx -w packages/shared tsc --noEmit
 
