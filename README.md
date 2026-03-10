@@ -29,20 +29,20 @@ Get up and running in less than 5 minutes.
     ```
 
 2.  **Install Dependencies**
-    We recommend using [uv](https://github.com/astral-sh/uv) for fast, reliable dependency management.
+    This project uses `npm` workspaces.
     ```bash
-    uv sync
+    npm install
     ```
 
 3.  **Configure Environment**
-    Create a `.env` file in the root directory:
+    Create a `.env` file in the `packages/bot` directory (or the root directory):
     ```bash
     echo "BOT_TOKEN=your_token_here" > .env
     ```
 
 4.  **Run the Bot**
     ```bash
-    uv run python bot.py
+    npm -w @mythicplus/bot run dev
     ```
 
 ## ✨ Key Features
@@ -64,13 +64,14 @@ Get up and running in less than 5 minutes.
 
 We welcome contributions! Please check `CONTRIBUTING.md` for development standards and guidelines.
 
-1.  **Install Pre-commit Hooks**
+1.  **Verify Changes**
+    Run the TypeScript verification script to check types, linting, and tests.
     ```bash
-    pre-commit install
+    npm run verify
     ```
-2.  **Verify Changes**
+    Or use the bash script directly:
     ```bash
-    ./scripts/verify.sh
+    ./scripts/verify-ts.sh
     ```
 
 ---
