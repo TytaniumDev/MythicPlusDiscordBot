@@ -32,13 +32,11 @@ export class DebugHandler {
         return;
       }
 
-      const lastResults = this.groupService.lastResults;
-      if (!lastResults.has(guildId)) {
+      const result = this.groupService.lastResults.get(guildId);
+      if (!result) {
         await ctx.send('❌ No previous results found for this server. Run `!wheel` first.');
         return;
       }
-
-      const result = lastResults.get(guildId)!;
       const { players, groups } = result;
 
       await ctx.channel.send(
