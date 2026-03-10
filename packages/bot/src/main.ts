@@ -27,13 +27,12 @@ import { GroupsHandler } from './commands/groups.js';
 import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
-import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
+import { getWowName, type DiscordMember } from './core/utils.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import {
   createMainSpecView,
   createOffspecView,
   createUtilitiesView,
-  createRoleBoardEmbed,
   handleRoleButtonClick,
   handleNoneButtonClick,
   handleNextButtonClick,
@@ -308,7 +307,7 @@ async function main() {
   const botAdapter = createBotAdapter(client, groupService);
   const sessionService = new SessionService(botAdapter);
 
-  const botInstance = new MythicPlusBot({
+  new MythicPlusBot({
     getUser: (id) => {
       const user = client.users.cache.get(String(id));
       if (!user) return null;
