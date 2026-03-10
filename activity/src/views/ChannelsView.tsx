@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { ChannelCard } from '../components/ChannelCard';
@@ -13,6 +13,15 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const service = useSessionService();
   const channels = guildData?.voiceChannels || [];
+
+  // Auto-refresh voice channels once when the view loads with empty channels
+  const hasAutoRefreshed = useRef(false);
+  useEffect(() => {
+    if (!hasAutoRefreshed.current && guildData && channels.length === 0 && currentGuildId) {
+      hasAutoRefreshed.current = true;
+      service.refreshChannels(currentGuildId).catch((err) => console.error('[Wheelson] Auto-refresh failed:', err));
+    }
+  }, [guildData, channels.length, currentGuildId, service]);
 
   const handleRefresh = useCallback(async () => {
     if (!currentGuildId) return;

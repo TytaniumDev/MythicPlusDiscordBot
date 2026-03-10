@@ -261,6 +261,33 @@ export class FirebaseService implements IFirebaseService {
     return { unsubscribe: unsubscribe as () => void };
   }
 
+  listenForGuildRefreshRequests(
+    callback: (guildId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('guilds');
+
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added' || change.type === 'modified') {
+            const data = change.doc.data();
+            if (data && data.refreshRequest) {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Guild refresh listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
   async deleteDoc(collectionName: string, docId: string): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection(collectionName).doc(docId);

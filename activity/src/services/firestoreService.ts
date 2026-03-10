@@ -34,7 +34,9 @@ class FirestoreSessionService implements SessionService {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
-          useAppStore.getState().setGuildData(docSnap.data() as GuildData);
+          const s = useAppStore.getState();
+          s.setGuildData(docSnap.data() as GuildData);
+          s.setStatusMessage('');
         } else {
           const s = useAppStore.getState();
           if (!s.guildDocCreationInFlight) {
