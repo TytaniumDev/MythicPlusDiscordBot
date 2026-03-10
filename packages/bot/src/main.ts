@@ -343,6 +343,21 @@ async function main() {
       const globalBody = [...commandsJson, ...entryPointCommands];
       await rest.put(Routes.applicationCommands(appId), { body: globalBody });
       logger.info(`Registered ${commands.length} slash commands globally`);
+
+      // Clear stale guild-level commands (duplicates from old per-guild registration)
+      for (const guild of readyClient.guilds.cache.values()) {
+        try {
+          const guildCmds = (await rest.get(
+            Routes.applicationGuildCommands(appId, guild.id),
+          )) as { id: string }[];
+          if (guildCmds.length > 0) {
+            await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: [] });
+            logger.info(`Cleared ${guildCmds.length} stale guild commands from ${guild.name}`);
+          }
+        } catch (guildErr) {
+          logger.warn(`Could not clear guild commands for ${guild.name}: ${guildErr}`);
+        }
+      }
     } catch (e) {
       logger.error(`Failed to register slash commands: ${e}`);
     }
