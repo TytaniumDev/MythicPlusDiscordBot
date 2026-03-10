@@ -25,7 +25,7 @@ function makeCtx(overrides: Partial<DebugContext> = {}): DebugContext {
     guild: overrides.guild === undefined ? { id: 123 } : overrides.guild,
     channel: overrides.channel ?? { send: vi.fn().mockResolvedValue(undefined) },
     send: overrides.send ?? vi.fn().mockResolvedValue(undefined),
-  };
+  } as unknown as DebugContext;
 }
 
 beforeEach(() => {
@@ -90,6 +90,7 @@ describe('DebugHandler.testcase', () => {
     groupService.lastResults.set(123, {
       players: [mockPlayer1, mockPlayer2],
       groups: [mockGroup1],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const handler = new DebugHandler(groupService);
@@ -113,6 +114,7 @@ describe('DebugHandler.testcase', () => {
     groupService.lastResults.set(123, {
       players: [],
       groups: [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const handler = new DebugHandler(groupService);
