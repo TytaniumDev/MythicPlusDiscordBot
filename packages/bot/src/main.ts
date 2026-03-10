@@ -107,7 +107,7 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
   return {
     groupService,
     get_guild(id: number): Guild | null {
-      const g = client.guilds.cache.find((g) => g.id === String(id));
+      const g = client.guilds.cache.get(String(id));
       if (!g) return null;
       const guildIcon = g.iconURL();
       return {
@@ -120,7 +120,7 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
             .map((ch) => adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel));
         },
         get_channel(chId: number): VoiceChannel | null {
-          const ch = g.channels.cache.find((c) => c.id === String(chId));
+          const ch = g.channels.cache.get(String(chId));
           if (!ch || !ch.isVoiceBased()) return null;
           return adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel);
         },
@@ -130,11 +130,12 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
 }
 
 function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel {
+  const members = ch.members.map((m) => adaptMember(m));
   return {
     id: Number(ch.id),
     name: ch.name,
     get members() {
-      return ch.members.map((m) => adaptMember(m));
+      return members;
     },
     async send(content: string | { embed: PlainEmbed }) {
       if (typeof content === 'string') {
@@ -653,7 +654,7 @@ async function main() {
                 .filter((ch) => ch.isVoiceBased())
                 .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
               get_channel(chId: number): VoiceChannel | null {
-                const ch = djsGuild.channels.cache.find((c) => c.id === String(chId));
+                const ch = djsGuild.channels.cache.get(String(chId));
                 if (!ch || !ch.isVoiceBased()) return null;
                 return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
               },
@@ -661,7 +662,7 @@ async function main() {
           : null;
         await groupsHandler.activity(
           {
-            guild: activityGuild as { id: number } | null,
+            guild: activityGuild,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,
@@ -1090,7 +1091,7 @@ async function main() {
             .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel));
         },
         get_channel(chId: number) {
-          const ch = guild.channels.cache.find((c) => c.id === String(chId));
+          const ch = guild.channels.cache.get(String(chId));
           if (!ch || !ch.isVoiceBased()) return null;
           return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
         },
