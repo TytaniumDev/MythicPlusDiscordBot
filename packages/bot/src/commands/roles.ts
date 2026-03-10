@@ -2,10 +2,10 @@ import { createRoleBoardEmbed } from '../core/roleUi.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
 
 export interface RolesContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   author: DiscordMember & {
-    id: string | number;
-    voice?: { channel?: { id: number; members: (DiscordMember & { bot: boolean })[] } | null } | null;
+    id: string;
+    voice?: { channel?: { id: string; members: (DiscordMember & { bot: boolean })[] } | null } | null;
   };
   channel: { members: (DiscordMember & { bot: boolean })[] };
   send(content: string, options?: Record<string, unknown>): Promise<unknown>;

@@ -22,7 +22,7 @@ function makeMockGroupService() {
 
 function makeCtx(overrides: Partial<DebugContext> = {}): DebugContext {
   return {
-    guild: overrides.guild === undefined ? { id: 123 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '123' } : overrides.guild,
     channel: overrides.channel ?? {
       send: vi.fn().mockResolvedValue(undefined),
       members: [],
@@ -77,7 +77,7 @@ describe('DebugHandler.testcase', () => {
     const groupService = makeMockGroupService();
     // lastResults map is empty by default
     const handler = new DebugHandler(groupService);
-    const ctx = makeCtx({ guild: { id: 123 } });
+    const ctx = makeCtx({ guild: { id: '123' } });
 
     await handler.testcase(ctx);
 
@@ -91,14 +91,14 @@ describe('DebugHandler.testcase', () => {
     const mockPlayer2 = { toTestString: vi.fn().mockReturnValue('Player2') };
     const mockGroup1 = { toTestString: vi.fn().mockReturnValue('Group1') };
 
-    groupService.lastResults.set(123, {
+    groupService.lastResults.set('123', {
       players: [mockPlayer1, mockPlayer2],
       groups: [mockGroup1],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const handler = new DebugHandler(groupService);
-    const ctx = makeCtx({ guild: { id: 123 } });
+    const ctx = makeCtx({ guild: { id: '123' } });
 
     await handler.testcase(ctx);
 
@@ -111,7 +111,7 @@ describe('DebugHandler.testcase', () => {
     const groupService = makeMockGroupService();
     // Setting up the context such that ctx.channel.send throws
     const ctx = makeCtx({
-      guild: { id: 123 },
+      guild: { id: '123' },
       channel: {
         send: vi.fn().mockRejectedValue(new Error('Send error')),
         members: [],
@@ -119,7 +119,7 @@ describe('DebugHandler.testcase', () => {
       } as unknown as DebugContext['channel']
     });
 
-    groupService.lastResults.set(123, {
+    groupService.lastResults.set('123', {
       players: [],
       groups: [],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

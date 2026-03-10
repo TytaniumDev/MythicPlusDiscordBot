@@ -7,13 +7,13 @@ import logger from '../core/logger.js';
 import { type VoiceChannel } from '../services/sessionService.js';
 
 export interface GroupsContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   author: {
-    id: string | number;
+    id: string;
     name: string;
     voice?: {
       channel?: {
-        id: number;
+        id: string;
         name: string;
         members?: { bot: boolean }[];
         createInvite?(): Promise<{ url: string }>;
@@ -21,7 +21,7 @@ export interface GroupsContext {
     } | null;
   };
   channel?: {
-    members: { bot: boolean; id: string | number; toString(): string }[];
+    members: { bot: boolean; id: string; toString(): string }[];
     sendTyping(): Promise<void>;
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,7 +32,7 @@ export interface GroupsContext {
 
 export type ActivityContext = Omit<GroupsContext, 'guild'> & {
   guild: {
-    id: number;
+    id: string;
     name: string;
     icon?: { url: string } | null;
     voice_channels: VoiceChannel[];
@@ -40,7 +40,7 @@ export type ActivityContext = Omit<GroupsContext, 'guild'> & {
 };
 
 export interface VoiceState {
-  channel: { id: number; members: { bot: boolean }[] } | null;
+  channel: { id: string; members: { bot: boolean }[] } | null;
 }
 
 export class GroupsHandler {
@@ -146,7 +146,7 @@ export class GroupsHandler {
     try {
       const issue = await reportBadGroup({
         reporterName: ctx.author.name,
-        reporterId: Number(ctx.author.id),
+        reporterId: ctx.author.id,
         title,
         description,
         players: lastResults.players,

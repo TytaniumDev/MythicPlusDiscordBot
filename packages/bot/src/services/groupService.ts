@@ -6,7 +6,7 @@ import logger from '../core/logger.js';
 
 export interface CommandContext extends Sendable {
   channel: { members: DiscordMember[] } & TypingChannel;
-  guild: { id: number } | null;
+  guild: { id: string } | null;
 }
 
 export interface LastResults {
@@ -15,8 +15,8 @@ export interface LastResults {
 }
 
 export class GroupService {
-  lastResults: Map<number, LastResults> = new Map();
-  private serverLocks: Map<number, boolean> = new Map();
+  lastResults: Map<string, LastResults> = new Map();
+  private serverLocks: Map<string, boolean> = new Map();
 
   async getGroupsData(
     ctx: CommandContext,
@@ -102,7 +102,7 @@ export class GroupService {
   async _executeCoreWheel(
     ctx: CommandContext,
     channel: TypingChannel,
-    guildId: number,
+    guildId: string,
     debug: boolean,
   ): Promise<void> {
     const result = await this.getGroupsData(ctx, debug);
