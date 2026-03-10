@@ -26,7 +26,6 @@ if (_isEmbedded) {
   patchUrlMappings([
     { prefix: '/firebase', target: 'firestore.googleapis.com' },
   ]);
-  console.log('[DiscordSDK] Patched URL mappings for embedded mode');
 }
 
 export const isEmbedded = _isEmbedded;
@@ -48,10 +47,8 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
   }
 
   try {
-    console.log('[DiscordSDK] Initializing with clientId:', clientId);
     const discordSdk = new DiscordSDK(clientId);
     await discordSdk.ready();
-    console.log('[DiscordSDK] Ready. guildId:', discordSdk.guildId, 'channelId:', discordSdk.channelId);
 
     _sdkInstance = discordSdk;
 
