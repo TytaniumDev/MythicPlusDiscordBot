@@ -4,7 +4,6 @@
   "type": "module",
   "main": "src/main.ts",
   "scripts": {
-    "build": "tsc",
     "dev": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,7 +17,7 @@
     "firebase-admin": "^13.4.0",
     "tsx": "^4.19.4",
     "winston": "^3.17.0",
-    "zod": "^4.3.6"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

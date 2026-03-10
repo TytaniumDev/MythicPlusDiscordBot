@@ -19,7 +19,6 @@ export interface GuildData {
   guildName?: string;
   guildIconUrl?: string;
   voiceChannels: VoiceChannel[];
-  previousGroups?: WoWGroup[];
   refreshRequest?: unknown;
   createdAt: unknown;
   lastActive: unknown;
