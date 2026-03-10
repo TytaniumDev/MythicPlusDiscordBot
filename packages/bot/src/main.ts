@@ -613,7 +613,7 @@ async function main() {
       case 'wheel': {
         const voiceChannel = member?.voice.channel;
         await groupsHandler.wheel({
-          guild: guildObj,
+          guild: guildObj ? { id: guildObj.id, name: interaction.guild!.name, icon: null, voice_channels: [] } : null,
           author: {
             id: interaction.user.id,
             name: member?.displayName ?? interaction.user.displayName,
@@ -650,7 +650,7 @@ async function main() {
           : null;
         await groupsHandler.activity(
           {
-            guild: activityGuild as { id: number } | null,
+            guild: activityGuild,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,
@@ -738,7 +738,7 @@ async function main() {
 
         await groupsHandler.badgroup(
           {
-            guild: guildObj,
+            guild: guildObj ? { id: guildObj.id, name: interaction.guild!.name, icon: null, voice_channels: [] } : null,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,

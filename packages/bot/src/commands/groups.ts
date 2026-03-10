@@ -4,8 +4,15 @@ import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
 
+import { type VoiceChannel } from '../services/sessionService.js';
+
 export interface GroupsContext {
-  guild: { id: number } | null;
+  guild: {
+    id: number;
+    name: string;
+    icon?: { url: string } | null;
+    voice_channels: VoiceChannel[];
+  } | null;
   author: {
     id: string | number;
     name: string;
@@ -57,8 +64,7 @@ export class GroupsHandler {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await this.sessionService.getOrCreateSession(ctx as any, debug);
+      const result = await this.sessionService.getOrCreateSession(ctx, debug);
       if (!result) {
         await ctx.send('❌ Failed to create/get session. Is Firebase configured?');
         return;
