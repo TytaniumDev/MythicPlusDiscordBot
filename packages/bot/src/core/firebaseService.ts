@@ -229,6 +229,35 @@ export class FirebaseService implements IFirebaseService {
     logger.debug(`Deleted channel doc ${channelId} from Firestore`);
   }
 
+  // Bad Group Report Listener
+
+  listenForBadGroupReports(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('badGroupReports');
+    const unsubscribe = collectionRef.onSnapshot((...args: unknown[]) => {
+      const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+      for (const change of snapshot.docChanges()) {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (data) {
+            callback(change.doc.id, data);
+          }
+        }
+      }
+    });
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
+  async deleteDoc(collectionName: string, docId: string): Promise<void> {
+    if (!this.db) return;
+    const docRef = this.db.collection(collectionName).doc(docId);
+    await docRef.delete();
+  }
+
   // Collection Operations
 
   async deleteOldDocs(collection: string, seconds: number): Promise<number> {
