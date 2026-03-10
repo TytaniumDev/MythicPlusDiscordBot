@@ -47,7 +47,7 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: update visual test snapshots"
+            git commit -m "chore: update visual test snapshots [skip ci]"
             git push
           fi
 

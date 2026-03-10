@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+if ! command -v docker &>/dev/null; then
+  echo "Error: Docker is required. Install it from https://docs.docker.com/get-docker/"
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
@@ -18,7 +23,7 @@ docker run --rm --ipc=host \
   -e PLAYWRIGHT_TEST=1 \
   "$IMAGE" \
   bash -c '
-    npm ci --ignore-scripts 2>/dev/null
+    npm ci --ignore-scripts
     npm rebuild
     cd activity
     for pkg in lightningcss @tailwindcss/oxide; do
@@ -26,5 +31,5 @@ docker run --rm --ipc=host \
       rm -rf "node_modules/$pkg"
       npm install --no-save --install-strategy=nested "$pkg@$VER"
     done
-    npx playwright test '"$*"'
-  '
+    npx playwright test "$@"
+  ' bash "$@"
