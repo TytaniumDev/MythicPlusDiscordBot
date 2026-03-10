@@ -112,6 +112,26 @@ When touching GitHub Actions workflows: read the **Secrets in workflows** sectio
 
 **CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines three jobs: `Lint`, `Build`, `Test`. It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection requires. `deploy.yml` also calls `ci-shared.yml`. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
 
+## Production Host (Raspberry Pi)
+
+The bot runs on a Raspberry Pi. Connection details are stored in Doppler:
+
+- **PI_HOST** – `100.92.156.29` (Tailscale IP)
+- **PI_USER** – `deploy`
+- **PI_APP_DIR** – `/home/deploy/mythic-plus-bot`
+- **PI_SSH_KEY** – SSH private key (in Doppler)
+
+```bash
+# SSH into the Pi (requires PI_SSH_KEY written to a temp file or ssh-agent)
+ssh deploy@100.92.156.29
+
+# Check bot logs on the Pi (runs in Docker)
+docker logs mythic-plus-bot --since 30m
+
+# App directory
+cd /home/deploy/mythic-plus-bot
+```
+
 ## Git Workflow
 
 - **Never push directly to `main`.** Always create a feature branch and open a PR for code review.
