@@ -49,6 +49,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions: {}
     timeout-minutes: 20
     steps:
       - name: Install Doppler CLI
