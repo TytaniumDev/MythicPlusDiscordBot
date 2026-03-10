@@ -338,6 +338,7 @@ async function main() {
   let badGroupReportListener: { unsubscribe(): void } | null = null;
   let guildRefreshListener: { unsubscribe(): void } | null = null;
   let channelRefreshListener: { unsubscribe(): void } | null = null;
+  let channelStatusListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -513,6 +514,35 @@ async function main() {
 
     if (channelRefreshListener) {
       logger.info('Listening for channel player refresh requests from activity frontend');
+    }
+
+    // Listen for channel status changes to announce completion to Discord.
+    // Uses sessionService.announcedChannels to deduplicate (cleared on channel cleanup/shutdown).
+    channelStatusListener = firebase.listenForChannelStatusChanges(async (channelId, data) => {
+      try {
+        // Only announce once per completion (prevents duplicates if doc is modified again)
+        if (sessionService.announcedChannels.has(channelId)) return;
+        sessionService.announcedChannels.add(channelId);
+
+        const numChannelId = Number(channelId);
+        const active = sessionService.activeChannels.get(numChannelId);
+        if (!active) return;
+
+        const announceResults = data.announceResults !== false;
+        if (!announceResults) {
+          logger.debug(`Channel ${channelId} completed but announceResults is false, skipping`);
+          return;
+        }
+
+        await sessionService.announceCompletion(numChannelId, active.guildId, data);
+        logger.info(`Announced completion for channel ${channelId}`);
+      } catch (e) {
+        logger.error(`Failed to announce completion for channel ${channelId}: ${e}`);
+      }
+    });
+
+    if (channelStatusListener) {
+      logger.info('Listening for channel status changes from activity frontend');
     }
   });
 
@@ -879,6 +909,7 @@ async function main() {
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
     channelRefreshListener?.unsubscribe();
+    channelStatusListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

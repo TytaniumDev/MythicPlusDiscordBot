@@ -1137,8 +1137,8 @@ body {
    ============================================ */
 #view-results {
   text-align: center;
-  max-width: 700px;
-  margin: 0 auto;
+  width: 100%;
+  padding: 0 16px;
   overflow-y: auto;
 }
 
@@ -1149,14 +1149,19 @@ body {
 }
 
 #final-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  column-width: 220px;
+  column-gap: 12px;
   margin-bottom: 24px;
 }
 
 #final-groups .group-card {
   padding: 16px;
+  break-inside: avoid;
+  margin-bottom: 12px;
+}
+
+#final-groups .group-card:last-child {
+  margin-bottom: 0;
 }
 
 #final-groups .group-card h4 {

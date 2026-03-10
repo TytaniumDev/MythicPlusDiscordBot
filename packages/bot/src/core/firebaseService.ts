@@ -72,6 +72,9 @@ export interface IFirebaseService {
   listenForChannelPlayerRefreshRequests(
     callback: (channelId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
+  listenForChannelStatusChanges(
+    callback: (channelId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
 }
 
@@ -315,6 +318,33 @@ export class FirebaseService implements IFirebaseService {
       },
       (...errArgs: unknown[]) => {
         logger.error(`Channel player refresh listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
+  }
+
+  listenForChannelStatusChanges(
+    callback: (channelId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('channels');
+
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'modified') {
+            const data = change.doc.data();
+            if (data && data.status === 'completed') {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Channel status listener error: ${errArgs[0]}`);
       },
     );
 
