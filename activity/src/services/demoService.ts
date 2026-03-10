@@ -82,6 +82,10 @@ class DemoSessionService implements SessionService {
     });
   }
 
+  async reportBadGroup(_title: string, _description: string): Promise<void> {
+    // No-op in demo
+  }
+
   async createGuildEntry(_guildId: string): Promise<void> {
     // No-op in demo
   }

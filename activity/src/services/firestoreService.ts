@@ -1,4 +1,4 @@
-import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
@@ -197,6 +197,22 @@ class FirestoreSessionService implements SessionService {
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true });
+  }
+
+  async reportBadGroup(title: string, description: string): Promise<void> {
+    const { channelData, currentPlayerName, currentPlayerId } = useAppStore.getState();
+    if (!channelData) return;
+
+    await addDoc(collection(db, 'badGroupReports'), {
+      title,
+      description,
+      reporterName: currentPlayerName || 'Unknown',
+      reporterId: currentPlayerId || 'Unknown',
+      guildId: channelData.guildId || null,
+      players: channelData.players,
+      groups: channelData.groups,
+      createdAt: serverTimestamp(),
+    });
   }
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {

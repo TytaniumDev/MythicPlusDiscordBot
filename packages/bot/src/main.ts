@@ -28,6 +28,9 @@ import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, type DiscordMember } from './core/utils.js';
+import { FirebaseService } from './core/firebaseService.js';
+import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+import { reportBadGroup } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import {
   createMainSpecView,
@@ -209,13 +212,6 @@ const commands = [
   new SlashCommandBuilder().setName('activity').setDescription('Start a Mythic+ lobby activity'),
   new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity (alias)'),
   new SlashCommandBuilder().setName('readycheck').setDescription('Show the Mythic+ role board for the current channel'),
-  new SlashCommandBuilder().setName('rolecheck').setDescription('Show saved roles for channel members'),
-  new SlashCommandBuilder()
-    .setName('clearrole')
-    .setDescription('Clear saved roles')
-    .addStringOption((opt) =>
-      opt.setName('name').setDescription('Player name to clear (omit for yourself)').setRequired(false),
-    ),
   new SlashCommandBuilder()
     .setName('badgroup')
     .setDescription('Report a bad group formation')
@@ -338,6 +334,9 @@ async function main() {
   const rolesHandler = new RolesHandler();
   const debugHandler = new DebugHandler(groupService);
 
+  // Track report listener for shutdown cleanup
+  let badGroupReportListener: { unsubscribe(): void } | null = null;
+
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
     logger.info(`Logged in as ${readyClient.user.tag}`);
@@ -366,6 +365,53 @@ async function main() {
 
     // Run ready handler (preference cache, cleanup old docs)
     await onReady();
+
+    // Listen for bad group reports from the activity frontend
+    const firebase = FirebaseService.getInstance();
+    let lastReportTimestamp = 0; // global rate limit (guildId is untrusted client data)
+    const REPORT_COOLDOWN_MS = 60_000; // 1 minute between any reports
+
+    badGroupReportListener = firebase.listenForBadGroupReports(async (docId, data) => {
+      try {
+        // Global rate limit: one report per minute across all sources
+        const now = Date.now();
+        if (now - lastReportTimestamp < REPORT_COOLDOWN_MS) {
+          logger.warn(`Rate-limited bad group report (doc ${docId}), skipping`);
+          await firebase.deleteDoc('badGroupReports', docId);
+          return;
+        }
+        lastReportTimestamp = now;
+
+        const playersData = (data.players ?? []) as Record<string, unknown>[];
+        const groupsData = (data.groups ?? []) as Record<string, unknown>[];
+        const players = playersData.map((p) => WoWPlayer.fromDict(p));
+        const groups = groupsData.map((g) => WoWGroup.fromDict(g));
+
+        const issue = await reportBadGroup({
+          reporterName: String(data.reporterName ?? 'Unknown'),
+          reporterId: String(data.reporterId ?? 'Unknown'),
+          title: String(data.title ?? 'Bad Group Report'),
+          description: String(data.description ?? ''),
+          players,
+          groups,
+        });
+
+        logger.info(`Bad group report processed: ${issue.html_url}`);
+      } catch (e) {
+        logger.error(`Failed to process bad group report ${docId}: ${e}`);
+      } finally {
+        // Always delete the report doc to prevent reprocessing on restart
+        try {
+          await firebase.deleteDoc('badGroupReports', docId);
+        } catch (delErr) {
+          logger.error(`Failed to delete bad group report doc ${docId}: ${delErr}`);
+        }
+      }
+    });
+
+    if (badGroupReportListener) {
+      logger.info('Listening for bad group reports from activity frontend');
+    }
   });
 
   // -- Interaction handler --
@@ -497,48 +543,6 @@ async function main() {
         break;
       }
 
-      case 'rolecheck': {
-        const voiceChannel = member?.voice.channel;
-        const channelMembers = voiceChannel
-          ? voiceChannel.members.map((m) => adaptMember(m))
-          : [];
-
-        await rolesHandler.rolecheck({
-          guild: guildObj,
-          author: {
-            ...adaptMember(member!),
-            voice: voiceChannel
-              ? {
-                  channel: {
-                    id: Number(voiceChannel.id),
-                    members: voiceChannel.members.map((m) => adaptMember(m)),
-                  },
-                }
-              : null,
-          },
-          channel: { members: channelMembers },
-          send: sender.send,
-        });
-        break;
-      }
-
-      case 'clearrole': {
-        const name = interaction.options.getString('name');
-        await rolesHandler.clearrole(
-          {
-            guild: guildObj,
-            author: {
-              ...adaptMember(member!),
-              voice: null,
-            },
-            channel: { members: [] },
-            send: sender.send,
-          },
-          name,
-        );
-        break;
-      }
-
       case 'badgroup': {
         const title = interaction.options.getString('title');
         const description = interaction.options.getString('description');
@@ -551,6 +555,7 @@ async function main() {
             },
             send: sender.send,
             defer: sender.defer,
+            // Modal not supported in activity context; no-op stub
             interaction: { response: { sendModal: async () => {} } },
           },
           title,
@@ -769,6 +774,7 @@ async function main() {
   // -- Graceful shutdown --
   async function shutdown() {
     logger.info('Shutting down...');
+    badGroupReportListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

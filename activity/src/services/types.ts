@@ -11,4 +11,5 @@ export interface SessionService {
   refreshChannels(guildId: string): Promise<void>;
   selectChannel(channelId: string, channelName: string, guildId: string): Promise<void>;
   createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void>;
+  reportBadGroup(title: string, description: string): Promise<void>;
 }
