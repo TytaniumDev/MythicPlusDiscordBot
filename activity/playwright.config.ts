@@ -11,10 +11,9 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   expect: {
     toHaveScreenshot: {
-      // Tests seed Math.random for deterministic canvas rendering.
-      // Small tolerance for font/subpixel differences across environments.
-      // When updating snapshots, use 0 so all changes are captured regardless of size.
-      maxDiffPixelRatio: process.env.UPDATE_SNAPSHOTS ? 0 : 0.01,
+      // Docker container (scripts/playwright-docker.sh) ensures identical rendering
+      // across local and CI environments — no tolerance needed.
+      maxDiffPixelRatio: 0,
     },
   },
   projects: [
