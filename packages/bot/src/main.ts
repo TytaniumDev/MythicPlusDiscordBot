@@ -107,7 +107,7 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
   return {
     groupService,
     get_guild(id: number): Guild | null {
-      const g = client.guilds.cache.find((g) => g.id === String(id));
+      const g = client.guilds.cache.get(String(id));
       if (!g) return null;
       const guildIcon = g.iconURL();
       return {
@@ -613,6 +613,9 @@ async function main() {
 
       case 'wheel': {
         const voiceChannel = member?.voice.channel;
+        const voiceMembers = voiceChannel
+          ? voiceChannel.members.map((m) => adaptMember(m))
+          : [];
         await groupsHandler.wheel({
           guild: guildObj,
           author: {
@@ -621,6 +624,14 @@ async function main() {
             voice: voiceChannel
               ? { channel: adaptVoiceChannelForCtx(voiceChannel as import('discord.js').VoiceChannel) }
               : null,
+          },
+          channel: {
+            members: voiceMembers,
+            async sendTyping() {
+              if (textChannel && 'sendTyping' in textChannel) {
+                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
+              }
+            },
           },
           send: sender.send,
           defer: sender.defer,
