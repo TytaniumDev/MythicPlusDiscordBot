@@ -345,7 +345,7 @@ async function main() {
     // Update latency
     generalHandler.latency = readyClient.ws.ping / 1000;
 
-    // Register slash commands per-guild (instant) + globally (propagates over ~1 hour)
+    // Register slash commands globally
     const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN!);
     const commandsJson = commands.map((c) => c.toJSON());
     try {
@@ -354,12 +354,7 @@ async function main() {
       const entryPointCommands = existing.filter((cmd) => cmd.type === 4);
       const globalBody = [...commandsJson, ...entryPointCommands];
       await rest.put(Routes.applicationCommands(config.DISCORD_APPLICATION_ID!), { body: globalBody });
-
-      // Register per-guild for instant availability
-      for (const guild of readyClient.guilds.cache.values()) {
-        await rest.put(Routes.applicationGuildCommands(config.DISCORD_APPLICATION_ID!, guild.id), { body: commandsJson });
-      }
-      logger.info(`Registered ${commands.length} slash commands (global + ${readyClient.guilds.cache.size} guilds)`);
+      logger.info(`Registered ${commands.length} slash commands globally`);
     } catch (e) {
       logger.error(`Failed to register slash commands: ${e}`);
     }
