@@ -1074,11 +1074,18 @@ body {
   padding: 2px 0;
 }
 
-.group-card .group-role .role-indicator {
-  width: 6px;
-  height: 6px;
+.group-card .group-role .role-indicator,
+.group-card-compact .compact-role .role-indicator {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.role-indicator.offspec {
+  background: transparent;
+  border: 2px solid;
 }
 
 .group-card .group-role .role-label {
@@ -1116,13 +1123,6 @@ body {
   font-size: 0.7rem;
   padding: 1px 0;
   color: var(--text-primary);
-}
-
-.group-card-compact .compact-role .role-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .group-card-compact .compact-role .role-name {
@@ -1476,34 +1476,6 @@ body {
     width: 10px;
     height: 10px;
   }
-}
-
-/* ============================================
-   Colorblind-Friendly Role Dot Shapes
-   ============================================ */
-.role-dot.tank,
-.role-indicator.tank {
-  border-radius: 2px;
-}
-
-.role-dot.healer,
-.role-indicator.healer {
-  position: relative;
-}
-
-.role-dot.healer::after,
-.role-indicator.healer::after {
-  content: '+';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 6px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--bg-primary);
-  pointer-events: none;
 }
 
 /* ============================================
