@@ -105,10 +105,11 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
     get_guild(id: number): Guild | null {
       const g = client.guilds.cache.find((g) => g.id === String(id));
       if (!g) return null;
+      const guildIcon = g.iconURL();
       return {
         id: Number(g.id),
         name: g.name,
-        icon: g.iconURL() ? { url: g.iconURL()! } : null,
+        icon: guildIcon ? { url: guildIcon } : null,
         get voice_channels(): VoiceChannel[] {
           return g.channels.cache
             .filter((ch) => ch.isVoiceBased())
@@ -238,7 +239,8 @@ function buildRoleButtons(
 
   for (const btn of view.buttons) {
     const row = btn.row;
-    if (!groups.has(row)) groups.set(row, []);
+    const arr = groups.get(row) ?? [];
+    if (!groups.has(row)) groups.set(row, arr);
 
     let style: DjsButtonStyle;
     switch (btn.style) {
@@ -253,14 +255,15 @@ function buildRoleButtons(
       .setStyle(style);
 
     if ('disabled' in btn && btn.disabled) b.setDisabled(true);
-    groups.get(row)!.push(b);
+    arr.push(b);
   }
 
   // Add save button on last view
   if (state.currentViewIndex === state.views.length - 1) {
     const saveRow = state.views.length; // use a new row number
-    if (!groups.has(saveRow)) groups.set(saveRow, []);
-    groups.get(saveRow)!.push(
+    const saveArr = groups.get(saveRow) ?? [];
+    if (!groups.has(saveRow)) groups.set(saveRow, saveArr);
+    saveArr.push(
       new ButtonBuilder()
         .setCustomId(`role:${state.discordId}:save`)
         .setLabel('Save')
@@ -288,6 +291,8 @@ async function main() {
     logger.error('DISCORD_APPLICATION_ID is not set. Exiting.');
     process.exit(1);
   }
+  const botToken = config.BOT_TOKEN;
+  const appId = config.DISCORD_APPLICATION_ID;
 
   const client = new Client({
     intents: [
@@ -348,14 +353,14 @@ async function main() {
     generalHandler.latency = readyClient.ws.ping / 1000;
 
     // Register slash commands globally
-    const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN!);
+    const rest = new REST({ version: '10' }).setToken(botToken);
     const commandsJson = commands.map((c) => c.toJSON());
     try {
       // Preserve entry point commands in global registration
-      const existing = (await rest.get(Routes.applicationCommands(config.DISCORD_APPLICATION_ID!))) as { type?: number }[];
+      const existing = (await rest.get(Routes.applicationCommands(appId))) as { type?: number }[];
       const entryPointCommands = existing.filter((cmd) => cmd.type === 4);
       const globalBody = [...commandsJson, ...entryPointCommands];
-      await rest.put(Routes.applicationCommands(config.DISCORD_APPLICATION_ID!), { body: globalBody });
+      await rest.put(Routes.applicationCommands(appId), { body: globalBody });
       logger.info(`Registered ${commands.length} slash commands globally`);
     } catch (e) {
       logger.error(`Failed to register slash commands: ${e}`);
@@ -622,11 +627,12 @@ async function main() {
       case 'wheelson': {
         const voiceChannel = member?.voice.channel;
         // activity's getOrCreateSession needs extra guild fields; cast to satisfy handler
+        const activityIconUrl = interaction.guild?.iconURL();
         const activityGuild = interaction.guild
           ? {
               id: Number(interaction.guild.id),
               name: interaction.guild.name,
-              icon: interaction.guild.iconURL() ? { url: interaction.guild.iconURL()! } : null,
+              icon: activityIconUrl ? { url: activityIconUrl } : null,
               voice_channels: interaction.guild.channels.cache
                 .filter((ch) => ch.isVoiceBased())
                 .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
@@ -650,7 +656,11 @@ async function main() {
       }
 
       case 'readycheck': {
-        const voiceChannel = member?.voice.channel;
+        if (!member) {
+          await sender.send('❌ This command can only be used in a server.');
+          break;
+        }
+        const voiceChannel = member.voice.channel;
         const channelMembers = voiceChannel
           ? voiceChannel.members.map((m) => adaptMember(m))
           : [];
@@ -658,7 +668,7 @@ async function main() {
         await rolesHandler.launchRoleBoard({
           guild: guildObj,
           author: {
-            ...adaptMember(member!),
+            ...adaptMember(member),
             voice: voiceChannel
               ? {
                   channel: {
@@ -858,10 +868,11 @@ async function main() {
       if (!member) return;
 
       const guild = member.guild;
+      const voiceGuildIcon = guild.iconURL();
       const guildAdapter: Guild = {
         id: Number(guild.id),
         name: guild.name,
-        icon: guild.iconURL() ? { url: guild.iconURL()! } : null,
+        icon: voiceGuildIcon ? { url: voiceGuildIcon } : null,
         get voice_channels() {
           return guild.channels.cache
             .filter((ch) => ch.isVoiceBased())
@@ -919,7 +930,7 @@ async function main() {
   process.on('SIGTERM', shutdown);
 
   // -- Login --
-  await client.login(config.BOT_TOKEN);
+  await client.login(botToken);
 }
 
 // ---------------------------------------------------------------------------

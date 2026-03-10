@@ -31,7 +31,7 @@ function ensureLoaded(): void {
 
 export function loadPreferences(): Record<string, string[]> {
   ensureLoaded();
-  return { ...preferencesCache! };
+  return { ...(preferencesCache ?? {}) };
 }
 
 export function savePreferences(preferences: Record<string, string[]>): void {
@@ -46,7 +46,7 @@ export function savePreferences(preferences: Record<string, string[]>): void {
 
 export function getPlayerPreference(playerName: string): string[] | null {
   ensureLoaded();
-  return preferencesCache![playerName] ?? null;
+  return preferencesCache?.[playerName] ?? null;
 }
 
 export function setPlayerPreference(playerName: string, roles: string[]): void {

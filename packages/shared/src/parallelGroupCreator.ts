@@ -43,10 +43,9 @@ export function createMythicPlusGroups(
   for (const group of previousGroups) {
     const members = group.players;
     for (const member of members) {
-      if (!lastGroupsDict.has(member.name)) {
-        lastGroupsDict.set(member.name, new Set());
-      }
-      const teammates = lastGroupsDict.get(member.name)!;
+      const existing = lastGroupsDict.get(member.name);
+      const teammates = existing ?? new Set<string>();
+      if (!existing) lastGroupsDict.set(member.name, teammates);
       for (const m of members) {
         if (!m.equals(member)) teammates.add(m.name);
       }

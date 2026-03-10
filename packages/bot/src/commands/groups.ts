@@ -100,15 +100,14 @@ export class GroupsHandler {
     description?: string | null,
   ): Promise<void> {
     const guildId = ctx.guild?.id ?? null;
-    if (!guildId || !this.groupService.lastResults.has(guildId)) {
+    const lastResults = guildId ? this.groupService.lastResults.get(guildId) : undefined;
+    if (!lastResults) {
       await ctx.send(
         '❌ No group creation data found for this server. Run /wheel first.',
         { ephemeral: true },
       );
       return;
     }
-
-    const lastResults = this.groupService.lastResults.get(guildId)!;
 
     // If slash command without arguments, send modal
     if (ctx.interaction && title == null) {
