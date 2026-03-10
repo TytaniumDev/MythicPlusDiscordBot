@@ -418,7 +418,7 @@ export class FirebaseService implements IFirebaseService {
     const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
     let batch = db.batch();
     let count = 0;
-    const promises: Promise<any>[] = [];
+    const promises: Promise<unknown>[] = [];
 
     for (const doc of snapshot.docs) {
       batch.delete(doc.ref);
@@ -452,7 +452,7 @@ export class FirebaseService implements IFirebaseService {
 
     let batch = db.batch();
     let count = 0;
-    const promises: Promise<any>[] = [];
+    const promises: Promise<unknown>[] = [];
 
     for (const docSnap of snapshot.docs) {
       batch.delete(docSnap.ref);
