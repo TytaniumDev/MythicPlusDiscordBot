@@ -214,8 +214,7 @@ const commands = [
   new SlashCommandBuilder().setName('status').setDescription('Show bot status and uptime'),
   new SlashCommandBuilder().setName('invite').setDescription('Get the bot invite link'),
   new SlashCommandBuilder().setName('wheel').setDescription('Create Mythic+ groups from voice channel members'),
-  new SlashCommandBuilder().setName('activity').setDescription('Start a Mythic+ lobby activity'),
-  new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity (alias)'),
+  new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity'),
   new SlashCommandBuilder().setName('readycheck').setDescription('Show the Mythic+ role board for the current channel'),
   new SlashCommandBuilder()
     .setName('badgroup')
@@ -650,7 +649,6 @@ async function main() {
         break;
       }
 
-      case 'activity':
       case 'wheelson': {
         const voiceChannel = member?.voice.channel;
         // activity's getOrCreateSession needs extra guild fields; cast to satisfy handler
