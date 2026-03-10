@@ -23,7 +23,11 @@ function makeMockGroupService() {
 function makeCtx(overrides: Partial<DebugContext> = {}): DebugContext {
   return {
     guild: overrides.guild === undefined ? { id: 123 } : overrides.guild,
-    channel: overrides.channel ?? { send: vi.fn().mockResolvedValue(undefined) },
+    channel: overrides.channel ?? {
+      send: vi.fn().mockResolvedValue(undefined),
+      members: [],
+      sendTyping: vi.fn().mockResolvedValue(undefined),
+    },
     send: overrides.send ?? vi.fn().mockResolvedValue(undefined),
   } as unknown as DebugContext;
 }
@@ -108,7 +112,11 @@ describe('DebugHandler.testcase', () => {
     // Setting up the context such that ctx.channel.send throws
     const ctx = makeCtx({
       guild: { id: 123 },
-      channel: { send: vi.fn().mockRejectedValue(new Error('Send error')) }
+      channel: {
+        send: vi.fn().mockRejectedValue(new Error('Send error')),
+        members: [],
+        sendTyping: vi.fn().mockResolvedValue(undefined),
+      } as unknown as DebugContext['channel']
     });
 
     groupService.lastResults.set(123, {
