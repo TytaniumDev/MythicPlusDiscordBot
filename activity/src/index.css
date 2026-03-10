@@ -1149,19 +1149,17 @@ body {
 }
 
 #final-groups {
-  column-width: 220px;
-  column-gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
 #final-groups .group-card {
   padding: 16px;
-  break-inside: avoid;
-  margin-bottom: 12px;
-}
-
-#final-groups .group-card:last-child {
-  margin-bottom: 0;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 #final-groups .group-card h4 {
