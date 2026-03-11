@@ -59,7 +59,7 @@ The project uses Playwright for visual regression testing.
 
 This project has strict requirements to prevent secret leaks and ensure CI reliability.
 - Please review **[docs/CI_STANDARDS.md](docs/CI_STANDARDS.md)** for the complete set of rules.
-- The project enforces these standards automatically using the `scripts/check-workflow-secrets.py` tool in CI.
+- The project enforces these standards automatically using the shared workflow-lint job in CI.
 
 ## Project Structure
 

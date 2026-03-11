@@ -9,7 +9,7 @@ When adding or modifying `.github/workflows/*.yml`, follow these rules to preven
 - **Never echo or log** variables that may contain secrets: do not use `set -x` in steps that use secrets; do not `echo $SECRET_VAR`.
 - **Prefer writing secrets to files** on the runner when possible (e.g. `echo "${{ secrets.PI_SSH_KEY }}" > file`), and only pass single-line or base64-encoded values into remote heredocs.
 
-See `scripts/check-workflow-secrets.py` and the workflow-lint job for automated checks.
+See the shared workflow-lint job for automated checks.
 
 ## Logging and Secrets
 
