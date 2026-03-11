@@ -14,8 +14,26 @@ export function PlayerChip({ player }: PlayerChipProps) {
 
   const isMe = currentPlayerId && player.discordId === currentPlayerId;
 
+  const handleClick = () => {
+    useAppStore.getState().setModalPlayer(player);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
-    <div className={`player-chip${isMe ? ' is-me' : ''}`}>
+    <div
+      className={`player-chip${isMe ? ' is-me' : ''}`}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Edit ${player.name} roles`}
+    >
       <div className="chip-header">
         <span
           className={`role-dot ${roleKey}`}
