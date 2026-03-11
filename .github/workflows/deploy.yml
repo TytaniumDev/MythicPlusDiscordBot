@@ -49,7 +49,7 @@ jobs:
         run: |
           echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          npx firebase-tools@14 deploy --only firestore:rules --non-interactive
+          npx firebase-tools@14 deploy --only firestore:rules --non-interactive --force
 
       - name: Clean up credentials
         if: always()
