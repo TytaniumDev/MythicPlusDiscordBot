@@ -85,7 +85,7 @@ body {
   flex-direction: column;
   height: 100dvh;
   padding: 8px 12px;
-  overflow-y: auto;
+  overflow: hidden auto;
 }
 
 .app-header {
