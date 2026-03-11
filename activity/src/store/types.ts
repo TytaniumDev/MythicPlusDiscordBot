@@ -1,4 +1,4 @@
-import { WoWGroup, WheelEntry, GuildData, ChannelData } from '../types';
+import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer } from '../types';
 
 export function isCompleteGroup(group: WoWGroup): boolean {
   return group.tank !== null && group.healer !== null && group.dps.length === 3;
@@ -27,9 +27,9 @@ export interface AppState {
   currentPlayerId: string | null;
   currentPlayerName: string | null;
   identityResolved: boolean;
-  roleEditorSaving: boolean;
-  roleEditorManuallyToggled: boolean;
-  roleEditorVisible: boolean;
+
+  // Player modal
+  modalPlayer: WoWPlayer | null;
 
   // Spin sequence
   fullGroups: WoWGroup[];
@@ -58,9 +58,7 @@ export interface AppState {
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
-  setRoleEditorSaving: (val: boolean) => void;
-  setRoleEditorManuallyToggled: (val: boolean) => void;
-  setRoleEditorVisible: (val: boolean) => void;
+  setModalPlayer: (player: WoWPlayer | null) => void;
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) => void;
   setCurrentGroupIndex: (index: number) => void;
   setSpinAnimating: (val: boolean) => void;

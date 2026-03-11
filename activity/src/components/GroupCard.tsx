@@ -72,6 +72,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
       title={isClickable ? 'Click to copy invite command' : undefined}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
+      aria-label={isClickable ? `Copy invite command for ${heading}` : undefined}
       onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleCopyInvite(); } : undefined}
     >
       <h4>

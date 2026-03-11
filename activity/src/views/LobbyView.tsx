@@ -3,8 +3,7 @@ import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentity } from '../hooks/useIdentity';
 import { PlayerChip } from '../components/PlayerChip';
-import { IdentitySelector } from '../components/IdentitySelector';
-import { RoleEditor } from '../components/RoleEditor';
+import { PlayerModal } from '../components/PlayerModal';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
 
 const BackArrow = () => (
@@ -67,8 +66,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 Waiting for players to join voice...
               </div>
             </div>
-            <div id="identity-selector" className="hidden" />
-            <div id="role-editor" className="hidden" />
             <button id="spin-btn" className="btn btn-primary btn-large" disabled>
               Waiting for players...
             </button>
@@ -138,8 +135,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             )}
           </div>
 
-          <IdentitySelector players={players} />
-          <RoleEditor players={players} />
+          <PlayerModal players={players} />
 
           <button
             id="spin-btn"

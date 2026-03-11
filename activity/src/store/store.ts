@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
-import { WoWGroup, WheelEntry, GuildData, ChannelData } from '../types';
+import { WoWGroup, WoWPlayer, WheelEntry, GuildData, ChannelData } from '../types';
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
@@ -22,9 +22,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentPlayerId: null,
   currentPlayerName: null,
   identityResolved: false,
-  roleEditorSaving: false,
-  roleEditorManuallyToggled: false,
-  roleEditorVisible: false,
+
+  // Player modal
+  modalPlayer: null,
 
   // Spin sequence
   fullGroups: [],
@@ -54,9 +54,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
-  setRoleEditorSaving: (val: boolean) => set({ roleEditorSaving: val }),
-  setRoleEditorManuallyToggled: (val: boolean) => set({ roleEditorManuallyToggled: val }),
-  setRoleEditorVisible: (val: boolean) => set({ roleEditorVisible: val }),
+  setModalPlayer: (player: WoWPlayer | null) => set({ modalPlayer: player }),
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) =>
     set({ fullGroups: groups, remainderGroups: remainder }),
   setCurrentGroupIndex: (index: number) => set({ currentGroupIndex: index }),
@@ -84,8 +82,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentPlayerId: null,
       currentPlayerName: null,
       identityResolved: false,
-      roleEditorManuallyToggled: false,
-      roleEditorVisible: false,
+      modalPlayer: null,
     }),
   resetSession: () => {
     get().resetIdentity();
@@ -99,7 +96,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       discordChannelId: null,
       guildDocCreationInFlight: false,
       statusMessage: '',
-      roleEditorSaving: false,
     });
   },
 }));

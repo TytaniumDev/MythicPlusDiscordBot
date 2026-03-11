@@ -241,12 +241,17 @@ export class PreferenceService implements IPreferenceService {
   ): Promise<void> {
     if (!this.firebase.db) return;
     const ref = this.firebase.db.collection('preferences').doc(discordId);
-    await ref.set({
+    const payload: Record<string, unknown> = {
       roles,
       wowName: name,
-      inGameName: inGameName ?? '',
       updatedAt: SERVER_TIMESTAMP,
-    });
+    };
+    // Only include inGameName when explicitly provided to avoid wiping
+    // values set by the activity frontend when the bot saves without it
+    if (inGameName !== undefined) {
+      payload.inGameName = inGameName;
+    }
+    await ref.set(payload, { merge: true });
   }
 
   async _deleteFirestorePref(discordId: string): Promise<void> {
