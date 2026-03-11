@@ -221,8 +221,18 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('description').setDescription('Issue description').setRequired(false),
     ),
-  new SlashCommandBuilder().setName('bug').setDescription('Report a bug'),
-  new SlashCommandBuilder().setName('featurerequest').setDescription('Request a feature'),
+  new SlashCommandBuilder()
+    .setName('bug')
+    .setDescription('Report a bug')
+    .addStringOption((opt) =>
+      opt.setName('text').setDescription('Quick bug description (skips the form)').setRequired(false),
+    ),
+  new SlashCommandBuilder()
+    .setName('featurerequest')
+    .setDescription('Request a feature')
+    .addStringOption((opt) =>
+      opt.setName('text').setDescription('Quick feature description (skips the form)').setRequired(false),
+    ),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
 ];
 
@@ -753,6 +763,35 @@ async function main() {
       }
 
       case 'bug': {
+        const quickText = interaction.options.getString('text');
+
+        if (quickText) {
+          await sender.defer({ ephemeral: true });
+          try {
+            const maxTitle = 60;
+            const quickTitle = quickText.length > maxTitle
+              ? quickText.slice(0, maxTitle) + '...'
+              : quickText;
+            const reporterName = member?.displayName ?? interaction.user.displayName;
+
+            const issue = await submitGithubIssueModal({
+              issueType: 'bug',
+              title: quickTitle,
+              description: quickText,
+              extraInfo: '',
+              includeLogs: true,
+              reporterName,
+              reporterId: interaction.user.id,
+            });
+            await sender.send(`✅ Bug reported: ${issue.html_url}`);
+          } catch (e) {
+            logger.error(`Failed to submit quick bug: ${e}`);
+            const msg = e instanceof Error ? e.message : String(e);
+            await sender.send(`❌ Failed to create issue: ${msg}`);
+          }
+          break;
+        }
+
         const modal = new ModalBuilder()
           .setCustomId('bug_modal')
           .setTitle('Report a Bug');
@@ -794,6 +833,35 @@ async function main() {
       }
 
       case 'featurerequest': {
+        const quickFeatureText = interaction.options.getString('text');
+
+        if (quickFeatureText) {
+          await sender.defer({ ephemeral: true });
+          try {
+            const maxTitle = 60;
+            const quickTitle = quickFeatureText.length > maxTitle
+              ? quickFeatureText.slice(0, maxTitle) + '...'
+              : quickFeatureText;
+            const reporterName = member?.displayName ?? interaction.user.displayName;
+
+            const issue = await submitGithubIssueModal({
+              issueType: 'feature',
+              title: quickTitle,
+              description: quickFeatureText,
+              extraInfo: '',
+              includeLogs: false,
+              reporterName,
+              reporterId: interaction.user.id,
+            });
+            await sender.send(`✅ Feature request created: ${issue.html_url}`);
+          } catch (e) {
+            logger.error(`Failed to submit quick feature request: ${e}`);
+            const msg = e instanceof Error ? e.message : String(e);
+            await sender.send(`❌ Failed to create issue: ${msg}`);
+          }
+          break;
+        }
+
         const modal = new ModalBuilder()
           .setCustomId('feature_modal')
           .setTitle('Request a Feature');
