@@ -270,29 +270,24 @@ export function createMythicPlusGroups(
         let placed = false;
 
         // Priority 1: place by main role
-        if (!placed && remainderGroup.tank === null && player.tankMain) {
+        if (player.tankMain && remainderGroup.tank === null) {
           remainderGroup.tank = player;
           placed = true;
-        }
-        if (!placed && remainderGroup.healer === null && player.healerMain) {
+        } else if (player.healerMain && remainderGroup.healer === null) {
           remainderGroup.healer = player;
           placed = true;
-        }
-        if (!placed && remainderGroup.dps.length < 3 && player.dpsMain) {
+        } else if (player.dpsMain && remainderGroup.dps.length < 3) {
           remainderGroup.dps.push(player);
           placed = true;
         }
-
         // Priority 2: place by offspec
-        if (!placed && remainderGroup.tank === null && player.offtank) {
+        else if (player.offtank && remainderGroup.tank === null) {
           remainderGroup.tank = player;
           placed = true;
-        }
-        if (!placed && remainderGroup.healer === null && player.offhealer) {
+        } else if (player.offhealer && remainderGroup.healer === null) {
           remainderGroup.healer = player;
           placed = true;
-        }
-        if (!placed && remainderGroup.dps.length < 3 && player.offdps) {
+        } else if (player.offdps && remainderGroup.dps.length < 3) {
           remainderGroup.dps.push(player);
           placed = true;
         }

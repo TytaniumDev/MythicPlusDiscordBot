@@ -239,7 +239,8 @@ describe('GroupCreator', () => {
       ];
       const groups = createMythicPlusGroups(players);
 
-      // With 15 players, should form 3 complete groups
+      // With 15 players, should form exactly 3 complete groups (no remainders)
+      expect(groups.length).toBe(3);
       const completeGroups = groups.filter((g) => g.isComplete);
       expect(completeGroups.length).toBe(3);
 
