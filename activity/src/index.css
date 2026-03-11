@@ -85,7 +85,7 @@ body {
   flex-direction: column;
   height: 100dvh;
   padding: 8px 12px;
-  overflow: hidden;
+  overflow: hidden auto;
 }
 
 .app-header {
@@ -235,7 +235,6 @@ body {
 #view-home {
   max-width: 500px;
   margin: 0 auto;
-  overflow-y: auto;
 }
 
 #view-home h2 {
@@ -325,7 +324,6 @@ body {
 #view-channels {
   max-width: 500px;
   margin: 0 auto;
-  overflow-y: auto;
 }
 
 #view-channels h2 {
@@ -413,7 +411,6 @@ body {
   max-width: 600px;
   margin: 0 auto;
   text-align: center;
-  overflow-y: auto;
 }
 
 .lobby-header {
@@ -1139,7 +1136,6 @@ body {
   text-align: center;
   width: 100%;
   padding: 0 16px;
-  overflow-y: auto;
 }
 
 #view-results h2 {
@@ -1405,10 +1401,9 @@ body {
     font-size: 0.7rem;
   }
 
-  /* Collapse lobby columns to single scrollable column */
+  /* Collapse lobby columns to single column */
   #player-list {
     grid-template-columns: 1fr;
-    overflow-y: auto;
   }
 
   .dps-grid {
