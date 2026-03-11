@@ -58,10 +58,15 @@ export function createMythicPlusGroups(
 
   const maximumPossibleGroups = Math.floor(players.length / 5);
 
-  // Tanks
+  // Tanks — partition offtanks so healer-capable players are used last
   const mainTanks = shuffle(players.filter((p) => p.tankMain));
-  const offTanks = shuffle(players.filter((p) => p.offtank && !p.tankMain));
-  const availableTanks = [...mainTanks, ...offTanks];
+  const offTanks = shuffle(
+    players.filter((p) => p.offtank && !p.tankMain && !p.healerMain && !p.offhealer),
+  );
+  const offTanksWithHeal = shuffle(
+    players.filter((p) => p.offtank && !p.tankMain && (p.healerMain || p.offhealer)),
+  );
+  const availableTanks = [...mainTanks, ...offTanks, ...offTanksWithHeal];
 
   // Healers
   const mainHealers = shuffle(players.filter((p) => p.healerMain));
@@ -88,6 +93,7 @@ export function createMythicPlusGroups(
       removeFromList(availableTanks, player);
     } else if (player.offtank) {
       removeFromList(offTanks, player);
+      removeFromList(offTanksWithHeal, player);
       removeFromList(availableTanks, player);
     }
 
@@ -266,20 +272,32 @@ export function createMythicPlusGroups(
           remainderGroup,
         );
         if (player !== null) {
-          if (remainderGroup.tank === null && (player.tankMain || player.offtank)) {
+          let placed = false;
+
+          // Priority 1: place by main role
+          if (player.tankMain && remainderGroup.tank === null) {
             remainderGroup.tank = player;
-            continue;
-          } else if (
-            remainderGroup.healer === null &&
-            (player.healerMain || player.offhealer)
-          ) {
+            placed = true;
+          } else if (player.healerMain && remainderGroup.healer === null) {
             remainderGroup.healer = player;
-            continue;
-          } else if (
-            remainderGroup.dps.length < 3 &&
-            (player.dpsMain || player.offdps)
-          ) {
+            placed = true;
+          } else if (player.dpsMain && remainderGroup.dps.length < 3) {
             remainderGroup.dps.push(player);
+            placed = true;
+          }
+          // Priority 2: place by offspec
+          else if (player.offtank && remainderGroup.tank === null) {
+            remainderGroup.tank = player;
+            placed = true;
+          } else if (player.offhealer && remainderGroup.healer === null) {
+            remainderGroup.healer = player;
+            placed = true;
+          } else if (player.offdps && remainderGroup.dps.length < 3) {
+            remainderGroup.dps.push(player);
+            placed = true;
+          }
+
+          if (placed) {
             continue;
           } else {
             // Everything is full, make another group
