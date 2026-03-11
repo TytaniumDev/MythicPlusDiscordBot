@@ -60,7 +60,12 @@ export class GroupsHandler {
       if (!ctx.channel) {
         throw new Error('Channel context is required for coreWheel');
       }
-      await this.groupService.coreWheel(ctx as GroupsContext & { channel: NonNullable<GroupsContext['channel']> }, false);
+      const wheelCtx = {
+        ...ctx,
+        channel: ctx.channel,
+        authorId: ctx.author.id,
+      };
+      await this.groupService.coreWheel(wheelCtx, false);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
       logger.error(`Error in wheel command: ${e}`);

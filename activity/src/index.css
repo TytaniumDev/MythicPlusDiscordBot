@@ -1121,6 +1121,17 @@ body {
   box-shadow: 0 0 0 1px var(--color-gold);
 }
 
+.group-card.is-highlighted {
+  border-color: var(--color-healer);
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+  background: color-mix(in srgb, var(--color-healer) 5%, var(--bg-card));
+}
+
+.group-card-compact.is-highlighted {
+  border-color: var(--color-healer);
+  background: color-mix(in srgb, var(--color-healer) 5%, var(--bg-card));
+}
+
 .group-card-clickable:active {
   transform: scale(0.98);
 }

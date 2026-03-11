@@ -7,6 +7,7 @@ import logger from '../core/logger.js';
 export interface CommandContext extends Sendable {
   channel: { members: DiscordMember[] } & TypingChannel;
   guild: { id: string } | null;
+  authorId?: string;
 }
 
 export interface LastResults {
@@ -111,7 +112,7 @@ export class GroupService {
     this.lastResults.set(guildId, result);
 
     for (let i = 0; i < result.groups.length; i++) {
-      await announceGroup(ctx, channel, result.groups[i], i + 1, debug);
+      await announceGroup(ctx, channel, result.groups[i], i + 1, debug, ctx.authorId);
     }
   }
 }

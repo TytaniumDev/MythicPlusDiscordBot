@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { WoWGroup, WoWPlayer } from '../types';
 import { utilityIcons } from '../lib/roles';
 import { generateInviteCommand } from '@mythicplus/shared';
+import { useAppStore } from '../store/store';
 
 interface GroupCardProps {
   group: WoWGroup;
@@ -50,8 +51,11 @@ async function copyToClipboard(text: string): Promise<void> {
 }
 
 export function GroupCard({ group, index, label, hideEmpty = false, compact = false }: GroupCardProps) {
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const isMyGroup = currentPlayerId && [group.tank, group.healer, ...group.dps].some(p => p?.discordId === currentPlayerId);
+
   const cardClass = compact ? 'group-card-compact' : 'group-card';
-  const heading = label ?? `Group ${index + 1}`;
+  const heading = label ?? (isMyGroup ? `Group ${index + 1} (Your Group)` : `Group ${index + 1}`);
 
   const inviteCmd = generateInviteCommand(group);
   const isClickable = inviteCmd.length > 0;
@@ -67,7 +71,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
 
   return (
     <div
-      className={`${cardClass}${isClickable ? ' group-card-clickable' : ''}`}
+      className={`${cardClass}${isClickable ? ' group-card-clickable' : ''}${isMyGroup ? ' is-highlighted' : ''}`}
       onClick={isClickable ? handleCopyInvite : undefined}
       title={isClickable ? 'Click to copy invite command' : undefined}
       role={isClickable ? 'button' : undefined}

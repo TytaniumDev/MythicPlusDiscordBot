@@ -22,15 +22,16 @@ export interface Sendable {
   send(content: string | { embed: Embed }): Promise<Message>;
 }
 
-// Gold color value matching discord.js
+// Color values matching discord.js
 const GOLD = 0xf1c40f;
+const GREEN = 0x2ecc71;
 
 function setFieldAt(embed: Embed, index: number, name: string, value: string): Embed {
   embed.fields[index] = { ...embed.fields[index], name, value };
   return embed;
 }
 
-export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
+export function buildGroupEmbed(group: WoWGroup, groupNumber: number, highlightPlayerId?: string): Embed {
   const tankName = group.tank?.name ?? PLACEHOLDER_CHAR;
   const healerName = group.healer?.name ?? PLACEHOLDER_CHAR;
   const dps1Name = group.dps.length > 0 ? group.dps[0].name : PLACEHOLDER_CHAR;
@@ -38,6 +39,10 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
   const dps3Name = group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR;
 
   const allPlayers = group.players;
+  const isHighlighted = highlightPlayerId && allPlayers.some((p) => p.discordId === highlightPlayerId);
+  const color = isHighlighted ? GREEN : GOLD;
+  const title = isHighlighted ? `Group ${groupNumber} (Your Group)` : `Group ${groupNumber}`;
+
   const brezPlayer = allPlayers.find((p) => p.hasBrez)?.name ?? 'None';
   const lustPlayer = allPlayers.find((p) => p.hasLust)?.name ?? 'None';
 
@@ -57,7 +62,7 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
     fields.push({ name: 'Invite Command', value: formatted });
   }
 
-  return { title: `Group ${groupNumber}`, color: GOLD, fields };
+  return { title, color, fields };
 }
 
 interface TypingChannel {
@@ -83,9 +88,10 @@ export async function announceGroup(
   group: WoWGroup,
   groupNumber: number,
   debug: boolean,
+  highlightPlayerId?: string,
 ): Promise<void> {
   if (debug) {
-    const embed = buildGroupEmbed(group, groupNumber);
+    const embed = buildGroupEmbed(group, groupNumber, highlightPlayerId);
     await ctx.send({ embed });
   } else {
     const tankName = group.tank?.name ?? PLACEHOLDER_CHAR;
@@ -95,12 +101,16 @@ export async function announceGroup(
     const dps3Name = group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR;
 
     const allPlayers = group.players;
+    const isHighlighted = highlightPlayerId && allPlayers.some((p) => p.discordId === highlightPlayerId);
+    const color = isHighlighted ? GREEN : GOLD;
+    const title = isHighlighted ? `Group ${groupNumber} (Your Group)` : `Group ${groupNumber}`;
+
     const brezPlayer = allPlayers.find((p) => p.hasBrez)?.name ?? 'None';
     const lustPlayer = allPlayers.find((p) => p.hasLust)?.name ?? 'None';
 
     const embed: Embed = {
-      title: `Group ${groupNumber}`,
-      color: GOLD,
+      title,
+      color,
       fields: [
         { name: 'Tank', value: getMaskedName(tankName) },
         { name: 'Healer', value: getMaskedName(healerName) },
