@@ -24,7 +24,7 @@ import * as config from '../src/core/config.js';
 
 function makeCtx(overrides: Partial<GeneralContext> = {}): GeneralContext {
   return {
-    guild: overrides.guild === undefined ? { id: 12345 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '12345' } : overrides.guild,
     send: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -80,7 +80,7 @@ describe('GeneralHandler.status', () => {
     const now = Date.now() / 1000;
     handler._setStartTime(now - 60);
 
-    const ctx = makeCtx({ guild: { id: 12345 } });
+    const ctx = makeCtx({ guild: { id: '12345' } });
 
     await handler.status(ctx);
 

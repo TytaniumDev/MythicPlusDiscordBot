@@ -28,7 +28,6 @@ import { GroupService } from './services/groupService.js';
 import { SessionService, type Bot, type Guild, type VoiceChannel } from './services/sessionService.js';
 import { GeneralHandler } from './commands/general.js';
 import { GroupsHandler } from './commands/groups.js';
-import { RolesHandler } from './commands/roles.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
@@ -103,15 +102,14 @@ function adaptMember(m: { nickname: string | null; displayName: string; id: stri
 // Adapter: Discord.js Client → Bot interface for SessionService
 // ---------------------------------------------------------------------------
 
-function createBotAdapter(client: Client, groupService: GroupService): Bot {
+function createBotAdapter(client: Client): Bot {
   return {
-    groupService,
-    get_guild(id: number): Guild | null {
-      const g = client.guilds.cache.find((g) => g.id === String(id));
+    get_guild(id: string): Guild | null {
+      const g = client.guilds.cache.get(id);
       if (!g) return null;
       const guildIcon = g.iconURL();
       return {
-        id: Number(g.id),
+        id: g.id,
         name: g.name,
         icon: guildIcon ? { url: guildIcon } : null,
         get voice_channels(): VoiceChannel[] {
@@ -119,8 +117,8 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
             .filter((ch) => ch.isVoiceBased())
             .map((ch) => adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel));
         },
-        get_channel(chId: number): VoiceChannel | null {
-          const ch = g.channels.cache.find((c) => c.id === String(chId));
+        get_channel(chId: string): VoiceChannel | null {
+          const ch = g.channels.cache.get(chId);
           if (!ch || !ch.isVoiceBased()) return null;
           return adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel);
         },
@@ -130,11 +128,12 @@ function createBotAdapter(client: Client, groupService: GroupService): Bot {
 }
 
 function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel {
+  const members = ch.members.map((m) => adaptMember(m));
   return {
-    id: Number(ch.id),
+    id: ch.id,
     name: ch.name,
     get members() {
-      return ch.members.map((m) => adaptMember(m));
+      return members;
     },
     async send(content: string | { embed: PlainEmbed }) {
       if (typeof content === 'string') {
@@ -214,9 +213,7 @@ const commands = [
   new SlashCommandBuilder().setName('status').setDescription('Show bot status and uptime'),
   new SlashCommandBuilder().setName('invite').setDescription('Get the bot invite link'),
   new SlashCommandBuilder().setName('wheel').setDescription('Create Mythic+ groups from voice channel members'),
-  new SlashCommandBuilder().setName('activity').setDescription('Start a Mythic+ lobby activity'),
-  new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity (alias)'),
-  new SlashCommandBuilder().setName('readycheck').setDescription('Show the Mythic+ role board for the current channel'),
+  new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity'),
   new SlashCommandBuilder()
     .setName('badgroup')
     .setDescription('Report a bad group formation')
@@ -224,11 +221,9 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('description').setDescription('Issue description').setRequired(false),
     ),
-  new SlashCommandBuilder().setName('roles').setDescription('Show the Mythic+ role board for the current channel'),
   new SlashCommandBuilder().setName('bug').setDescription('Report a bug'),
   new SlashCommandBuilder().setName('featurerequest').setDescription('Request a feature'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
-  new SlashCommandBuilder().setName('testcase').setDescription('[Debug] Print last wheel result as test data'),
 ];
 
 // ---------------------------------------------------------------------------
@@ -312,12 +307,11 @@ async function main() {
 
   // -- Initialize handlers --
   const groupService = new GroupService();
-  const botAdapter = createBotAdapter(client, groupService);
+  const botAdapter = createBotAdapter(client);
   const sessionService = new SessionService(botAdapter);
 
   const generalHandler = new GeneralHandler(0, config.DISCORD_APPLICATION_ID);
   const groupsHandler = new GroupsHandler(botAdapter, groupService, sessionService);
-  const rolesHandler = new RolesHandler();
   const debugHandler = new DebugHandler(groupService);
 
   // Track listeners for shutdown cleanup
@@ -344,6 +338,21 @@ async function main() {
       const globalBody = [...commandsJson, ...entryPointCommands];
       await rest.put(Routes.applicationCommands(appId), { body: globalBody });
       logger.info(`Registered ${commands.length} slash commands globally`);
+
+      // Clear stale guild-level commands (duplicates from old per-guild registration)
+      for (const guild of readyClient.guilds.cache.values()) {
+        try {
+          const guildCmds = (await rest.get(
+            Routes.applicationGuildCommands(appId, guild.id),
+          )) as { id: string }[];
+          if (guildCmds.length > 0) {
+            await rest.put(Routes.applicationGuildCommands(appId, guild.id), { body: [] });
+            logger.info(`Cleared ${guildCmds.length} stale guild commands from ${guild.name}`);
+          }
+        } catch (guildErr) {
+          logger.warn(`Could not clear guild commands for ${guild.name}: ${guildErr}`);
+        }
+      }
     } catch (e) {
       logger.error(`Failed to register slash commands: ${e}`);
     }
@@ -492,16 +501,12 @@ async function main() {
         });
 
         // Register the channel as active so voice state changes are tracked.
-        // NOTE: Number() conversion can lose precision on large snowflake IDs.
-        // This matches the existing SessionService Map<number, ...> type —
-        // migrating to string keys is tracked as separate tech debt.
-        const numChannelId = Number(channelId);
-        if (!sessionService.activeChannels.has(numChannelId)) {
-          sessionService.activeChannels.set(numChannelId, {
+        if (!sessionService.activeChannels.has(channelId)) {
+          sessionService.activeChannels.set(channelId, {
             docId: channelId,
-            guildId: Number(guildId),
+            guildId,
           });
-          sessionService.activeGuilds.add(Number(guildId));
+          sessionService.activeGuilds.add(guildId);
         }
 
         logger.debug(`Refreshed players for channel ${channelId} (${playersData.length} players)`);
@@ -515,16 +520,18 @@ async function main() {
     }
 
     // Listen for channel status changes to announce completion to Discord.
-    // Uses sessionService.announcedChannels to deduplicate (cleared on channel cleanup/shutdown).
+    // Also handles lobby resets to clear the dedup guard for subsequent rounds.
     channelStatusListener = firebase.listenForChannelStatusChanges(async (channelId, data) => {
       try {
+        // New round resets dedup guard so the next completion can be announced
+        if (data.status === 'lobby') {
+          sessionService.announcedChannels.delete(channelId);
+          return;
+        }
+
         // Only announce once per completion (prevents duplicates if doc is modified again)
         if (sessionService.announcedChannels.has(channelId)) return;
         sessionService.announcedChannels.add(channelId);
-
-        const numChannelId = Number(channelId);
-        const active = sessionService.activeChannels.get(numChannelId);
-        if (!active) return;
 
         const announceResults = data.announceResults !== false;
         if (!announceResults) {
@@ -532,7 +539,21 @@ async function main() {
           return;
         }
 
-        await sessionService.announceCompletion(numChannelId, active.guildId, data);
+        // Resolve guild/channel using string-based Discord.js cache lookups
+        const guildId = String(data.guildId ?? '');
+        const discordGuild = readyClient.guilds.cache.get(guildId);
+        if (!discordGuild) {
+          logger.warn(`Guild ${guildId} not in cache for completion announcement`);
+          return;
+        }
+        const discordChannel = discordGuild.channels.cache.get(channelId);
+        if (!discordChannel || !discordChannel.isVoiceBased()) {
+          logger.warn(`Voice channel ${channelId} not found in guild ${guildId}`);
+          return;
+        }
+
+        const vc = adaptVoiceChannel(discordChannel as import('discord.js').VoiceChannel);
+        await sessionService.announceCompletion(vc, data);
         logger.info(`Announced completion for channel ${channelId}`);
       } catch (e) {
         logger.error(`Failed to announce completion for channel ${channelId}: ${e}`);
@@ -591,7 +612,7 @@ async function main() {
     const sender = createInteractionSender(interaction);
     const member = interaction.member as import('discord.js').GuildMember | null;
 
-    const guildObj = interaction.guild ? { id: Number(interaction.guild.id) } : null;
+    const guildObj = interaction.guild ? { id: interaction.guild.id } : null;
     const textChannel = interaction.channel && 'send' in interaction.channel
       ? interaction.channel
       : null;
@@ -612,6 +633,9 @@ async function main() {
 
       case 'wheel': {
         const voiceChannel = member?.voice.channel;
+        const voiceMembers = voiceChannel
+          ? voiceChannel.members.map((m) => adaptMember(m))
+          : [];
         await groupsHandler.wheel({
           guild: guildObj,
           author: {
@@ -621,13 +645,20 @@ async function main() {
               ? { channel: adaptVoiceChannelForCtx(voiceChannel as import('discord.js').VoiceChannel) }
               : null,
           },
+          channel: {
+            members: voiceMembers,
+            async sendTyping() {
+              if (textChannel && 'sendTyping' in textChannel) {
+                await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
+              }
+            },
+          },
           send: sender.send,
           defer: sender.defer,
         });
         break;
       }
 
-      case 'activity':
       case 'wheelson': {
         const voiceChannel = member?.voice.channel;
         // activity's getOrCreateSession needs extra guild fields; cast to satisfy handler
@@ -635,14 +666,14 @@ async function main() {
         const activityIconUrl = djsGuild?.iconURL();
         const activityGuild = djsGuild
           ? {
-              id: Number(djsGuild.id),
+              id: djsGuild.id,
               name: djsGuild.name,
               icon: activityIconUrl ? { url: activityIconUrl } : null,
               voice_channels: djsGuild.channels.cache
                 .filter((ch) => ch.isVoiceBased())
                 .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
-              get_channel(chId: number): VoiceChannel | null {
-                const ch = djsGuild.channels.cache.find((c) => c.id === String(chId));
+              get_channel(chId: string): VoiceChannel | null {
+                const ch = djsGuild.channels.cache.get(chId);
                 if (!ch || !ch.isVoiceBased()) return null;
                 return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
               },
@@ -650,7 +681,7 @@ async function main() {
           : null;
         await groupsHandler.activity(
           {
-            guild: activityGuild as { id: number } | null,
+            guild: activityGuild,
             author: {
               id: interaction.user.id,
               name: member?.displayName ?? interaction.user.displayName,
@@ -662,37 +693,6 @@ async function main() {
             defer: sender.defer,
           },
         );
-        break;
-      }
-
-      case 'roles':
-      case 'readycheck': {
-        if (!member) {
-          await sender.send('❌ This command can only be used in a server.');
-          break;
-        }
-        const voiceChannel = member.voice.channel;
-        const channelMembers = voiceChannel
-          ? voiceChannel.members.map((m) => adaptMember(m))
-          : [];
-
-        await rolesHandler.launchRoleBoard({
-          guild: guildObj,
-          author: {
-            ...adaptMember(member),
-            voice: voiceChannel
-              ? {
-                  channel: {
-                    id: Number(voiceChannel.id),
-                    members: voiceChannel.members.map((m) => adaptMember(m)),
-                  },
-                }
-              : null,
-          },
-          channel: { members: channelMembers },
-          send: sender.send,
-          interaction: interaction,
-        });
         break;
       }
 
@@ -839,25 +839,12 @@ async function main() {
                 await (textChannel as unknown as { sendTyping(): Promise<void> }).sendTyping();
               }
             },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
-          send: sender.send,
-        });
-        break;
-      }
-
-      case 'testcase': {
-        await debugHandler.testcase({
-          guild: guildObj,
-          channel: {
-            async send(content: string) {
-              return textChannel ? await textChannel.send(content) : undefined;
-            },
           },
           send: sender.send,
         });
         break;
       }
+
     }
   }
 
@@ -964,10 +951,9 @@ async function main() {
       try {
         const guild = interaction.guild;
         if (guild) {
-          const guildId = Number(guild.id);
-          const channelIds = sessionService.getActiveChannelIdsForGuild(guildId);
+          const channelIds = sessionService.getActiveChannelIdsForGuild(guild.id);
           if (channelIds.length > 0) {
-            const guildAdapter = createBotAdapter(client, groupService).get_guild(guildId);
+            const guildAdapter = createBotAdapter(client).get_guild(guild.id);
             if (guildAdapter) {
               await Promise.all(
                 channelIds.map((chId) => sessionService.updateChannelPlayers(chId, guildAdapter)),
@@ -1030,7 +1016,7 @@ async function main() {
     if (customId === 'badgroup_modal') {
       await interaction.deferReply({ ephemeral: true });
       try {
-        const guildId = interaction.guild ? Number(interaction.guild.id) : null;
+        const guildId = interaction.guild?.id ?? null;
         const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
         if (!lastResults) {
           await interaction.editReply('❌ No group data found. Run /wheel first.');
@@ -1070,7 +1056,7 @@ async function main() {
       const guild = member.guild;
       const voiceGuildIcon = guild.iconURL();
       const guildAdapter: Guild = {
-        id: Number(guild.id),
+        id: guild.id,
         name: guild.name,
         icon: voiceGuildIcon ? { url: voiceGuildIcon } : null,
         get voice_channels() {
@@ -1078,8 +1064,8 @@ async function main() {
             .filter((ch) => ch.isVoiceBased())
             .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel));
         },
-        get_channel(chId: number) {
-          const ch = guild.channels.cache.find((c) => c.id === String(chId));
+        get_channel(chId: string) {
+          const ch = guild.channels.cache.get(chId);
           if (!ch || !ch.isVoiceBased()) return null;
           return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
         },
@@ -1088,7 +1074,7 @@ async function main() {
       const before = {
         channel: oldState.channel
           ? {
-              id: Number(oldState.channel.id),
+              id: oldState.channel.id,
               members: oldState.channel.members.map((m) => adaptMember(m)),
             }
           : null,
@@ -1097,7 +1083,7 @@ async function main() {
       const after = {
         channel: newState.channel
           ? {
-              id: Number(newState.channel.id),
+              id: newState.channel.id,
               members: newState.channel.members.map((m) => adaptMember(m)),
             }
           : null,
@@ -1140,7 +1126,7 @@ async function main() {
 
 function adaptVoiceChannelForCtx(ch: import('discord.js').VoiceChannel) {
   return {
-    id: Number(ch.id),
+    id: ch.id,
     name: ch.name,
     members: ch.members.map((m) => adaptMember(m)),
     async createInvite() {

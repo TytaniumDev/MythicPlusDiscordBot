@@ -4,27 +4,43 @@ import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
 
+import { type VoiceChannel } from '../services/sessionService.js';
+
 export interface GroupsContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   author: {
-    id: string | number;
+    id: string;
     name: string;
     voice?: {
       channel?: {
-        id: number;
+        id: string;
         name: string;
         members?: { bot: boolean }[];
         createInvite?(): Promise<{ url: string }>;
       } | null;
     } | null;
   };
-  send(content: string, options?: { ephemeral?: boolean }): Promise<unknown>;
+  channel?: {
+    members: { bot: boolean; id: string; toString(): string }[];
+    sendTyping(): Promise<void>;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  send(content: string, options?: { ephemeral?: boolean }): Promise<any>;
   defer(options?: { ephemeral?: boolean }): Promise<void>;
   interaction?: { response: { sendModal(modal: unknown): Promise<void> } } | null;
 }
 
+export type ActivityContext = Omit<GroupsContext, 'guild'> & {
+  guild: {
+    id: string;
+    name: string;
+    icon?: { url: string } | null;
+    voice_channels: VoiceChannel[];
+  } | null;
+};
+
 export interface VoiceState {
-  channel: { id: number; members: { bot: boolean }[] } | null;
+  channel: { id: string; members: { bot: boolean }[] } | null;
 }
 
 export class GroupsHandler {
@@ -41,15 +57,17 @@ export class GroupsHandler {
   async wheel(ctx: GroupsContext): Promise<void> {
     await ctx.defer();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await this.groupService.coreWheel(ctx as any, false);
+      if (!ctx.channel) {
+        throw new Error('Channel context is required for coreWheel');
+      }
+      await this.groupService.coreWheel(ctx as GroupsContext & { channel: NonNullable<GroupsContext['channel']> }, false);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
       logger.error(`Error in wheel command: ${e}`);
     }
   }
 
-  async activity(ctx: GroupsContext, debug = false): Promise<void> {
+  async activity(ctx: ActivityContext, debug = false): Promise<void> {
     await ctx.defer();
     try {
       if (!ctx.author.voice?.channel) {
@@ -57,8 +75,7 @@ export class GroupsHandler {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await this.sessionService.getOrCreateSession(ctx as any, debug);
+      const result = await this.sessionService.getOrCreateSession(ctx, debug);
       if (!result) {
         await ctx.send('❌ Failed to create/get session. Is Firebase configured?');
         return;
@@ -129,7 +146,7 @@ export class GroupsHandler {
     try {
       const issue = await reportBadGroup({
         reporterName: ctx.author.name,
-        reporterId: Number(ctx.author.id),
+        reporterId: ctx.author.id,
         title,
         description,
         players: lastResults.players,

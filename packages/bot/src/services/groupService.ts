@@ -1,10 +1,12 @@
-import { WoWGroup, WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
+import { WoWGroup, WoWPlayer, createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getDebugPlayers, getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
+import { FirebaseService } from '../core/firebaseService.js';
+import logger from '../core/logger.js';
 
 export interface CommandContext extends Sendable {
   channel: { members: DiscordMember[] } & TypingChannel;
-  guild: { id: number } | null;
+  guild: { id: string } | null;
 }
 
 export interface LastResults {
@@ -13,8 +15,8 @@ export interface LastResults {
 }
 
 export class GroupService {
-  lastResults: Map<number, LastResults> = new Map();
-  private serverLocks: Map<number, boolean> = new Map();
+  lastResults: Map<string, LastResults> = new Map();
+  private serverLocks: Map<string, boolean> = new Map();
 
   async getGroupsData(
     ctx: CommandContext,
@@ -41,7 +43,35 @@ export class GroupService {
     }
 
     const guildId = ctx.guild?.id ?? null;
+
+    const firebase = guildId ? FirebaseService.getInstance() : null;
+
+    // Load previous groups from Firestore so the algorithm avoids repeat groupings
+    if (guildId && firebase?.isAvailable()) {
+      try {
+        const prevGroupDicts = await firebase.getPreviousGroups(String(guildId));
+        if (prevGroupDicts.length > 0) {
+          const previousGroups = prevGroupDicts.map(g => WoWGroup.fromDict(g));
+          setLastGroups(previousGroups, guildId);
+        }
+      } catch (err) {
+        logger.warn(`Failed to load previous groups for guild ${guildId}: ${err}`);
+      }
+    }
+
     const groups = createMythicPlusGroups(players, debug, guildId);
+
+    // Persist computed groups for cross-session history
+    if (guildId && firebase?.isAvailable()) {
+      try {
+        await firebase.savePreviousGroups(
+          String(guildId),
+          groups.map(g => g.toDict() as Record<string, unknown>),
+        );
+      } catch (err) {
+        logger.warn(`Failed to save previous groups for guild ${guildId}: ${err}`);
+      }
+    }
 
     return { players: [...players], groups: [...groups] };
   }
@@ -72,7 +102,7 @@ export class GroupService {
   async _executeCoreWheel(
     ctx: CommandContext,
     channel: TypingChannel,
-    guildId: number,
+    guildId: string,
     debug: boolean,
   ): Promise<void> {
     const result = await this.getGroupsData(ctx, debug);

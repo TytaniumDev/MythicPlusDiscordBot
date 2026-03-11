@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getWowName,
   getMaskedName,
@@ -75,9 +75,9 @@ describe('getPlayerList', () => {
     vi.mocked(mockSvc.getPreferenceByNameSync).mockReturnValue(null);
 
     const members: DiscordMember[] = [
-      { nick: 'SavedPlayer', id: 111, toString: () => 'SavedPlayer' },
-      { nick: 'NoRolesPlayer', id: 222, toString: () => 'NoRolesPlayer' },
-      { nick: 'AnotherPlayer', id: 333, toString: () => 'AnotherPlayer' },
+      { nick: 'SavedPlayer', id: '111', toString: () => 'SavedPlayer' },
+      { nick: 'NoRolesPlayer', id: '222', toString: () => 'NoRolesPlayer' },
+      { nick: 'AnotherPlayer', id: '333', toString: () => 'AnotherPlayer' },
     ];
 
     const players = getPlayerList(members);
@@ -113,16 +113,45 @@ describe('Typing functions', () => {
 
   beforeEach(() => {
     channel = { sendTyping: vi.fn().mockResolvedValue(undefined) };
+    vi.useFakeTimers();
   });
 
-  it('showLongTyping calls sendTyping unless debug', async () => {
-    // In debug mode, nothing happens
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('showLongTyping calls sendTyping and waits 2000ms in non-debug mode', async () => {
+    const promise = showLongTyping(channel, false);
+
+    // sendTyping should be called immediately
+    expect(channel.sendTyping).toHaveBeenCalled();
+
+    // Advance timers by the expected delay
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Promise should resolve now
+    await promise;
+  });
+
+  it('showLongTyping does not call sendTyping in debug mode', async () => {
     await showLongTyping(channel, true);
     expect(channel.sendTyping).not.toHaveBeenCalled();
   });
 
-  it('showShortTyping calls sendTyping unless debug', async () => {
-    // In debug mode, nothing happens
+  it('showShortTyping calls sendTyping and waits 1000ms in non-debug mode', async () => {
+    const promise = showShortTyping(channel, false);
+
+    // sendTyping should be called immediately
+    expect(channel.sendTyping).toHaveBeenCalled();
+
+    // Advance timers by the expected delay
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // Promise should resolve now
+    await promise;
+  });
+
+  it('showShortTyping does not call sendTyping in debug mode', async () => {
     await showShortTyping(channel, true);
     expect(channel.sendTyping).not.toHaveBeenCalled();
   });

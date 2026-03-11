@@ -61,7 +61,7 @@ vi.mock('../src/core/preferenceService.js', () => ({
   }),
 }));
 
-import { GroupsHandler, type GroupsContext } from '../src/commands/groups.js';
+import { GroupsHandler, type GroupsContext, type ActivityContext } from '../src/commands/groups.js';
 import { GroupService } from '../src/services/groupService.js';
 import type { SessionService } from '../src/services/sessionService.js';
 import { reportBadGroup } from '../src/core/issues.js';
@@ -83,13 +83,13 @@ function makeMockBot() {
 
 function makeCtx(overrides: Partial<GroupsContext> = {}): GroupsContext {
   return {
-    guild: overrides.guild === undefined ? { id: 123 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '123' } : overrides.guild,
     author: overrides.author ?? {
       id: '1',
       name: 'TestUser',
       voice: {
         channel: {
-          id: 99,
+          id: '99',
           name: 'Raid',
           members: [],
           createInvite: vi.fn().mockResolvedValue({ url: 'http://discord.invite' }),
@@ -109,7 +109,7 @@ beforeEach(() => {
 describe('GroupsHandler.badgroup', () => {
   it('opens modal when called via slash command without arguments', async () => {
     const groupService = new GroupService();
-    groupService.lastResults.set(123, { players: [], groups: [] });
+    groupService.lastResults.set('123', { players: [], groups: [] });
 
     const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -126,7 +126,7 @@ describe('GroupsHandler.badgroup', () => {
 
   it('reports directly with title and description', async () => {
     const groupService = new GroupService();
-    groupService.lastResults.set(123, { players: [], groups: [] });
+    groupService.lastResults.set('123', { players: [], groups: [] });
 
     const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -167,7 +167,7 @@ describe('GroupsHandler.activity', () => {
       makeMockSessionService(),
     );
 
-    const ctx = makeCtx();
+    const ctx = makeCtx() as unknown as ActivityContext;
     await handler.activity(ctx);
 
     const calls = vi.mocked(ctx.send).mock.calls;
@@ -187,7 +187,7 @@ describe('GroupsHandler.activity', () => {
       makeMockSessionService(),
     );
 
-    const ctx = makeCtx();
+    const ctx = makeCtx() as unknown as ActivityContext;
     await handler.activity(ctx, true);
 
     const calls = vi.mocked(ctx.send).mock.calls;
@@ -201,7 +201,7 @@ describe('GroupsHandler.activity', () => {
 describe('GroupsHandler.onVoiceStateUpdate', () => {
   it('updates tracked channels on join', async () => {
     const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set(123, { docId: '123', guildId: 456 });
+    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
 
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -209,21 +209,21 @@ describe('GroupsHandler.onVoiceStateUpdate', () => {
       sessionService,
     );
 
-    const guild = { id: 456, name: 'G', voice_channels: [], get_channel: vi.fn() };
+    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
     const member = { bot: false, guild };
 
     // Join a tracked channel
     const before = { channel: null };
-    const after = { channel: { id: 123, members: [member] } };
+    const after = { channel: { id: '123', members: [member] } };
 
     await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith(123, guild);
+    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith('123', guild);
   });
 
   it('updates tracked channels on leave with humans remaining', async () => {
     const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set(123, { docId: '123', guildId: 456 });
+    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
 
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -231,22 +231,22 @@ describe('GroupsHandler.onVoiceStateUpdate', () => {
       sessionService,
     );
 
-    const guild = { id: 456, name: 'G', voice_channels: [], get_channel: vi.fn() };
+    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
     const member = { bot: false, guild };
     const human = { bot: false };
 
-    const before = { channel: { id: 123, members: [human] } };
+    const before = { channel: { id: '123', members: [human] } };
     const after = { channel: null };
 
     await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith(123, guild);
+    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith('123', guild);
     expect(sessionService.cleanupChannel).not.toHaveBeenCalled();
   });
 
   it('cleans up when last human leaves', async () => {
     const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set(123, { docId: '123', guildId: 456 });
+    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
 
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -254,21 +254,21 @@ describe('GroupsHandler.onVoiceStateUpdate', () => {
       sessionService,
     );
 
-    const guild = { id: 456, name: 'G', voice_channels: [], get_channel: vi.fn() };
+    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
     const member = { bot: false, guild };
     const botMember = { bot: true };
 
-    const before = { channel: { id: 123, members: [botMember] } };
+    const before = { channel: { id: '123', members: [botMember] } };
     const after = { channel: null };
 
     await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    expect(sessionService.cleanupChannel).toHaveBeenCalledWith(123);
+    expect(sessionService.cleanupChannel).toHaveBeenCalledWith('123');
   });
 
   it('ignores same-channel events (mute/unmute)', async () => {
     const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set(123, { docId: '123', guildId: 456 });
+    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
 
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -276,9 +276,9 @@ describe('GroupsHandler.onVoiceStateUpdate', () => {
       sessionService,
     );
 
-    const guild = { id: 456, name: 'G', voice_channels: [], get_channel: vi.fn() };
+    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
     const member = { bot: false, guild };
-    const channel = { id: 123, members: [member] };
+    const channel = { id: '123', members: [member] };
 
     const before = { channel };
     const after = { channel };

@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as config from '../core/config.js';
 
 export interface GeneralContext {
-  guild: { id: number } | null;
+  guild: { id: string } | null;
   send(content: string, options?: Record<string, unknown>): Promise<unknown>;
 }
 

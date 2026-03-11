@@ -34,7 +34,7 @@ describe('reportBadGroup', () => {
   it('creates issue with player code and version', async () => {
     const result = await reportBadGroup({
       reporterName: 'TestUser',
-      reporterId: 12345,
+      reporterId: '12345',
       title: 'Bad Algo',
       description: 'Too many melee',
       players,
