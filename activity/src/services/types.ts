@@ -7,7 +7,7 @@ export interface SessionService {
   newRound(): Promise<void>;
   cancelToLobby(): Promise<void>;
   updateAnnounce(value: boolean): Promise<void>;
-  saveRoles(playerId: string, playerName: string, roles: string[]): Promise<void>;
+  saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void>;
   refreshChannels(guildId: string): Promise<void>;
   selectChannel(channelId: string, channelName: string, guildId: string): Promise<void>;
   createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void>;

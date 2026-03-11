@@ -10,11 +10,12 @@ import {
 export interface IPreferenceService {
   loadCache(): Promise<void>;
   getPreference(discordId: string): Promise<string[] | null>;
-  setPreference(discordId: string, name: string, roles: string[]): Promise<void>;
+  setPreference(discordId: string, name: string, roles: string[], inGameName?: string): Promise<void>;
   clearPreference(discordId: string): Promise<void>;
   refreshPreference(discordId: string): Promise<void>;
   getPreferenceSync(discordId: string): string[] | null;
   getPreferenceByNameSync(name: string): string[] | null;
+  getInGameNameSync(discordId: string): string;
   resolveDiscordId(name: string): string | null;
 }
 
@@ -36,6 +37,7 @@ export class PreferenceService implements IPreferenceService {
   firebase: FirebaseService;
   private _cache: Record<string, string[]> = {};
   private _nameToId: Record<string, string> = {};
+  private _inGameNameCache: Record<string, string> = {};
 
   constructor(firebase?: FirebaseService) {
     this.firebase = firebase ?? FirebaseService.getInstance();
@@ -58,8 +60,10 @@ export class PreferenceService implements IPreferenceService {
       for (const [discordId, data] of Object.entries(docs)) {
         const roles = (data.roles as string[]) ?? [];
         const name = (data.wowName as string) ?? '';
+        const inGameName = (data.inGameName as string) ?? '';
         this._cache[discordId] = roles;
         if (name) this._nameToId[name] = discordId;
+        if (inGameName) this._inGameNameCache[discordId] = inGameName;
       }
       logger.info(`Loaded ${Object.keys(docs).length} preferences from Firestore`);
     } catch {
@@ -104,8 +108,10 @@ export class PreferenceService implements IPreferenceService {
         if (data !== null) {
           const roles = (data.roles as string[]) ?? [];
           const name = (data.wowName as string) ?? '';
+          const inGameName = (data.inGameName as string) ?? '';
           this._cache[discordId] = roles;
           if (name) this._nameToId[name] = discordId;
+          if (inGameName) this._inGameNameCache[discordId] = inGameName;
           return roles;
         }
       } catch {
@@ -116,13 +122,14 @@ export class PreferenceService implements IPreferenceService {
     return null;
   }
 
-  async setPreference(discordId: string, name: string, roles: string[]): Promise<void> {
+  async setPreference(discordId: string, name: string, roles: string[], inGameName?: string): Promise<void> {
     this._cache[discordId] = roles;
     this._nameToId[name] = discordId;
+    if (inGameName !== undefined) this._inGameNameCache[discordId] = inGameName;
 
     if (this._firebaseOk()) {
       try {
-        await this._writeFirestorePref(discordId, name, roles);
+        await this._writeFirestorePref(discordId, name, roles, inGameName);
       } catch {
         logger.error(`Firestore write failed for ${discordId}`);
       }
@@ -138,6 +145,7 @@ export class PreferenceService implements IPreferenceService {
       Object.entries(this._nameToId).find(([, did]) => did === discordId)?.[0] ?? null;
 
     Reflect.deleteProperty(this._cache, discordId);
+    Reflect.deleteProperty(this._inGameNameCache, discordId);
     this._clearNameMapping(discordId);
     if (name) clearPlayerPreference(name);
 
@@ -168,11 +176,15 @@ export class PreferenceService implements IPreferenceService {
       if (data !== null) {
         const roles = (data.roles as string[]) ?? [];
         const name = (data.wowName as string) ?? '';
+        const inGameName = (data.inGameName as string) ?? '';
         this._cache[discordId] = roles;
         this._clearNameMapping(discordId);
         if (name) this._nameToId[name] = discordId;
+        if (inGameName) this._inGameNameCache[discordId] = inGameName;
+        else Reflect.deleteProperty(this._inGameNameCache, discordId);
       } else {
         Reflect.deleteProperty(this._cache, discordId);
+        Reflect.deleteProperty(this._inGameNameCache, discordId);
         this._clearNameMapping(discordId);
       }
     } catch {
@@ -182,6 +194,10 @@ export class PreferenceService implements IPreferenceService {
 
   getPreferenceSync(discordId: string): string[] | null {
     return this._cache[discordId] ?? null;
+  }
+
+  getInGameNameSync(discordId: string): string {
+    return this._inGameNameCache[discordId] ?? '';
   }
 
   getPreferenceByNameSync(name: string): string[] | null {
@@ -215,12 +231,14 @@ export class PreferenceService implements IPreferenceService {
     discordId: string,
     name: string,
     roles: string[],
+    inGameName?: string,
   ): Promise<void> {
     if (!this.firebase.db) return;
     const ref = this.firebase.db.collection('preferences').doc(discordId);
     await ref.set({
       roles,
       wowName: name,
+      inGameName: inGameName ?? '',
       updatedAt: SERVER_TIMESTAMP,
     });
   }

@@ -734,6 +734,29 @@ body {
   justify-content: center;
 }
 
+.role-editor-input {
+  width: 100%;
+  max-width: 240px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: var(--font-family);
+}
+
+.role-editor-input:focus {
+  border-color: var(--color-gold);
+}
+
+.role-editor-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
 .role-btn {
   display: inline-flex;
   align-items: center;
@@ -1089,6 +1112,33 @@ body {
 
 .group-card .group-role .role-name {
   color: var(--text-primary);
+}
+
+.group-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.group-card-clickable:hover {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 1px var(--color-gold);
+}
+
+.group-card-clickable:active {
+  transform: scale(0.98);
+}
+
+.copy-toast {
+  font-size: 0.65rem;
+  color: var(--color-success, #4caf50);
+  margin-left: 8px;
+  font-weight: 400;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Compact group card — used in side panel at smaller sizes */

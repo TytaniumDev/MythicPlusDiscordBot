@@ -45,6 +45,35 @@ describe('buildGroupEmbed', () => {
     expect(fields['Battle Res']).toBe('None');
     expect(fields['Bloodlust']).toBe('None');
   });
+
+  it('includes invite command field', () => {
+    const tank = WoWPlayer.create('Tank', [ROLE_TANK]);
+    const healer = WoWPlayer.create('Healer', [ROLE_HEALER]);
+    const dps1 = WoWPlayer.create('DPS1', [ROLE_MELEE]);
+    const dps2 = WoWPlayer.create('DPS2', [ROLE_RANGED]);
+    const dps3 = WoWPlayer.create('DPS3', [ROLE_MELEE]);
+
+    const group = new WoWGroup(tank, healer, [dps1, dps2, dps3]);
+    const embed = buildGroupEmbed(group, 1);
+
+    const inviteField = embed.fields.find((f) => f.name === 'Invite Command');
+    expect(inviteField).toBeDefined();
+    expect(inviteField!.value).toContain('C_PartyInfo.InviteUnit');
+    expect(inviteField!.value).toContain('Healer');
+    expect(inviteField!.value).not.toContain('"Tank"');
+  });
+
+  it('uses inGameName in invite command', () => {
+    const tank = WoWPlayer.create('Tank', [ROLE_TANK]);
+    const healer = WoWPlayer.create('Healer', [ROLE_HEALER], '', 'Healer-Proudmoore');
+    const dps1 = WoWPlayer.create('DPS1', [ROLE_MELEE]);
+
+    const group = new WoWGroup(tank, healer, [dps1]);
+    const embed = buildGroupEmbed(group, 1);
+
+    const inviteField = embed.fields.find((f) => f.name === 'Invite Command');
+    expect(inviteField!.value).toContain('Healer-Proudmoore');
+  });
 });
 
 describe('announceGroup', () => {

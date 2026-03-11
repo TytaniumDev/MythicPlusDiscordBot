@@ -24,15 +24,22 @@ export function RoleEditor({ players }: RoleEditorProps) {
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(
     new Set(player ? playerRolesToStringArray(player) : []),
   );
+  const [inGameName, setInGameName] = useState(player?.inGameName ?? '');
   const [saving, setSaving] = useState(false);
   const [saveText, setSaveText] = useState('Save');
 
-  // Sync selected roles when player changes
+  // Sync selected roles and inGameName when player changes
   const playerRolesKey = player ? playerRolesToStringArray(player).sort().join(',') : '';
+  const playerInGameName = player?.inGameName ?? '';
   const [lastPlayerKey, setLastPlayerKey] = useState(playerRolesKey);
+  const [lastInGameName, setLastInGameName] = useState(playerInGameName);
   if (playerRolesKey !== lastPlayerKey) {
     setLastPlayerKey(playerRolesKey);
     setSelectedRoles(new Set(player ? playerRolesToStringArray(player) : []));
+  }
+  if (playerInGameName !== lastInGameName) {
+    setLastInGameName(playerInGameName);
+    setInGameName(playerInGameName);
   }
 
   const toggleRole = useCallback((btnDef: RoleButtonDef, mutuallyExclusive: boolean) => {
@@ -58,7 +65,7 @@ export function RoleEditor({ players }: RoleEditorProps) {
     setSaveText('Saving...');
 
     try {
-      await service.saveRoles(currentPlayerId, currentPlayerName ?? '', Array.from(selectedRoles));
+      await service.saveRoles(currentPlayerId, currentPlayerName ?? '', Array.from(selectedRoles), inGameName);
       setSaveText('Saved!');
       setTimeout(() => {
         setSaveText('Save');
@@ -74,7 +81,7 @@ export function RoleEditor({ players }: RoleEditorProps) {
         setSaving(false);
       }, 2000);
     }
-  }, [saving, currentPlayerId, currentPlayerName, selectedRoles, service]);
+  }, [saving, currentPlayerId, currentPlayerName, selectedRoles, inGameName, service]);
 
   if (!currentPlayerId || !roleEditorVisible) {
     return <div id="role-editor" className="hidden" />;
@@ -106,6 +113,19 @@ export function RoleEditor({ players }: RoleEditorProps) {
       {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
       {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
       {renderSection('Utilities', UTILITY_BUTTONS, false)}
+      <div className="role-editor-section">
+        <div className="role-editor-label">In-Game Name (optional)</div>
+        <div className="role-editor-row">
+          <input
+            type="text"
+            className="role-editor-input"
+            placeholder="PlayerName-ServerName"
+            value={inGameName}
+            onChange={(e) => setInGameName(e.target.value)}
+            maxLength={50}
+          />
+        </div>
+      </div>
       <div className="role-editor-actions">
         <button
           className="btn btn-success role-editor-save"

@@ -166,11 +166,12 @@ class FirestoreSessionService implements SessionService {
     await updateDoc(docRef, { announceResults: value });
   }
 
-  async saveRoles(playerId: string, playerName: string, roles: string[]): Promise<void> {
+  async saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void> {
     const prefRef = doc(db, 'preferences', playerId);
     await setDoc(prefRef, {
       roles,
       wowName: playerName,
+      inGameName: inGameName ?? '',
       updatedAt: serverTimestamp(),
     });
 
