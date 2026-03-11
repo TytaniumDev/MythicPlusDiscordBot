@@ -3,41 +3,39 @@ import { FirebaseService } from '../core/firebaseService.js';
 import { buildGroupEmbed } from '../core/groupUi.js';
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
-import type { GroupService } from './groupService.js';
 
 export interface ActiveChannel {
   docId: string;
-  guildId: number;
+  guildId: string;
 }
 
 export interface VoiceChannel {
-  id: number;
+  id: string;
   name: string;
   members: (DiscordMember & { bot: boolean })[];
   send(content: string | { embed: unknown }): Promise<unknown>;
 }
 
 export interface Guild {
-  id: number;
+  id: string;
   name: string;
   icon?: { url: string } | null;
   voice_channels: VoiceChannel[];
-  get_channel(id: number): VoiceChannel | null;
+  get_channel(id: string): VoiceChannel | null;
 }
 
 export interface Bot {
-  get_guild(id: number): Guild | null;
-  groupService?: GroupService;
+  get_guild(id: string): Guild | null;
   loop?: unknown;
 }
 
 export class SessionService {
   bot: Bot;
   firebase: FirebaseService;
-  activeGuilds = new Set<number>();
-  activeChannels = new Map<number, ActiveChannel>();
+  activeGuilds = new Set<string>();
+  activeChannels = new Map<string, ActiveChannel>();
   channelListeners = new Map<string, { unsubscribe(): void }>();
-  guildListeners = new Map<number, { unsubscribe(): void } | null>();
+  guildListeners = new Map<string, { unsubscribe(): void } | null>();
   announcedChannels = new Set<string>();
 
   constructor(bot: Bot, firebase?: FirebaseService) {
@@ -65,8 +63,8 @@ export class SessionService {
 
   async getOrCreateSession(
     ctx: {
-      guild: { id: number; name: string; icon?: { url: string } | null; voice_channels: VoiceChannel[] } | null;
-      author: { voice?: { channel?: { id: number; name: string } | null } | null };
+      guild: { id: string; name: string; icon?: { url: string } | null; voice_channels: VoiceChannel[] } | null;
+      author: { voice?: { channel?: { id: string; name: string } | null } | null };
     },
     debug = false,
   ): Promise<[string, string] | null> {
@@ -108,7 +106,7 @@ export class SessionService {
     return [guildDocId, channelDocId];
   }
 
-  async updateChannelPlayers(channelId: number, guild: Guild): Promise<void> {
+  async updateChannelPlayers(channelId: string, guild: Guild): Promise<void> {
     const active = this.activeChannels.get(channelId);
     if (!active) return;
 
@@ -125,13 +123,11 @@ export class SessionService {
   }
 
   async refreshGuildVoiceChannels(guild: Guild): Promise<void> {
-    const guildIdStr = String(guild.id);
-
     const voiceChannelsData: { id: string; name: string; userCount: number }[] = [];
     for (const vc of guild.voice_channels) {
       const count = vc.members.filter((m) => !m.bot).length;
       voiceChannelsData.push({
-        id: String(vc.id),
+        id: vc.id,
         name: vc.name,
         userCount: count,
       });
@@ -142,30 +138,17 @@ export class SessionService {
       return a.name.localeCompare(b.name);
     });
 
-    await this.firebase.updateGuildDoc(guildIdStr, {
+    await this.firebase.updateGuildDoc(guild.id, {
       voiceChannels: voiceChannelsData,
     });
   }
 
   async announceCompletion(
-    channelId: number,
-    guildId: number,
+    channel: VoiceChannel,
     data: Record<string, unknown>,
   ): Promise<void> {
-    const guild = this.bot.get_guild(guildId);
-    if (!guild) return;
-
-    const channel = guild.get_channel(channelId);
-    if (!channel) return;
-
-    let groups: WoWGroup[] = [];
-    const last = this.bot.groupService?.lastResults.get(guildId);
-    if (last?.groups?.length) {
-      groups = [...last.groups];
-    } else {
-      const groupsData = (data.groups ?? []) as Record<string, unknown>[];
-      groups = groupsData.map((g) => WoWGroup.fromDict(g));
-    }
+    const groupsData = (data.groups ?? []) as Record<string, unknown>[];
+    const groups = groupsData.map((g) => WoWGroup.fromDict(g));
 
     if (groups.length === 0) {
       await channel.send('No groups were formed this round.');
@@ -178,11 +161,11 @@ export class SessionService {
         await channel.send({ embed });
       }
     } catch (e) {
-      logger.warn(`Could not send completion embed to channel ${channelId}: ${e}`);
+      logger.warn(`Could not send completion embed to channel ${channel.id}: ${e}`);
     }
   }
 
-  async cleanupChannel(channelId: number): Promise<void> {
+  async cleanupChannel(channelId: string): Promise<void> {
     const active = this.activeChannels.get(channelId);
     if (!active) return;
 
@@ -199,13 +182,13 @@ export class SessionService {
     await this._asyncCleanupGuildIfEmpty(active.guildId);
   }
 
-  private async _asyncCleanupGuildIfEmpty(guildId: number): Promise<void> {
+  private async _asyncCleanupGuildIfEmpty(guildId: string): Promise<void> {
     const guildHasChannels = [...this.activeChannels.values()].some(
       (ac) => ac.guildId === guildId,
     );
     if (!guildHasChannels) {
       this.activeGuilds.delete(guildId);
-      await this.firebase.deleteGuildDoc(String(guildId));
+      await this.firebase.deleteGuildDoc(guildId);
       if (this.guildListeners.has(guildId)) {
         const watch = this.guildListeners.get(guildId);
         watch?.unsubscribe();
@@ -217,30 +200,23 @@ export class SessionService {
   handleCollectionRemoved(change: {
     document: { id: string };
   }): void {
-    const docId = change.document.id;
-    let channelId: number;
-    try {
-      channelId = parseInt(docId, 10);
-    } catch {
-      return;
-    }
-    if (isNaN(channelId)) return;
+    const channelId = change.document.id;
 
     const active = this.activeChannels.get(channelId);
     if (active) {
       this.activeChannels.delete(channelId);
-      this.announcedChannels.delete(docId);
-      if (this.channelListeners.has(docId)) {
-        const watch = this.channelListeners.get(docId);
+      this.announcedChannels.delete(channelId);
+      if (this.channelListeners.has(channelId)) {
+        const watch = this.channelListeners.get(channelId);
         watch?.unsubscribe();
-        this.channelListeners.delete(docId);
+        this.channelListeners.delete(channelId);
       }
       logger.info(`Channel ${channelId} removed from tracking`);
       this._cleanupGuildIfEmpty(active.guildId);
     }
   }
 
-  private _cleanupGuildIfEmpty(guildId: number): void {
+  private _cleanupGuildIfEmpty(guildId: string): void {
     const guildHasChannels = [...this.activeChannels.values()].some(
       (ac) => ac.guildId === guildId,
     );
@@ -254,7 +230,7 @@ export class SessionService {
     }
   }
 
-  getActiveChannelIdsForGuild(guildId: number): number[] {
+  getActiveChannelIdsForGuild(guildId: string): string[] {
     return [...this.activeChannels.entries()]
       .filter(([, ac]) => ac.guildId === guildId)
       .map(([chId]) => chId);

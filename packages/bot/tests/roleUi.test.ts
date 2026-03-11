@@ -4,8 +4,6 @@ import {
   createMainSpecView,
   createOffspecView,
   createUtilitiesView,
-  createRoleBoardEmbed,
-  createRoleCheckEmbed,
   handleRoleButtonClick,
   handleNoneButtonClick,
   handleNextButtonClick,
@@ -13,7 +11,6 @@ import {
   type RoleButtonData,
   type NoneButtonData,
   type NextButtonData,
-  type PlayerRoleInfo,
 } from '../src/core/roleUi.js';
 
 function makeState(selectedRoles: string[] = []): RoleSelectionState {
@@ -25,33 +22,6 @@ function makeState(selectedRoles: string[] = []): RoleSelectionState {
     stepContents: [],
   };
 }
-
-describe('createRoleBoardEmbed', () => {
-  it('has correct title and description', () => {
-    const embed = createRoleBoardEmbed([]);
-    expect(embed.title).toBe('Mythic+ Role Board');
-    expect(embed.description).toBe('Current channel roster');
-    expect(embed.color).toBe(0xf1c40f);
-  });
-});
-
-describe('createRoleCheckEmbed', () => {
-  it('lists players and roles', () => {
-    const infos: PlayerRoleInfo[] = [
-      { name: 'Player1', roles: ['Tank', 'Healer'] },
-      { name: 'Player2', roles: ['No roles set'] },
-    ];
-    const embed = createRoleCheckEmbed(infos);
-
-    expect(embed.title).toBe('Saved Roles Check');
-    expect(embed.color).toBe(0x3498db);
-    expect(embed.fields.length).toBe(2);
-    expect(embed.fields[0].name).toBe('Player1');
-    expect(embed.fields[0].value).toBe('Tank, Healer');
-    expect(embed.fields[1].name).toBe('Player2');
-    expect(embed.fields[1].value).toBe('No roles set');
-  });
-});
 
 describe('MainSpecView', () => {
   it('initializes with pre-selected roles', () => {

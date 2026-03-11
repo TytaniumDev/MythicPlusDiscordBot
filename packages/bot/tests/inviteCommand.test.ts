@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WoWPlayer, WoWGroup, generateInviteCommand, ROLE_TANK, ROLE_HEALER, ROLE_MELEE, ROLE_RANGED, ROLE_BREZ, ROLE_LUST } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, generateInviteCommand, ROLE_TANK, ROLE_HEALER, ROLE_MELEE, ROLE_RANGED } from '@mythicplus/shared';
 
 describe('generateInviteCommand', () => {
   it('generates command for a full group', () => {

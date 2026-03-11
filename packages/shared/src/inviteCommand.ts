@@ -3,7 +3,7 @@ import type { WoWGroupDict, WoWPlayerDict } from './types.js';
 const WOW_COMMAND_MAX_LENGTH = 255;
 
 function sanitizeName(name: string): string {
-  return name.replace(/[^a-zA-ZÀ-ÿ0-9'\-]/g, '');
+  return name.replace(/[^a-zA-ZÀ-ÿ0-9'-]/g, '');
 }
 
 function getInviteName(p: WoWPlayerDict): string {

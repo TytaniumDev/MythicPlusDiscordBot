@@ -15,7 +15,7 @@ import { getPreferenceService } from './preferenceService.js';
 export interface DiscordMember {
   nick?: string | null;
   global_name?: string | null;
-  id: string | number;
+  id: string;
   toString(): string;
 }
 
