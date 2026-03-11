@@ -106,6 +106,14 @@ describe('PreferenceService', () => {
     expect(svc.getInGameNameSync('789')).toBe('');
   });
 
+  it('clears inGameName cache when set with empty string', async () => {
+    await svc.setPreference('999', 'Player', ['Tank'], 'Player-Sargeras');
+    expect(svc.getInGameNameSync('999')).toBe('Player-Sargeras');
+
+    await svc.setPreference('999', 'Player', ['Healer'], '');
+    expect(svc.getInGameNameSync('999')).toBe('');
+  });
+
   it('refreshes preference removes on delete', async () => {
     const mockFb = createMockFirebase(true);
     const refreshSvc = new PreferenceService(mockFb);

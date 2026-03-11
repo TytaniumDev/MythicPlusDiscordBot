@@ -51,7 +51,10 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
 
   const inviteCmd = generateInviteCommand(group.toDict());
   if (inviteCmd) {
-    fields.push({ name: 'Invite Command', value: `\`${inviteCmd}\`` });
+    const formatted = inviteCmd.includes('\n')
+      ? `\`\`\`\n${inviteCmd}\n\`\`\``
+      : `\`${inviteCmd}\``;
+    fields.push({ name: 'Invite Command', value: formatted });
   }
 
   return { title: `Group ${groupNumber}`, color: GOLD, fields };
@@ -132,8 +135,17 @@ export async function announceGroup(
     embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 3, 'Battle Res', brezPlayer),
     });
-    await embedMessage.edit({
+    embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 4, 'Bloodlust', lustPlayer),
     });
+
+    const inviteCmd = generateInviteCommand(group.toDict());
+    if (inviteCmd) {
+      const formatted = inviteCmd.includes('\n')
+        ? `\`\`\`\n${inviteCmd}\n\`\`\``
+        : `\`${inviteCmd}\``;
+      embed.fields.push({ name: 'Invite Command', value: formatted });
+      await embedMessage.edit({ embed });
+    }
   }
 }

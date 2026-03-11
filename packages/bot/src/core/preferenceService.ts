@@ -125,7 +125,13 @@ export class PreferenceService implements IPreferenceService {
   async setPreference(discordId: string, name: string, roles: string[], inGameName?: string): Promise<void> {
     this._cache[discordId] = roles;
     this._nameToId[name] = discordId;
-    if (inGameName !== undefined) this._inGameNameCache[discordId] = inGameName;
+    if (inGameName !== undefined) {
+      if (inGameName) {
+        this._inGameNameCache[discordId] = inGameName;
+      } else {
+        Reflect.deleteProperty(this._inGameNameCache, discordId);
+      }
+    }
 
     if (this._firebaseOk()) {
       try {

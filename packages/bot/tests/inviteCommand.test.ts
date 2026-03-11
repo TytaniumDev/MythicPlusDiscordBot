@@ -87,6 +87,30 @@ describe('generateInviteCommand', () => {
     expect(cmd).toContain('"DPS1"');
   });
 
+  it('sanitizes names to prevent Lua injection', () => {
+    const tank = WoWPlayer.create('Tank', [ROLE_TANK]);
+    const healer = WoWPlayer.create('Healer', [ROLE_HEALER], '', 'Healer"} print("hacked")--');
+    const dps1 = WoWPlayer.create('DPS1', [ROLE_MELEE]);
+
+    const group = new WoWGroup(tank, healer, [dps1]);
+    const cmd = generateInviteCommand(group.toDict());
+
+    // Injection chars (quotes, braces, parens, spaces) are stripped from the name
+    // The sanitized name becomes harmless concatenated letters
+    expect(cmd).toContain('"Healerprinthacked--"');
+    expect(cmd).not.toContain('print(');
+  });
+
+  it('preserves valid WoW name characters', () => {
+    const tank = WoWPlayer.create('Tank', [ROLE_TANK]);
+    const healer = WoWPlayer.create('Healer', [ROLE_HEALER], '', "Héalbot-Mal'Ganis");
+
+    const group = new WoWGroup(tank, healer, []);
+    const cmd = generateInviteCommand(group.toDict());
+
+    expect(cmd).toContain("\"Héalbot-Mal'Ganis\"");
+  });
+
   it('splits command when exceeding 255 chars', () => {
     const tank = WoWPlayer.create('T', [ROLE_TANK]);
     const healer = WoWPlayer.create('H', [ROLE_HEALER], '',

@@ -135,7 +135,7 @@ describe('announceGroup', () => {
     // Verify typing was called 5 times (for each role reveal)
     expect(showShortTyping).toHaveBeenCalledTimes(5);
 
-    // Verify edits happened (5 animated + 2 utility = 7)
-    expect(mockMessage.edit).toHaveBeenCalledTimes(7);
+    // Verify edits happened (5 animated + 2 utility + 1 invite command = 8)
+    expect(mockMessage.edit).toHaveBeenCalledTimes(8);
   });
 });
