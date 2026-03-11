@@ -34,20 +34,20 @@ export class GeneralHandler {
     this.startTime = t;
   }
 
-  async version(ctx: GeneralContext): Promise<void> {
-    let value: string;
+  private getCommitValue(): string {
     if (config.GIT_SHA && config.GIT_SHA.length >= 7) {
       const shortSha = config.GIT_SHA.slice(0, 7);
       const commitUrl = `https://github.com/${config.GITHUB_REPO_OWNER}/${config.GITHUB_REPO_NAME}/commit/${config.GIT_SHA}`;
-      value = `[\`${shortSha}\`](${commitUrl})`;
-    } else {
-      value = 'unknown';
+      return `[\`${shortSha}\`](${commitUrl})`;
     }
+    return 'unknown';
+  }
 
+  async version(ctx: GeneralContext): Promise<void> {
     const embed: EmbedData = {
       title: 'Bot Version',
       color: 0x3498db,
-      fields: [{ name: 'Commit', value, inline: false }],
+      fields: [{ name: 'Commit', value: this.getCommitValue(), inline: false }],
     };
     await ctx.send('', { embed });
   }
@@ -82,6 +82,7 @@ export class GeneralHandler {
       fields: [
         { name: 'Uptime', value: uptimeStr, inline: true },
         { name: 'Ping', value: `${pingMs}ms`, inline: true },
+        { name: 'Commit', value: this.getCommitValue(), inline: true },
       ],
     };
 
