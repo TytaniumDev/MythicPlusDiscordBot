@@ -97,6 +97,7 @@ describe('GeneralHandler.status', () => {
 
     expect(fields['Uptime']).toBe('0:01:00');
     expect(fields['Ping']).toBe('50ms');
+    expect(fields['Commit']).toContain('abc1234');
     expect(fields['System Load']).toBe('0.50, 0.40, 0.30');
     expect(embed.footer.text).toContain('Server ID: 12345');
   });

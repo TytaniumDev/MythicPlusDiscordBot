@@ -76,12 +76,22 @@ export class GeneralHandler {
 
     const pingMs = Math.round(this.latency * 1000);
 
+    let commitValue: string;
+    if (config.GIT_SHA && config.GIT_SHA.length >= 7) {
+      const shortSha = config.GIT_SHA.slice(0, 7);
+      const commitUrl = `https://github.com/${config.GITHUB_REPO_OWNER}/${config.GITHUB_REPO_NAME}/commit/${config.GIT_SHA}`;
+      commitValue = `[\`${shortSha}\`](${commitUrl})`;
+    } else {
+      commitValue = 'unknown';
+    }
+
     const embed: EmbedData = {
       title: 'Bot Status',
       color: 0x2ecc71,
       fields: [
         { name: 'Uptime', value: uptimeStr, inline: true },
         { name: 'Ping', value: `${pingMs}ms`, inline: true },
+        { name: 'Commit', value: commitValue, inline: true },
       ],
     };
 
