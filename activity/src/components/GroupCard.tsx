@@ -77,7 +77,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
     >
       <h4>
         {heading}
-        {copied && <span className="copy-toast">Copied!</span>}
+        {isClickable && <span className={`copy-toast${copied ? ' visible' : ''}`}>Copied!</span>}
       </h4>
       {(!hideEmpty || group.tank) && (
         <RoleRow
