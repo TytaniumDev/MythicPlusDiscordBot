@@ -14,6 +14,7 @@ jobs:
   deploy-firestore-rules:
     needs: [ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -48,8 +49,11 @@ jobs:
         run: |
           echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          npx firebase-tools deploy --only firestore:rules --non-interactive
-          rm -f "$RUNNER_TEMP/firebase-sa.json"
+          npx firebase-tools@14 deploy --only firestore:rules --non-interactive
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
 
   build-and-push:
     needs: [ci]
