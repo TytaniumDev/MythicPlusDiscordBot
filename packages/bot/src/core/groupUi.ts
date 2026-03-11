@@ -25,6 +25,12 @@ export interface Sendable {
 // Gold color value matching discord.js
 const GOLD = 0xf1c40f;
 
+function getInviteMacro(group: WoWGroup): string {
+  const players = group.players;
+  if (players.length === 0) return 'No players';
+  return '```\n' + players.map((p) => `/inv ${p.name}`).join('\n') + '\n```';
+}
+
 function setFieldAt(embed: Embed, index: number, name: string, value: string): Embed {
   embed.fields[index] = { ...embed.fields[index], name, value };
   return embed;
@@ -50,6 +56,7 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
       { name: 'DPS', value: `${dps1Name}, ${dps2Name}, ${dps3Name}` },
       { name: 'Battle Res', value: brezPlayer, inline: true },
       { name: 'Bloodlust', value: lustPlayer, inline: true },
+      { name: 'Quick Invite', value: getInviteMacro(group) },
     ],
   };
 }
@@ -104,6 +111,7 @@ export async function announceGroup(
         },
         { name: 'Battle Res', value: getMaskedName(brezPlayer), inline: true },
         { name: 'Bloodlust', value: getMaskedName(lustPlayer), inline: true },
+        { name: 'Quick Invite', value: '...' },
       ],
     };
 
@@ -129,8 +137,11 @@ export async function announceGroup(
     embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 3, 'Battle Res', brezPlayer),
     });
-    await embedMessage.edit({
+    embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 4, 'Bloodlust', lustPlayer),
+    });
+    await embedMessage.edit({
+      embed: setFieldAt(embed, 5, 'Quick Invite', getInviteMacro(group)),
     });
   }
 }

@@ -31,6 +31,7 @@ describe('buildGroupEmbed', () => {
     expect(fields['DPS']).toBe('DPS1, DPS2, DPS3');
     expect(fields['Battle Res']).toBe('TankPlayer');
     expect(fields['Bloodlust']).toBe('HealerPlayer');
+    expect(fields['Quick Invite']).toBe('```\n/inv TankPlayer\n/inv HealerPlayer\n/inv DPS1\n/inv DPS2\n/inv DPS3\n```');
   });
 
   it('shows None for missing utilities', () => {
@@ -106,7 +107,7 @@ describe('announceGroup', () => {
     // Verify typing was called 5 times (for each role reveal)
     expect(showShortTyping).toHaveBeenCalledTimes(5);
 
-    // Verify edits happened (5 animated + 2 utility = 7)
-    expect(mockMessage.edit).toHaveBeenCalledTimes(7);
+    // Verify edits happened (5 animated + 2 utility + 1 quick invite = 8)
+    expect(mockMessage.edit).toHaveBeenCalledTimes(8);
   });
 });
