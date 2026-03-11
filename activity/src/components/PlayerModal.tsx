@@ -40,6 +40,8 @@ export function PlayerModal({ players }: PlayerModalProps) {
       setSaving(false);
       setSaveText('Save');
     }
+    // Intentionally only re-sync when switching players, not on every upstream update.
+    // Using `player` as a dependency would reset unsaved edits on any Firestore change.
   }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on Escape
@@ -81,12 +83,14 @@ export function PlayerModal({ players }: PlayerModalProps) {
 
     try {
       await service.saveRoles(player.discordId, player.name, Array.from(selectedRoles), inGameName);
-      // Set identity to this player
+      // Only set identity if user hasn't already identified as someone else
       const store = useAppStore.getState();
-      store.setIdentity(player.discordId, player.name);
-      store.setIdentityResolved(true);
-      const guildId = store.currentGuildId;
-      localStorage.setItem(`wheelson-player-${guildId ?? 'unknown'}`, player.discordId);
+      if (!store.identityResolved) {
+        store.setIdentity(player.discordId, player.name);
+        store.setIdentityResolved(true);
+        const guildId = store.currentGuildId;
+        localStorage.setItem(`wheelson-player-${guildId ?? 'unknown'}`, player.discordId);
+      }
 
       setSaveText('Saved!');
       setTimeout(() => {
