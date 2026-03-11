@@ -37,6 +37,7 @@ export const mockPlayers: WoWPlayer[] = [
   {
     name: 'Pandemonium',
     discordId: '100000000000000005',
+    inGameName: 'Pandemonium-Sargeras',
     mainRole: 'tank',
     offspecs: ['melee'],
     utilities: ['brez'],
@@ -53,6 +54,7 @@ export const mockPlayers: WoWPlayer[] = [
   {
     name: 'Tytanium',
     discordId: '100000000000000007',
+    inGameName: 'Tytanium-Proudmoore',
     mainRole: 'ranged',
     offspecs: ['healer'],
     utilities: ['lust'],

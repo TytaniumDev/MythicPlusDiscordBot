@@ -21,6 +21,8 @@ export {
   createMythicPlusGroups,
 } from './parallelGroupCreator.js';
 
+export { generateInviteCommand } from './inviteCommand.js';
+
 export type {
   SessionStatus,
   Role,

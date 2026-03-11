@@ -15,6 +15,7 @@ import type { Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
 export class WoWPlayer {
   readonly name: string;
   readonly discordId: string;
+  readonly inGameName: string;
   readonly mainRole: Role | null;
   readonly offspecs: readonly Role[];
   readonly utilities: readonly Utility[];
@@ -25,9 +26,11 @@ export class WoWPlayer {
     mainRole: Role | null,
     offspecs: readonly Role[],
     utilities: readonly Utility[],
+    inGameName = '',
   ) {
     this.name = name;
     this.discordId = discordId;
+    this.inGameName = inGameName;
     this.mainRole = mainRole;
     this.offspecs = offspecs;
     this.utilities = utilities;
@@ -70,8 +73,11 @@ export class WoWPlayer {
   get hasLust(): boolean {
     return this.utilities.includes('lust');
   }
+  get inviteName(): string {
+    return this.inGameName || this.name;
+  }
 
-  static create(name: string, roles: string[], discordId = ''): WoWPlayer {
+  static create(name: string, roles: string[], discordId = '', inGameName = ''): WoWPlayer {
     const isTank = roles.includes(ROLE_TANK);
     const isHealer = roles.includes(ROLE_HEALER);
     const isRanged = roles.includes(ROLE_RANGED);
@@ -97,7 +103,7 @@ export class WoWPlayer {
     if (roles.includes(ROLE_BREZ)) utilities.push('brez');
     if (roles.includes(ROLE_LUST)) utilities.push('lust');
 
-    return new WoWPlayer(name, discordId, mainRole, offspecs, utilities);
+    return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName);
   }
 
   /**
@@ -107,6 +113,7 @@ export class WoWPlayer {
   static fromFlags(params: {
     name: string;
     discordId?: string;
+    inGameName?: string;
     tankMain?: boolean;
     healerMain?: boolean;
     /** @deprecated Redundant — use `ranged` or `melee` instead. Accepted for backward compat. */
@@ -156,6 +163,7 @@ export class WoWPlayer {
       mainRole,
       offspecs,
       utilities,
+      params.inGameName ?? '',
     );
   }
 
@@ -202,6 +210,7 @@ export class WoWPlayer {
     return {
       name: this.name,
       discordId: this.discordId,
+      inGameName: this.inGameName,
       mainRole: this.mainRole,
       offspecs: [...this.offspecs],
       utilities: [...this.utilities],
@@ -211,13 +220,14 @@ export class WoWPlayer {
   static fromDict(data: WoWPlayerDict | Record<string, unknown>): WoWPlayer {
     const name = data.name as string;
     const discordId = (data.discordId as string) ?? '';
+    const inGameName = (data.inGameName as string) ?? '';
 
     // New compact format: mainRole/offspecs/utilities
     if ('mainRole' in data || 'offspecs' in data || 'utilities' in data) {
       const mainRole = (data.mainRole as Role | null) ?? null;
       const offspecs = (data.offspecs as Role[]) ?? [];
       const utilities = (data.utilities as Utility[]) ?? [];
-      return new WoWPlayer(name, discordId, mainRole, offspecs, utilities);
+      return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName);
     }
 
     // Legacy format: nested roles object with boolean flags
@@ -225,6 +235,7 @@ export class WoWPlayer {
     return WoWPlayer.fromFlags({
       name,
       discordId,
+      inGameName,
       tankMain: roles.tankMain ?? false,
       healerMain: roles.healerMain ?? false,
       ranged: roles.ranged ?? false,

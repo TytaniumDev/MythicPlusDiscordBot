@@ -110,6 +110,52 @@ describe('WoWPlayer', () => {
     expect(player.discordId).toBe('');
     expect(player.tankMain).toBe(true);
   });
+
+  it('creates with inGameName', () => {
+    const player = WoWPlayer.create('Panda', [ROLE_TANK], '123', 'Pandemonium-Sargeras');
+    expect(player.inGameName).toBe('Pandemonium-Sargeras');
+    expect(player.inviteName).toBe('Pandemonium-Sargeras');
+  });
+
+  it('inviteName falls back to name when inGameName is empty', () => {
+    const player = WoWPlayer.create('Panda', [ROLE_TANK], '123');
+    expect(player.inGameName).toBe('');
+    expect(player.inviteName).toBe('Panda');
+  });
+
+  it('round-trips inGameName through toDict/fromDict', () => {
+    const original = WoWPlayer.create('Panda', [ROLE_TANK, ROLE_BREZ], '123', 'Pandemonium-Sargeras');
+    const data = original.toDict();
+    expect(data.inGameName).toBe('Pandemonium-Sargeras');
+
+    const restored = WoWPlayer.fromDict(data);
+    expect(restored.inGameName).toBe('Pandemonium-Sargeras');
+    expect(restored.inviteName).toBe('Pandemonium-Sargeras');
+  });
+
+  it('fromDict handles missing inGameName', () => {
+    const data = {
+      name: 'Panda',
+      discordId: '123',
+      mainRole: 'tank' as const,
+      offspecs: [],
+      utilities: [],
+    };
+    const player = WoWPlayer.fromDict(data);
+    expect(player.inGameName).toBe('');
+    expect(player.inviteName).toBe('Panda');
+  });
+
+  it('fromFlags accepts inGameName', () => {
+    const player = WoWPlayer.fromFlags({
+      name: 'Panda',
+      discordId: '123',
+      inGameName: 'Pandemonium-Sargeras',
+      tankMain: true,
+    });
+    expect(player.inGameName).toBe('Pandemonium-Sargeras');
+    expect(player.inviteName).toBe('Pandemonium-Sargeras');
+  });
 });
 
 describe('WoWGroup', () => {

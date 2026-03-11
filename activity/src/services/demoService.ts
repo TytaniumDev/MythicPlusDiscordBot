@@ -65,7 +65,7 @@ class DemoSessionService implements SessionService {
     // No-op in demo
   }
 
-  async saveRoles(_playerId: string, _playerName: string, _roles: string[]): Promise<void> {
+  async saveRoles(_playerId: string, _playerName: string, _roles: string[], _inGameName?: string): Promise<void> {
     // No-op in demo
   }
 
