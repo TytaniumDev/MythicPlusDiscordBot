@@ -146,6 +146,7 @@ function MPW:StartSession()
         return
     end
 
+    self.hasLeftSession = false
     self.session.status = self.Status.LOBBY
     self.session.host = UnitName("player")
     self.session.players = {}
@@ -170,11 +171,6 @@ function MPW:EndSession()
     if not self.session.status then
         self:Print("No active session.")
         return
-    end
-
-    -- Save session results if completed
-    if self.session.status == self.Status.COMPLETED and #self.session.groups > 0 then
-        self:SaveSessionResults()
     end
 
     self:CancelSessionTimeout()
@@ -214,6 +210,7 @@ function MPW:LeaveSession()
     self.session.host = nil
     self.session.players = {}
     self.session.groups = {}
+    self.hasLeftSession = true
     self:Print("You have left the session.")
 end
 
@@ -457,6 +454,9 @@ function MPW:OnCommReceived(prefix, message, _distribution, sender)
 end
 
 function MPW:HandleSessionUpdate(data, sender)
+    -- Ignore updates after intentionally leaving a session
+    if self.hasLeftSession then return end
+
     -- Only accept updates from the session host
     if self.session.host and sender ~= self.session.host then return end
 

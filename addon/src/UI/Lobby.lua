@@ -296,6 +296,8 @@ function MPW:RequestJoin()
         return
     end
 
+    self.hasLeftSession = false
+
     local playerData = MPW:DetectLocalPlayer()
     if not playerData then
         self:Print("Could not detect your spec. Make sure you have a specialization active.")
