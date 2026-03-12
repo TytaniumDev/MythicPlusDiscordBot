@@ -1,0 +1,36 @@
+## Interface: 120001
+## Title: Mythic+ Wheel
+## Notes: Form balanced Mythic+ groups from your guild with a wheel-spin reveal
+## Author: MythicPlusDiscordBot Contributors
+## Version: @project-version@
+## SavedVariables: MythicPlusWheelDB
+## IconTexture: Interface\Icons\INV_Misc_GroupNeedMore
+
+# Embedded Libraries
+libs\LibStub\LibStub.lua
+libs\AceAddon-3.0\AceAddon-3.0.lua
+libs\AceEvent-3.0\AceEvent-3.0.lua
+libs\AceComm-3.0\AceComm-3.0.lua
+libs\AceSerializer-3.0\AceSerializer-3.0.lua
+libs\AceDB-3.0\AceDB-3.0.lua
+
+# Core
+src\Config.lua
+src\Models.lua
+src\GroupCreator.lua
+src\Core.lua
+
+# Services
+src\Services\SpecService.lua
+src\Services\GuildService.lua
+src\Services\PartyService.lua
+
+# Utilities
+src\Utils\Helpers.lua
+
+# UI
+src\UI\MainFrame.xml
+src\UI\MainFrame.lua
+src\UI\Lobby.lua
+src\UI\Wheel.lua
+src\UI\GroupDisplay.lua
