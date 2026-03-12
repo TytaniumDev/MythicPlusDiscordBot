@@ -50,4 +50,4 @@ jobs:
           sudo apt-get install -y -qq lua5.1 luarocks
           sudo luarocks install busted
       - name: Test addon (busted)
-        run: cd addon && busted tests/
+        run: cd addon && busted --pattern "test_" tests/

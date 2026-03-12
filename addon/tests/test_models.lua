@@ -2,7 +2,7 @@
 -- Run with: busted addon/tests/
 
 -- Minimal stubs for WoW APIs and libraries
-_G.LibStub = function(name)
+_G.LibStub = function(_)
     local addon = { NewAddon = function() return {} end }
     addon.GetAddon = function() return addon end
     return addon

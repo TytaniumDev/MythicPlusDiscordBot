@@ -1,7 +1,6 @@
 ---@class MythicPlusWheel
 local MPW = _G.MythicPlusWheel
 
-local Player = MPW.Player
 local Group = MPW.Group
 
 ---------------------------------------------------------------------------
