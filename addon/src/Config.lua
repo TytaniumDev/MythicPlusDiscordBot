@@ -102,6 +102,15 @@ MPW.LustClasses = {
 -- Max player level for current expansion (Midnight)
 MPW.MAX_LEVEL = 90
 
+-- Addon version (replaced by packager with git tag)
+MPW.VERSION = "@project-version@"
+
+-- Session timeout in seconds (default 30 minutes)
+MPW.SESSION_TIMEOUT = 1800
+
+-- Message throttle interval in seconds
+MPW.COMM_THROTTLE = 0.5
+
 -- Default saved variables
 MPW.defaults = {
     profile = {
@@ -109,5 +118,8 @@ MPW.defaults = {
             hide = false,
         },
         lastSession = nil,
+        framePosition = nil,
+        animationSpeed = 1.0,
+        soundEnabled = true,
     },
 }

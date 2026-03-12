@@ -8,7 +8,7 @@ luacheck src/ tests/
 
 echo ""
 echo "=== Addon: busted tests ==="
-busted tests/
+busted
 
 echo ""
 echo "All addon checks passed."

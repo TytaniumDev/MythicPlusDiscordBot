@@ -7,84 +7,84 @@
 ## Phase 1: Core Functionality
 
 ### 1.1 Session Management Polish
-- [ ] Add `SavedVariables` persistence via `MythicPlusWheelDB` — save last session results across reloads
-- [ ] Implement proper `OnInitialize` with `AceDB` for profile-based saved variables
-- [ ] Add session timeout (auto-end after configurable idle period)
-- [ ] Handle edge case: host disconnects mid-session (transfer host or end gracefully)
-- [ ] Add `/mpw status` command to show current session info in chat
+- [x] Add `SavedVariables` persistence via `MythicPlusWheelDB` — save last session results across reloads
+- [x] Implement proper `OnInitialize` with `AceDB` for profile-based saved variables
+- [x] Add session timeout (auto-end after configurable idle period)
+- [x] Handle edge case: host disconnects mid-session (transfer host or end gracefully)
+- [x] Add `/mpw status` command to show current session info in chat
 
 ### 1.2 Player Join Flow
-- [ ] Auto-detect offspecs: let players toggle which offspecs they want to offer (not just all non-main specs)
-- [ ] Add a role-selection dropdown in the lobby UI so players can override auto-detected role
-- [ ] Handle realm-name stripping consistently (cross-realm guild members)
-- [ ] Validate that joined players are actually in the guild
-- [ ] Add a "Leave Session" button for participants
+- [x] Auto-detect offspecs: let players toggle which offspecs they want to offer (not just all non-main specs)
+- [x] Add a role-selection dropdown in the lobby UI so players can override auto-detected role
+- [x] Handle realm-name stripping consistently (cross-realm guild members)
+- [x] Validate that joined players are actually in the guild
+- [x] Add a "Leave Session" button for participants
 
 ### 1.3 AceComm Messaging
-- [ ] Handle message chunking for large payloads (AceComm has a ~255-byte limit per message)
-- [ ] Add version handshake — warn if addon versions mismatch between host and participants
-- [ ] Broadcast full player list (not just count) so non-hosts see the lobby roster
-- [ ] Add message throttling to avoid flooding guild comms during rapid state changes
-- [ ] Test with `AceSerializer` for complex nested group data
+- [x] Handle message chunking for large payloads (AceComm has a ~255-byte limit per message)
+- [x] Add version handshake — warn if addon versions mismatch between host and participants
+- [x] Broadcast full player list (not just count) so non-hosts see the lobby roster
+- [x] Add message throttling to avoid flooding guild comms during rapid state changes
+- [x] Test with `AceSerializer` for complex nested group data
 
 ### 1.4 GroupCreator Algorithm Verification
-- [ ] Run the busted tests and fix any Lua-specific issues in the port (1-indexed arrays, etc.)
-- [ ] Verify parity with TypeScript version using identical test fixtures from `packages/bot/tests/`
-- [ ] Port the `setLastGroups` / duplicate-avoidance logic and write tests for it
-- [ ] Add `math.randomseed(time())` initialization for proper shuffle randomness
+- [x] Run the busted tests and fix any Lua-specific issues in the port (1-indexed arrays, etc.)
+- [x] Verify parity with TypeScript version using identical test fixtures from `packages/bot/tests/`
+- [x] Port the `setLastGroups` / duplicate-avoidance logic and write tests for it
+- [x] Add `math.randomseed(time())` initialization for proper shuffle randomness
 
 ---
 
 ## Phase 2: UI Polish
 
 ### 2.1 MainFrame
-- [ ] Add minimize/maximize behavior
-- [ ] Persist frame position across sessions (`SavedVariables`)
-- [ ] Add a minimap button (LibDBIcon) to toggle the frame
-- [ ] Make frame resizable with min/max constraints
-- [ ] Add keybinding support (Key Bindings UI integration)
+- [x] Add minimize/maximize behavior
+- [x] Persist frame position across sessions (`SavedVariables`)
+- [x] Add a minimap button (LibDBIcon) to toggle the frame
+- [x] Make frame resizable with min/max constraints
+- [x] Add keybinding support (Key Bindings UI integration)
 
 ### 2.2 Lobby View
-- [ ] Show class-colored names (use `RAID_CLASS_COLORS`)
-- [ ] Add class icons alongside role icons
-- [ ] Show player count by role (e.g., "2 Tanks, 3 Healers, 8 DPS")
-- [ ] Add a "Ready" check system before spinning
-- [ ] Indicate which players have brez/lust with tooltip details
-- [ ] Add scroll support for 20+ player lobbies
-- [ ] Add host controls: kick player, lock lobby
+- [x] Show class-colored names (use `RAID_CLASS_COLORS`)
+- [x] Add class icons alongside role icons
+- [x] Show player count by role (e.g., "2 Tanks, 3 Healers, 8 DPS")
+- [x] Add a "Ready" check system before spinning
+- [x] Indicate which players have brez/lust with tooltip details
+- [x] Add scroll support for 20+ player lobbies
+- [x] Add host controls: kick player, lock lobby
 
 ### 2.3 Wheel Animation
-- [ ] Replace placeholder fade-in with an actual spinning wheel visual (rotating texture)
-- [ ] Add WoW-native sounds: use `SOUNDKIT` constants appropriate for the reveal drama
-- [ ] Add per-player reveal within each group (not just per-group)
-- [ ] Add confetti/particle effect on completion using WoW's `Model` widget
-- [ ] Make animation speed configurable
-- [ ] Add "Re-spin" option (goes back to lobby with same players)
+- [x] Replace placeholder fade-in with an actual spinning wheel visual (rotating texture)
+- [x] Add WoW-native sounds: use `SOUNDKIT` constants appropriate for the reveal drama
+- [x] Add per-player reveal within each group (not just per-group)
+- [x] Add confetti/particle effect on completion using WoW's `Model` widget
+- [x] Make animation speed configurable
+- [x] Add "Re-spin" option (goes back to lobby with same players)
 
 ### 2.4 Group Display
-- [ ] Add tooltip on hover showing player's full spec, offspecs, and utilities
-- [ ] Add "Post to Guild Chat" button using `Helpers:PostToGuildChat()`
-- [ ] Add "Copy to Clipboard" for sharing outside WoW
-- [ ] Color-code group completeness (green for 5/5, yellow for 4/5, red for <4)
-- [ ] Show group composition quality score (has brez? has lust? has ranged?)
+- [x] Add tooltip on hover showing player's full spec, offspecs, and utilities
+- [x] Add "Post to Guild Chat" button using `Helpers:PostToGuildChat()`
+- [x] Add "Copy to Clipboard" for sharing outside WoW
+- [x] Color-code group completeness (green for 5/5, yellow for 4/5, red for <4)
+- [x] Show group composition quality score (has brez? has lust? has ranged?)
 
 ---
 
 ## Phase 3: Testing & Quality
 
 ### 3.1 Unit Tests (busted)
-- [ ] Fix test stubs — `LibStub` mock needs to return proper AceAddon object with `:NewAddon()`
+- [x] Fix test stubs — `LibStub` mock needs to return proper AceAddon object with `:NewAddon()`
+- [x] Add tests for serialization round-trips (Player/Group `ToDict`/`FromDict`)
+- [x] Add edge case tests: 0 players, 1 player, all same role, no tanks, no healers
+- [x] Port test fixtures from `packages/bot/tests/prebuiltClasses.ts` to Lua equivalents
+- [x] Achieve test parity with TypeScript algorithm tests
 - [ ] Add tests for `SpecService:DetectLocalPlayer()` with mocked WoW APIs
-- [ ] Add tests for serialization round-trips (Player/Group `ToDict`/`FromDict`)
-- [ ] Add edge case tests: 0 players, 1 player, all same role, no tanks, no healers
-- [ ] Port test fixtures from `packages/bot/tests/prebuiltClasses.ts` to Lua equivalents
 - [ ] Add tests for `GuildService:GetOnlineGuildMembers()` with mocked roster API
-- [ ] Achieve test parity with TypeScript algorithm tests
 
 ### 3.2 Linting
-- [ ] Run luacheck and fix all warnings (may need `.luacheckrc` adjustments for WoW globals)
-- [ ] Add `BackdropTemplateMixin` and any missing WoW 12.x API globals to `.luacheckrc`
-- [ ] Verify no `_G` pollution beyond the addon namespace
+- [x] Run luacheck and fix all warnings (may need `.luacheckrc` adjustments for WoW globals)
+- [x] Add `BackdropTemplateMixin` and any missing WoW 12.x API globals to `.luacheckrc`
+- [x] Verify no `_G` pollution beyond the addon namespace
 
 ### 3.3 Integration Testing
 - [ ] Test in-game with at least 2 clients (host + participant) via addon comms
@@ -98,14 +98,14 @@
 ## Phase 4: Distribution & CI
 
 ### 4.1 CI Pipeline
-- [ ] Verify luacheck step works in GitHub Actions (Lua 5.1 + luarocks install)
-- [ ] Verify busted step works in GitHub Actions
-- [ ] Add addon CI caching for luarocks installs (speed up CI)
-- [ ] Consider a separate `ci-addon.yml` if Lua toolchain install slows down the Node.js jobs significantly
+- [x] Verify luacheck step works in GitHub Actions (Lua 5.1 + luarocks install)
+- [x] Verify busted step works in GitHub Actions
+- [x] Add addon CI caching for luarocks installs (speed up CI)
+- [x] Consider a separate `ci-addon.yml` if Lua toolchain install slows down the Node.js jobs significantly
 
 ### 4.2 CurseForge / Wago.io Packaging
-- [ ] Test `.pkgmeta` with the [BigWigsMods/packager](https://github.com/BigWigsMods/packager) GitHub Action
-- [ ] Add `@project-version@` token replacement in `.toc` file (handled by packager)
+- [x] Test `.pkgmeta` with the [BigWigsMods/packager](https://github.com/BigWigsMods/packager) GitHub Action
+- [x] Add `@project-version@` token replacement in `.toc` file (handled by packager)
 - [ ] Add `changelog.md` or auto-generate from git tags
 - [ ] Set up CurseForge project and get project ID
 - [ ] Set up Wago.io project and get project ID
@@ -113,19 +113,19 @@
 - [ ] Add `CURSEFORGE_API_TOKEN` and `WAGO_API_TOKEN` to repo secrets
 
 ### 4.3 Ace3 Library Management
-- [ ] Verify `.pkgmeta` externals resolve correctly (LibStub, AceAddon, AceEvent, AceComm, AceSerializer)
-- [ ] Add `AceDB-3.0` external for saved variables management
-- [ ] Add `LibDBIcon-1.0` external for minimap button
-- [ ] Consider `AceGUI-3.0` or `AceConfig-3.0` for settings panel
+- [x] Verify `.pkgmeta` externals resolve correctly (LibStub, AceAddon, AceEvent, AceComm, AceSerializer)
+- [x] Add `AceDB-3.0` external for saved variables management
+- [x] Add `LibDBIcon-1.0` external for minimap button
+- [x] Consider `AceGUI-3.0` or `AceConfig-3.0` for settings panel
 
 ---
 
 ## Phase 5: Future Enhancements
 
 ### 5.1 Settings Panel
-- [ ] Add WoW Interface Options panel using `AceConfig-3.0`
-- [ ] Settings: animation speed, auto-join, sound toggle, minimap button visibility
-- [ ] Per-character offspec preferences (which offspecs to offer)
+- [x] Add WoW Interface Options panel using `AceConfig-3.0`
+- [x] Settings: animation speed, auto-join, sound toggle, minimap button visibility
+- [x] Per-character offspec preferences (which offspecs to offer)
 
 ### 5.2 Integration with Discord Bot
 - [ ] Consider a bridge: addon sends groups to a web endpoint → bot posts to Discord
@@ -148,6 +148,7 @@ addon/
 ├── MythicPlusWheel.toc          # Addon manifest (Interface 120001)
 ├── .pkgmeta                     # CurseForge/Wago packaging
 ├── .luacheckrc                  # Lua linter config
+├── .busted                      # Busted test runner config
 ├── libs/                        # Ace3 libraries (gitignored, fetched by packager)
 │   └── .gitkeep
 ├── src/

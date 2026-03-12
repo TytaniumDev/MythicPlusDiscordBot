@@ -5,7 +5,7 @@
     <!-- Main Window Frame -->
     <Frame name="MPWMainFrame" parent="UIParent" hidden="true"
            enableMouse="true" movable="true" toplevel="true"
-           frameStrata="DIALOG">
+           frameStrata="DIALOG" clampedToScreen="true">
         <Size x="600" y="500"/>
         <Anchors>
             <Anchor point="CENTER"/>

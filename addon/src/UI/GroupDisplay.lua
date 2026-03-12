@@ -26,18 +26,36 @@ local function CreateGroupDisplayFrame(parent)
     frame.scrollChild:SetHeight(1)
     frame.scrollFrame:SetScrollChild(frame.scrollChild)
 
-    -- Invite All button
+    -- Invite My Group button
     frame.inviteButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    frame.inviteButton:SetSize(140, 28)
+    frame.inviteButton:SetSize(120, 28)
     frame.inviteButton:SetPoint("BOTTOMLEFT", 8, 8)
     frame.inviteButton:SetText("Invite My Group")
     frame.inviteButton:SetScript("OnClick", function()
         MPW:InviteMyGroup()
     end)
 
-    -- New Session button
+    -- Post to Guild Chat button
+    frame.postButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    frame.postButton:SetSize(100, 28)
+    frame.postButton:SetPoint("BOTTOM", -60, 8)
+    frame.postButton:SetText("Post to Guild")
+    frame.postButton:SetScript("OnClick", function()
+        MPW:PostToGuildChat(MPW.session.groups)
+    end)
+
+    -- Copy to Clipboard button
+    frame.copyButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    frame.copyButton:SetSize(80, 28)
+    frame.copyButton:SetPoint("BOTTOM", 40, 8)
+    frame.copyButton:SetText("Copy")
+    frame.copyButton:SetScript("OnClick", function()
+        MPW:CopyGroupsToClipboard(MPW.session.groups)
+    end)
+
+    -- New Session button (host only)
     frame.newButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    frame.newButton:SetSize(120, 28)
+    frame.newButton:SetSize(100, 28)
     frame.newButton:SetPoint("BOTTOMRIGHT", -8, 8)
     frame.newButton:SetText("New Session")
     frame.newButton:SetScript("OnClick", function()
@@ -48,8 +66,53 @@ local function CreateGroupDisplayFrame(parent)
     return frame
 end
 
+local function CreatePlayerLine(card, prefix, color, player, lineY)
+    local lineFrame = CreateFrame("Frame", nil, card)
+    lineFrame:SetPoint("TOPLEFT", 12, lineY)
+    lineFrame:SetPoint("TOPRIGHT", -12, lineY)
+    lineFrame:SetHeight(14)
+    lineFrame:EnableMouse(true)
+
+    local text = lineFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    text:SetPoint("LEFT")
+    if player then
+        local utilStr = ""
+        if player:HasBrez() then utilStr = utilStr .. " |cFF00FF00[BR]|r" end
+        if player:HasLust() then utilStr = utilStr .. " |cFFFF4400[BL]|r" end
+        text:SetText(color .. prefix .. "|r  " .. player.name .. utilStr)
+    else
+        text:SetText("|cFF666666" .. prefix .. " (empty)|r")
+    end
+
+    -- Tooltip on hover showing player details
+    if player then
+        lineFrame:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(player.name, 1, 1, 1)
+            if player.mainRole then
+                GameTooltip:AddLine("Role: " .. player.mainRole, 0.8, 0.8, 0.8)
+            end
+            if #player.offspecs > 0 then
+                GameTooltip:AddLine("Offspecs: " .. table.concat(player.offspecs, ", "), 0.6, 0.6, 0.6)
+            end
+            if player:HasBrez() then
+                GameTooltip:AddLine("Battle Rez", 0, 1, 0)
+            end
+            if player:HasLust() then
+                GameTooltip:AddLine("Bloodlust/Heroism", 1, 0.27, 0)
+            end
+            GameTooltip:Show()
+        end)
+        lineFrame:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
+
+    return lineFrame
+end
+
 local function RenderGroupCard(parent, index, group, yOffset)
-    local cardHeight = 100
+    local cardHeight = 106
 
     -- Card background
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -64,43 +127,42 @@ local function RenderGroupCard(parent, index, group, yOffset)
     })
     card:SetBackdropColor(0.1, 0.1, 0.15, 0.9)
 
+    -- Color-code completeness
+    local size = group:GetSize()
+    local completenessColor
+    if size == 5 then
+        completenessColor = "|cFF00FF00"
+    elseif size == 4 then
+        completenessColor = "|cFFFFFF00"
+    else
+        completenessColor = "|cFFFF0000"
+    end
+
     -- Group header
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 8, -6)
-    local completeness = group:IsComplete() and "|cFF00FF00(5/5)|r" or
-        string.format("|cFFFF6600(%d/5)|r", group:GetSize())
-    header:SetText("|cFFFFD100Group " .. index .. "|r  " .. completeness)
+    header:SetText("|cFFFFD100Group " .. index .. "|r  " .. completenessColor .. "(" .. size .. "/5)|r")
 
-    -- Utility badges
+    -- Utility badges and quality score
     local badges = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     badges:SetPoint("TOPRIGHT", -8, -8)
     local parts = {}
     if group:HasBrez() then parts[#parts + 1] = "|cFF00FF00Brez|r" end
     if group:HasLust() then parts[#parts + 1] = "|cFFFF4400Lust|r" end
+    if group:HasRanged() then parts[#parts + 1] = "|cFF87BCDERanged|r" end
     badges:SetText(table.concat(parts, "  "))
 
-    -- Player lines
+    -- Player lines with tooltips
     local lineY = -24
-    local function AddPlayerLine(prefix, color, player)
-        local text = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        text:SetPoint("TOPLEFT", 12, lineY)
-        if player then
-            local utilStr = ""
-            if player:HasBrez() then utilStr = utilStr .. " |cFF00FF00[BR]|r" end
-            if player:HasLust() then utilStr = utilStr .. " |cFFFF4400[BL]|r" end
-            text:SetText(color .. prefix .. "|r  " .. player.name .. utilStr)
-        else
-            text:SetText("|cFF666666" .. prefix .. " (empty)|r")
-        end
-        lineY = lineY - 14
-    end
-
-    AddPlayerLine("TANK", "|cFF87BCDE", group.tank)
-    AddPlayerLine("HEAL", "|cFF87FF87", group.healer)
+    CreatePlayerLine(card, "TANK", "|cFF87BCDE", group.tank, lineY)
+    lineY = lineY - 14
+    CreatePlayerLine(card, "HEAL", "|cFF87FF87", group.healer, lineY)
+    lineY = lineY - 14
     for _, dps in ipairs(group.dps) do
         local tag = dps:IsRanged() and "RDPS" or "MDPS"
         local color = dps:IsRanged() and "|cFFFF8787" or "|cFFFFD187"
-        AddPlayerLine(tag, color, dps)
+        CreatePlayerLine(card, tag, color, dps, lineY)
+        lineY = lineY - 14
     end
 
     return cardHeight + 8
@@ -118,7 +180,7 @@ end
 function MPW:UpdateGroupDisplayView()
     if not displayFrame then return end
 
-    -- Clear old children from scroll child (except the scroll child itself)
+    -- Clear old children from scroll child
     local children = { displayFrame.scrollChild:GetChildren() }
     for _, child in ipairs(children) do
         child:Hide()
