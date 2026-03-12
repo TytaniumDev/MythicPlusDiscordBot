@@ -100,7 +100,7 @@ MPW.LustClasses = {
 }
 
 -- Max player level for current expansion (Midnight)
-MPW.MAX_LEVEL = 80
+MPW.MAX_LEVEL = 90
 
 -- Default saved variables
 MPW.defaults = {
