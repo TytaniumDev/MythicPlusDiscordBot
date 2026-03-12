@@ -1,0 +1,22 @@
+package-as: MythicPlusWheel
+
+externals:
+  addon/libs/LibStub:
+    url: https://repos.curseforge.com/wow/libstub/trunk
+    tag: 1.0
+  addon/libs/AceAddon-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceAddon-3.0
+  addon/libs/AceEvent-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceEvent-3.0
+  addon/libs/AceComm-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceComm-3.0
+  addon/libs/AceSerializer-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceSerializer-3.0
+  addon/libs/AceDB-3.0:
+    url: https://repos.curseforge.com/wow/ace3/trunk/AceDB-3.0
+
+ignore:
+  - tests
+  - .luacheckrc
+  - "*.md"
+  - .github
