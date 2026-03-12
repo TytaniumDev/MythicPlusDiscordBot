@@ -78,8 +78,8 @@
 - [x] Add edge case tests: 0 players, 1 player, all same role, no tanks, no healers
 - [x] Port test fixtures from `packages/bot/tests/prebuiltClasses.ts` to Lua equivalents
 - [x] Achieve test parity with TypeScript algorithm tests
-- [ ] Add tests for `SpecService:DetectLocalPlayer()` with mocked WoW APIs
-- [ ] Add tests for `GuildService:GetOnlineGuildMembers()` with mocked roster API
+- [x] Add tests for `SpecService:DetectLocalPlayer()` with mocked WoW APIs
+- [x] Add tests for `GuildService:GetOnlineGuildMembers()` with mocked roster API
 
 ### 3.2 Linting
 - [x] Run luacheck and fix all warnings (may need `.luacheckrc` adjustments for WoW globals)
@@ -92,6 +92,8 @@
 - [ ] Test session recovery after `/reload`
 - [ ] Test with cross-realm guild members
 - [ ] Verify `.pkgmeta` produces a valid package (test with BigWigsMods packager or CurseForge upload)
+
+> **Note:** Integration testing requires a live WoW client and cannot be automated in CI.
 
 ---
 
@@ -106,11 +108,13 @@
 ### 4.2 CurseForge / Wago.io Packaging
 - [x] Test `.pkgmeta` with the [BigWigsMods/packager](https://github.com/BigWigsMods/packager) GitHub Action
 - [x] Add `@project-version@` token replacement in `.toc` file (handled by packager)
-- [ ] Add `changelog.md` or auto-generate from git tags
+- [x] Add `changelog.md` or auto-generate from git tags
 - [ ] Set up CurseForge project and get project ID
 - [ ] Set up Wago.io project and get project ID
-- [ ] Add release workflow: on git tag push, package and upload to both platforms
+- [x] Add release workflow: on git tag push, package and upload to both platforms
 - [ ] Add `CURSEFORGE_API_TOKEN` and `WAGO_API_TOKEN` to repo secrets
+
+> **Note:** CurseForge/Wago.io project setup and API token secrets require manual account access.
 
 ### 4.3 Ace3 Library Management
 - [x] Verify `.pkgmeta` externals resolve correctly (LibStub, AceAddon, AceEvent, AceComm, AceSerializer)
@@ -132,12 +136,16 @@
 - [ ] Share group history between addon and Discord bot (via Firebase or a lightweight API)
 - [ ] Display QR code or link to the web activity UI from within the addon
 
+> **Note:** Discord bot integration requires API endpoint design and is a future project.
+
 ### 5.3 Advanced Features
 - [ ] Inspect-based offspec detection (query other players' specs via `NotifyInspect`)
 - [ ] M+ rating display from Raider.IO addon data (if installed)
-- [ ] Group history log (last N sessions)
+- [x] Group history log (last N sessions)
 - [ ] "Favorites" — preferred teammates weighting
 - [ ] Support for non-guild groups (party/raid-based sessions instead of guild-based)
+
+> **Note:** Inspect-based detection and Raider.IO integration require in-game testing with other addons.
 
 ---
 
@@ -149,6 +157,7 @@ addon/
 ├── .pkgmeta                     # CurseForge/Wago packaging
 ├── .luacheckrc                  # Lua linter config
 ├── .busted                      # Busted test runner config
+├── CHANGELOG.md                 # Release changelog
 ├── libs/                        # Ace3 libraries (gitignored, fetched by packager)
 │   └── .gitkeep
 ├── src/
@@ -170,10 +179,13 @@ addon/
 │       └── Helpers.lua          # Formatting, chat output, color helpers
 ├── tests/
 │   ├── test_models.lua          # Player/Group model tests
-│   └── test_group_creator.lua   # Algorithm tests
+│   ├── test_group_creator.lua   # Algorithm tests
+│   ├── test_spec_service.lua    # SpecService tests with mocked WoW APIs
+│   └── test_guild_service.lua   # GuildService tests with mocked roster API
 ```
 
 ### CI Integration
 - Luacheck runs in `CI / Lint` job
 - Busted runs in `CI / Test` job
 - Local: `./scripts/verify-addon.sh`
+- Release: `.github/workflows/release-addon.yml` (on `addon-v*` tag push)

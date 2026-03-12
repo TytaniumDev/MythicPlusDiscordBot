@@ -73,6 +73,8 @@ SlashCmdList["MYTHICPLUSWHEEL"] = function(msg)
         MPW:ShowLastSession()
     elseif cmd == "leave" then
         MPW:LeaveSession()
+    elseif cmd == "history" then
+        MPW:ShowSessionHistory()
     elseif cmd == "help" then
         MPW:Print("Commands:")
         MPW:Print("  /mpw - Toggle the main window")
@@ -80,6 +82,7 @@ SlashCmdList["MYTHICPLUSWHEEL"] = function(msg)
         MPW:Print("  /mpw close - End the current session")
         MPW:Print("  /mpw status - Show current session info")
         MPW:Print("  /mpw last - Show last session results")
+        MPW:Print("  /mpw history - Show session history")
         MPW:Print("  /mpw leave - Leave the current session")
     else
         MPW:Print("Unknown command: " .. cmd .. ". Type /mpw help for usage.")
@@ -249,12 +252,58 @@ function MPW:SaveSessionResults()
         groupData[#groupData + 1] = g:ToDict()
     end
 
-    self.db.profile.lastSession = {
+    local sessionRecord = {
         groups = groupData,
         host = self.session.host,
         playerCount = #self.session.players,
         timestamp = time(),
     }
+
+    self.db.profile.lastSession = sessionRecord
+    self:SaveSessionToHistory(sessionRecord)
+end
+
+--- Save a session record to the history log.
+---@param record table Session record with groups, host, playerCount, timestamp
+function MPW:SaveSessionToHistory(record)
+    if not self.db then return end
+
+    local history = self.db.profile.sessionHistory
+    if not history then
+        history = {}
+        self.db.profile.sessionHistory = history
+    end
+
+    -- Add to the front (most recent first)
+    table.insert(history, 1, record)
+
+    -- Trim to max history size
+    while #history > self.MAX_HISTORY do
+        history[#history] = nil
+    end
+end
+
+--- Show session history log.
+function MPW:ShowSessionHistory()
+    if not self.db then
+        self:Print("No session history available.")
+        return
+    end
+
+    local history = self.db.profile.sessionHistory
+    if not history or #history == 0 then
+        self:Print("No session history available.")
+        return
+    end
+
+    self:Print("=== Session History (" .. #history .. " sessions) ===")
+    for i, record in ipairs(history) do
+        local dateStr = record.timestamp and date("%Y-%m-%d %H:%M", record.timestamp) or "Unknown"
+        local groupCount = record.groups and #record.groups or 0
+        local playerCount = record.playerCount or 0
+        self:Print(string.format("  %d. %s - Host: %s, %d players, %d groups",
+            i, dateStr, record.host or "Unknown", playerCount, groupCount))
+    end
 end
 
 --- Remove a player from the session (host only).

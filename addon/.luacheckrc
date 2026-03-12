@@ -44,6 +44,7 @@ read_globals = {
     "UnitClass",
     "UnitIsGroupLeader",
     "UnitName",
+    "date",
     "time",
 
     -- WoW UI globals
