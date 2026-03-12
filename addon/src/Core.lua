@@ -151,7 +151,7 @@ function MPW:BroadcastSessionEnd()
 end
 
 --- Handle incoming addon messages.
-function MPW:OnCommReceived(prefix, message, distribution, sender)
+function MPW:OnCommReceived(prefix, message, _distribution, sender)
     if prefix ~= self.COMM_PREFIX then return end
     if sender == UnitName("player") then return end
 
@@ -201,6 +201,9 @@ function MPW:HandleJoinRequest(data, sender)
     -- Only the host processes join requests
     if self.session.host ~= UnitName("player") then return end
     if self.session.status ~= self.Status.LOBBY then return end
+
+    -- Validate sender matches the player data to prevent spoofing
+    if not data.player or data.player.name ~= sender then return end
 
     local player = MPW.Player.FromDict(data.player)
     -- Replace if already in list

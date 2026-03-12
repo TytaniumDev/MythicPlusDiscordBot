@@ -10,9 +10,9 @@ _G.LibStub = function()
 end
 
 -- Load source files in order
-dofile("addon/src/Config.lua")
-dofile("addon/src/Models.lua")
-dofile("addon/src/GroupCreator.lua")
+dofile("src/Config.lua")
+dofile("src/Models.lua")
+dofile("src/GroupCreator.lua")
 
 local Player = MythicPlusWheel.Player
 local MPW = MythicPlusWheel

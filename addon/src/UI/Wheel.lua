@@ -81,7 +81,7 @@ local function CreateGroupCard(parent, index, group)
     healerText:SetText("|cFF87FF87[H]|r " .. healerName)
 
     -- DPS lines
-    for j, dps in ipairs(group.dps) do
+    for _, dps in ipairs(group.dps) do
         yOff = yOff - 16
         local dpsText = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         dpsText:SetPoint("TOPLEFT", 8, yOff)
