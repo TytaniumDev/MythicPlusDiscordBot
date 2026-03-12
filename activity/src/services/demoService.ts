@@ -86,6 +86,30 @@ class DemoSessionService implements SessionService {
     // No-op in demo
   }
 
+  async claimPlayer(playerId: string): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      const claimed = store.channelData.claimedPlayers || [];
+      if (!claimed.includes(playerId)) {
+        store.setChannelData({
+          ...store.channelData,
+          claimedPlayers: [...claimed, playerId],
+        });
+      }
+    }
+  }
+
+  async unclaimPlayer(playerId: string): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      const claimed = store.channelData.claimedPlayers || [];
+      store.setChannelData({
+        ...store.channelData,
+        claimedPlayers: claimed.filter(id => id !== playerId),
+      });
+    }
+  }
+
   async createGuildEntry(_guildId: string): Promise<void> {
     // No-op in demo
   }

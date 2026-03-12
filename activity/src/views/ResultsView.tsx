@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { GroupCard } from '../components/GroupCard';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
@@ -13,6 +14,8 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
   const groups = channelData?.groups || [];
+  const players = channelData?.players || [];
+  useIdentityResolver(players);
 
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportTitle, setReportTitle] = useState('');

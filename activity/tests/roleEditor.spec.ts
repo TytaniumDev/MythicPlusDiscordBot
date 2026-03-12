@@ -12,6 +12,14 @@ const lobbyData = {
 test.describe('Player Modal Screenshots', () => {
   test.use({ viewport: { width: 600, height: 800 } });
 
+  test('Identity selector — select yourself prompt', async ({ page }) => {
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('#view-lobby')).toBeVisible();
+    // No Discord SDK → manual identity selector shown
+    await expect(page.locator('.identity-label')).toHaveText('Select yourself to highlight your group:');
+    await expect(page.locator('.identity-chips .identity-chip')).toHaveCount(mockPlayers.length);
+  });
+
   test('Click player chip opens modal', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();

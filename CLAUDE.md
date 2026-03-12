@@ -30,8 +30,14 @@ cd activity && npm ci                   # Install frontend deps
 npm run dev                             # Dev server
 npm run build                           # Production build
 npm run typecheck                       # TypeScript check
-npx playwright test                     # E2E tests
+./scripts/playwright-docker.sh                     # E2E tests (Docker, from project root)
+./scripts/playwright-docker.sh --update-snapshots  # Regenerate screenshots
 ```
+
+**Playwright tests MUST run in Docker** (`./scripts/playwright-docker.sh`).
+Never run `npx playwright test` directly — screenshots are pixel-compared with
+zero tolerance and will differ outside the Docker container due to OS-level font
+rendering differences. The config enforces this with a `PLAYWRIGHT_TEST` env guard.
 
 ## Architecture Overview
 

@@ -2,6 +2,12 @@ import { useCallback } from 'react';
 import { useAppStore } from '../store/store';
 import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
+import { firestoreService } from '../services/firestoreService';
+import { demoService } from '../services/demoService';
+
+function getSessionService() {
+  return useAppStore.getState().isDemoMode ? demoService : firestoreService;
+}
 
 function stripDots(s: string): string {
   return s.replace(/\./g, '');
@@ -13,6 +19,7 @@ function getIdentityStorageKey(guildId: string | null): string {
 
 export function useIdentity() {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const currentPlayerName = useAppStore((s) => s.currentPlayerName);
   const identityResolved = useAppStore((s) => s.identityResolved);
 
   const resolveIdentity = useCallback(async (players: WoWPlayer[]) => {
@@ -34,6 +41,9 @@ export function useIdentity() {
       if (match) {
         useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
         useAppStore.getState().setIdentityResolved(true);
+        if (match.discordId) {
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
+        }
         return;
       }
     }
@@ -48,6 +58,7 @@ export function useIdentity() {
           useAppStore.getState().setIdentity(match.discordId, match.name);
           useAppStore.getState().setIdentityResolved(true);
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
           return;
         }
       }
@@ -61,17 +72,42 @@ export function useIdentity() {
         useAppStore.getState().setIdentityResolved(true);
         if (match.discordId) {
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
         }
         return;
       }
     }
 
-    // No match found — identity remains unresolved (chips won't highlight)
+    // No match found — identity selector will show in lobby
+  }, []);
+
+  const selectPlayer = useCallback((player: WoWPlayer) => {
+    const guildId = useAppStore.getState().currentGuildId;
+    useAppStore.getState().setIdentity(player.discordId ?? null, player.name);
+    useAppStore.getState().setIdentityResolved(true);
+    if (player.discordId) {
+      localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
+      getSessionService().claimPlayer(player.discordId).catch(console.error);
+    }
+  }, []);
+
+  const clearIdentity = useCallback(() => {
+    const state = useAppStore.getState();
+    const guildId = state.currentGuildId;
+    const previousId = state.currentPlayerId;
+    localStorage.removeItem(getIdentityStorageKey(guildId));
+    state.resetIdentity();
+    if (previousId) {
+      getSessionService().unclaimPlayer(previousId).catch(console.error);
+    }
   }, []);
 
   return {
     resolveIdentity,
+    selectPlayer,
+    clearIdentity,
     currentPlayerId,
+    currentPlayerName,
     identityResolved,
   };
 }

@@ -346,6 +346,39 @@ test.describe('Home View Tests', () => {
   });
 });
 
+// ── My Group Highlight Tests ─────────────────────────────────
+// Tytanium (discordId 100000000000000007) is in Group 2
+const resultsWithIdentityData = {
+  ...resultsData,
+  identity: { id: '100000000000000007', name: 'Tytanium' },
+};
+
+test.describe('My Group Highlight', () => {
+  test.describe('Desktop (1280x720)', () => {
+    test.use({ viewport: VIEWPORTS.desktop });
+
+    test('Results with highlighted group', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
+      await expect(page.locator('#view-results')).toBeVisible();
+      await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      await expect(page).toHaveScreenshot('results-my-group-1280x720.png');
+    });
+  });
+
+  test.describe('Phone Portrait (420x700)', () => {
+    test.use({ viewport: VIEWPORTS.phonePortrait });
+
+    test('Results with highlighted group', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
+      await expect(page.locator('#view-results')).toBeVisible();
+      await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      await expect(page).toHaveScreenshot('results-my-group-420x700.png');
+    });
+  });
+});
+
 // ── Grid Mode Tests ──────────────────────────────────────────
 test.describe('Grid Mode Tests', () => {
   test.use({ viewport: VIEWPORTS.desktop });

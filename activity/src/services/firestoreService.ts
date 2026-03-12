@@ -1,4 +1,4 @@
-import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
@@ -236,6 +236,20 @@ class FirestoreSessionService implements SessionService {
       groups: channelData.groups,
       createdAt: serverTimestamp(),
     });
+  }
+
+  async claimPlayer(playerId: string): Promise<void> {
+    const { currentChannelId } = useAppStore.getState();
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
+    await updateDoc(docRef, { claimedPlayers: arrayUnion(playerId) });
+  }
+
+  async unclaimPlayer(playerId: string): Promise<void> {
+    const { currentChannelId } = useAppStore.getState();
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
+    await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
   }
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {

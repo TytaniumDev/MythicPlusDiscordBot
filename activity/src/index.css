@@ -505,6 +505,7 @@ body {
 .role-column-header.unassigned { color: var(--text-secondary); border-color: var(--text-secondary); }
 
 .player-chip {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -616,6 +617,82 @@ body {
 .player-chip.is-me {
   border-color: var(--color-gold);
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
+}
+
+/* ── Player Chip: Claimed checkmark ── */
+.claimed-check {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  color: #2ecc71;
+  filter: drop-shadow(0 0 2px rgba(46, 204, 113, 0.4));
+}
+
+/* ── Identity Selector ── */
+.identity-selector {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.identity-selector .identity-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.identity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.identity-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family);
+}
+
+.identity-chip:hover {
+  border-color: var(--color-gold);
+  background: var(--bg-card-hover);
+}
+
+.identity-current {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.identity-current .identity-name {
+  font-weight: 700;
+  color: var(--color-gold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.identity-current .identity-name:hover {
+  text-decoration-color: var(--color-gold);
 }
 
 /* ── Role Editor (used inside PlayerModal) ── */
@@ -1109,6 +1186,14 @@ body {
 
 .group-card .group-role .role-name {
   color: var(--text-primary);
+}
+
+/* Highlighted group card — "your" group */
+.group-card.is-my-group,
+.group-card-compact.is-my-group {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
 }
 
 .group-card-clickable {

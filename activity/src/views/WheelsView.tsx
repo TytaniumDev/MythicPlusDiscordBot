@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
@@ -30,6 +31,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   const service = useSessionService();
   const isCarousel = useIsCarouselMode();
+
+  const players = channelData?.players || [];
+  useIdentityResolver(players);
   const isCompact = useIsCompactPanel();
   const gridRef = useRef<WheelsGridRef>(null);
 
