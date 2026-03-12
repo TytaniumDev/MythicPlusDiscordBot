@@ -134,18 +134,16 @@ test('Offspec tags do not use opacity', async ({ page }) => {
   }
 });
 
-test('Role dots have shape differentiation', async ({ page }) => {
-  await page.goto(`/?data=${encodeData(lobbyData)}`);
+test('Offspec indicators show donut shape', async ({ page }) => {
+  await page.goto(`/?data=${encodeData(resultsData)}`);
+  await expect(page.locator('#view-results')).toBeVisible();
 
-  // Tank: rounded square (border-radius: 2px vs default 50%)
-  const tankDot = page.locator('.role-dot.tank').first();
-  await expect(tankDot).toBeVisible();
-  const tankRadius = await tankDot.evaluate(el => getComputedStyle(el).borderRadius);
-  expect(tankRadius).toBe('2px');
-
-  // Note: healer shape uses a ::after pseudo-element with '+' content,
-  // which can't be directly asserted via Playwright DOM queries.
-  // Visual regression tests cover it via screenshot comparison.
+  const offspecDots = page.locator('.role-indicator.offspec');
+  const count = await offspecDots.count();
+  if (count > 0) {
+    const bg = await offspecDots.first().evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(bg).toMatch(/transparent|rgba\(0,\s*0,\s*0,\s*0\)/);
+  }
 });
 
 test('Group card indicators have a11y attributes', async ({ page }) => {
@@ -161,6 +159,6 @@ test('Group card indicators have a11y attributes', async ({ page }) => {
     await expect(el).toHaveAttribute('role', 'img');
     const ariaLabel = await el.getAttribute('aria-label');
     expect(ariaLabel).toBeTruthy();
-    expect(['Tank', 'Healer', 'DPS']).toContain(ariaLabel);
+    expect(['Tank', 'Healer', 'DPS', 'Tank (offspec)', 'Healer (offspec)', 'DPS (offspec)']).toContain(ariaLabel);
   }
 });

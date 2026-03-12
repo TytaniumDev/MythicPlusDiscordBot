@@ -65,13 +65,10 @@ async function init() {
     if (discordContext) {
       currentGuildId = discordContext.guildId;
       discordChannelId = discordContext.channelId;
-      console.log('[Wheelson] Discord SDK context:', discordContext);
     } else {
       console.warn('[Wheelson] Discord SDK returned null context');
     }
   }
-
-  console.log('[Wheelson] Resolved guildId:', currentGuildId, 'channelId:', urlChannelId || discordChannelId);
 
   const store = useAppStore.getState();
 

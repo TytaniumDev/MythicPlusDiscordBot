@@ -66,3 +66,9 @@ Any future updates to README must preserve this skeleton.
 1.  **Documentation Entry Points:** `CONTRIBUTING.md` is strictly the primary document for *human* developers. Instructions for *AI agents* belong exclusively in `AGENTS.md`. These boundaries must be explicit to prevent confusion.
 2.  **Explicit Standard Definitions:** Coding standards (e.g., Google-style docstrings, type hints) must be explicitly listed in `CONTRIBUTING.md` to prevent "Documentation Drift" where codebase reality outpaces the onboarding guide.
 3.  **CI Linkage:** Deep-dive security or CI rules (like preventing secret leaks in GitHub Actions) should be placed in dedicated files (e.g., `docs/CI_STANDARDS.md`), but they *must* be linked from `CONTRIBUTING.md` so new contributors are aware they exist.
+
+### [2024-05-25] Shared CI Workflows and Drift
+**Context:** Documentation referenced a local Python script (`scripts/check-workflow-secrets.py`) for security checks, but the script had been removed in favor of a shared, remote GitHub Action workflow (`TytaniumDev/.github/...`).
+**Learning:**
+1.  **Shared Workflow Dependencies:** When CI logic is abstracted into shared workflows, local documentation can easily become stale ("Documentation Drift").
+2.  **Verification of external dependencies:** When auditing documentation, always verify that referenced tools, scripts, or workflows actually exist locally, or are correctly referenced as external/shared dependencies. Do not assume a script exists just because the documentation says it does.

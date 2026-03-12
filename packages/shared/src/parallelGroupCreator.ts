@@ -58,10 +58,15 @@ export function createMythicPlusGroups(
 
   const maximumPossibleGroups = Math.floor(players.length / 5);
 
-  // Tanks
+  // Tanks — partition offtanks so healer-capable players are used last
   const mainTanks = shuffle(players.filter((p) => p.tankMain));
-  const offTanks = shuffle(players.filter((p) => p.offtank && !p.tankMain));
-  const availableTanks = [...mainTanks, ...offTanks];
+  const offTanks = shuffle(
+    players.filter((p) => p.offtank && !p.tankMain && !p.healerMain && !p.offhealer),
+  );
+  const offTanksWithHeal = shuffle(
+    players.filter((p) => p.offtank && !p.tankMain && (p.healerMain || p.offhealer)),
+  );
+  const availableTanks = [...mainTanks, ...offTanks, ...offTanksWithHeal];
 
   // Healers
   const mainHealers = shuffle(players.filter((p) => p.healerMain));
@@ -88,6 +93,7 @@ export function createMythicPlusGroups(
       removeFromList(availableTanks, player);
     } else if (player.offtank) {
       removeFromList(offTanks, player);
+      removeFromList(offTanksWithHeal, player);
       removeFromList(availableTanks, player);
     }
 
@@ -159,134 +165,161 @@ export function createMythicPlusGroups(
     groups.push(new WoWGroup());
   }
 
-  // Fill out each full group in stages
-  // Grab a tank
-  for (const currentGroup of groups) {
-    currentGroup.tank = grabNextAvailablePlayer(availableTanks, currentGroup);
-  }
-
-  // Fill bloodlust spot next because no tanks have bloodlust
-  for (const currentGroup of groups) {
-    if (!currentGroup.hasLust) {
-      const lustPlayer = grabNextAvailablePlayer(
-        lustPlayers.filter((p) => !isInList(availableTanks, p)),
-        currentGroup,
-      );
-
-      if (lustPlayer !== null) {
-        if (lustPlayer.healerMain || (offhealersToGrab > 0 && lustPlayer.offhealer)) {
-          currentGroup.healer = lustPlayer;
-          if (lustPlayer.offhealer) offhealersToGrab--;
-        } else if (lustPlayer.dpsMain) {
-          currentGroup.dps.push(lustPlayer);
-        }
-      }
+  function fillTanks(): void {
+    for (const currentGroup of groups) {
+      currentGroup.tank = grabNextAvailablePlayer(availableTanks, currentGroup);
     }
   }
 
-  // Now grab a brez if we don't have one
-  for (const currentGroup of groups) {
-    if (!currentGroup.hasBrez) {
-      let brezPlayer: WoWPlayer | null;
-      if (currentGroup.healer !== null) {
-        // We have a healer already, so grab a dps brez
-        brezPlayer = grabNextAvailablePlayer(
-          brezPlayers.filter(
-            (p) => !isInList(availableTanks, p) && !isInList(availableHealers, p),
-          ),
+  function fillLust(): void {
+    for (const currentGroup of groups) {
+      if (!currentGroup.hasLust) {
+        const lustPlayer = grabNextAvailablePlayer(
+          lustPlayers.filter((p) => !isInList(availableTanks, p)),
           currentGroup,
         );
-      } else {
-        // We don't have a healer, so grab any brez
-        brezPlayer = grabNextAvailablePlayer(
-          brezPlayers.filter((p) => !isInList(availableTanks, p)),
-          currentGroup,
-        );
-      }
 
-      if (brezPlayer !== null) {
-        if (brezPlayer.healerMain || (offhealersToGrab > 0 && brezPlayer.offhealer)) {
-          currentGroup.healer = brezPlayer;
-          if (brezPlayer.offhealer) offhealersToGrab--;
-        } else if (brezPlayer.dpsMain) {
-          currentGroup.dps.push(brezPlayer);
+        if (lustPlayer !== null) {
+          if (lustPlayer.healerMain || (offhealersToGrab > 0 && lustPlayer.offhealer)) {
+            currentGroup.healer = lustPlayer;
+            if (lustPlayer.offhealer) offhealersToGrab--;
+          } else if (lustPlayer.dpsMain) {
+            currentGroup.dps.push(lustPlayer);
+          }
         }
       }
     }
   }
 
-  // If we still don't have a healer, grab one now
-  for (const currentGroup of groups) {
-    if (currentGroup.healer === null) {
-      const mainHealer = grabNextAvailablePlayer([...mainHealers], currentGroup);
-      if (mainHealer !== null) {
-        currentGroup.healer = mainHealer;
-      } else {
-        const offHealer = grabNextAvailablePlayer([...availableHealers], currentGroup);
-        if (offHealer !== null) {
-          currentGroup.healer = offHealer;
-        }
-      }
-    }
-  }
-
-  // Try to grab a ranged dps if we don't have one
-  for (const currentGroup of groups) {
-    if (!currentGroup.hasRanged) {
-      const rangedDps = grabNextAvailablePlayer(
-        availableDps.filter((p) => p.ranged),
-        currentGroup,
-      );
-      if (rangedDps !== null) {
-        currentGroup.dps.push(rangedDps);
-      }
-    }
-  }
-
-  // Fill the rest of the dps slots with anyone left
-  for (const currentGroup of groups) {
-    while (currentGroup.dps.length < 3) {
-      const dpsPlayer = grabNextAvailablePlayer(availableDps, currentGroup);
-      if (dpsPlayer === null) break;
-      currentGroup.dps.push(dpsPlayer);
-    }
-  }
-
-  // Handle remainder players
-  while (usedPlayers.size < players.length) {
-    const remainderGroup = new WoWGroup();
-    while (usedPlayers.size < players.length) {
-      const player = grabNextAvailablePlayer(
-        players.filter((p) => !usedPlayers.has(p.name)),
-        remainderGroup,
-      );
-      if (player !== null) {
-        if (remainderGroup.tank === null && (player.tankMain || player.offtank)) {
-          remainderGroup.tank = player;
-          continue;
-        } else if (
-          remainderGroup.healer === null &&
-          (player.healerMain || player.offhealer)
-        ) {
-          remainderGroup.healer = player;
-          continue;
-        } else if (
-          remainderGroup.dps.length < 3 &&
-          (player.dpsMain || player.offdps)
-        ) {
-          remainderGroup.dps.push(player);
-          continue;
+  function fillBrez(): void {
+    for (const currentGroup of groups) {
+      if (!currentGroup.hasBrez) {
+        let brezPlayer: WoWPlayer | null;
+        if (currentGroup.healer !== null) {
+          // We have a healer already, so grab a dps brez
+          brezPlayer = grabNextAvailablePlayer(
+            brezPlayers.filter(
+              (p) => !isInList(availableTanks, p) && !isInList(availableHealers, p),
+            ),
+            currentGroup,
+          );
         } else {
-          // Everything is full, make another group
-          usedPlayers.delete(player.name);
+          // We don't have a healer, so grab any brez
+          brezPlayer = grabNextAvailablePlayer(
+            brezPlayers.filter((p) => !isInList(availableTanks, p)),
+            currentGroup,
+          );
+        }
+
+        if (brezPlayer !== null) {
+          if (brezPlayer.healerMain || (offhealersToGrab > 0 && brezPlayer.offhealer)) {
+            currentGroup.healer = brezPlayer;
+            if (brezPlayer.offhealer) offhealersToGrab--;
+          } else if (brezPlayer.dpsMain) {
+            currentGroup.dps.push(brezPlayer);
+          }
+        }
+      }
+    }
+  }
+
+  function fillHealers(): void {
+    for (const currentGroup of groups) {
+      if (currentGroup.healer === null) {
+        const mainHealer = grabNextAvailablePlayer([...mainHealers], currentGroup);
+        if (mainHealer !== null) {
+          currentGroup.healer = mainHealer;
+        } else {
+          const offHealer = grabNextAvailablePlayer([...availableHealers], currentGroup);
+          if (offHealer !== null) {
+            currentGroup.healer = offHealer;
+          }
+        }
+      }
+    }
+  }
+
+  function fillRanged(): void {
+    for (const currentGroup of groups) {
+      if (!currentGroup.hasRanged) {
+        const rangedDps = grabNextAvailablePlayer(
+          availableDps.filter((p) => p.ranged),
+          currentGroup,
+        );
+        if (rangedDps !== null) {
+          currentGroup.dps.push(rangedDps);
+        }
+      }
+    }
+  }
+
+  function fillRemainingDps(): void {
+    for (const currentGroup of groups) {
+      while (currentGroup.dps.length < 3) {
+        const dpsPlayer = grabNextAvailablePlayer(availableDps, currentGroup);
+        if (dpsPlayer === null) break;
+        currentGroup.dps.push(dpsPlayer);
+      }
+    }
+  }
+
+  function handleRemainders(): void {
+    while (usedPlayers.size < players.length) {
+      const remainderGroup = new WoWGroup();
+      while (usedPlayers.size < players.length) {
+        const player = grabNextAvailablePlayer(
+          players.filter((p) => !usedPlayers.has(p.name)),
+          remainderGroup,
+        );
+        if (player !== null) {
+          let placed = false;
+
+          // Priority 1: place by main role
+          if (player.tankMain && remainderGroup.tank === null) {
+            remainderGroup.tank = player;
+            placed = true;
+          } else if (player.healerMain && remainderGroup.healer === null) {
+            remainderGroup.healer = player;
+            placed = true;
+          } else if (player.dpsMain && remainderGroup.dps.length < 3) {
+            remainderGroup.dps.push(player);
+            placed = true;
+          }
+          // Priority 2: place by offspec
+          else if (player.offtank && remainderGroup.tank === null) {
+            remainderGroup.tank = player;
+            placed = true;
+          } else if (player.offhealer && remainderGroup.healer === null) {
+            remainderGroup.healer = player;
+            placed = true;
+          } else if (player.offdps && remainderGroup.dps.length < 3) {
+            remainderGroup.dps.push(player);
+            placed = true;
+          }
+
+          if (placed) {
+            continue;
+          } else {
+            // Everything is full, make another group
+            usedPlayers.delete(player.name);
+            break;
+          }
+        } else {
           break;
         }
-      } else {
-        break;
       }
+      groups.push(remainderGroup);
     }
-    groups.push(remainderGroup);
   }
+
+  // Fill out each full group in stages
+  fillTanks();
+  fillLust();
+  fillBrez();
+  fillHealers();
+  fillRanged();
+  fillRemainingDps();
+  handleRemainders();
 
   lastGroups.set(guildId, groups);
   return groups;

@@ -29,7 +29,7 @@ type FirebaseQuery = {
 
 type FirebaseDocRef = {
   get: () => Promise<FirebaseDocSnapshot>;
-  set: (data: Record<string, unknown>) => Promise<void>;
+  set: (data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
   update: (data: Record<string, unknown>) => Promise<void>;
   delete: () => Promise<void>;
   onSnapshot: (callback: (...args: unknown[]) => void) => unknown;
@@ -51,15 +51,17 @@ export interface IFirebaseService {
   db: FirebaseDb | null;
   isAvailable(): boolean;
   getOrCreateGuildDoc(
-    guildId: number,
+    guildId: string,
     guildName?: string,
     guildIconUrl?: string,
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
+  getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]>;
+  savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void>;
   getOrCreateChannelDoc(
-    channelId: number,
-    guildId: number,
+    channelId: string,
+    guildId: string,
     channelName: string,
     debug?: boolean,
   ): Promise<string>;
@@ -151,13 +153,13 @@ export class FirebaseService implements IFirebaseService {
   // Guild Doc Operations
 
   async getOrCreateGuildDoc(
-    guildId: number,
+    guildId: string,
     guildName?: string,
     guildIconUrl?: string,
   ): Promise<string> {
     if (!this.db) throw new Error('Firebase is not initialized.');
 
-    const docId = String(guildId);
+    const docId = guildId;
     const docRef = this.db.collection('guilds').doc(docId);
 
     const guildFields: Record<string, unknown> = {};
@@ -199,14 +201,14 @@ export class FirebaseService implements IFirebaseService {
   // Channel Doc Operations
 
   async getOrCreateChannelDoc(
-    channelId: number,
-    guildId: number,
+    channelId: string,
+    guildId: string,
     channelName: string,
     debug = false,
   ): Promise<string> {
     if (!this.db) throw new Error('Firebase is not initialized.');
 
-    const docId = String(channelId);
+    const docId = channelId;
     const docRef = this.db.collection('channels').doc(docId);
 
     const doc = await docRef.get();
@@ -214,7 +216,7 @@ export class FirebaseService implements IFirebaseService {
       await docRef.set({
         channelId: docId,
         channelName,
-        guildId: String(guildId),
+        guildId,
         status: 'lobby',
         players: [],
         groups: [],
@@ -346,7 +348,7 @@ export class FirebaseService implements IFirebaseService {
         for (const change of snapshot.docChanges()) {
           if (change.type === 'modified') {
             const data = change.doc.data();
-            if (data && data.status === 'completed') {
+            if (data && (data.status === 'completed' || data.status === 'lobby')) {
               callback(change.doc.id, data);
             }
           }
@@ -358,6 +360,21 @@ export class FirebaseService implements IFirebaseService {
     );
 
     return { unsubscribe: unsubscribe as () => void };
+  }
+
+  async getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]> {
+    if (!this.db) return [];
+    const docRef = this.db.collection('guilds').doc(guildId);
+    const doc = await docRef.get();
+    if (!doc.exists) return [];
+    const data = doc.data();
+    return (data?.previousGroups as Record<string, unknown>[] | undefined) ?? [];
+  }
+
+  async savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void> {
+    if (!this.db) return;
+    const docRef = this.db.collection('guilds').doc(guildId);
+    await docRef.set({ previousGroups: groups }, { merge: true });
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {
@@ -401,19 +418,22 @@ export class FirebaseService implements IFirebaseService {
     const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
     let batch = db.batch();
     let count = 0;
+    const promises: Promise<unknown>[] = [];
 
     for (const doc of snapshot.docs) {
       batch.delete(doc.ref);
       count++;
       if (count % 500 === 0) {
-        await batch.commit();
+        promises.push(batch.commit());
         batch = db.batch();
       }
     }
 
     if (count % 500 !== 0) {
-      await batch.commit();
+      promises.push(batch.commit());
     }
+
+    await Promise.all(promises);
 
     if (count > 0) {
       logger.info(
@@ -432,19 +452,22 @@ export class FirebaseService implements IFirebaseService {
 
     let batch = db.batch();
     let count = 0;
+    const promises: Promise<unknown>[] = [];
 
     for (const docSnap of snapshot.docs) {
       batch.delete(docSnap.ref);
       count++;
       if (count % 500 === 0) {
-        await batch.commit();
+        promises.push(batch.commit());
         batch = db.batch();
       }
     }
 
     if (count % 500 !== 0) {
-      await batch.commit();
+      promises.push(batch.commit());
     }
+
+    await Promise.all(promises);
 
     if (count > 0) {
       logger.info(`Deleted all ${count} doc(s) from ${collection} collection`);

@@ -1,4 +1,4 @@
-import type { WoWGroup } from '@mythicplus/shared';
+import { generateInviteCommand, type WoWGroup } from '@mythicplus/shared';
 import { PLACEHOLDER_CHAR } from './config.js';
 import { getMaskedName, showShortTyping } from './utils.js';
 
@@ -41,17 +41,23 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
   const brezPlayer = allPlayers.find((p) => p.hasBrez)?.name ?? 'None';
   const lustPlayer = allPlayers.find((p) => p.hasLust)?.name ?? 'None';
 
-  return {
-    title: `Group ${groupNumber}`,
-    color: GOLD,
-    fields: [
-      { name: 'Tank', value: tankName },
-      { name: 'Healer', value: healerName },
-      { name: 'DPS', value: `${dps1Name}, ${dps2Name}, ${dps3Name}` },
-      { name: 'Battle Res', value: brezPlayer, inline: true },
-      { name: 'Bloodlust', value: lustPlayer, inline: true },
-    ],
-  };
+  const fields: EmbedField[] = [
+    { name: 'Tank', value: tankName },
+    { name: 'Healer', value: healerName },
+    { name: 'DPS', value: `${dps1Name}, ${dps2Name}, ${dps3Name}` },
+    { name: 'Battle Res', value: brezPlayer, inline: true },
+    { name: 'Bloodlust', value: lustPlayer, inline: true },
+  ];
+
+  const inviteCmd = generateInviteCommand(group.toDict());
+  if (inviteCmd) {
+    const formatted = inviteCmd.includes('\n')
+      ? `\`\`\`\n${inviteCmd}\n\`\`\``
+      : `\`${inviteCmd}\``;
+    fields.push({ name: 'Invite Command', value: formatted });
+  }
+
+  return { title: `Group ${groupNumber}`, color: GOLD, fields };
 }
 
 interface TypingChannel {
@@ -129,8 +135,17 @@ export async function announceGroup(
     embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 3, 'Battle Res', brezPlayer),
     });
-    await embedMessage.edit({
+    embedMessage = await embedMessage.edit({
       embed: setFieldAt(embed, 4, 'Bloodlust', lustPlayer),
     });
+
+    const inviteCmd = generateInviteCommand(group.toDict());
+    if (inviteCmd) {
+      const formatted = inviteCmd.includes('\n')
+        ? `\`\`\`\n${inviteCmd}\n\`\`\``
+        : `\`${inviteCmd}\``;
+      embed.fields.push({ name: 'Invite Command', value: formatted });
+      await embedMessage.edit({ embed });
+    }
   }
 }

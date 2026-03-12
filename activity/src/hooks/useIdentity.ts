@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useAppStore } from '../store/store';
 import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
-import { hasAnyRole } from '../lib/roles';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
 
@@ -28,14 +27,7 @@ export function useIdentity() {
 
     if (state.identityResolved && state.currentPlayerId) {
       const stillHere = players.some((p) => p.discordId === state.currentPlayerId);
-      if (stillHere) {
-        // Check if editor should show
-        const player = players.find((p) => p.discordId === state.currentPlayerId);
-        if (player && !state.roleEditorManuallyToggled) {
-          useAppStore.getState().setRoleEditorVisible(!hasAnyRole(player));
-        }
-        return;
-      }
+      if (stillHere) return;
       // Player left — re-resolve
       useAppStore.getState().resetIdentity();
     }
@@ -52,9 +44,6 @@ export function useIdentity() {
         if (match.discordId) {
           getSessionService().claimPlayer(match.discordId).catch(console.error);
         }
-        if (!useAppStore.getState().roleEditorManuallyToggled) {
-          useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
-        }
         return;
       }
     }
@@ -70,9 +59,6 @@ export function useIdentity() {
           useAppStore.getState().setIdentityResolved(true);
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
           getSessionService().claimPlayer(match.discordId).catch(console.error);
-          if (!useAppStore.getState().roleEditorManuallyToggled) {
-            useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
-          }
           return;
         }
       }
@@ -88,14 +74,11 @@ export function useIdentity() {
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
           getSessionService().claimPlayer(match.discordId).catch(console.error);
         }
-        if (!useAppStore.getState().roleEditorManuallyToggled) {
-          useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
-        }
         return;
       }
     }
 
-    // Manual fallback — identity selector will show
+    // No match found — identity selector will show in lobby
   }, []);
 
   const selectPlayer = useCallback((player: WoWPlayer) => {
@@ -105,9 +88,6 @@ export function useIdentity() {
     if (player.discordId) {
       localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
       getSessionService().claimPlayer(player.discordId).catch(console.error);
-    }
-    if (!useAppStore.getState().roleEditorManuallyToggled) {
-      useAppStore.getState().setRoleEditorVisible(!hasAnyRole(player));
     }
   }, []);
 

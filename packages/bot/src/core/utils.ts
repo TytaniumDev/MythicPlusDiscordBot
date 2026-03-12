@@ -15,7 +15,7 @@ import { getPreferenceService } from './preferenceService.js';
 export interface DiscordMember {
   nick?: string | null;
   global_name?: string | null;
-  id: string | number;
+  id: string;
   toString(): string;
 }
 
@@ -70,10 +70,11 @@ export function getPlayerFromMember(member: DiscordMember): WoWPlayer {
   if (!savedRoles) {
     savedRoles = prefSvc.getPreferenceByNameSync(name);
   }
+  const inGameName = prefSvc.getInGameNameSync(discordId);
   if (savedRoles) {
-    return WoWPlayer.create(name, savedRoles, discordId);
+    return WoWPlayer.create(name, savedRoles, discordId, inGameName);
   }
-  return WoWPlayer.fromFlags({ name, discordId });
+  return WoWPlayer.fromFlags({ name, discordId, inGameName });
 }
 
 export function getPlayerList(members: DiscordMember[]): WoWPlayer[] {

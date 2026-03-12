@@ -10,11 +10,13 @@ import {
   TankWarrior,
   TankDeathKnight,
   HealerDruid,
+  HealerMonk,
   HealerPriest,
   Mage,
   Paladin,
   BalanceDruid,
   FeralDruid,
+  Rogue,
   Warrior,
 } from './prebuiltClasses.js';
 
@@ -204,6 +206,81 @@ describe('GroupCreator', () => {
     expect(groups.length).toBe(4);
     expect(groups[2].size).toBe(1);
     expect(groups[3].size).toBe(2);
+  });
+
+  it('does not consume healer-capable offtank when non-healer offtank available', () => {
+    // Reproduction of production bug: 15 players, Quill (healer main + offtank)
+    // was consumed as tank instead of jim (melee main + offtank only).
+    // Run multiple trials to account for shuffle nondeterminism.
+    for (let trial = 0; trial < 20; trial++) {
+      clear();
+      const players = [
+        WoWPlayer.create('Temma', ['Tank', 'Melee Offspec', 'Brez']),
+        WoWPlayer.create('Gazzi', ['Tank', 'Brez']),
+        WoWPlayer.create('Quill', [
+          'Healer',
+          'Tank Offspec',
+          'Ranged Offspec',
+          'Melee Offspec',
+          'Brez',
+        ]),
+        WoWPlayer.create('Sorovar', ['Healer']),
+        WoWPlayer.create('Vanyali', ['Ranged']),
+        WoWPlayer.create('Tytaniormu', ['Ranged', 'Lust']),
+        WoWPlayer.create('Heretofore', ['Ranged', 'Lust']),
+        WoWPlayer.create('Poppybrosjr', ['Ranged', 'Lust']),
+        WoWPlayer.create('Volkareth', ['Ranged', 'Healer Offspec', 'Lust']),
+        WoWPlayer.create('John G', ['Melee', 'Brez']),
+        WoWPlayer.create('jim', ['Melee', 'Tank Offspec']),
+        WoWPlayer.create('Raxef', ['Melee']),
+        WoWPlayer.create('Mickey', ['Melee']),
+        WoWPlayer.create('Khurri', ['Melee', 'Brez']),
+        WoWPlayer.create('Blueshift', ['Ranged', 'Lust']),
+      ];
+      const groups = createMythicPlusGroups(players);
+
+      // With 15 players, should form exactly 3 complete groups (no remainders)
+      expect(groups.length).toBe(3);
+      const completeGroups = groups.filter((g) => g.isComplete);
+      expect(completeGroups.length).toBe(3);
+
+      // Healer main should never be placed as tank
+      for (const group of groups) {
+        if (group.tank !== null) {
+          expect(group.tank.healerMain).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('remainder places healer main as healer not tank even with offtank', () => {
+    // 7 players = 1 full group + 2 remainder.
+    // The remainder healer main with offtank should be placed as healer.
+    for (let trial = 0; trial < 20; trial++) {
+      clear();
+      const players = [
+        TankWarrior('Tank1'),
+        HealerPriest('Healer1'),
+        Mage('Mage1'),
+        Rogue('Rogue1'),
+        Rogue('Rogue2'),
+        // Remainder players:
+        HealerMonk('HealerOfftank', { offtank: true }),
+        Rogue('PureDPS'),
+      ];
+      const groups = createMythicPlusGroups(players);
+
+      // HealerOfftank should never be placed as tank
+      for (const group of groups) {
+        if (group.tank?.name === 'HealerOfftank') {
+          expect.fail('Healer main was placed as tank in remainder');
+        }
+      }
+
+      // HealerOfftank should be placed as healer in one of the groups
+      const asHealer = groups.some((g) => g.healer?.name === 'HealerOfftank');
+      expect(asHealer).toBe(true);
+    }
   });
 
   it('avoids old teammates when possible', () => {

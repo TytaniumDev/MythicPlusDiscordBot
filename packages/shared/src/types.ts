@@ -7,6 +7,7 @@ export interface WoWPlayerDict {
   [key: string]: unknown;
   name: string;
   discordId: string;
+  inGameName?: string;
   mainRole: Role | null;
   offspecs: Role[];
   utilities: Utility[];

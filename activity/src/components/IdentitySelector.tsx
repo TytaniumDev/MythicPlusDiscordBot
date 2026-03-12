@@ -1,5 +1,4 @@
 import { WoWPlayer } from '../types';
-import { useAppStore } from '../store/store';
 import { useIdentity } from '../hooks/useIdentity';
 
 interface IdentitySelectorProps {
@@ -8,7 +7,6 @@ interface IdentitySelectorProps {
 
 export function IdentitySelector({ players }: IdentitySelectorProps) {
   const { selectPlayer, clearIdentity, identityResolved, currentPlayerName } = useIdentity();
-  const roleEditorVisible = useAppStore((s) => s.roleEditorVisible);
 
   if (!identityResolved) {
     return (
@@ -40,15 +38,6 @@ export function IdentitySelector({ players }: IdentitySelectorProps) {
           {currentPlayerName ?? 'Unknown'}
         </button>
       </div>
-      <button
-        className="btn btn-secondary btn-change-roles"
-        onClick={() => {
-          useAppStore.getState().setRoleEditorManuallyToggled(true);
-          useAppStore.getState().setRoleEditorVisible(!roleEditorVisible);
-        }}
-      >
-        {roleEditorVisible ? 'Hide Roles' : 'Change Roles'}
-      </button>
     </div>
   );
 }

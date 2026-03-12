@@ -19,6 +19,7 @@ export interface GuildData {
   guildName?: string;
   guildIconUrl?: string;
   voiceChannels: VoiceChannel[];
+  previousGroups?: Record<string, unknown>[];
   refreshRequest?: unknown;
   createdAt: unknown;
   lastActive: unknown;

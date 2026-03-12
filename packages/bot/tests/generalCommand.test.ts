@@ -24,7 +24,7 @@ import * as config from '../src/core/config.js';
 
 function makeCtx(overrides: Partial<GeneralContext> = {}): GeneralContext {
   return {
-    guild: overrides.guild === undefined ? { id: 12345 } : overrides.guild,
+    guild: overrides.guild === undefined ? { id: '12345' } : overrides.guild,
     send: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -80,7 +80,7 @@ describe('GeneralHandler.status', () => {
     const now = Date.now() / 1000;
     handler._setStartTime(now - 60);
 
-    const ctx = makeCtx({ guild: { id: 12345 } });
+    const ctx = makeCtx({ guild: { id: '12345' } });
 
     await handler.status(ctx);
 
@@ -97,6 +97,7 @@ describe('GeneralHandler.status', () => {
 
     expect(fields['Uptime']).toBe('0:01:00');
     expect(fields['Ping']).toBe('50ms');
+    expect(fields['Commit']).toBe('[`abc1234`](https://github.com/Owner/Repo/commit/abc123456789)');
     expect(fields['System Load']).toBe('0.50, 0.40, 0.30');
     expect(embed.footer.text).toContain('Server ID: 12345');
   });

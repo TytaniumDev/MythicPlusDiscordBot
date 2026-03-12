@@ -89,6 +89,31 @@ describe('PreferenceService', () => {
     expect(refreshSvc.getPreferenceByNameSync('OldName')).toBeNull();
   });
 
+  it('stores and retrieves inGameName', async () => {
+    await svc.setPreference('456', 'Tytanium', ['Ranged'], 'Tytanium-Proudmoore');
+    expect(svc.getInGameNameSync('456')).toBe('Tytanium-Proudmoore');
+  });
+
+  it('returns empty string for missing inGameName', () => {
+    expect(svc.getInGameNameSync('nonexistent')).toBe('');
+  });
+
+  it('clears inGameName on clearPreference', async () => {
+    await svc.setPreference('789', 'Player', ['Tank'], 'Player-Sargeras');
+    expect(svc.getInGameNameSync('789')).toBe('Player-Sargeras');
+
+    await svc.clearPreference('789');
+    expect(svc.getInGameNameSync('789')).toBe('');
+  });
+
+  it('clears inGameName cache when set with empty string', async () => {
+    await svc.setPreference('999', 'Player', ['Tank'], 'Player-Sargeras');
+    expect(svc.getInGameNameSync('999')).toBe('Player-Sargeras');
+
+    await svc.setPreference('999', 'Player', ['Healer'], '');
+    expect(svc.getInGameNameSync('999')).toBe('');
+  });
+
   it('refreshes preference removes on delete', async () => {
     const mockFb = createMockFirebase(true);
     const refreshSvc = new PreferenceService(mockFb);

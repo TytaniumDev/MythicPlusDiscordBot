@@ -85,7 +85,7 @@ body {
   flex-direction: column;
   height: 100dvh;
   padding: 8px 12px;
-  overflow: hidden;
+  overflow: hidden auto;
 }
 
 .app-header {
@@ -235,7 +235,6 @@ body {
 #view-home {
   max-width: 500px;
   margin: 0 auto;
-  overflow-y: auto;
 }
 
 #view-home h2 {
@@ -325,7 +324,6 @@ body {
 #view-channels {
   max-width: 500px;
   margin: 0 auto;
-  overflow-y: auto;
 }
 
 #view-channels h2 {
@@ -413,7 +411,6 @@ body {
   max-width: 600px;
   margin: 0 auto;
   text-align: center;
-  overflow-y: auto;
 }
 
 .lobby-header {
@@ -517,7 +514,18 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
-  transition: border-color 0.2s;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.player-chip:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--bg-card-hover);
+}
+
+.player-chip:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
 }
 
 .chip-header {
@@ -659,12 +667,6 @@ body {
   background: var(--bg-card-hover);
 }
 
-.identity-chip.selected {
-  border-color: var(--color-gold);
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--color-gold);
-}
-
 .identity-current {
   display: flex;
   align-items: center;
@@ -693,114 +695,7 @@ body {
   text-decoration-color: var(--color-gold);
 }
 
-.btn-change-roles {
-  display: block;
-  margin: 8px auto 0;
-  padding: 4px 16px;
-  font-size: 0.75rem;
-}
-
-/* ── Identity Bar (compact, for wheels/results views) ── */
-.identity-bar {
-  text-align: center;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
-}
-
-.identity-bar-unresolved {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  animation: identityPulse 2s ease-in-out infinite;
-}
-
-.identity-bar-resolved {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-}
-
-.identity-bar-prompt {
-  display: block;
-  color: var(--color-gold);
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.identity-bar-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-}
-
-.identity-bar-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: var(--font-family);
-}
-
-.identity-bar-chip:hover {
-  border-color: var(--color-gold);
-  background: var(--bg-card-hover);
-}
-
-.identity-bar-label {
-  color: var(--text-secondary);
-}
-
-.identity-bar-name {
-  font-weight: 700;
-  color: var(--color-gold);
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 2px;
-  transition: text-decoration-color 0.15s;
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: inherit;
-}
-
-.identity-bar-name:hover {
-  text-decoration-color: var(--color-gold);
-}
-
-@keyframes identityPulse {
-  0%, 100% { border-color: rgba(245, 158, 11, 0.25); }
-  50% { border-color: rgba(245, 158, 11, 0.5); }
-}
-
-/* ── Role Editor ── */
-.role-editor {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  width: fit-content;
-  max-width: 400px;
-  margin: 0 auto 12px;
-}
-
-.role-editor-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-heading);
-  margin-bottom: 10px;
-  text-align: center;
-}
-
+/* ── Role Editor (used inside PlayerModal) ── */
 .role-editor-section {
   margin-bottom: 8px;
 }
@@ -824,6 +719,29 @@ body {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
+}
+
+.role-editor-input {
+  width: 100%;
+  max-width: 240px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: var(--font-family);
+}
+
+.role-editor-input:focus {
+  border-color: var(--color-gold);
+}
+
+.role-editor-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
 }
 
 .role-btn {
@@ -886,6 +804,86 @@ body {
 .role-editor-save {
   padding: 6px 24px;
   font-size: 0.8rem;
+}
+
+/* ── Player Modal ── */
+.player-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.player-modal {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: modalSlideIn 0.25s ease-out;
+}
+
+.player-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  font-family: var(--font-family);
+}
+
+.player-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.player-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.player-modal-header .role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-modal-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 #view-lobby .btn {
@@ -1166,11 +1164,18 @@ body {
   padding: 2px 0;
 }
 
-.group-card .group-role .role-indicator {
-  width: 6px;
-  height: 6px;
+.group-card .group-role .role-indicator,
+.group-card-compact .compact-role .role-indicator {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.role-indicator.offspec {
+  background: transparent;
+  border: 2px solid;
 }
 
 .group-card .group-role .role-label {
@@ -1189,6 +1194,33 @@ body {
   border-color: var(--color-gold);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
   background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
+}
+
+.group-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.group-card-clickable:hover {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 1px var(--color-gold);
+}
+
+.group-card-clickable:active {
+  transform: scale(0.98);
+}
+
+.copy-toast {
+  font-size: 0.65rem;
+  color: var(--color-success, #4caf50);
+  margin-left: 8px;
+  font-weight: 400;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.copy-toast.visible {
+  opacity: 1;
 }
 
 /* Compact group card — used in side panel at smaller sizes */
@@ -1218,13 +1250,6 @@ body {
   color: var(--text-primary);
 }
 
-.group-card-compact .compact-role .role-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .group-card-compact .compact-role .role-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1239,7 +1264,6 @@ body {
   text-align: center;
   width: 100%;
   padding: 0 16px;
-  overflow-y: auto;
 }
 
 #view-results h2 {
@@ -1249,19 +1273,17 @@ body {
 }
 
 #final-groups {
-  column-width: 220px;
-  column-gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
 #final-groups .group-card {
   padding: 16px;
-  break-inside: avoid;
-  margin-bottom: 12px;
-}
-
-#final-groups .group-card:last-child {
-  margin-bottom: 0;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 #final-groups .group-card h4 {
@@ -1507,10 +1529,9 @@ body {
     font-size: 0.7rem;
   }
 
-  /* Collapse lobby columns to single scrollable column */
+  /* Collapse lobby columns to single column */
   #player-list {
     grid-template-columns: 1fr;
-    overflow-y: auto;
   }
 
   .dps-grid {
@@ -1578,34 +1599,6 @@ body {
     width: 10px;
     height: 10px;
   }
-}
-
-/* ============================================
-   Colorblind-Friendly Role Dot Shapes
-   ============================================ */
-.role-dot.tank,
-.role-indicator.tank {
-  border-radius: 2px;
-}
-
-.role-dot.healer,
-.role-indicator.healer {
-  position: relative;
-}
-
-.role-dot.healer::after,
-.role-indicator.healer::after {
-  content: '+';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 6px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--bg-primary);
-  pointer-events: none;
 }
 
 /* ============================================

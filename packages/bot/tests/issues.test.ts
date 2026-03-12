@@ -72,7 +72,7 @@ describe('submitGithubIssueModal', () => {
       extraInfo: 'Steps',
       includeLogs: false,
       reporterName: 'TestUser',
-      reporterId: 12345,
+      reporterId: '12345',
     });
 
     expect(result.html_url).toBe('http://url');
@@ -107,7 +107,7 @@ describe('submitGithubIssueModal', () => {
         extraInfo: '',
         includeLogs: false,
         reporterName: 'TestUser',
-        reporterId: 12345,
+        reporterId: '12345',
       }),
     ).rejects.toThrow(GitHubError);
   });
