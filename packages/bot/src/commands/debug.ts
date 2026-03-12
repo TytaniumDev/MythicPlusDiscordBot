@@ -5,6 +5,7 @@ export interface DebugContext {
   guild: { id: number } | null;
   channel: { send(content: string): Promise<unknown> };
   send(content: string): Promise<unknown>;
+  authorId?: string;
 }
 
 export class DebugHandler {

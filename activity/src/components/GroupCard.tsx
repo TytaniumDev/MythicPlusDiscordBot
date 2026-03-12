@@ -59,7 +59,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
 
   const cardClass = compact ? 'group-card-compact' : 'group-card';
   const Row = compact ? CompactRoleRow : RoleRow;
-  const heading = label ?? (isMyGroup ? `Group ${index + 1} ★` : `Group ${index + 1}`);
+  const heading = label ?? (isMyGroup ? `Group ${index + 1} (Your Group)` : `Group ${index + 1}`);
 
   return (
     <div className={`${cardClass}${isMyGroup ? ' is-my-group' : ''}`}>

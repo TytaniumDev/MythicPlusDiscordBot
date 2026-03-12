@@ -45,6 +45,18 @@ describe('buildGroupEmbed', () => {
     expect(fields['Battle Res']).toBe('None');
     expect(fields['Bloodlust']).toBe('None');
   });
+
+  it('highlights group when highlightPlayerId is present', () => {
+    const tank = WoWPlayer.create('Tank', [ROLE_TANK], '123');
+    const healer = WoWPlayer.create('Healer', [ROLE_HEALER]);
+    const dps1 = WoWPlayer.create('DPS1', [ROLE_MELEE]);
+
+    const group = new WoWGroup(tank, healer, [dps1]);
+    const embed = buildGroupEmbed(group, 1, '123');
+
+    expect(embed.title).toBe('Group 1 (Your Group)');
+    expect(embed.color).toBe(0x2ecc71); // GREEN
+  });
 });
 
 describe('announceGroup', () => {

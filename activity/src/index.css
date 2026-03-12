@@ -1177,12 +1177,8 @@ body {
 .group-card.is-my-group,
 .group-card-compact.is-my-group {
   border-color: var(--color-gold);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3), inset 0 0 8px rgba(245, 158, 11, 0.05);
-}
-
-.group-card.is-my-group h4,
-.group-card-compact.is-my-group h4 {
-  color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
 }
 
 /* Compact group card — used in side panel at smaller sizes */
