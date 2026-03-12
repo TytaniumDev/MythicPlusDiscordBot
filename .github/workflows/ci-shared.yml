@@ -23,7 +23,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq lua5.1 luarocks
-          sudo luarocks install luacheck
+          luarocks install --local luacheck
+          echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
       - name: Lint addon (luacheck)
         run: cd addon && luacheck src/ tests/
 
@@ -58,6 +59,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq lua5.1 luarocks
-          sudo luarocks install busted
+          luarocks install --local busted
+          echo "$HOME/.luarocks/bin" >> $GITHUB_PATH
       - name: Test addon (busted)
         run: cd addon && busted

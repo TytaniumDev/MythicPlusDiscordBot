@@ -508,19 +508,7 @@ function MPW:HandleJoinRequest(data, sender)
     if not data.player or data.player.name ~= sender then return end
 
     -- Validate guild membership
-    local isGuildMember = false
-    local numTotal = GetNumGuildMembers()
-    for i = 1, numTotal do
-        local name = GetGuildRosterInfo(i)
-        if name then
-            local shortName = name:match("^([^%-]+)") or name
-            if shortName == sender then
-                isGuildMember = true
-                break
-            end
-        end
-    end
-    if not isGuildMember then return end
+    if not self:IsGuildMember(sender) then return end
 
     local player = MPW.Player.FromDict(data.player)
     -- Replace if already in list
