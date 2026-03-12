@@ -323,7 +323,8 @@ function MPW:CreateMythicPlusGroups(players, guildId)
                     remainderGroup.tank = player
                 elseif not remainderGroup.healer and (player:IsHealerMain() or player:IsOffhealer()) then
                     remainderGroup.healer = player
-                elseif #remainderGroup.dps < 3 and (player:IsDpsMain() or player:IsOffdps()) then
+                elseif #remainderGroup.dps < 3 then
+                    -- Accept any player as DPS (including role-less players)
                     remainderGroup.dps[#remainderGroup.dps + 1] = player
                 else
                     -- Group full, break to create another

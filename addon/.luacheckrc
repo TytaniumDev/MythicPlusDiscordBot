@@ -12,6 +12,9 @@ globals = {
 }
 
 read_globals = {
+    -- Lua globals
+    "_G",
+
     -- WoW API functions
     "C_Timer",
     "ConvertToRaid",
@@ -70,6 +73,7 @@ self = false
 -- Per-file overrides
 files["tests/**"] = {
     read_globals = {
+        "dofile",
         "describe",
         "it",
         "assert",
