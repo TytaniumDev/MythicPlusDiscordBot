@@ -26,3 +26,6 @@
 ## 2026-02-04 - [Targeted List Removal in Hot Paths]
 **Learning:** Blindly iterating over a collection of lists to remove an item (O(N*M)) is inefficient when object properties can strictly identify which lists the item belongs to (O(N*k) where k << M). In `parallel_group_creator.py`, using player role flags reduced group creation time by ~40% for large inputs.
 **Action:** When managing items across multiple classification lists, use item properties to target specific lists for removal/updates rather than scanning all lists.
+## 2026-03-12 - [O(1) Array Allocations in Group Creation loops]
+**Learning:** Found an O(N) intermediate array allocation in an inner loop for selecting players during group creation. By merging the filtering step into the selection step, we eliminate intermediate array allocations and avoid iterating through the entire list to find a single valid player.
+**Action:** Always avoid creating intermediate arrays (e.g. `filteredList`) in hot paths where a short-circuit return is possible, especially when iterating over a small subset of elements.
