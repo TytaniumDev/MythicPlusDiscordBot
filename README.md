@@ -2,12 +2,14 @@
 
 # MythicPlusDiscordBot 💎
 
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+
+<br/>
+
 [![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
-
-### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 > **The "Front Door" for your guild's Mythic+ groups.**
 > Seamlessly organize, calculate, and announce Mythic+ groups directly in Discord with interactive activities.
@@ -31,7 +33,7 @@ Get up and running in less than 5 minutes.
 2.  **Install Dependencies**
     This project uses `npm` workspaces.
     ```bash
-    npm install
+    npm ci
     ```
 
 3.  **Configure Environment**
@@ -62,17 +64,7 @@ Get up and running in less than 5 minutes.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check `CONTRIBUTING.md` for development standards and guidelines.
-
-1.  **Verify Changes**
-    Run the TypeScript verification script to check types, linting, and tests.
-    ```bash
-    npm run verify
-    ```
-    Or use the bash script directly:
-    ```bash
-    ./scripts/verify-ts.sh
-    ```
+We welcome contributions! Please check [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development standards, guidelines, and verification instructions.
 
 ---
 
