@@ -140,7 +140,7 @@ describe("CreateMythicPlusGroups", function()
         assert.is_true(brezCount >= 1)
     end)
 
-    it("should return empty list for fewer than 5 players", function()
+    it("should place fewer than 5 players into a remainder group", function()
         local players = {
             Player:New("Tank1", "tank", {}, {}),
             Player:New("Healer1", "healer", {}, {}),

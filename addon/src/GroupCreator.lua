@@ -266,11 +266,11 @@ function MPW:CreateMythicPlusGroups(players, guildId)
     -- Fill healers
     for _, currentGroup in ipairs(groups) do
         if not currentGroup.healer then
-            local mainHealer = grabNextAvailablePlayer(copyList(mainHealers), currentGroup)
+            local mainHealer = grabNextAvailablePlayer(mainHealers, currentGroup)
             if mainHealer then
                 currentGroup.healer = mainHealer
             else
-                local offHealer = grabNextAvailablePlayer(copyList(availableHealers), currentGroup)
+                local offHealer = grabNextAvailablePlayer(availableHealers, currentGroup)
                 if offHealer then
                     currentGroup.healer = offHealer
                 end
