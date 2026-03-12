@@ -42,3 +42,7 @@ build/
 **/screenshots/*
 test-results/
 playwright-report/
+
+# WoW Addon - embedded libraries (fetched by .pkgmeta)
+addon/libs/*/
+!addon/libs/.gitkeep
