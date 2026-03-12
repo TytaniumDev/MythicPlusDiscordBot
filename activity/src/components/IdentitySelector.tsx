@@ -13,7 +13,7 @@ export function IdentitySelector({ players }: IdentitySelectorProps) {
   if (!identityResolved) {
     return (
       <div id="identity-selector" className="identity-selector">
-        <div className="identity-label">Who are you?</div>
+        <div className="identity-label">Select yourself to highlight your group:</div>
         <div className="identity-chips">
           {players.map((p) => (
             <button

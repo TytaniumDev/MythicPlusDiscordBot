@@ -3,7 +3,6 @@ import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentity } from '../hooks/useIdentity';
 import { GroupCard } from '../components/GroupCard';
-import { IdentityBar } from '../components/IdentityBar';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
 
@@ -64,7 +63,6 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       <main className="content-area">
         <section id="view-results">
           <h2>All Groups Formed!</h2>
-          <IdentityBar players={players} />
           <div id="final-groups">
             {groups.map((g, i) => {
               const remainder = !isCompleteGroup(g);

@@ -33,6 +33,7 @@ export interface ChannelData {
   groups: WoWGroup[];
   revealedGroups?: number;
   refreshPlayers?: boolean;
+  claimedPlayers?: string[];
   isDebug: boolean;
   announceResults: boolean;
   createdAt: unknown;

@@ -42,8 +42,7 @@ export class GroupsHandler {
     await ctx.defer();
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const wheelCtx = { ...ctx, authorId: String(ctx.author.id) } as any;
-      await this.groupService.coreWheel(wheelCtx, false);
+      await this.groupService.coreWheel(ctx as any, false);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
       logger.error(`Error in wheel command: ${e}`);

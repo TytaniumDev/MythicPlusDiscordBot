@@ -829,7 +829,6 @@ async function main() {
       case 'test': {
         await debugHandler.test({
           guild: guildObj,
-          authorId: interaction.user.id,
           channel: {
             async send(content: string) {
               return textChannel ? await textChannel.send(content) : undefined;

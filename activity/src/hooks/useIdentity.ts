@@ -3,6 +3,12 @@ import { useAppStore } from '../store/store';
 import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
 import { hasAnyRole } from '../lib/roles';
+import { firestoreService } from '../services/firestoreService';
+import { demoService } from '../services/demoService';
+
+function getSessionService() {
+  return useAppStore.getState().isDemoMode ? demoService : firestoreService;
+}
 
 function stripDots(s: string): string {
   return s.replace(/\./g, '');
@@ -43,6 +49,9 @@ export function useIdentity() {
       if (match) {
         useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
         useAppStore.getState().setIdentityResolved(true);
+        if (match.discordId) {
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
+        }
         if (!useAppStore.getState().roleEditorManuallyToggled) {
           useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
         }
@@ -60,6 +69,7 @@ export function useIdentity() {
           useAppStore.getState().setIdentity(match.discordId, match.name);
           useAppStore.getState().setIdentityResolved(true);
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
           if (!useAppStore.getState().roleEditorManuallyToggled) {
             useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
           }
@@ -76,6 +86,7 @@ export function useIdentity() {
         useAppStore.getState().setIdentityResolved(true);
         if (match.discordId) {
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
+          getSessionService().claimPlayer(match.discordId).catch(console.error);
         }
         if (!useAppStore.getState().roleEditorManuallyToggled) {
           useAppStore.getState().setRoleEditorVisible(!hasAnyRole(match));
@@ -93,6 +104,7 @@ export function useIdentity() {
     useAppStore.getState().setIdentityResolved(true);
     if (player.discordId) {
       localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
+      getSessionService().claimPlayer(player.discordId).catch(console.error);
     }
     if (!useAppStore.getState().roleEditorManuallyToggled) {
       useAppStore.getState().setRoleEditorVisible(!hasAnyRole(player));
@@ -100,9 +112,14 @@ export function useIdentity() {
   }, []);
 
   const clearIdentity = useCallback(() => {
-    const guildId = useAppStore.getState().currentGuildId;
+    const state = useAppStore.getState();
+    const guildId = state.currentGuildId;
+    const previousId = state.currentPlayerId;
     localStorage.removeItem(getIdentityStorageKey(guildId));
-    useAppStore.getState().resetIdentity();
+    state.resetIdentity();
+    if (previousId) {
+      getSessionService().unclaimPlayer(previousId).catch(console.error);
+    }
   }, []);
 
   return {

@@ -5,7 +5,6 @@ import { useIdentity } from '../hooks/useIdentity';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
-import { IdentityBar } from '../components/IdentityBar';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { audio } from '../lib/audio';
@@ -358,7 +357,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
             <WheelsGridComponent ref={gridRef} pools={pools} />
 
             <div id="side-column" className="side-column">
-              <IdentityBar players={players} />
               <aside id="side-panel" className="side-panel">
                 <h3>Groups</h3>
                 <div id="groups-list">

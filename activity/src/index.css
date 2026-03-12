@@ -508,6 +508,7 @@ body {
 .role-column-header.unassigned { color: var(--text-secondary); border-color: var(--text-secondary); }
 
 .player-chip {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -608,6 +609,15 @@ body {
 .player-chip.is-me {
   border-color: var(--color-gold);
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
+}
+
+/* ── Player Chip: Claimed checkmark ── */
+.claimed-check {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  color: #2ecc71;
+  filter: drop-shadow(0 0 2px rgba(46, 204, 113, 0.4));
 }
 
 /* ── Identity Selector ── */

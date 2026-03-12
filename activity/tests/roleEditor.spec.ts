@@ -28,11 +28,11 @@ const lobbyWithNoRolesPlayer = {
 test.describe('Role Editor Screenshots', () => {
   test.use({ viewport: { width: 600, height: 800 } });
 
-  test('Identity selector — Who are you?', async ({ page }) => {
+  test('Identity selector — select yourself prompt', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
     // No Discord SDK → manual identity selector shown
-    await expect(page.locator('.identity-label')).toHaveText('Who are you?');
+    await expect(page.locator('.identity-label')).toHaveText('Select yourself to highlight your group:');
     await expect(page.locator('.identity-chips .identity-chip')).toHaveCount(mockPlayers.length);
 
     await expect(page).toHaveScreenshot('role-editor-identity-selector.png');
