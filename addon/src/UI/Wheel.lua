@@ -13,7 +13,6 @@ local groupFrames = {}
 
 -- Animation timing (seconds)
 local REVEAL_DELAY = 1.5   -- Delay between each group reveal
-local SPIN_DURATION = 2.0  -- Initial spin animation
 
 local function CreateWheelFrame(parent)
     local frame = CreateFrame("Frame", "MPWWheelFrame", parent)
