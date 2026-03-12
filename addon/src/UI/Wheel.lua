@@ -13,6 +13,7 @@ local groupFrames = {}
 
 -- Animation timing (seconds)
 local REVEAL_DELAY = 1.5   -- Delay between each group reveal
+local SPIN_DURATION = 2.0  -- Initial spin animation
 
 local function CreateWheelFrame(parent)
     local frame = CreateFrame("Frame", "MPWWheelFrame", parent)
@@ -81,7 +82,7 @@ local function CreateGroupCard(parent, index, group)
     healerText:SetText("|cFF87FF87[H]|r " .. healerName)
 
     -- DPS lines
-    for _, dps in ipairs(group.dps) do
+    for j, dps in ipairs(group.dps) do
         yOff = yOff - 16
         local dpsText = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         dpsText:SetPoint("TOPLEFT", 8, yOff)

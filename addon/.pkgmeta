@@ -12,8 +12,6 @@ externals:
     url: https://repos.curseforge.com/wow/ace3/trunk/AceComm-3.0
   addon/libs/AceSerializer-3.0:
     url: https://repos.curseforge.com/wow/ace3/trunk/AceSerializer-3.0
-  addon/libs/AceDB-3.0:
-    url: https://repos.curseforge.com/wow/ace3/trunk/AceDB-3.0
 
 ignore:
   - tests

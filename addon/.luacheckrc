@@ -4,7 +4,6 @@ max_line_length = 120
 
 -- WoW global API stubs
 globals = {
-    "_G",
     "MythicPlusWheel",
     "SLASH_MYTHICPLUSWHEEL1",
     "SLASH_MYTHICPLUSWHEEL2",
@@ -70,13 +69,7 @@ self = false
 
 -- Per-file overrides
 files["tests/**"] = {
-    globals = {
-        "wipe",
-        "LibStub",
-        "MythicPlusWheel",
-    },
     read_globals = {
-        "dofile",
         "describe",
         "it",
         "assert",

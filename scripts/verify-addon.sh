@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd addon
-
 echo "=== Addon: luacheck ==="
-luacheck src/ tests/
+luacheck addon/src/ addon/tests/ --config addon/.luacheckrc
 
 echo ""
 echo "=== Addon: busted tests ==="
-busted tests/
+cd addon && busted tests/ && cd ..
 
 echo ""
 echo "All addon checks passed."

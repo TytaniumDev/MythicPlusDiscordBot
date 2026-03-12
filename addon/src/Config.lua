@@ -99,9 +99,6 @@ MPW.LustClasses = {
     ["HUNTER"] = true,
 }
 
--- Max player level for current expansion (Midnight)
-MPW.MAX_LEVEL = 90
-
 -- Default saved variables
 MPW.defaults = {
     profile = {

@@ -2,15 +2,15 @@
 -- Run with: busted addon/tests/
 
 -- Minimal stubs for WoW APIs and libraries
-_G.LibStub = function(_)
+_G.LibStub = function(name)
     local addon = { NewAddon = function() return {} end }
     addon.GetAddon = function() return addon end
     return addon
 end
 
 -- Load source files in order
-dofile("src/Config.lua")
-dofile("src/Models.lua")
+dofile("addon/src/Config.lua")
+dofile("addon/src/Models.lua")
 
 local Player = MythicPlusWheel.Player
 local Group = MythicPlusWheel.Group

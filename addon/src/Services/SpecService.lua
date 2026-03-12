@@ -62,7 +62,7 @@ end
 ---@param classToken string
 ---@param level number
 ---@return MPWPlayer
-function MPW:DetectGuildMember(name, classToken, _level)
+function MPW:DetectGuildMember(name, classToken, level)
     -- Without inspect data, we can only infer from class
     -- The player will correct via join request with actual spec data
     local utilities = {}

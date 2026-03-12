@@ -6,7 +6,8 @@ local MPW = _G.MythicPlusWheel
 ---------------------------------------------------------------------------
 
 function MPW:OnInitialize()
-    self.db = LibStub("AceDB-3.0"):New("MythicPlusWheelDB", MPW.defaults, true)
+    self.db = LibStub("AceAddon-3.0"):GetAddon("MythicPlusWheel").db
+        or { profile = {} }
 
     -- Current session state
     self.session = {
@@ -15,9 +16,6 @@ function MPW:OnInitialize()
         groups = {},     -- MPWGroup[]
         host = nil,      -- player name who started the session
     }
-
-    -- Throttle timer for roster update events
-    self.rosterUpdatePending = false
 
     self:RegisterComm(self.COMM_PREFIX)
     self:Print("Mythic+ Wheel loaded. Type /mpw to open.")
@@ -61,7 +59,7 @@ end
 -- Session Management
 ---------------------------------------------------------------------------
 
---- Start a new lobby session. Any guild member can host.
+--- Start a new lobby session. Only guild officers+ can host.
 function MPW:StartSession()
     if self.session.status then
         self:Print("A session is already active.")
@@ -151,7 +149,7 @@ function MPW:BroadcastSessionEnd()
 end
 
 --- Handle incoming addon messages.
-function MPW:OnCommReceived(prefix, message, _distribution, sender)
+function MPW:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= self.COMM_PREFIX then return end
     if sender == UnitName("player") then return end
 
@@ -168,9 +166,6 @@ function MPW:OnCommReceived(prefix, message, _distribution, sender)
 end
 
 function MPW:HandleSessionUpdate(data, sender)
-    -- Only accept updates from the session host
-    if self.session.host and sender ~= self.session.host then return end
-
     if data.host then
         self.session.status = data.status
         self.session.host = data.host
@@ -187,9 +182,6 @@ function MPW:HandleSessionUpdate(data, sender)
 end
 
 function MPW:HandleSessionEnd(sender)
-    -- Only accept end from the session host
-    if self.session.host and sender ~= self.session.host then return end
-
     self.session.status = nil
     self.session.host = nil
     self.session.players = {}
@@ -201,9 +193,6 @@ function MPW:HandleJoinRequest(data, sender)
     -- Only the host processes join requests
     if self.session.host ~= UnitName("player") then return end
     if self.session.status ~= self.Status.LOBBY then return end
-
-    -- Validate sender matches the player data to prevent spoofing
-    if not data.player or data.player.name ~= sender then return end
 
     local player = MPW.Player.FromDict(data.player)
     -- Replace if already in list
@@ -224,21 +213,11 @@ end
 ---------------------------------------------------------------------------
 
 function MPW:GROUP_ROSTER_UPDATE()
-    self:ThrottledUpdateUI()
+    self:UpdateUI()
 end
 
 function MPW:GUILD_ROSTER_UPDATE()
-    self:ThrottledUpdateUI()
-end
-
---- Throttle UI updates from rapid roster events (fires at most once per 0.5s).
-function MPW:ThrottledUpdateUI()
-    if self.rosterUpdatePending then return end
-    self.rosterUpdatePending = true
-    C_Timer.After(0.5, function()
-        self.rosterUpdatePending = false
-        self:UpdateUI()
-    end)
+    self:UpdateUI()
 end
 
 ---------------------------------------------------------------------------

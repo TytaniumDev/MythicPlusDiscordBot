@@ -1,6 +1,7 @@
 ---@class MythicPlusWheel
 local MPW = _G.MythicPlusWheel
 
+local Player = MPW.Player
 local Group = MPW.Group
 
 ---------------------------------------------------------------------------
@@ -265,11 +266,11 @@ function MPW:CreateMythicPlusGroups(players, guildId)
     -- Fill healers
     for _, currentGroup in ipairs(groups) do
         if not currentGroup.healer then
-            local mainHealer = grabNextAvailablePlayer(mainHealers, currentGroup)
+            local mainHealer = grabNextAvailablePlayer(copyList(mainHealers), currentGroup)
             if mainHealer then
                 currentGroup.healer = mainHealer
             else
-                local offHealer = grabNextAvailablePlayer(availableHealers, currentGroup)
+                local offHealer = grabNextAvailablePlayer(copyList(availableHealers), currentGroup)
                 if offHealer then
                     currentGroup.healer = offHealer
                 end
@@ -322,8 +323,7 @@ function MPW:CreateMythicPlusGroups(players, guildId)
                     remainderGroup.tank = player
                 elseif not remainderGroup.healer and (player:IsHealerMain() or player:IsOffhealer()) then
                     remainderGroup.healer = player
-                elseif #remainderGroup.dps < 3 then
-                    -- Accept any player as DPS (including role-less players)
+                elseif #remainderGroup.dps < 3 and (player:IsDpsMain() or player:IsOffdps()) then
                     remainderGroup.dps[#remainderGroup.dps + 1] = player
                 else
                     -- Group full, break to create another

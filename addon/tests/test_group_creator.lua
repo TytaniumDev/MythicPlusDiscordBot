@@ -10,9 +10,9 @@ _G.LibStub = function()
 end
 
 -- Load source files in order
-dofile("src/Config.lua")
-dofile("src/Models.lua")
-dofile("src/GroupCreator.lua")
+dofile("addon/src/Config.lua")
+dofile("addon/src/Models.lua")
+dofile("addon/src/GroupCreator.lua")
 
 local Player = MythicPlusWheel.Player
 local MPW = MythicPlusWheel
@@ -140,7 +140,7 @@ describe("CreateMythicPlusGroups", function()
         assert.is_true(brezCount >= 1)
     end)
 
-    it("should place fewer than 5 players into a remainder group", function()
+    it("should return empty list for fewer than 5 players", function()
         local players = {
             Player:New("Tank1", "tank", {}, {}),
             Player:New("Healer1", "healer", {}, {}),
