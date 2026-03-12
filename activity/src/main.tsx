@@ -37,6 +37,11 @@ async function init() {
         store.setView(view);
       }
 
+      // Support test identity injection (e.g. { identity: { id, name } })
+      if (data.identity) {
+        store.setIdentity(data.identity.id, data.identity.name);
+      }
+
       render();
       return;
     } catch (e) {

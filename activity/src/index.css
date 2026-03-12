@@ -1132,6 +1132,14 @@ body {
   max-width: 70px;
 }
 
+/* ── Group Card: Current user's group highlight ── */
+.group-card.is-my-group,
+.group-card-compact.is-my-group {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
+}
+
 /* ============================================
    View: Results
    ============================================ */
