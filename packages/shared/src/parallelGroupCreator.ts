@@ -125,7 +125,6 @@ export function createMythicPlusGroups(
     group: WoWGroup,
   ): WoWPlayer | null {
     const teammates = group.players;
-    const filteredList: WoWPlayer[] = [];
 
     // Pre-check: Find all players that are ineligible due to previous grouping
     const ineligiblePlayers = new Set<string>();
@@ -136,13 +135,9 @@ export function createMythicPlusGroups(
       }
     }
 
-    for (const p of availablePlayers) {
-      if (ineligiblePlayers.has(p.name)) continue;
-      filteredList.push(p);
-    }
-
-    // Try to grab a player from the filtered list first
-    for (const player of filteredList) {
+    // Try to grab a player from the available list who hasn't played with this group before
+    for (const player of availablePlayers) {
+      if (ineligiblePlayers.has(player.name)) continue;
       if (!usedPlayers.has(player.name)) {
         removePlayer(player);
         return player;
