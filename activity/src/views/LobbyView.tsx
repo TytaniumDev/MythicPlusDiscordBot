@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
-import { useIdentity } from '../hooks/useIdentity';
+import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerModal } from '../components/PlayerModal';
 import { IdentitySelector } from '../components/IdentitySelector';
@@ -20,15 +20,8 @@ interface LobbyViewProps {
 export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
-  const { resolveIdentity } = useIdentity();
   const players = channelData?.players || [];
-
-  // Resolve identity when players change
-  useEffect(() => {
-    if (players.length > 0) {
-      resolveIdentity(players).catch(console.error);
-    }
-  }, [players, resolveIdentity]);
+  useIdentityResolver(players);
 
   const [isCalculating, setIsCalculating] = useState(false);
 

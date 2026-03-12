@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
-import { useIdentity } from '../hooks/useIdentity';
+import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
@@ -30,17 +30,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const poolDps = useAppStore((s) => s.poolDps);
 
   const service = useSessionService();
-  const { resolveIdentity } = useIdentity();
   const isCarousel = useIsCarouselMode();
 
   const players = channelData?.players || [];
-
-  // Attempt identity resolution if not already resolved
-  useEffect(() => {
-    if (players.length > 0) {
-      resolveIdentity(players).catch(console.error);
-    }
-  }, [players, resolveIdentity]);
+  useIdentityResolver(players);
   const isCompact = useIsCompactPanel();
   const gridRef = useRef<WheelsGridRef>(null);
 
