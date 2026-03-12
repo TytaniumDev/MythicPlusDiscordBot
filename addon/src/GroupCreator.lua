@@ -22,6 +22,13 @@ function MPW:SetLastGroups(groups, guildId)
     lastGroups[guildId or "default"] = groups
 end
 
+--- Get stored last groups for a guild.
+---@param guildId? string
+---@return MPWGroup[]
+function MPW:GetLastGroups(guildId)
+    return lastGroups[guildId or "default"] or {}
+end
+
 --- Fisher-Yates shuffle (in-place).
 ---@param arr any[]
 ---@return any[]

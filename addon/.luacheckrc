@@ -2,21 +2,32 @@
 std = "lua51"
 max_line_length = 120
 
--- WoW global API stubs
+-- Allow setting fields on writable globals (WoW addon pattern where methods
+-- are defined across multiple files via `local MPW = _G.MythicPlusWheel`
+-- then `function MPW:Method() end`).
 globals = {
-    "_G",
-    "MythicPlusWheel",
+    -- _G is written to by WoW addons to register their namespace
+    _G = { other_fields = true },
+
+    -- The addon namespace — methods are added to this table across all files
+    MythicPlusWheel = { other_fields = true },
+
+    -- WoW slash command globals
     "SLASH_MYTHICPLUSWHEEL1",
     "SLASH_MYTHICPLUSWHEEL2",
-    "SlashCmdList",
-    "UISpecialFrames",
+    SlashCmdList = { other_fields = true },
+    UISpecialFrames = { other_fields = true },
 }
 
 read_globals = {
+    -- Lua globals
+    "os",
+
     -- WoW API functions
     "C_Timer",
     "ConvertToRaid",
     "CreateFrame",
+    GameTooltip = { other_fields = true },
     "GetGuildInfo",
     "GetGuildRosterInfo",
     "GetNumGroupMembers",
@@ -33,8 +44,11 @@ read_globals = {
     "UnitClass",
     "UnitIsGroupLeader",
     "UnitName",
+    "date",
+    "time",
 
     -- WoW UI globals
+    "ChatFontNormal",
     "GameFontNormal",
     "GameFontNormalLarge",
     "GameFontNormalSmall",
@@ -70,10 +84,15 @@ self = false
 
 -- Per-file overrides
 files["tests/**"] = {
+    -- In tests, allow unused arguments (stub callbacks), unused functions
+    -- (prebuilt player constructors kept for reference), and unused varargs.
+    ignore = { "21.", "211", "212", "213" },
     globals = {
-        "wipe",
+        _G = { other_fields = true },
+        "os",
         "LibStub",
-        "MythicPlusWheel",
+        "wipe",
+        MythicPlusWheel = { other_fields = true },
     },
     read_globals = {
         "dofile",
