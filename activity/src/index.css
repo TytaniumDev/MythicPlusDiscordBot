@@ -690,6 +690,88 @@ body {
   font-size: 0.75rem;
 }
 
+/* ── Identity Bar (compact, for wheels/results views) ── */
+.identity-bar {
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+}
+
+.identity-bar-unresolved {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  animation: identityPulse 2s ease-in-out infinite;
+}
+
+.identity-bar-resolved {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.identity-bar-prompt {
+  display: block;
+  color: var(--color-gold);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.identity-bar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.identity-bar-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family);
+}
+
+.identity-bar-chip:hover {
+  border-color: var(--color-gold);
+  background: var(--bg-card-hover);
+}
+
+.identity-bar-label {
+  color: var(--text-secondary);
+}
+
+.identity-bar-name {
+  font-weight: 700;
+  color: var(--color-gold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.identity-bar-name:hover {
+  text-decoration-color: var(--color-gold);
+}
+
+@keyframes identityPulse {
+  0%, 100% { border-color: rgba(245, 158, 11, 0.25); }
+  50% { border-color: rgba(245, 158, 11, 0.5); }
+}
+
 /* ── Role Editor ── */
 .role-editor {
   background: var(--bg-secondary);
@@ -1089,6 +1171,18 @@ body {
 
 .group-card .group-role .role-name {
   color: var(--text-primary);
+}
+
+/* Highlighted group card — "your" group */
+.group-card.is-my-group,
+.group-card-compact.is-my-group {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3), inset 0 0 8px rgba(245, 158, 11, 0.05);
+}
+
+.group-card.is-my-group h4,
+.group-card-compact.is-my-group h4 {
+  color: var(--color-gold);
 }
 
 /* Compact group card — used in side panel at smaller sizes */

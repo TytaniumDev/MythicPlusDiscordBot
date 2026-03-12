@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { useIdentity } from '../hooks/useIdentity';
 import { GroupCard } from '../components/GroupCard';
+import { IdentityBar } from '../components/IdentityBar';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
 
@@ -12,7 +14,16 @@ interface ResultsViewProps {
 export function ResultsView({ onNavigate }: ResultsViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
+  const { resolveIdentity } = useIdentity();
   const groups = channelData?.groups || [];
+  const players = channelData?.players || [];
+
+  // Attempt identity resolution if entering results view directly
+  useEffect(() => {
+    if (players.length > 0) {
+      resolveIdentity(players).catch(console.error);
+    }
+  }, [players, resolveIdentity]);
 
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportTitle, setReportTitle] = useState('');
@@ -53,6 +64,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       <main className="content-area">
         <section id="view-results">
           <h2>All Groups Formed!</h2>
+          <IdentityBar players={players} />
           <div id="final-groups">
             {groups.map((g, i) => {
               const remainder = !isCompleteGroup(g);

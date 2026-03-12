@@ -1,4 +1,5 @@
 import { WoWGroup, WoWPlayer } from '../types';
+import { useAppStore } from '../store/store';
 import { utilityIcons } from '../lib/roles';
 
 interface GroupCardProps {
@@ -51,12 +52,17 @@ function CompactRoleRow({ color, roleLabel, name, player }: {
 }
 
 export function GroupCard({ group, index, label, hideEmpty = false, compact = false }: GroupCardProps) {
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+
+  const allPlayers = [group.tank, group.healer, ...group.dps];
+  const isMyGroup = currentPlayerId != null && allPlayers.some((p) => p?.discordId === currentPlayerId);
+
   const cardClass = compact ? 'group-card-compact' : 'group-card';
   const Row = compact ? CompactRoleRow : RoleRow;
-  const heading = label ?? `Group ${index + 1}`;
+  const heading = label ?? (isMyGroup ? `Group ${index + 1} ★` : `Group ${index + 1}`);
 
   return (
-    <div className={cardClass}>
+    <div className={`${cardClass}${isMyGroup ? ' is-my-group' : ''}`}>
       <h4>{heading}</h4>
       {(!hideEmpty || group.tank) && (
         <Row

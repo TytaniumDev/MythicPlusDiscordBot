@@ -1,9 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { useIdentity } from '../hooks/useIdentity';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
+import { IdentityBar } from '../components/IdentityBar';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { audio } from '../lib/audio';
@@ -29,7 +31,17 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const poolDps = useAppStore((s) => s.poolDps);
 
   const service = useSessionService();
+  const { resolveIdentity } = useIdentity();
   const isCarousel = useIsCarouselMode();
+
+  const players = channelData?.players || [];
+
+  // Attempt identity resolution if not already resolved
+  useEffect(() => {
+    if (players.length > 0) {
+      resolveIdentity(players).catch(console.error);
+    }
+  }, [players, resolveIdentity]);
   const isCompact = useIsCompactPanel();
   const gridRef = useRef<WheelsGridRef>(null);
 
@@ -346,6 +358,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
             <WheelsGridComponent ref={gridRef} pools={pools} />
 
             <div id="side-column" className="side-column">
+              <IdentityBar players={players} />
               <aside id="side-panel" className="side-panel">
                 <h3>Groups</h3>
                 <div id="groups-list">
