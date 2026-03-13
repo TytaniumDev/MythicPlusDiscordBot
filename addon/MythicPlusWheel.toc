@@ -6,7 +6,7 @@
 ## SavedVariables: MythicPlusWheelDB
 ## IconTexture: Interface\Icons\INV_Misc_GroupNeedMore
 ## X-Curse-Project-ID: 1484744
-## X-Wago-ID: wheelson
+## X-Wago-ID: bGoyPq60
 
 # Embedded Libraries
 libs\LibStub\LibStub.lua
