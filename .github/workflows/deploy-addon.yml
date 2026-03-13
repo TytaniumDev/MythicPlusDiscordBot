@@ -1,0 +1,70 @@
+name: Deploy Addon
+
+on:
+  push:
+    branches: [main]
+    paths: [addon/**]
+  workflow_dispatch:
+
+concurrency:
+  group: addon-release
+  cancel-in-progress: false  # must be false — serializes tag N counting
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci-shared.yml
+
+  deploy-addon:
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Load Doppler secrets
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          DELIM=$(openssl rand -hex 16)
+          SECRETS=$(doppler secrets download --no-file --format json)
+          KEYS='["CURSEFORGE_API_KEY","WAGO_API_KEY"]'
+          echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
+            to_entries[] | select(.key | IN($keys[])) | .value
+          ' | while IFS= read -r val; do
+            [ -n "$val" ] && echo "::add-mask::$val"
+          done
+          echo "$SECRETS" | jq -r --argjson keys "$KEYS" --arg d "$DELIM" '
+            to_entries[] | select(.key | IN($keys[])) | "\(.key)<<\($d)\n\(.value)\n\($d)"
+          ' >> "$GITHUB_ENV"
+
+      - name: Generate version and create tag
+        id: version
+        run: |
+          DATE=$(date -u +"%Y.%m.%d")
+          # Count existing tags for today to determine N
+          EXISTING=$(git tag -l "addon-v${DATE}.*" | wc -l | tr -d ' ')
+          N=$((EXISTING + 1))
+          VERSION="${DATE}.${N}"
+          TAG="addon-v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Addon release ${VERSION}"
+          git push origin "$TAG"
+
+      - name: Package and release addon
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -t addon
+        env:
+          CF_API_KEY: ${{ env.CURSEFORGE_API_KEY }}
+          WAGO_API_TOKEN: ${{ env.WAGO_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
