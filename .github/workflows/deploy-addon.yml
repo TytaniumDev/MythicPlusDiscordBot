@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: addon-release
-  cancel-in-progress: false
+  cancel-in-progress: false  # must be false — serializes tag N counting
 
 jobs:
   ci:
@@ -17,6 +17,7 @@ jobs:
   deploy-addon:
     needs: [ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
