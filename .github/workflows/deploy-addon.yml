@@ -60,6 +60,9 @@ jobs:
           git tag -a "$TAG" -m "Addon release ${VERSION}"
           git push origin "$TAG"
 
+      - name: Symlink .git into addon for packager VCS detection
+        run: ln -s ../.git addon/.git
+
       - name: Package and release addon
         uses: BigWigsMods/packager@v2
         with:
