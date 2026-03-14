@@ -42,6 +42,14 @@ export function sanitizeLogs(logs: string | null): string | null {
     logs = logs.replaceAll(config.GITHUB_TOKEN, '[REDACTED_GITHUB_TOKEN]');
   }
 
+  if (config.SENTRY_DSN) {
+    logs = logs.replaceAll(config.SENTRY_DSN, '[REDACTED_SENTRY_DSN]');
+  }
+
+  if (config.DISCORD_APPLICATION_ID) {
+    logs = logs.replaceAll(config.DISCORD_APPLICATION_ID, '[REDACTED_DISCORD_APPLICATION_ID]');
+  }
+
   return logs;
 }
 

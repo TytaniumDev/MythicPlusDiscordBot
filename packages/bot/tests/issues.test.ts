@@ -9,6 +9,8 @@ vi.mock('../src/core/config.js', () => ({
   LOG_FILE: 'mythic_bot.log',
   BOT_TOKEN: undefined,
   FIREBASE_CREDENTIALS_JSON: undefined,
+  SENTRY_DSN: undefined,
+  DISCORD_APPLICATION_ID: undefined,
 }));
 
 import * as config from '../src/core/config.js';
