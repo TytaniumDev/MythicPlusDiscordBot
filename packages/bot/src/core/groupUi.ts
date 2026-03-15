@@ -30,31 +30,66 @@ function setFieldAt(embed: Embed, index: number, name: string, value: string): E
   return embed;
 }
 
-export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
-  const tankName = group.tank?.name ?? PLACEHOLDER_CHAR;
-  const healerName = group.healer?.name ?? PLACEHOLDER_CHAR;
-  const dps1Name = group.dps.length > 0 ? group.dps[0].name : PLACEHOLDER_CHAR;
-  const dps2Name = group.dps.length > 1 ? group.dps[1].name : PLACEHOLDER_CHAR;
-  const dps3Name = group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR;
+export interface GroupDisplayNames {
+  tankName: string;
+  healerName: string;
+  dps1Name: string;
+  dps2Name: string;
+  dps3Name: string;
+  brezPlayer: string;
+  lustPlayer: string;
+}
 
+/**
+ * Extracts and formats the display names of players in a given WoWGroup.
+ * Ensures consistent placeholder usage for missing roles and identifies utility players.
+ *
+ * @param {WoWGroup} group - The generated group to extract names from.
+ * @returns {GroupDisplayNames} A structured object containing formatted player names for UI display.
+ */
+export function getGroupDisplayNames(group: WoWGroup): GroupDisplayNames {
   const allPlayers = group.players;
-  const brezPlayer = allPlayers.find((p) => p.hasBrez)?.name ?? 'None';
-  const lustPlayer = allPlayers.find((p) => p.hasLust)?.name ?? 'None';
+  return {
+    tankName: group.tank?.name ?? PLACEHOLDER_CHAR,
+    healerName: group.healer?.name ?? PLACEHOLDER_CHAR,
+    dps1Name: group.dps.length > 0 ? group.dps[0].name : PLACEHOLDER_CHAR,
+    dps2Name: group.dps.length > 1 ? group.dps[1].name : PLACEHOLDER_CHAR,
+    dps3Name: group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR,
+    brezPlayer: allPlayers.find((p) => p.hasBrez)?.name ?? 'None',
+    lustPlayer: allPlayers.find((p) => p.hasLust)?.name ?? 'None',
+  };
+}
+
+/**
+ * Generates an 'Invite Command' Discord EmbedField for a group, if applicable.
+ * Formats the raw string into a proper Discord code block.
+ *
+ * @param {WoWGroup} group - The group to generate the invite command for.
+ * @returns {EmbedField | null} The formatted EmbedField, or null if generation fails.
+ */
+export function getInviteCommandField(group: WoWGroup): EmbedField | null {
+  const inviteCmd = generateInviteCommand(group.toDict());
+  if (!inviteCmd) return null;
+  const formatted = inviteCmd.includes('\n')
+    ? `\`\`\`\n${inviteCmd}\n\`\`\``
+    : `\`${inviteCmd}\``;
+  return { name: 'Invite Command', value: formatted };
+}
+
+export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
+  const names = getGroupDisplayNames(group);
 
   const fields: EmbedField[] = [
-    { name: 'Tank', value: tankName },
-    { name: 'Healer', value: healerName },
-    { name: 'DPS', value: `${dps1Name}, ${dps2Name}, ${dps3Name}` },
-    { name: 'Battle Res', value: brezPlayer, inline: true },
-    { name: 'Bloodlust', value: lustPlayer, inline: true },
+    { name: 'Tank', value: names.tankName },
+    { name: 'Healer', value: names.healerName },
+    { name: 'DPS', value: `${names.dps1Name}, ${names.dps2Name}, ${names.dps3Name}` },
+    { name: 'Battle Res', value: names.brezPlayer, inline: true },
+    { name: 'Bloodlust', value: names.lustPlayer, inline: true },
   ];
 
-  const inviteCmd = generateInviteCommand(group.toDict());
-  if (inviteCmd) {
-    const formatted = inviteCmd.includes('\n')
-      ? `\`\`\`\n${inviteCmd}\n\`\`\``
-      : `\`${inviteCmd}\``;
-    fields.push({ name: 'Invite Command', value: formatted });
+  const inviteField = getInviteCommandField(group);
+  if (inviteField) {
+    fields.push(inviteField);
   }
 
   return { title: `Group ${groupNumber}`, color: GOLD, fields };
@@ -77,6 +112,74 @@ async function animateUpdate(
   return message.edit({ embed: setFieldAt(embed, index, name, value) });
 }
 
+/**
+ * Executes a staggered, animated reveal of a group's composition in a Discord channel.
+ * Uses typing indicators and sequential message edits to simulate building the embed dynamically.
+ *
+ * @param {Sendable} ctx - The context used to send the initial message.
+ * @param {TypingChannel} channel - The channel where typing indicators are displayed.
+ * @param {WoWGroup} group - The group being announced.
+ * @param {number} groupNumber - The assigned number of the group.
+ * @param {boolean} debug - If true, skips artificial delays.
+ * @returns {Promise<void>} Resolves when the entire animation sequence is complete.
+ */
+export async function announceGroupAnimated(
+  ctx: Sendable,
+  channel: TypingChannel,
+  group: WoWGroup,
+  groupNumber: number,
+  debug: boolean,
+): Promise<void> {
+  const names = getGroupDisplayNames(group);
+
+  const embed: Embed = {
+    title: `Group ${groupNumber}`,
+    color: GOLD,
+    fields: [
+      { name: 'Tank', value: getMaskedName(names.tankName) },
+      { name: 'Healer', value: getMaskedName(names.healerName) },
+      {
+        name: 'DPS',
+        value: `${getMaskedName(names.dps1Name)}, ${getMaskedName(names.dps2Name)}, ${getMaskedName(names.dps3Name)}`,
+      },
+      { name: 'Battle Res', value: getMaskedName(names.brezPlayer), inline: true },
+      { name: 'Bloodlust', value: getMaskedName(names.lustPlayer), inline: true },
+    ],
+  };
+
+  let embedMessage = await ctx.send({ embed });
+  embedMessage = await animateUpdate(
+    embedMessage, channel, embed, 0, 'Tank', names.tankName, debug,
+  );
+  embedMessage = await animateUpdate(
+    embedMessage, channel, embed, 1, 'Healer', names.healerName, debug,
+  );
+  embedMessage = await animateUpdate(
+    embedMessage, channel, embed, 2, 'DPS',
+    `${names.dps1Name}, ${getMaskedName(names.dps2Name)}, ${getMaskedName(names.dps3Name)}`, debug,
+  );
+  embedMessage = await animateUpdate(
+    embedMessage, channel, embed, 2, 'DPS',
+    `${names.dps1Name}, ${names.dps2Name}, ${getMaskedName(names.dps3Name)}`, debug,
+  );
+  embedMessage = await animateUpdate(
+    embedMessage, channel, embed, 2, 'DPS',
+    `${names.dps1Name}, ${names.dps2Name}, ${names.dps3Name}`, debug,
+  );
+  embedMessage = await embedMessage.edit({
+    embed: setFieldAt(embed, 3, 'Battle Res', names.brezPlayer),
+  });
+  embedMessage = await embedMessage.edit({
+    embed: setFieldAt(embed, 4, 'Bloodlust', names.lustPlayer),
+  });
+
+  const inviteField = getInviteCommandField(group);
+  if (inviteField) {
+    embed.fields.push(inviteField);
+    await embedMessage.edit({ embed });
+  }
+}
+
 export async function announceGroup(
   ctx: Sendable,
   channel: TypingChannel,
@@ -88,64 +191,6 @@ export async function announceGroup(
     const embed = buildGroupEmbed(group, groupNumber);
     await ctx.send({ embed });
   } else {
-    const tankName = group.tank?.name ?? PLACEHOLDER_CHAR;
-    const healerName = group.healer?.name ?? PLACEHOLDER_CHAR;
-    const dps1Name = group.dps.length > 0 ? group.dps[0].name : PLACEHOLDER_CHAR;
-    const dps2Name = group.dps.length > 1 ? group.dps[1].name : PLACEHOLDER_CHAR;
-    const dps3Name = group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR;
-
-    const allPlayers = group.players;
-    const brezPlayer = allPlayers.find((p) => p.hasBrez)?.name ?? 'None';
-    const lustPlayer = allPlayers.find((p) => p.hasLust)?.name ?? 'None';
-
-    const embed: Embed = {
-      title: `Group ${groupNumber}`,
-      color: GOLD,
-      fields: [
-        { name: 'Tank', value: getMaskedName(tankName) },
-        { name: 'Healer', value: getMaskedName(healerName) },
-        {
-          name: 'DPS',
-          value: `${getMaskedName(dps1Name)}, ${getMaskedName(dps2Name)}, ${getMaskedName(dps3Name)}`,
-        },
-        { name: 'Battle Res', value: getMaskedName(brezPlayer), inline: true },
-        { name: 'Bloodlust', value: getMaskedName(lustPlayer), inline: true },
-      ],
-    };
-
-    let embedMessage = await ctx.send({ embed });
-    embedMessage = await animateUpdate(
-      embedMessage, channel, embed, 0, 'Tank', tankName, debug,
-    );
-    embedMessage = await animateUpdate(
-      embedMessage, channel, embed, 1, 'Healer', healerName, debug,
-    );
-    embedMessage = await animateUpdate(
-      embedMessage, channel, embed, 2, 'DPS',
-      `${dps1Name}, ${getMaskedName(dps2Name)}, ${getMaskedName(dps3Name)}`, debug,
-    );
-    embedMessage = await animateUpdate(
-      embedMessage, channel, embed, 2, 'DPS',
-      `${dps1Name}, ${dps2Name}, ${getMaskedName(dps3Name)}`, debug,
-    );
-    embedMessage = await animateUpdate(
-      embedMessage, channel, embed, 2, 'DPS',
-      `${dps1Name}, ${dps2Name}, ${dps3Name}`, debug,
-    );
-    embedMessage = await embedMessage.edit({
-      embed: setFieldAt(embed, 3, 'Battle Res', brezPlayer),
-    });
-    embedMessage = await embedMessage.edit({
-      embed: setFieldAt(embed, 4, 'Bloodlust', lustPlayer),
-    });
-
-    const inviteCmd = generateInviteCommand(group.toDict());
-    if (inviteCmd) {
-      const formatted = inviteCmd.includes('\n')
-        ? `\`\`\`\n${inviteCmd}\n\`\`\``
-        : `\`${inviteCmd}\``;
-      embed.fields.push({ name: 'Invite Command', value: formatted });
-      await embedMessage.edit({ embed });
-    }
+    await announceGroupAnimated(ctx, channel, group, groupNumber, debug);
   }
 }
