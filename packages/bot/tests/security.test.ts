@@ -5,6 +5,8 @@ vi.mock('../src/core/config.js', () => ({
   BOT_TOKEN: undefined as string | undefined,
   FIREBASE_CREDENTIALS_JSON: undefined as string | undefined,
   GITHUB_TOKEN: undefined as string | undefined,
+  SENTRY_DSN: undefined as string | undefined,
+  DISCORD_APPLICATION_ID: undefined as string | undefined,
 }));
 
 import * as config from '../src/core/config.js';
@@ -21,6 +23,8 @@ describe('sanitizeLogs', () => {
       BOT_TOKEN: undefined,
       FIREBASE_CREDENTIALS_JSON: undefined,
       GITHUB_TOKEN: undefined,
+      SENTRY_DSN: undefined,
+      DISCORD_APPLICATION_ID: undefined,
     });
   });
 
@@ -29,10 +33,12 @@ describe('sanitizeLogs', () => {
       BOT_TOKEN: 'SECRET_TOKEN',
       FIREBASE_CREDENTIALS_JSON: '{"private_key": "abc"}',
       GITHUB_TOKEN: 'ghp_secret',
+      SENTRY_DSN: 'https://foo@bar.ingest.sentry.io/12345',
+      DISCORD_APPLICATION_ID: '123456789',
     });
 
     const logs =
-      'Error: Invalid token SECRET_TOKEN provided. also gh: ghp_secret and fb: {"private_key": "abc"}';
+      'Error: Invalid token SECRET_TOKEN provided. also gh: ghp_secret and fb: {"private_key": "abc"} with dsn: https://foo@bar.ingest.sentry.io/12345 app_id: 123456789';
     const sanitized = sanitizeLogs(logs);
 
     expect(sanitized).not.toBeNull();
@@ -42,6 +48,10 @@ describe('sanitizeLogs', () => {
     expect(sanitized!).toContain('[REDACTED_GITHUB_TOKEN]');
     expect(sanitized!).not.toContain('{"private_key": "abc"}');
     expect(sanitized!).toContain('[REDACTED_FIREBASE_CREDENTIALS]');
+    expect(sanitized!).not.toContain('https://foo@bar.ingest.sentry.io/12345');
+    expect(sanitized!).toContain('[REDACTED_SENTRY_DSN]');
+    expect(sanitized!).not.toContain('123456789');
+    expect(sanitized!).toContain('[REDACTED_DISCORD_APPLICATION_ID]');
   });
 
   it('returns unchanged when no secrets', () => {
@@ -167,6 +177,8 @@ describe('sanitizeForGithub', () => {
       BOT_TOKEN: undefined,
       FIREBASE_CREDENTIALS_JSON: undefined,
       GITHUB_TOKEN: undefined,
+      SENTRY_DSN: undefined,
+      DISCORD_APPLICATION_ID: undefined,
     });
   });
 

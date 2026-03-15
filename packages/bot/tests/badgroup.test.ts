@@ -10,6 +10,8 @@ vi.mock('../src/core/config.js', () => ({
   LOG_FILE: 'nonexistent_log.log',
   BOT_TOKEN: undefined,
   FIREBASE_CREDENTIALS_JSON: undefined,
+  SENTRY_DSN: undefined,
+  DISCORD_APPLICATION_ID: undefined,
 }));
 
 import { reportBadGroup } from '../src/core/issues.js';

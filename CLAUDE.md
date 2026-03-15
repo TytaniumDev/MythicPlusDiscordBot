@@ -39,6 +39,11 @@ Never run `npx playwright test` directly — screenshots are pixel-compared with
 zero tolerance and will differ outside the Docker container due to OS-level font
 rendering differences. The config enforces this with a `PLAYWRIGHT_TEST` env guard.
 
+## Related Repositories
+
+The WoW addon (MythicPlusWheel) lives in a separate repo: https://github.com/TytaniumDev/Wheelson
+It reimplements the group formation algorithm from `packages/shared/src/parallelGroupCreator.ts` in Lua.
+
 ## Architecture Overview
 
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
