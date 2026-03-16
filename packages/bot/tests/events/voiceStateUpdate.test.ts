@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Mock } from 'vitest';
 import { onVoiceStateUpdate } from '../../src/events/voiceStateUpdate.js';
 import type { VoiceStateUpdateMember } from '../../src/events/voiceStateUpdate.js';
 import type { GroupsHandler, VoiceState } from '../../src/commands/groups.js';
