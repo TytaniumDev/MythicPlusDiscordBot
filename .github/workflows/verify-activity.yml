@@ -30,11 +30,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck and build
-        run: |
-          cd activity
-          npm run typecheck
-          npm run build
+      - name: Verify Activity
+        run: ./scripts/verify-activity.sh
 
       - name: Update snapshots (Docker)
         run: ./scripts/playwright-docker.sh --update-snapshots=all

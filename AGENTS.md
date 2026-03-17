@@ -8,7 +8,7 @@ This file provides the necessary context and operational standards for AI agents
 ## Mandatory Development Standards
 
 ### 1. Code Quality & Verification
-To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes:
+To maintain consistency and prevent CI failures, you **MUST** run the appropriate verification script for your changes. **The CI pipeline runs these exact same scripts to guarantee environment parity.**
 
 - **Backend (`packages/`):** Run the verification script:
   ```bash

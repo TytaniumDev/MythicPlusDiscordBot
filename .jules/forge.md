@@ -13,3 +13,6 @@
 ## 2026-03-10 - [TypeScript Migration & Tooling Synchronization]
 **Discovery:** After migrating from Python to a TypeScript monorepo, `AGENTS.md`, `setup.sh`, and `.github/workflows/ci-shared.yml` retained deprecated `uv`, `ruff`, and python unittest references. `scripts/verify-ts.sh` also lacked linting execution.
 **Action:** Overhauled `AGENTS.md` to reference precise `npm ci` and `./scripts/verify-ts.sh` commands. Refactored `ci-shared.yml` into a unified Verify job that identically runs `scripts/verify-ts.sh`, effectively syncing pipeline execution with the agent instructions. Modified `setup.sh` to use `npm ci` logic.
+
+## 2026-03-24 - [CI/CD Parity Sync]
+**Action:** Consolidated ci-shared.yml and verify-activity.yml to execute their respective bash verification scripts directly, eliminating inline duplicate logic.
