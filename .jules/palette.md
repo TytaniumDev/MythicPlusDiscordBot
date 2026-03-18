@@ -17,3 +17,7 @@
 ## 2026-10-24 - Semantic HTML Structure for Accessibility
 **Learning:** The structure of HTML elements like landmarks (`<aside>`, `<main>`) and headings (`<h1>`, `<h2>`, `<h3>`) directly dictates the navigation experience for screen reader users. Axe-core rules often catch invalid nesting (like `<aside>` inside non-top-level layouts) or skipped heading levels, which confuse users navigating by headings. Fixing these HTML semantics allows enabling previously disabled Axe rules and provides a more robust tree.
 **Action:** Always ensure heading levels increment sequentially and avoid wrapping landmark elements (`<aside>`, `<nav>`, `<header>`) inside other layout containers unless structurally appropriate.
+
+## 2026-10-25 - Contextual Button Accessibility
+**Learning:** Components that render lists of identical-looking interactive elements (like player identity chips) create a poor experience for screen readers if they only contain a visible name. Without explicit labels, users don't know the consequence of activating them. A container with `role="region"` and `aria-label="Identity Selection"` provides context, while adding specific `aria-label` like "Select User123 as your identity" to each button makes the action explicit.
+**Action:** When rendering dynamic lists of buttons (like tags, identities, or selectors), ensure the parent has region context and the children have full descriptive `aria-label`s instead of just using their inner text content.
