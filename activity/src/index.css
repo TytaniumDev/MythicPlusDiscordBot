@@ -1214,31 +1214,24 @@ body {
   background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
 }
 
-.group-card-clickable {
+.btn-copy-invite {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px 0;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 
-.group-card-clickable:hover {
+.btn-copy-invite:hover {
   border-color: var(--color-gold);
-  box-shadow: 0 0 0 1px var(--color-gold);
-}
-
-.group-card-clickable:active {
-  transform: scale(0.98);
-}
-
-.copy-toast {
-  font-size: 0.65rem;
-  color: var(--color-success, #4caf50);
-  margin-left: 8px;
-  font-weight: 400;
-  opacity: 0;
-  transition: opacity 0.2s ease-out;
-}
-
-.copy-toast.visible {
-  opacity: 1;
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 8%, transparent);
 }
 
 /* Compact group card — used in side panel at smaller sizes */
