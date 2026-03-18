@@ -1,5 +1,5 @@
 import { WoWGroup } from '@mythicplus/shared';
-import { FirebaseService } from '../core/firebaseService.js';
+import { FirebaseService, ARRAY_UNION, ARRAY_REMOVE } from '../core/firebaseService.js';
 import { buildGroupEmbed } from '../core/groupUi.js';
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
@@ -234,6 +234,7 @@ export class SessionService {
     const entry = this.activeChannels.get(channelId);
     if (!entry || !this.firebase.db) return { active: false, sittingOut: false };
 
+    // Read current state to determine toggle direction (for the reply message)
     const docRef = this.firebase.db.collection('channels').doc(entry.docId);
     const snap = await docRef.get();
     if (!snap.exists) return { active: false, sittingOut: false };
@@ -241,11 +242,14 @@ export class SessionService {
     const data = snap.data();
     const current: string[] = (data?.sittingOut as string[] | undefined) ?? [];
     const isCurrentlySittingOut = current.includes(discordId);
-    const updated = isCurrentlySittingOut
-      ? current.filter(id => id !== discordId)
-      : [...current, discordId];
 
-    await this.firebase.updateChannelDoc(entry.docId, { sittingOut: updated });
+    // Use atomic arrayUnion/arrayRemove to avoid race conditions
+    // when multiple players toggle simultaneously
+    if (isCurrentlySittingOut) {
+      await this.firebase.updateChannelDoc(entry.docId, { sittingOut: ARRAY_REMOVE(discordId) });
+    } else {
+      await this.firebase.updateChannelDoc(entry.docId, { sittingOut: ARRAY_UNION(discordId) });
+    }
     return { active: true, sittingOut: !isCurrentlySittingOut };
   }
 

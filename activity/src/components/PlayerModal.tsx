@@ -175,20 +175,24 @@ export function PlayerModal({ players }: PlayerModalProps) {
         {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
         {renderSection('Utilities', UTILITY_BUTTONS, false)}
 
-        {currentPlayerId && player.discordId === currentPlayerId && (
-          <div className="role-editor-section" style={{ marginTop: 4 }}>
-            <div className="role-editor-row">
-              <button
-                className={`role-btn${sittingOut.includes(player.discordId!) ? ' active-dps' : ''}`}
-                onClick={() => {
-                  if (player.discordId) service.toggleSitOut(player.discordId);
-                }}
-              >
-                {sittingOut.includes(player.discordId!) ? 'Rejoin Round' : 'Sit Out This Round'}
-              </button>
+        {currentPlayerId && player.discordId === currentPlayerId && (() => {
+          const isMeSittingOut = sittingOut.includes(player.discordId!);
+          return (
+            <div className="role-editor-section" style={{ marginTop: 4 }}>
+              <div className="role-editor-row">
+                <button
+                  className={`role-btn${isMeSittingOut ? ' active-sitting-out' : ''}`}
+                  aria-pressed={isMeSittingOut}
+                  onClick={() => {
+                    if (player.discordId) service.toggleSitOut(player.discordId);
+                  }}
+                >
+                  {isMeSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="role-editor-actions">
           <button

@@ -11,6 +11,8 @@ vi.mock('@mythicplus/shared', async () => {
 
 vi.mock('../src/core/firebaseService.js', () => ({
   FirebaseService: { getInstance: vi.fn() },
+  ARRAY_UNION: (...elements: unknown[]) => ({ __type: 'arrayUnion', elements }),
+  ARRAY_REMOVE: (...elements: unknown[]) => ({ __type: 'arrayRemove', elements }),
 }));
 
 vi.mock('../src/core/utils.js', () => ({
@@ -584,7 +586,9 @@ describe('SessionService.toggleSitOut', () => {
     const result = await service.toggleSitOut('42', 'user1');
 
     expect(result).toEqual({ active: true, sittingOut: true });
-    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user1'] });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', {
+      sittingOut: { __type: 'arrayUnion', elements: ['user1'] },
+    });
   });
 
   it('removes user when currently sitting out', async () => {
@@ -596,7 +600,9 @@ describe('SessionService.toggleSitOut', () => {
     const result = await service.toggleSitOut('42', 'user1');
 
     expect(result).toEqual({ active: true, sittingOut: false });
-    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user2'] });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', {
+      sittingOut: { __type: 'arrayRemove', elements: ['user1'] },
+    });
   });
 
   it('works with missing sittingOut field (treats as empty)', async () => {
@@ -608,7 +614,9 @@ describe('SessionService.toggleSitOut', () => {
     const result = await service.toggleSitOut('42', 'user1');
 
     expect(result).toEqual({ active: true, sittingOut: true });
-    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user1'] });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', {
+      sittingOut: { __type: 'arrayUnion', elements: ['user1'] },
+    });
   });
 });
 

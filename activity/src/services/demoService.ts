@@ -59,6 +59,8 @@ class DemoSessionService implements SessionService {
   async cancelToLobby(): Promise<void> {
     const store = useAppStore.getState();
     if (store.channelData) {
+      // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
+      // round that was cancelled, so players re-enter the pool for the next attempt.
       store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] } as ChannelData);
     }
   }
@@ -116,17 +118,13 @@ class DemoSessionService implements SessionService {
     const store = useAppStore.getState();
     if (store.channelData) {
       const current = store.channelData.sittingOut ?? [];
-      if (current.includes(discordId)) {
-        store.setChannelData({
-          ...store.channelData,
-          sittingOut: current.filter(id => id !== discordId),
-        });
-      } else {
-        store.setChannelData({
-          ...store.channelData,
-          sittingOut: [...current, discordId],
-        });
-      }
+      const isSittingOut = current.includes(discordId);
+      store.setChannelData({
+        ...store.channelData,
+        sittingOut: isSittingOut
+          ? current.filter(id => id !== discordId)
+          : [...current, discordId],
+      });
     }
   }
 

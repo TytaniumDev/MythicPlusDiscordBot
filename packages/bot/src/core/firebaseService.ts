@@ -10,6 +10,11 @@ export let SERVER_TIMESTAMP: unknown = { __sentinel: 'serverTimestamp' };
 // Replaced with FieldValue.delete() at initialization time.
 export let DELETE_FIELD: unknown = null;
 
+// Atomic array operations.
+// Replaced with FieldValue.arrayUnion/arrayRemove at initialization time.
+export let ARRAY_UNION: (...elements: unknown[]) => unknown = (...elements) => elements;
+export let ARRAY_REMOVE: (...elements: unknown[]) => unknown = (...elements) => elements;
+
 // Firebase Admin SDK types — imported dynamically to allow mocking
 type FirebaseDb = {
   collection: (name: string) => FirebaseCollection;
@@ -138,6 +143,8 @@ export class FirebaseService implements IFirebaseService {
       this.db = admin.firestore() as FirebaseDb;
       SERVER_TIMESTAMP = admin.firestore.FieldValue.serverTimestamp();
       DELETE_FIELD = admin.firestore.FieldValue.delete();
+      ARRAY_UNION = (...elements: unknown[]) => admin.firestore.FieldValue.arrayUnion(...elements);
+      ARRAY_REMOVE = (...elements: unknown[]) => admin.firestore.FieldValue.arrayRemove(...elements);
       logger.info('Firebase initialized successfully.');
     } catch (e) {
       const errType = e instanceof Error ? e.constructor.name : String(e);
