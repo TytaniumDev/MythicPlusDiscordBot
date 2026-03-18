@@ -489,6 +489,12 @@ body {
   gap: 6px;
 }
 
+.sitting-out-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
 .role-column-header {
   font-size: 0.75rem;
   font-weight: 700;
@@ -503,6 +509,7 @@ body {
 .role-column-header.healer { color: var(--color-healer); border-color: var(--color-healer); }
 .role-column-header.dps { color: var(--color-dps); border-color: var(--color-dps); }
 .role-column-header.unassigned { color: var(--text-secondary); border-color: var(--text-secondary); }
+.role-column-header.sitting-out { color: var(--text-secondary); border-color: var(--text-secondary); opacity: 0.7; }
 
 .player-chip {
   position: relative;
@@ -611,6 +618,11 @@ body {
   background: color-mix(in srgb, var(--text-secondary) 20%, transparent);
   color: var(--text-secondary);
   border: 1px solid color-mix(in srgb, var(--text-secondary) 40%, transparent);
+}
+
+/* ── Player Chip: Sitting out ── */
+.player-chip.sitting-out {
+  opacity: 0.5;
 }
 
 /* ── Player Chip: Current user highlight ── */
@@ -810,6 +822,12 @@ body {
   background: color-mix(in srgb, var(--color-brez) 20%, transparent);
   color: var(--color-brez);
   border-color: color-mix(in srgb, var(--color-brez) 40%, transparent);
+}
+
+.role-btn.active-sitting-out {
+  background: color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  color: var(--text-secondary);
+  border-color: color-mix(in srgb, var(--text-secondary) 40%, transparent);
 }
 
 .role-btn.active-lust {
@@ -1567,6 +1585,10 @@ body {
   }
 
   .dps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sitting-out-grid {
     grid-template-columns: 1fr;
   }
 }

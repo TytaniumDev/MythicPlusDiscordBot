@@ -14,4 +14,5 @@ export interface SessionService {
   reportBadGroup(title: string, description: string): Promise<void>;
   claimPlayer(playerId: string): Promise<void>;
   unclaimPlayer(playerId: string): Promise<void>;
+  toggleSitOut(discordId: string): Promise<void>;
 }

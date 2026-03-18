@@ -57,6 +57,13 @@ const spinningReadyData = {
   groups: mockGroups,
 };
 
+const lobbySittingOutData = {
+  ...mockChannelData,
+  status: 'lobby',
+  players: mockPlayers,
+  sittingOut: [mockPlayers[5].discordId, mockPlayers[7].discordId], // Will, hammer13
+};
+
 const resultsData = {
   ...mockChannelData,
   status: 'completed',
@@ -95,6 +102,15 @@ function viewportTests(
       await expect(spinBtn).toBeEnabled();
 
       await expect(page).toHaveScreenshot(`lobby-${viewport.width}x${viewport.height}.png`);
+    });
+
+    test('Lobby Sitting Out', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      await page.goto(`/?data=${encodeData(lobbySittingOutData)}`);
+      await expect(page.locator('#view-lobby')).toBeVisible();
+      await expect(page.locator('.role-column-header.sitting-out')).toBeVisible();
+      await expect(page.locator('.player-chip.sitting-out')).toHaveCount(2);
+      await expect(page).toHaveScreenshot(`lobby-sitting-out-${viewport.width}x${viewport.height}.png`);
     });
 
     test('Lobby Empty', async ({ page }) => {
