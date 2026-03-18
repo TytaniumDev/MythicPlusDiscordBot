@@ -153,7 +153,7 @@ To update an already-invited bot: use a new invite URL with the same permissions
 
 If you copy the **permissions integer** from the Discord Developer Portal (OAuth2 → URL Generator, shown at the bottom when you select permissions), you can use it in this project so the bot generates invite URLs with those permissions:
 
-1. **Config / env:** Set `BOT_INVITE_PERMISSIONS` to that integer (e.g. `3263489`). In `config.py` it defaults to `3263489`; override with the `BOT_INVITE_PERMISSIONS` environment variable (e.g. in `.env` or GitHub Secrets) if you use a different value.
+1. **Config / env:** Set `BOT_INVITE_PERMISSIONS` to that integer (e.g. `3263489`). In `config.ts` it defaults to `3263489`; override with the `BOT_INVITE_PERMISSIONS` environment variable (e.g. in `.env` or GitHub Secrets) if you use a different value.
 2. **Invite URL in Discord:** Run `!invite` in any channel where the bot can reply. The bot will post an “Add this bot to a server” link that uses the configured permissions. Use that link to add the bot to a server or to re-invite with updated permissions.
 
 The permissions integer is only used when generating the OAuth2 invite URL; it does not change the bot’s behavior inside a server. Server admins still grant permissions when they complete the invite flow.
@@ -229,7 +229,7 @@ Look for:
 Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
 Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
 
-Note: The production Docker image is built using `requirements.txt`. If you add dependencies, ensure they are reflected there. Local development uses `uv` for dependency management.
+Note: The production Docker image is built using `package.json` and `npm ci`. If you add dependencies, ensure they are reflected in the package.json and package-lock.json.
 
 ## 7. GitHub Issues Integration
 
