@@ -67,7 +67,6 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
 
   const handleCopyInvite = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!hasInvite) return;
     await copyToClipboard(inviteCmd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -111,6 +110,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
       ))}
       {hasInvite && !compact && (
         <button
+          type="button"
           className="btn-copy-invite"
           onClick={handleCopyInvite}
           aria-label={`Copy invite command for ${heading}`}

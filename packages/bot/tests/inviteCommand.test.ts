@@ -124,6 +124,19 @@ describe('generateInviteCommand', () => {
     expect(cmd).not.toContain('"HealerPlayer"');
   });
 
+  it('includes all players when excludeDiscordId matches no one', () => {
+    const tank = WoWPlayer.create('TankPlayer', [ROLE_TANK], 'tank1');
+    const healer = WoWPlayer.create('HealerPlayer', [ROLE_HEALER], 'healer1');
+    const dps1 = WoWPlayer.create('DPS1', [ROLE_MELEE], 'dps1');
+
+    const group = new WoWGroup(tank, healer, [dps1]);
+    const cmd = generateInviteCommand(group.toDict(), 'spectator99');
+
+    expect(cmd).toContain('"TankPlayer"');
+    expect(cmd).toContain('"HealerPlayer"');
+    expect(cmd).toContain('"DPS1"');
+  });
+
   it('includes tank when a non-tank player is excluded', () => {
     const tank = WoWPlayer.create('TankPlayer', [ROLE_TANK], 'tank1');
     const healer = WoWPlayer.create('HealerPlayer', [ROLE_HEALER], 'healer1');

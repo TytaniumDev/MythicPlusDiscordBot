@@ -1223,6 +1223,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
+  font-family: var(--font-family);
   font-size: 0.7rem;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s, background 0.2s;
