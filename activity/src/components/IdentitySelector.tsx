@@ -10,7 +10,7 @@ export function IdentitySelector({ players }: IdentitySelectorProps) {
 
   if (!identityResolved) {
     return (
-      <div id="identity-selector" className="identity-selector">
+      <div id="identity-selector" className="identity-selector" role="region" aria-label="Identity Selection">
         <div className="identity-label">Select yourself to highlight your group:</div>
         <div className="identity-chips">
           {players.map((p) => (
@@ -18,6 +18,7 @@ export function IdentitySelector({ players }: IdentitySelectorProps) {
               key={p.discordId || p.name}
               className="identity-chip"
               onClick={() => selectPlayer(p)}
+              aria-label={`Select ${p.name} as your identity`}
             >
               {p.name}
             </button>
@@ -28,11 +29,12 @@ export function IdentitySelector({ players }: IdentitySelectorProps) {
   }
 
   return (
-    <div id="identity-selector" className="identity-selector">
+    <div id="identity-selector" className="identity-selector" role="region" aria-label="Identity Selection">
       <div className="identity-current">
         <button
           className="identity-name"
           title="Click to change identity"
+          aria-label={`Change identity, currently selected as ${currentPlayerName ?? 'Unknown'}`}
           onClick={clearIdentity}
         >
           {currentPlayerName ?? 'Unknown'}
