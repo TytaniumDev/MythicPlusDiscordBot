@@ -395,6 +395,56 @@ test.describe('My Group Highlight', () => {
   });
 });
 
+// ── Grayscale Chosen Players Tests ───────────────────────────
+// After group 1 is revealed, chosen players should appear grayscaled on the wheels
+const grayscaleWheelsData = {
+  ...mockChannelData,
+  status: 'spinning',
+  staticWheel: true,
+  players: mockPlayers,
+  groupCards: [
+    {
+      group: mockGroups[0], // Group 1: Pandemonium (tank), Martz (healer), KingofSkillz, Upartyhardy, Ultra9 (dps)
+      index: 0,
+    },
+  ],
+};
+
+test.describe('Grayscale Chosen Players', () => {
+  test.describe('Desktop (1280x720)', () => {
+    test.use({ viewport: VIEWPORTS.desktop });
+
+    test('Wheels with chosen players grayscaled', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      await page.goto(`/?data=${encodeData(grayscaleWheelsData)}`);
+      await expect(page.locator('#view-wheels')).toBeVisible();
+
+      // All 5 wheel canvases should be rendered
+      await expect(page.locator('#wheel-tank')).toBeAttached();
+      await expect(page.locator('#wheel-healer')).toBeAttached();
+      await expect(page.locator('#wheel-dps1')).toBeAttached();
+
+      // Group 1 should be shown in side panel
+      await expect(page.locator('#groups-list .group-card')).toHaveCount(1);
+
+      await expect(page).toHaveScreenshot('wheels-grayscale-1280x720.png');
+    });
+  });
+
+  test.describe('Phone Portrait (420x700)', () => {
+    test.use({ viewport: VIEWPORTS.phonePortrait });
+
+    test('Wheels with chosen players grayscaled', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      await page.goto(`/?data=${encodeData(grayscaleWheelsData)}`);
+      await expect(page.locator('#view-wheels')).toBeVisible();
+      await expect(page.locator('#wheel-tank')).toBeAttached();
+
+      await expect(page).toHaveScreenshot('wheels-grayscale-420x700.png');
+    });
+  });
+});
+
 // ── Grid Mode Tests ──────────────────────────────────────────
 test.describe('Grid Mode Tests', () => {
   test.use({ viewport: VIEWPORTS.desktop });

@@ -47,6 +47,13 @@ async function init() {
         store.setIdentityResolved(true);
       }
 
+      // Support test groupCards injection (e.g. { groupCards: [{ group, index }] })
+      if (data.groupCards) {
+        for (const card of data.groupCards) {
+          store.addGroupCard(card);
+        }
+      }
+
       render();
       return;
     } catch (e) {
