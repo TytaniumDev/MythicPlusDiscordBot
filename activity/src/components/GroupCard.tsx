@@ -20,6 +20,7 @@ function RoleRow({ color, roleLabel, name, player, isOffspec, compact }: {
   isOffspec?: boolean;
   compact?: boolean;
 }) {
+  const missingIgn = player != null && !player.inGameName;
   return (
     <div className={compact ? 'compact-role' : 'group-role'}>
       <span
@@ -30,7 +31,11 @@ function RoleRow({ color, roleLabel, name, player, isOffspec, compact }: {
         title={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
       />
       {!compact && <span className="role-label">{roleLabel}</span>}
-      <span className="role-name">{name}{utilityIcons(player)}</span>
+      <span className={`role-name${missingIgn ? ' missing-ign-name' : ''}`}>
+        {name}
+        {utilityIcons(player)}
+        {missingIgn && <span className="missing-ign-icon" title="No in-game name set"> ⚠</span>}
+      </span>
     </div>
   );
 }

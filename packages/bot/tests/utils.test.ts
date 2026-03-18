@@ -52,6 +52,36 @@ describe('getWowName', () => {
     };
     expect(getWowName(member3)).toBe('UserName');
   });
+
+  it('strips parenthetical text from names', () => {
+    const member: DiscordMember = {
+      nick: 'Gazzi (Nikki)',
+      global_name: null,
+      id: '4',
+      toString: () => 'user',
+    };
+    expect(getWowName(member)).toBe('Gazzi');
+  });
+
+  it('strips nested parentheticals', () => {
+    const member: DiscordMember = {
+      nick: 'Mickey (rook (AJ))',
+      global_name: null,
+      id: '5',
+      toString: () => 'user',
+    };
+    expect(getWowName(member)).toBe('Mickey');
+  });
+
+  it('strips two separate parentheticals', () => {
+    const member: DiscordMember = {
+      nick: 'Foo (bar) (baz)',
+      global_name: null,
+      id: '6',
+      toString: () => 'user',
+    };
+    expect(getWowName(member)).toBe('Foo');
+  });
 });
 
 describe('getDebugPlayers', () => {
