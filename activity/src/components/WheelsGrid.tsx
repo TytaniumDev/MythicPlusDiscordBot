@@ -30,7 +30,11 @@ export const WheelsGridComponent = forwardRef<WheelsGridRef, WheelsGridProps>(
     // Initialize wheels when pools change
     useEffect(() => {
       if (pools && gridRef.current) {
-        gridRef.current.initWheels(pools);
+        if (gridRef.current.initialized) {
+          gridRef.current.updatePools(pools);
+        } else {
+          gridRef.current.initWheels(pools);
+        }
       }
     }, [pools]);
 

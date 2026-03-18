@@ -147,6 +147,12 @@ export class Wheel {
     this.draw();
   }
 
+  /** Update entries without resetting position or results */
+  updateEntries(entries: WheelEntry[]) {
+    this.entries = entries;
+    this.draw();
+  }
+
   /** Match canvas internal size to its CSS display size for sharp rendering */
   private resizeCanvas() {
     const rect = this.canvas.getBoundingClientRect();
@@ -210,8 +216,14 @@ export class Wheel {
 
       // Segment fill with radial gradient
       const grad = this.ctx.createRadialGradient(cx, cy, radius * 0.15, cx, cy, radius);
-      grad.addColorStop(0, lighten(color, 0.2));
-      grad.addColorStop(1, entry.isOffspec ? desaturate(color) : darken(color, 0.15));
+      if (entry.isChosen) {
+        const grayscale = desaturate(color, 0.95);
+        grad.addColorStop(0, grayscale);
+        grad.addColorStop(1, grayscale);
+      } else {
+        grad.addColorStop(0, lighten(color, 0.2));
+        grad.addColorStop(1, entry.isOffspec ? desaturate(color) : darken(color, 0.15));
+      }
 
       this.ctx.beginPath();
       this.ctx.moveTo(cx, cy);
@@ -231,7 +243,7 @@ export class Wheel {
       this.ctx.rotate(startAngle + sliceAngle / 2);
       this.ctx.textAlign = 'right';
       this.ctx.textBaseline = 'middle';
-      this.ctx.fillStyle = 'white';
+      this.ctx.fillStyle = entry.isChosen ? 'rgba(255, 255, 255, 0.3)' : 'white';
       this.ctx.shadowColor = 'rgba(0,0,0,0.9)';
       this.ctx.shadowOffsetX = 1;
       this.ctx.shadowOffsetY = 1;

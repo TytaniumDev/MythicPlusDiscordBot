@@ -22,6 +22,10 @@ async function init() {
       const data = JSON.parse(json);
       const store = useAppStore.getState();
 
+      if (data.isDemoMode) {
+        store.setDemoMode(true);
+      }
+
       if (data.guild && data.channel) {
         store.setGuildData(data.guild);
         const view = statusToView((data.channel as ChannelData).status);

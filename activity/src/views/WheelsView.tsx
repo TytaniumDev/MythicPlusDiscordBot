@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
@@ -7,6 +7,7 @@ import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGri
 import { GroupCard } from '../components/GroupCard';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
+import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
 import { delay, CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION } from '../lib/timing';
 
@@ -48,9 +49,29 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setAnnounceChecked(channelData?.announceResults !== false);
   }, [channelData?.announceResults]);
 
-  const pools = poolTanks.length > 0 || poolHealers.length > 0 || poolDps.length > 0
-    ? { tanks: poolTanks, healers: poolHealers, dps: poolDps }
-    : null;
+  const markedPools = useMemo(() => {
+    if (poolTanks.length === 0 && poolHealers.length === 0 && poolDps.length === 0) return null;
+
+    const chosenNames = new Set<string>();
+    groupCards.forEach((c) => {
+      if (c.group.tank) chosenNames.add(c.group.tank.name);
+      if (c.group.healer) chosenNames.add(c.group.healer.name);
+      c.group.dps.forEach((p) => {
+        if (p) chosenNames.add(p.name);
+      });
+    });
+
+    const mark = (entries: WheelEntry[]) =>
+      entries.map((e) => ({ ...e, isChosen: chosenNames.has(e.name) }));
+
+    return {
+      tanks: mark(poolTanks),
+      healers: mark(poolHealers),
+      dps: mark(poolDps),
+    };
+  }, [poolTanks, poolHealers, poolDps, groupCards]);
+
+  const pools = markedPools;
 
   // Start spin sequence when groups arrive
   useEffect(() => {
@@ -170,7 +191,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     grid.setAllSpinning();
     grid.clearAllResults();
-    grid.initWheels({ tanks: store.poolTanks, healers: store.poolHealers, dps: store.poolDps });
+    grid.initWheels(markedPools!);
 
     const spinPromises: Promise<string>[] = [];
     if (group.tank) spinPromises.push(grid.tank.spinTo(group.tank.name, GRID_SPIN_DURATION));
@@ -200,7 +221,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     // Check for pending reveals
     checkForPendingRevealsRef.current();
-  }, [advanceAfterSpin]);
+  }, [advanceAfterSpin, markedPools]);
 
   const spinForCurrentGroupCarousel: () => Promise<void> = useCallback(async () => {
     const grid = gridRef.current?.grid;
@@ -216,7 +237,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
     grid.clearAllResults();
-    grid.initWheels({ tanks: store.poolTanks, healers: store.poolHealers, dps: store.poolDps });
+    grid.initWheels(markedPools!);
     grid.resetCarouselDots();
 
     const wheels = grid.orderedWheels();
@@ -253,7 +274,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     advanceAfterSpin(idx);
 
     checkForPendingRevealsRef.current();
-  }, [advanceAfterSpin]);
+  }, [advanceAfterSpin, markedPools]);
 
   const runSpinAnimation: () => Promise<void> = useCallback(async () => {
     const grid = gridRef.current?.grid;
