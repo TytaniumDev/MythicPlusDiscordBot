@@ -36,11 +36,24 @@ function generateSplitInviteCommands(names: string[]): string {
   return commands.join('\n');
 }
 
-export function generateInviteCommand(group: WoWGroupDict): string {
-  const invitees: WoWPlayerDict[] = [
-    ...(group.healer ? [group.healer] : []),
-    ...group.dps,
-  ];
+export function generateInviteCommand(group: WoWGroupDict, excludeDiscordId?: string): string {
+  let invitees: WoWPlayerDict[];
+
+  if (excludeDiscordId != null) {
+    // Exclude the specified player — allows anyone in the group to be the inviter
+    const allPlayers: WoWPlayerDict[] = [
+      ...(group.tank ? [group.tank] : []),
+      ...(group.healer ? [group.healer] : []),
+      ...group.dps,
+    ];
+    invitees = allPlayers.filter((p) => p.discordId !== excludeDiscordId);
+  } else {
+    // Default: exclude tank (backwards compat for bot embeds)
+    invitees = [
+      ...(group.healer ? [group.healer] : []),
+      ...group.dps,
+    ];
+  }
 
   if (invitees.length === 0) return '';
 
