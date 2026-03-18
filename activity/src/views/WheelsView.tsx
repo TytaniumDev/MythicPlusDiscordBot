@@ -189,9 +189,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setNextBtnDisabled(true);
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
+    if (!markedPools) return;
+
     grid.setAllSpinning();
     grid.clearAllResults();
-    grid.initWheels(markedPools!);
+    grid.initWheels(markedPools);
 
     const spinPromises: Promise<string>[] = [];
     if (group.tank) spinPromises.push(grid.tank.spinTo(group.tank.name, GRID_SPIN_DURATION));
@@ -237,7 +239,8 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
     grid.clearAllResults();
-    grid.initWheels(markedPools!);
+    if (!markedPools) return;
+    grid.initWheels(markedPools);
     grid.resetCarouselDots();
 
     const wheels = grid.orderedWheels();

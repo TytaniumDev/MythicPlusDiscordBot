@@ -29,7 +29,6 @@ export function useIdentity() {
       const stillHere = players.some((p) => p.discordId === state.currentPlayerId);
       if (stillHere) return;
       // Player left — re-resolve
-      console.warn(`[Wheelson:identity] Previously resolved player ${state.currentPlayerId} (${state.currentPlayerName}) not found in players list (${players.length} players). Resetting identity.`);
       useAppStore.getState().resetIdentity();
     }
 
@@ -40,7 +39,6 @@ export function useIdentity() {
     if (stored) {
       const match = players.find((p) => p.discordId === stored);
       if (match) {
-        console.log(`[Wheelson:identity] Restored identity from localStorage: ${match.name} (${match.discordId})`);
         useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
         useAppStore.getState().setIdentityResolved(true);
         if (match.discordId) {
@@ -48,7 +46,6 @@ export function useIdentity() {
         }
         return;
       }
-      console.warn(`[Wheelson:identity] localStorage had player ${stored} but not found in players list (${players.length} players). IDs: [${players.map(p => p.discordId).join(', ')}]`);
     }
 
     // Auto-match via Discord participants
@@ -58,7 +55,6 @@ export function useIdentity() {
         const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
         const match = players.find((p) => p.name === pName);
         if (match && match.discordId) {
-          console.log(`[Wheelson:identity] Auto-matched via participant name: ${match.name} (${match.discordId})`);
           useAppStore.getState().setIdentity(match.discordId, match.name);
           useAppStore.getState().setIdentityResolved(true);
           localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
@@ -72,7 +68,6 @@ export function useIdentity() {
       const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
       if (idMatches.length === 1) {
         const match = idMatches[0];
-        console.log(`[Wheelson:identity] Auto-matched via discordId: ${match.name} (${match.discordId})`);
         useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
         useAppStore.getState().setIdentityResolved(true);
         if (match.discordId) {
@@ -81,17 +76,12 @@ export function useIdentity() {
         }
         return;
       }
-
-      console.log(`[Wheelson:identity] No auto-match found. Participants: [${participants.map(p => p.id).join(', ')}], Players: [${players.map(p => `${p.name}:${p.discordId}`).join(', ')}]`);
-    } else {
-      console.log('[Wheelson:identity] No Discord participants available for auto-match');
     }
 
     // No match found — identity selector will show in lobby
   }, []);
 
   const selectPlayer = useCallback((player: WoWPlayer) => {
-    console.log(`[Wheelson:identity] Manual select: ${player.name} (${player.discordId})`);
     const guildId = useAppStore.getState().currentGuildId;
     useAppStore.getState().setIdentity(player.discordId ?? null, player.name);
     useAppStore.getState().setIdentityResolved(true);
@@ -105,7 +95,6 @@ export function useIdentity() {
     const state = useAppStore.getState();
     const guildId = state.currentGuildId;
     const previousId = state.currentPlayerId;
-    console.log(`[Wheelson:identity] Clearing identity: ${previousId} (${state.currentPlayerName})`);
     localStorage.removeItem(getIdentityStorageKey(guildId));
     state.resetIdentity();
     if (previousId) {

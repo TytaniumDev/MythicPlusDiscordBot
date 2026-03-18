@@ -619,29 +619,6 @@ body {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
 }
 
-/* ── Player Chip: Missing IGN banner ── */
-.player-chip.missing-ign {
-  padding-bottom: 24px;
-}
-
-.ign-banner {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: color-mix(in srgb, var(--color-gold) 15%, transparent);
-  color: var(--color-gold);
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 3px 6px;
-  border-radius: 0 0 5px 5px;
-  border-top: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
-}
-
 /* ── Player Chip: Claimed checkmark ── */
 .claimed-check {
   position: absolute;
@@ -1209,15 +1186,6 @@ body {
 
 .group-card .group-role .role-name {
   color: var(--text-primary);
-}
-
-.role-name.missing-ign-name {
-  color: var(--color-gold);
-}
-
-.missing-ign-icon {
-  color: var(--color-gold);
-  font-size: 0.7rem;
 }
 
 /* Highlighted group card — "your" group */

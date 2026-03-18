@@ -274,8 +274,8 @@ test.describe('Functional Tests', () => {
     const group1 = page.locator('#final-groups .group-card').first();
     await expect(group1.locator('.role-name').first()).toHaveText('Pandemonium ⚰️');
 
-    // Group 1 healer is Martz (has brez ⚰️, no IGN so shows ⚠)
-    await expect(group1.locator('.role-name').nth(1)).toHaveText('Martz ⚰️ ⚠');
+    // Group 1 healer is Martz (has brez ⚰️)
+    await expect(group1.locator('.role-name').nth(1)).toHaveText('Martz ⚰️');
   });
 
   test('Button always visible in wheels view', async ({ page }) => {
