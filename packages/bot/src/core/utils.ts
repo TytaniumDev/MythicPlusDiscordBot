@@ -35,7 +35,7 @@ export function getWowName(member: DiscordMember): string {
     rawName = String(member);
   }
 
-  return rawName.replace(/\./g, '');
+  return rawName.replace(/\s*\(.*\)/g, '').replace(/\./g, '').trim();
 }
 
 export async function showLongTyping(
