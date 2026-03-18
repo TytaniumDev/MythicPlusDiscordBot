@@ -63,7 +63,7 @@ describe('getWowName', () => {
     expect(getWowName(member)).toBe('Gazzi');
   });
 
-  it('strips multiple parentheticals', () => {
+  it('strips nested parentheticals', () => {
     const member: DiscordMember = {
       nick: 'Mickey (rook (AJ))',
       global_name: null,
@@ -71,6 +71,16 @@ describe('getWowName', () => {
       toString: () => 'user',
     };
     expect(getWowName(member)).toBe('Mickey');
+  });
+
+  it('strips two separate parentheticals', () => {
+    const member: DiscordMember = {
+      nick: 'Foo (bar) (baz)',
+      global_name: null,
+      id: '6',
+      toString: () => 'user',
+    };
+    expect(getWowName(member)).toBe('Foo');
   });
 });
 
