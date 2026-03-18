@@ -1,4 +1,4 @@
-import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
@@ -127,8 +127,10 @@ class FirestoreSessionService implements SessionService {
       setLastGroups(previousGroups, guildId);
     }
 
+    const sittingOut = channelData.sittingOut ?? [];
     const players = channelData.players
       .filter(p => p.mainRole !== null || p.offspecs.length > 0)
+      .filter(p => !p.discordId || !sittingOut.includes(p.discordId))
       .map(p => WoWPlayer.fromDict(p));
 
     const groups = createMythicPlusGroups(players, true, guildId);
@@ -168,14 +170,16 @@ class FirestoreSessionService implements SessionService {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async cancelToLobby(): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
+    // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
+    // round that was cancelled, so players re-enter the pool for the next attempt.
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async updateAnnounce(value: boolean): Promise<void> {
@@ -214,6 +218,7 @@ class FirestoreSessionService implements SessionService {
       guildId,
       status: 'lobby',
       groups: [],
+      sittingOut: [],
       isDebug: false,
       announceResults: true,
       refreshPlayers: true,
@@ -250,6 +255,27 @@ class FirestoreSessionService implements SessionService {
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
+  }
+
+  async toggleSitOut(discordId: string): Promise<void> {
+    const { currentChannelId } = useAppStore.getState();
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
+
+    // Use a transaction to read authoritative Firestore state and toggle atomically,
+    // avoiding stale local state from the Zustand store / onSnapshot listener
+    await runTransaction(db, async (transaction) => {
+      const channelDoc = await transaction.get(docRef);
+      if (!channelDoc.exists()) return;
+
+      const data = channelDoc.data();
+      const current: string[] = data.sittingOut ?? [];
+      if (current.includes(discordId)) {
+        transaction.update(docRef, { sittingOut: arrayRemove(discordId) });
+      } else {
+        transaction.update(docRef, { sittingOut: arrayUnion(discordId) });
+      }
+    });
   }
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {
