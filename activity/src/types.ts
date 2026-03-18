@@ -3,6 +3,7 @@ import type { WoWPlayerDict, WoWGroupDict, SessionStatus } from '@mythicplus/sha
 export interface WheelEntry {
   name: string;
   isOffspec: boolean;
+  isChosen?: boolean;
 }
 
 export type WoWPlayer = WoWPlayerDict;

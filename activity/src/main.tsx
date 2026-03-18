@@ -22,6 +22,10 @@ async function init() {
       const data = JSON.parse(json);
       const store = useAppStore.getState();
 
+      if (data.isDemoMode) {
+        store.setDemoMode(true);
+      }
+
       if (data.guild && data.channel) {
         store.setGuildData(data.guild);
         const view = statusToView((data.channel as ChannelData).status);
@@ -41,6 +45,13 @@ async function init() {
       if (data.identity) {
         store.setIdentity(data.identity.id, data.identity.name);
         store.setIdentityResolved(true);
+      }
+
+      // Support test groupCards injection (e.g. { groupCards: [{ group, index }] })
+      if (data.groupCards) {
+        for (const card of data.groupCards) {
+          store.addGroupCard(card);
+        }
       }
 
       render();

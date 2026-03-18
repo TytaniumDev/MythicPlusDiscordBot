@@ -26,6 +26,7 @@ export class WheelsGrid {
 
   /** Cached ordered array of all 5 wheels (tank, healer, dps1-3) */
   readonly wheels: readonly Wheel[];
+  public initialized = false;
 
   private areaEl: HTMLDivElement;
   private containerEl: HTMLDivElement;
@@ -140,6 +141,16 @@ export class WheelsGrid {
     this.dps1.init(pools.dps);
     this.dps2.init(pools.dps);
     this.dps3.init(pools.dps);
+    this.initialized = true;
+  }
+
+  /** Update all 5 wheels with candidate pools without resetting rotation */
+  updatePools(pools: { tanks: WheelEntry[]; healers: WheelEntry[]; dps: WheelEntry[] }) {
+    this.tank.updateEntries(pools.tanks);
+    this.healer.updateEntries(pools.healers);
+    this.dps1.updateEntries(pools.dps);
+    this.dps2.updateEntries(pools.dps);
+    this.dps3.updateEntries(pools.dps);
   }
 
   /** Force a redraw of all wheels (call after layout transitions) */

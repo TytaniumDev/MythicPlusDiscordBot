@@ -23,7 +23,6 @@ export function PlayerChip({ player }: PlayerChipProps) {
   const isMe = currentPlayerId && player.discordId === currentPlayerId;
   const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
   const isSittingOut = player.discordId != null && sittingOut.includes(player.discordId);
-  const missingIgn = !player.inGameName;
 
   const handleClick = () => {
     useAppStore.getState().setModalPlayer(player);
@@ -38,7 +37,7 @@ export function PlayerChip({ player }: PlayerChipProps) {
 
   return (
     <div
-      className={`player-chip${isMe ? ' is-me' : ''}${isSittingOut ? ' sitting-out' : ''}${missingIgn ? ' missing-ign' : ''}`}
+      className={`player-chip${isMe ? ' is-me' : ''}${isSittingOut ? ' sitting-out' : ''}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="button"
@@ -64,7 +63,6 @@ export function PlayerChip({ player }: PlayerChipProps) {
           ))}
         </div>
       )}
-      {missingIgn && <div className="ign-banner">⚠ No IGN</div>}
     </div>
   );
 }

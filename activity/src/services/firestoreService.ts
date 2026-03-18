@@ -220,7 +220,7 @@ class FirestoreSessionService implements SessionService {
       groups: [],
       sittingOut: [],
       isDebug: false,
-      announceResults: false,
+      announceResults: true,
       refreshPlayers: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
@@ -245,22 +245,14 @@ class FirestoreSessionService implements SessionService {
 
   async claimPlayer(playerId: string): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) {
-      console.warn(`[Wheelson:claim] claimPlayer(${playerId}) skipped — no currentChannelId`);
-      return;
-    }
-    console.log(`[Wheelson:claim] claimPlayer(${playerId}) on channel ${currentChannelId}`);
+    if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayUnion(playerId) });
   }
 
   async unclaimPlayer(playerId: string): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) {
-      console.warn(`[Wheelson:claim] unclaimPlayer(${playerId}) skipped — no currentChannelId`);
-      return;
-    }
-    console.log(`[Wheelson:claim] unclaimPlayer(${playerId}) on channel ${currentChannelId}`);
+    if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
   }
@@ -311,7 +303,7 @@ class FirestoreSessionService implements SessionService {
         players: [],
         groups: [],
         isDebug: false,
-        announceResults: false,
+        announceResults: true,
         refreshPlayers: true,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
