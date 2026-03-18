@@ -35,6 +35,7 @@ export interface ChannelData {
   revealedGroups?: number;
   refreshPlayers?: boolean;
   claimedPlayers?: string[];
+  sittingOut?: string[];
   isDebug: boolean;
   announceResults: boolean;
   createdAt: unknown;

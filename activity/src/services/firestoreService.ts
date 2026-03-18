@@ -127,8 +127,10 @@ class FirestoreSessionService implements SessionService {
       setLastGroups(previousGroups, guildId);
     }
 
+    const sittingOut = channelData.sittingOut ?? [];
     const players = channelData.players
       .filter(p => p.mainRole !== null || p.offspecs.length > 0)
+      .filter(p => !p.discordId || !sittingOut.includes(p.discordId))
       .map(p => WoWPlayer.fromDict(p));
 
     const groups = createMythicPlusGroups(players, true, guildId);
@@ -168,14 +170,14 @@ class FirestoreSessionService implements SessionService {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async cancelToLobby(): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0 });
+    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async updateAnnounce(value: boolean): Promise<void> {
@@ -258,6 +260,18 @@ class FirestoreSessionService implements SessionService {
     console.log(`[Wheelson:claim] unclaimPlayer(${playerId}) on channel ${currentChannelId}`);
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
+  }
+
+  async toggleSitOut(discordId: string): Promise<void> {
+    const { currentChannelId, channelData } = useAppStore.getState();
+    if (!currentChannelId) return;
+    const docRef = doc(db, 'channels', currentChannelId);
+    const current = channelData?.sittingOut ?? [];
+    if (current.includes(discordId)) {
+      await updateDoc(docRef, { sittingOut: arrayRemove(discordId) });
+    } else {
+      await updateDoc(docRef, { sittingOut: arrayUnion(discordId) });
+    }
   }
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {

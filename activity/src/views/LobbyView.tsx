@@ -69,12 +69,16 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     );
   }
 
-  // Group players by main role
-  const tanks = players.filter((p) => getPrimaryRole(p) === 'tank');
-  const healers = players.filter((p) => getPrimaryRole(p) === 'healer');
-  const rangedPlayers = players.filter((p) => getPrimaryRole(p) === 'ranged');
-  const meleePlayers = players.filter((p) => getPrimaryRole(p) === 'melee');
-  const unassigned = players.filter((p) => !hasAnyRole(p));
+  const sittingOut = channelData?.sittingOut ?? [];
+  const activePlayers = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
+  const sittingOutPlayers = players.filter(p => p.discordId && sittingOut.includes(p.discordId));
+
+  // Group active players by main role
+  const tanks = activePlayers.filter((p) => getPrimaryRole(p) === 'tank');
+  const healers = activePlayers.filter((p) => getPrimaryRole(p) === 'healer');
+  const rangedPlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'ranged');
+  const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
+  const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
   return (
     <div className="main-layout">
@@ -87,7 +91,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             <div className="lobby-header-center">
               <h2>Players</h2>
               <span id="player-count" className="player-count">
-                {players.length === 1 ? '1 player' : `${players.length} players`}
+                {activePlayers.length === 1 ? '1 player' : `${activePlayers.length} players`}
+                {sittingOutPlayers.length > 0 && ` (${sittingOutPlayers.length} sitting out)`}
               </span>
             </div>
             <div className="lobby-header-spacer" aria-hidden="true" />
@@ -124,6 +129,16 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 <div className="role-column-header unassigned">{`Unassigned (${unassigned.length})`}</div>
                 <div className="dps-grid">
                   {unassigned.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                </div>
+              </div>
+            )}
+
+            {/* Sitting Out section */}
+            {sittingOutPlayers.length > 0 && (
+              <div className="role-section" style={{ gridColumn: '1 / -1' }}>
+                <div className="role-column-header sitting-out">{`Sitting Out (${sittingOutPlayers.length})`}</div>
+                <div className="dps-grid">
+                  {sittingOutPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
                 </div>
               </div>
             )}

@@ -19,6 +19,8 @@ interface PlayerModalProps {
 
 export function PlayerModal({ players }: PlayerModalProps) {
   const modalPlayer = useAppStore((s) => s.modalPlayer);
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
   const service = useSessionService();
 
   // Resolve live player data from the players array (in case it updated since modal opened)
@@ -172,6 +174,21 @@ export function PlayerModal({ players }: PlayerModalProps) {
         {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
         {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
         {renderSection('Utilities', UTILITY_BUTTONS, false)}
+
+        {currentPlayerId && player.discordId === currentPlayerId && (
+          <div className="role-editor-section" style={{ marginTop: 4 }}>
+            <div className="role-editor-row">
+              <button
+                className={`role-btn${sittingOut.includes(player.discordId!) ? ' active-dps' : ''}`}
+                onClick={() => {
+                  if (player.discordId) service.toggleSitOut(player.discordId);
+                }}
+              >
+                {sittingOut.includes(player.discordId!) ? 'Rejoin Round' : 'Sit Out This Round'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="role-editor-actions">
           <button

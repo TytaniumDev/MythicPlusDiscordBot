@@ -233,6 +233,7 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('text').setDescription('Quick feature description (skips the form)').setRequired(false),
     ),
+  new SlashCommandBuilder().setName('sitout').setDescription('Toggle sitting out of the current wheel spin round'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
 ];
 
@@ -891,6 +892,28 @@ async function main() {
         );
 
         await interaction.showModal(modal);
+        break;
+      }
+
+      case 'sitout': {
+        const voiceChannel = member?.voice.channel;
+        if (!voiceChannel) {
+          await interaction.reply({ content: 'You must be in a voice channel with an active session.', ephemeral: true });
+          break;
+        }
+        if (!sessionService.activeChannels.has(voiceChannel.id)) {
+          await interaction.reply({ content: 'No active session in your voice channel. Start one with /wheelson first.', ephemeral: true });
+          break;
+        }
+        const result = await sessionService.toggleSitOut(voiceChannel.id, interaction.user.id);
+        if (!result.active) {
+          await interaction.reply({ content: 'No active session found.', ephemeral: true });
+          break;
+        }
+        const msg = result.sittingOut
+          ? "You're **sitting out** this round. You won't be included in the next spin."
+          : "You're **back in**! You'll be included in the next spin.";
+        await interaction.reply({ content: msg, ephemeral: true });
         break;
       }
 

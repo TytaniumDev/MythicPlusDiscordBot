@@ -548,6 +548,70 @@ describe('SessionService.handleCollectionRemoved', () => {
   });
 });
 
+// ---------- toggleSitOut ----------
+
+describe('SessionService.toggleSitOut', () => {
+  function makeFirebaseWithDb(sittingOut?: string[]) {
+    const firebase = createMockFirebase();
+    const mockDocSnap = {
+      exists: true,
+      data: () => ({ sittingOut }),
+    };
+    const mockDocRef = {
+      get: vi.fn().mockResolvedValue(mockDocSnap),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (firebase as any).db = { collection: vi.fn().mockReturnValue(mockCollection) };
+    return { firebase, mockDocRef, mockDocSnap };
+  }
+
+  it('returns active: false when channel not tracked', async () => {
+    const { service } = makeService();
+
+    const result = await service.toggleSitOut('42', 'user1');
+    expect(result).toEqual({ active: false, sittingOut: false });
+  });
+
+  it('adds user to sittingOut when not currently sitting out', async () => {
+    const { firebase } = makeFirebaseWithDb([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const service = new SessionService(makeBot(), firebase as any);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+
+    const result = await service.toggleSitOut('42', 'user1');
+
+    expect(result).toEqual({ active: true, sittingOut: true });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user1'] });
+  });
+
+  it('removes user when currently sitting out', async () => {
+    const { firebase } = makeFirebaseWithDb(['user1', 'user2']);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const service = new SessionService(makeBot(), firebase as any);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+
+    const result = await service.toggleSitOut('42', 'user1');
+
+    expect(result).toEqual({ active: true, sittingOut: false });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user2'] });
+  });
+
+  it('works with missing sittingOut field (treats as empty)', async () => {
+    const { firebase } = makeFirebaseWithDb(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const service = new SessionService(makeBot(), firebase as any);
+    service.activeChannels.set('42', { docId: '42', guildId: '1' });
+
+    const result = await service.toggleSitOut('42', 'user1');
+
+    expect(result).toEqual({ active: true, sittingOut: true });
+    expect(firebase.updateChannelDoc).toHaveBeenCalledWith('42', { sittingOut: ['user1'] });
+  });
+});
+
 // ---------- shutdown ----------
 
 describe('SessionService.shutdown', () => {

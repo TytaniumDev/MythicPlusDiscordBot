@@ -19,8 +19,10 @@ class DemoSessionService implements SessionService {
     const currentData = store.channelData;
     if (!currentData) return;
 
+    const sittingOut = currentData.sittingOut ?? [];
     const players = currentData.players
       .filter(p => p.mainRole !== null || p.offspecs.length > 0)
+      .filter(p => !p.discordId || !sittingOut.includes(p.discordId))
       .map(p => WoWPlayer.fromDict(p));
 
     const groups = createMythicPlusGroups(players, true, null);
@@ -50,14 +52,14 @@ class DemoSessionService implements SessionService {
   async newRound(): Promise<void> {
     const store = useAppStore.getState();
     if (store.channelData) {
-      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0 } as ChannelData);
+      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] } as ChannelData);
     }
   }
 
   async cancelToLobby(): Promise<void> {
     const store = useAppStore.getState();
     if (store.channelData) {
-      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0 } as ChannelData);
+      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] } as ChannelData);
     }
   }
 
@@ -107,6 +109,24 @@ class DemoSessionService implements SessionService {
         ...store.channelData,
         claimedPlayers: claimed.filter(id => id !== playerId),
       });
+    }
+  }
+
+  async toggleSitOut(discordId: string): Promise<void> {
+    const store = useAppStore.getState();
+    if (store.channelData) {
+      const current = store.channelData.sittingOut ?? [];
+      if (current.includes(discordId)) {
+        store.setChannelData({
+          ...store.channelData,
+          sittingOut: current.filter(id => id !== discordId),
+        });
+      } else {
+        store.setChannelData({
+          ...store.channelData,
+          sittingOut: [...current, discordId],
+        });
+      }
     }
   }
 

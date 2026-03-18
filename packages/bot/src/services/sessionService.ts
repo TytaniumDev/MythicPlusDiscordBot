@@ -230,6 +230,25 @@ export class SessionService {
     }
   }
 
+  async toggleSitOut(channelId: string, discordId: string): Promise<{ active: boolean; sittingOut: boolean }> {
+    const entry = this.activeChannels.get(channelId);
+    if (!entry || !this.firebase.db) return { active: false, sittingOut: false };
+
+    const docRef = this.firebase.db.collection('channels').doc(entry.docId);
+    const snap = await docRef.get();
+    if (!snap.exists) return { active: false, sittingOut: false };
+
+    const data = snap.data();
+    const current: string[] = (data?.sittingOut as string[] | undefined) ?? [];
+    const isCurrentlySittingOut = current.includes(discordId);
+    const updated = isCurrentlySittingOut
+      ? current.filter(id => id !== discordId)
+      : [...current, discordId];
+
+    await this.firebase.updateChannelDoc(entry.docId, { sittingOut: updated });
+    return { active: true, sittingOut: !isCurrentlySittingOut };
+  }
+
   getActiveChannelIdsForGuild(guildId: string): string[] {
     return [...this.activeChannels.entries()]
       .filter(([, ac]) => ac.guildId === guildId)
