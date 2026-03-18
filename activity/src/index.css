@@ -489,6 +489,12 @@ body {
   gap: 6px;
 }
 
+.sitting-out-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
 .role-column-header {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1573,6 +1579,10 @@ body {
   }
 
   .dps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sitting-out-grid {
     grid-template-columns: 1fr;
   }
 }

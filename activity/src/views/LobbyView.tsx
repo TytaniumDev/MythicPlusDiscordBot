@@ -137,7 +137,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             {sittingOutPlayers.length > 0 && (
               <div className="role-section" style={{ gridColumn: '1 / -1' }}>
                 <div className="role-column-header sitting-out">{`Sitting Out (${sittingOutPlayers.length})`}</div>
-                <div className="dps-grid">
+                <div className="sitting-out-grid">
                   {sittingOutPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
                 </div>
               </div>
