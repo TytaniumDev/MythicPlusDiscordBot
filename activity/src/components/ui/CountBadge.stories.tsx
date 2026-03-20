@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CountBadge } from './CountBadge';
 
 const meta = {
+  title: 'Atoms/CountBadge',
   component: CountBadge,
 } satisfies Meta<typeof CountBadge>;
 

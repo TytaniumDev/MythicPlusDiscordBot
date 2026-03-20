@@ -8,6 +8,7 @@ const ShieldIcon = () => (
 );
 
 const meta = {
+  title: 'Molecules/RoleSectionHeader',
   component: RoleSectionHeader,
 } satisfies Meta<typeof RoleSectionHeader>;
 

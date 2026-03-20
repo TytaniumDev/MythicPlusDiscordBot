@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SecondaryButton } from './SecondaryButton';
 
 const meta = {
+  title: 'Atoms/SecondaryButton',
   component: SecondaryButton,
 } satisfies Meta<typeof SecondaryButton>;
 

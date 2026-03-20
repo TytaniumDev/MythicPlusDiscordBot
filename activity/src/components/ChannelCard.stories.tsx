@@ -3,6 +3,7 @@ import { fn } from 'storybook/test';
 import { ChannelCard } from './ChannelCard';
 
 const meta = {
+  title: 'Organisms/ChannelCard',
   component: ChannelCard,
   decorators: [(Story) => <div style={{ maxWidth: 400 }}><Story /></div>],
 } satisfies Meta<typeof ChannelCard>;

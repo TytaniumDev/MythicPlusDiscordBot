@@ -3,6 +3,7 @@ import { fn } from 'storybook/test';
 import { GuildCard } from './GuildCard';
 
 const meta = {
+  title: 'Organisms/GuildCard',
   component: GuildCard,
   decorators: [(Story) => <div style={{ maxWidth: 400 }}><Story /></div>],
 } satisfies Meta<typeof GuildCard>;

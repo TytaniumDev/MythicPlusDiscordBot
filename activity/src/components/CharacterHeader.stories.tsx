@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CharacterHeader } from './CharacterHeader';
 
 const meta = {
+  title: 'Molecules/CharacterHeader',
   component: CharacterHeader,
   decorators: [(Story) => <div style={{ maxWidth: 320 }}><Story /></div>],
 } satisfies Meta<typeof CharacterHeader>;

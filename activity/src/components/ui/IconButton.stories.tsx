@@ -8,6 +8,7 @@ const BackArrow = () => (
 );
 
 const meta = {
+  title: 'Atoms/IconButton',
   component: IconButton,
 } satisfies Meta<typeof IconButton>;
 
