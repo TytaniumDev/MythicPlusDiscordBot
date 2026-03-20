@@ -42,7 +42,12 @@ export function buildCharacterResult(
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const lookupCharacter = onCall(
+  { enforceAppCheck: false },
   async (request) => {
+    // Require the request to come from an authenticated Discord activity session
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
     const { name, realm, region } = request.data as {
       name?: string;
       realm?: string;

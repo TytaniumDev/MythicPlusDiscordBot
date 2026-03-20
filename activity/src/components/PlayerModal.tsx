@@ -118,13 +118,13 @@ export function PlayerModal({ players }: PlayerModalProps) {
     }
   }, [saving, player, selectedRoles, inGameName, service]);
 
-  async function handleCharacterSelect(result: RaiderioCharacterResult) {
-    if (lookupLoading) return;
+  const handleCharacterSelect = useCallback(async (result: RaiderioCharacterResult) => {
+    if (lookupLoading || !player?.discordId) return;
     setShowDropdown(false);
     setSearchQuery('');
 
     const character = await lookup(result.name, result.realmSlug, result.region);
-    if (character && player?.discordId) {
+    if (character && player.discordId) {
       // Update in-game name
       setInGameName(character.name);
 
@@ -154,7 +154,7 @@ export function PlayerModal({ players }: PlayerModalProps) {
         region: result.region,
       });
     }
-  }
+  }, [lookupLoading, player, lookup, selectedRoles, service]);
 
   if (!modalPlayer || !player) return null;
 

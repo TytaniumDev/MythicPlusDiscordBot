@@ -38,6 +38,8 @@ export function buildAffixDocument(
 // Firebase Cloud Function
 export const fetchWeeklyAffixes = onSchedule(
   {
+    // Fires 2 hours after NA weekly reset (15:00 UTC). EU resets Wednesday 04:00 UTC,
+    // but affixes are the same globally so NA timing is fine for all regions.
     schedule: 'every tuesday 17:00',
     timeZone: 'UTC',
   },
