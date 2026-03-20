@@ -8,6 +8,7 @@ venv/
 *.log
 node_modules/
 activity/dist/
+activity/storybook-static/
 
 # Project-specific
 data/

@@ -16,7 +16,10 @@ npm run typecheck
 echo "3. Running Build..."
 npm run build
 
-echo "4. Running Playwright Tests (Docker)..."
+echo "4. Building Storybook..."
+npm run build-storybook
+
+echo "5. Running Playwright Tests (Docker)..."
 cd ..
 ./scripts/playwright-docker.sh
 
