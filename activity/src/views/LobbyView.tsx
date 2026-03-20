@@ -88,7 +88,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 Waiting for players to join voice...
               </div>
             </div>
-            <span id="player-count" className="hidden">0 players</span>
             <PrimaryCTA id="spin-btn" disabled>
               Waiting for players...
             </PrimaryCTA>

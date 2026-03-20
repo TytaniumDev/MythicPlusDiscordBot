@@ -163,6 +163,8 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     updateNextButton(newIdx, store.fullGroups.length);
   }, [updateNextButton]);
 
+  // Ref to hold the latest checkForPendingReveals, breaking the circular
+  // dependency between spin callbacks and checkForPendingReveals.
   const checkForPendingRevealsRef = useRef<() => void>(() => {});
 
   const spinForCurrentGroupGrid: () => Promise<void> = useCallback(async () => {

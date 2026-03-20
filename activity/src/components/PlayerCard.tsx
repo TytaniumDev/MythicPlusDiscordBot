@@ -61,7 +61,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
     setShowDropdown(false);
     // Try to use existing media URL from player data
     setMediaUrl((player as Record<string, unknown>).mediaUrl as string | null ?? null);
-  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [playerId, player]);
 
   // Auto-save when roles or name change
   const autoSave = useCallback((roles: Set<string>, name: string) => {
