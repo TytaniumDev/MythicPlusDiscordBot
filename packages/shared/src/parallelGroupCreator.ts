@@ -123,6 +123,7 @@ export function createMythicPlusGroups(
   function grabNextAvailablePlayer(
     availablePlayers: WoWPlayer[],
     group: WoWGroup,
+    predicate?: (player: WoWPlayer) => boolean,
   ): WoWPlayer | null {
     const teammates = group.players;
 
@@ -139,6 +140,7 @@ export function createMythicPlusGroups(
     for (const player of availablePlayers) {
       if (ineligiblePlayers.has(player.name)) continue;
       if (!usedPlayers.has(player.name)) {
+        if (predicate && !predicate(player)) continue;
         removePlayer(player);
         return player;
       }
@@ -147,6 +149,7 @@ export function createMythicPlusGroups(
     // Fallback if we can't find a player who hasn't played with this group before
     for (const player of availablePlayers) {
       if (!usedPlayers.has(player.name)) {
+        if (predicate && !predicate(player)) continue;
         removePlayer(player);
         return player;
       }
@@ -170,8 +173,9 @@ export function createMythicPlusGroups(
     for (const currentGroup of groups) {
       if (!currentGroup.hasLust) {
         const lustPlayer = grabNextAvailablePlayer(
-          lustPlayers.filter((p) => !isInList(availableTanks, p)),
+          lustPlayers,
           currentGroup,
+          (p) => !isInList(availableTanks, p),
         );
 
         if (lustPlayer !== null) {
@@ -193,16 +197,16 @@ export function createMythicPlusGroups(
         if (currentGroup.healer !== null) {
           // We have a healer already, so grab a dps brez
           brezPlayer = grabNextAvailablePlayer(
-            brezPlayers.filter(
-              (p) => !isInList(availableTanks, p) && !isInList(availableHealers, p),
-            ),
+            brezPlayers,
             currentGroup,
+            (p) => !isInList(availableTanks, p) && !isInList(availableHealers, p),
           );
         } else {
           // We don't have a healer, so grab any brez
           brezPlayer = grabNextAvailablePlayer(
-            brezPlayers.filter((p) => !isInList(availableTanks, p)),
+            brezPlayers,
             currentGroup,
+            (p) => !isInList(availableTanks, p),
           );
         }
 
@@ -221,11 +225,11 @@ export function createMythicPlusGroups(
   function fillHealers(): void {
     for (const currentGroup of groups) {
       if (currentGroup.healer === null) {
-        const mainHealer = grabNextAvailablePlayer([...mainHealers], currentGroup);
+        const mainHealer = grabNextAvailablePlayer(mainHealers, currentGroup);
         if (mainHealer !== null) {
           currentGroup.healer = mainHealer;
         } else {
-          const offHealer = grabNextAvailablePlayer([...availableHealers], currentGroup);
+          const offHealer = grabNextAvailablePlayer(availableHealers, currentGroup);
           if (offHealer !== null) {
             currentGroup.healer = offHealer;
           }
@@ -238,8 +242,9 @@ export function createMythicPlusGroups(
     for (const currentGroup of groups) {
       if (!currentGroup.hasRanged) {
         const rangedDps = grabNextAvailablePlayer(
-          availableDps.filter((p) => p.ranged),
+          availableDps,
           currentGroup,
+          (p) => p.ranged,
         );
         if (rangedDps !== null) {
           currentGroup.dps.push(rangedDps);
@@ -263,8 +268,9 @@ export function createMythicPlusGroups(
       const remainderGroup = new WoWGroup();
       while (usedPlayers.size < players.length) {
         const player = grabNextAvailablePlayer(
-          players.filter((p) => !usedPlayers.has(p.name)),
+          players,
           remainderGroup,
+          (p) => !usedPlayers.has(p.name),
         );
         if (player !== null) {
           let placed = false;
