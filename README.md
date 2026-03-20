@@ -55,16 +55,16 @@ Get up and running in less than 5 minutes.
 
 ## 🗺️ Documentation Map <a id="documentation-map"></a>
 
-*   **🏗️ Architecture**: [Read `ARCHITECTURE.md`](./ARCHITECTURE.md) - Understanding the core logic and services.
-*   **🚀 Deployment**: [Read `DEPLOYMENT.md`](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
-*   **🎮 Activity Setup**: [Read `ACTIVITY_SETUP.md`](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
-*   **🔥 Firebase Setup**: [Read `FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) - Database and Auth configuration.
-*   **👨‍💻 Contributing**: [Read `CONTRIBUTING.md`](./CONTRIBUTING.md) - Development standards and guidelines.
-*   **🛡️ CI Standards**: [Read `CI_STANDARDS.md`](./docs/CI_STANDARDS.md) - CI and security standards.
+*   **🏗️ Architecture**: [Architecture Documentation](./ARCHITECTURE.md) - Understanding the core logic and services.
+*   **🚀 Deployment**: [Deployment Guide](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
+*   **🎮 Activity Setup**: [Activity Configuration](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
+*   **🔥 Firebase Setup**: [Firebase Configuration](./FIREBASE_SETUP.md) - Database and Auth configuration.
+*   **👨‍💻 Contributing**: [Development Standards](./CONTRIBUTING.md) - Development standards and guidelines.
+*   **🛡️ CI Standards**: [CI & Security Standards](./docs/CI_STANDARDS.md) - CI and security standards.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please check [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development standards, guidelines, and verification instructions.
+We welcome contributions! Please check the [Contributing Guidelines](./CONTRIBUTING.md) for development standards, guidelines, and verification instructions.
 
 ---
 
