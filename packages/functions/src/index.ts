@@ -1,1 +1,5 @@
-// Cloud Functions entry point — exports are registered here
+import { initializeApp } from 'firebase-admin/app';
+
+initializeApp();
+
+export { fetchWeeklyAffixes } from './fetchWeeklyAffixes.js';
