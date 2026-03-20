@@ -3,10 +3,9 @@ import { StatusMessage } from './StatusMessage';
 
 interface LayoutProps {
   children: ReactNode;
-  onNavigateHome: () => void;
 }
 
-export function Layout({ children, onNavigateHome: _onNavigateHome }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   return (
     <div id="app">
       <StatusMessage />

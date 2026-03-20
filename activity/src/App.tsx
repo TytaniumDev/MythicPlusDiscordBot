@@ -113,12 +113,8 @@ export function App() {
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
-  const handleNavigateHome = useCallback(() => {
-    navigateTo('home');
-  }, [navigateTo]);
-
   return (
-    <Layout onNavigateHome={handleNavigateHome}>
+    <Layout>
       {currentView === 'home' && <HomeView onNavigate={navigateTo} />}
       {currentView === 'channels' && <ChannelsView onNavigate={navigateTo} />}
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}

@@ -1983,6 +1983,16 @@ body {
   flex-shrink: 0;
 }
 
+.header-bar__icon-btn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .header-bar__icon {
   width: 24px;
   height: 24px;

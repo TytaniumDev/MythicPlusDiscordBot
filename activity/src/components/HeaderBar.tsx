@@ -42,13 +42,18 @@ export function HeaderBar({
         <div className="header-bar__back-spacer" />
       )}
 
-      <img
-        src="/Wheelson.png"
-        alt=""
-        className="header-bar__icon"
-        onClick={onTitleClick}
-        style={{ cursor: onTitleClick ? 'pointer' : undefined }}
-      />
+      {onTitleClick ? (
+        <button
+          className="header-bar__icon-btn"
+          onClick={onTitleClick}
+          aria-label="Return home"
+          type="button"
+        >
+          <img src="/Wheelson.png" alt="" className="header-bar__icon" />
+        </button>
+      ) : (
+        <img src="/Wheelson.png" alt="Wheelson" className="header-bar__icon" />
+      )}
 
       <div className="header-bar__center">
         <div
