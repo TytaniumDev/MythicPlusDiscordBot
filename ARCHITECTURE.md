@@ -25,8 +25,8 @@ flowchart TB
         Channel[Text / Voice Channel]
     end
 
-    subgraph Bot["Discord Bot (Python)"]
-        Cogs[Cogs: groups, roles, general, debug]
+    subgraph Bot["Discord Bot (TypeScript)"]
+        Cogs[Commands: groups, roles, general, debug]
         GroupService[GroupService]
         SessionService[SessionService]
         FirebaseService[FirebaseService]
@@ -95,14 +95,14 @@ The bot does **not** serve the Activity UI; it only creates sessions, reacts to 
 The system uses a **Hybrid Persistence** model:
 
 1.  **Firebase Firestore (Cloud)**:
-    *   **Purpose**: Real-time synchronization of "Activity Sessions" between the Python Bot and the TypeScript Frontend.
+    *   **Purpose**: Real-time synchronization of "Activity Sessions" between the TypeScript Bot and the TypeScript Frontend.
     *   **Scope**: Ephemeral. Sessions are created on demand and cleaned up after 24 hours.
     *   **Collection**: `sessions`.
 
 2.  **Local JSON (Disk)**:
     *   **Purpose**: Long-term storage of user role preferences (e.g., "Player A prefers Tank").
     *   **Scope**: Persistent across restarts (volume mounted in Docker).
-    *   **File**: `player_preferences.json` (managed by `core/storage.py`).
+    *   **File**: `player_preferences.json` (managed by `core/storage.ts`).
 
 ### 3. Firebase (Firestore)
 

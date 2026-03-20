@@ -67,4 +67,4 @@ Guild and channel documents are cleaned up so the database does not grow indefin
 
 - **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The documents stay active so the web page remains valid (e.g. you can keep viewing results).
 - **New lobby replaces the previous one.** When someone runs `/activity` again in the same voice channel, the bot cleans up the **old** channel document first (removes from memory, unsubscribes its listener, deletes the document), then creates a new one.
-- **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_SESSION_MAX_AGE_SECONDS` in `bot.py`.
+- **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `createdAt` is older than **24 hours**. You can change this by editing `FIREBASE_DOC_MAX_AGE_SECONDS` in `packages/bot/src/events/ready.ts`.
