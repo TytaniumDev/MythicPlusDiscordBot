@@ -35,7 +35,7 @@ Frontend (activity/)
 
 1. Player opens their identity card (formerly PlayerModal, becoming a standalone card — see Activity.pen for current design)
 2. Player types in the In-Game Name field
-3. After 2–3 characters (debounced 300ms), the frontend calls **Raider.io's public search API** directly (client-side, no Cloud Function needed)
+3. After 3 characters (debounced 300ms), the frontend calls **Raider.io's public search API** directly (client-side, no Cloud Function needed)
 4. An autocomplete dropdown appears below the field showing results: `CharacterName - Realm (Class)`
 5. Player selects a result → frontend calls the `lookupCharacter` **Cloud Function** with `{ name, realm, region }`
 6. Cloud Function returns character data → frontend pre-fills:
@@ -68,16 +68,21 @@ Everything the API populates is a **default that the player can override**. Play
   class: string;        // "Warrior"
   role: Role;           // "tank" — derived from active spec
   utilities: Utility[]; // ["brez"] — derived from class
-  mediaUrl: string;     // character render URL from Battle.net
+  mediaUrl: string | null; // character render URL from Battle.net (may be null if media unavailable)
 }
 ```
+
+**Error handling:**
+- Character not found on Battle.net → return an error with code `not-found`. Frontend shows "Character not found" inline and lets the user try again or type manually.
+- Battle.net OAuth failure → return `unavailable`. Frontend falls back to manual entry (no API enrichment).
+- Media API fails but profile succeeds → return data with `mediaUrl: null`. Frontend uses the placeholder icon (already exists in the design).
 
 **Behavior:**
 - Authenticates with Battle.net using `client_credentials` OAuth (client ID + secret from Firebase config)
 - Calls Character Profile Summary, Character Specializations, and Character Media APIs
 - Derives `role` from active spec (e.g. Protection → tank, Arms/Fury → melee)
-- Derives `utilities` from class (DK/Druid → brez, Mage/Shaman/Evoker → lust, Hunter → both)
-- Caches result in Firestore `characters/{region}-{realm}-{name}` with a **1-day TTL** to avoid redundant API calls
+- Derives `utilities` from class (DK/Druid/Warlock/Paladin → brez, Mage/Shaman/Evoker → lust, Hunter → both)
+- Caches result in Firestore `characters/{region}/{realm}/{name}` with a **1-day TTL** to avoid redundant API calls
 - On cache hit (within TTL), returns cached data without calling Battle.net
 
 **Class → Utility Mapping:**
@@ -89,7 +94,7 @@ Everything the API populates is a **default that the player can override**. Play
 | Paladin | brez |
 | Mage | lust |
 | Shaman | lust |
-| Evoker | brez, lust |
+| Evoker | lust |
 | Hunter | brez, lust |
 | All others | none |
 
@@ -103,15 +108,33 @@ All other DPS specs → `"melee"`
 
 Called directly from the frontend (public API, no auth needed).
 
-**Endpoint:** `https://raider.io/api/v1/search?search={query}&searchType=characters`
+**Endpoint:** `https://raider.io/api/search?term={query}`
 
-**Debounce:** 300ms after user stops typing, minimum 2–3 characters
+**Debounce:** 300ms after user stops typing, minimum 3 characters. Cancel in-flight requests on new input (AbortController).
+
+**Response shape (relevant fields):**
+```typescript
+{
+  matches: Array<{
+    type: string;        // filter to "character"
+    name: string;
+    data: {
+      name: string;
+      class: { name: string; slug: string };
+      realm: { name: string; slug: string };
+      region: { slug: string };
+    };
+  }>;
+}
+```
 
 **Dropdown item format:** `CharacterName - Realm (Class)`
 
+**Error handling:** If Raider.io is unreachable or returns no results, the dropdown shows a "No results" message. The user can always fall back to typing a name manually without autocomplete.
+
 ### Data Persistence
 
-- **Linked character identity** (`name`, `realm`, `region`) is saved alongside existing role preferences (by discordId) in the preference storage
+- **Linked character identity** is saved as a new `linkedCharacter: { name, realm, region }` field alongside existing role preferences (by discordId) in the preference storage
 - **Role/offspec/utility overrides** persist as they do today — API data only fills empty fields on first link
 - **Autosave** on every field change (character selection, role toggle, offspec toggle, utility toggle, sit-out toggle)
 
@@ -150,16 +173,16 @@ See `Activity.pen` → frame "Weekly Affix Bar" in "Approach A" for the current 
 **Wowhead links:**
 - Lindormi's Guidance → `https://www.wowhead.com/affix=165/lindormis-guidance`
 - Xal'atath's Bargain: Ascendant → `https://www.wowhead.com/affix=148/xalataths-bargain-ascendant`
-- Xal'atath's Bargain: Voidbound → `https://www.wowhead.com/spell=463410/xalataths-bargain-voidbound`
+- Xal'atath's Bargain: Voidbound → `https://www.wowhead.com/affix=158/xalataths-bargain-voidbound`
 - Xal'atath's Bargain: Pulsar → `https://www.wowhead.com/affix=162/xalataths-bargain-pulsar`
-- Xal'atath's Bargain: Devour → `https://www.wowhead.com/spell=465051/xalataths-bargain-devour`
+- Xal'atath's Bargain: Devour → `https://www.wowhead.com/affix=160/xalataths-bargain-devour`
 - Fortified → `https://www.wowhead.com/affix=10/fortified`
 - Tyrannical → `https://www.wowhead.com/affix=9/tyrannical`
 - Xal'atath's Guile → `https://www.wowhead.com/affix=147/xalataths-guile`
 
 ### Cloud Function: `fetchWeeklyAffixes`
 
-**Type:** Scheduled (runs on weekly reset — Tuesdays 10:00 AM PT / 17:00 UTC)
+**Type:** Scheduled (runs on US weekly reset — Tuesdays 10:00 AM PT / 17:00 UTC. US region only for now.)
 
 **Behavior:**
 - Authenticates with Battle.net via `client_credentials` OAuth
