@@ -46,7 +46,7 @@ export function CharacterSearchInput({
         <div className="character-search-dropdown">
           {results.map((r) => (
             <button
-              key={`${r.region}-${r.realmSlug}-${r.name}`}
+              key={`${r.region}-${r.realmSlug}-${r.name}-${r.className}`}
               className="character-search-result"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
