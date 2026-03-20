@@ -12,8 +12,8 @@ import {
   UTILITY_BUTTONS,
   type RoleButtonDef,
 } from '../lib/roles';
-import { useCharacterSearch } from '../hooks/useCharacterSearch';
 import { useCharacterLookup } from '../hooks/useCharacterLookup';
+import { CharacterSearchInput } from './ui';
 import type { RaiderioCharacterResult } from '../services/raiderioService';
 
 interface PlayerModalProps {
@@ -36,9 +36,6 @@ export function PlayerModal({ players }: PlayerModalProps) {
   const [saving, setSaving] = useState(false);
   const [saveText, setSaveText] = useState('Save');
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const { results: searchResults, loading: searchLoading } = useCharacterSearch(searchQuery);
   const { lookup, loading: lookupLoading } = useCharacterLookup();
 
   // Sync state when modal opens or target player changes
@@ -49,8 +46,6 @@ export function PlayerModal({ players }: PlayerModalProps) {
       setInGameName(player.inGameName ?? '');
       setSaving(false);
       setSaveText('Save');
-      setSearchQuery('');
-      setShowDropdown(false);
     }
     // Intentionally only re-sync when switching players, not on every upstream update.
     // Using `player` as a dependency would reset unsaved edits on any Firestore change.
@@ -120,8 +115,6 @@ export function PlayerModal({ players }: PlayerModalProps) {
 
   const handleCharacterSelect = useCallback(async (result: RaiderioCharacterResult) => {
     if (lookupLoading || !player?.discordId) return;
-    setShowDropdown(false);
-    setSearchQuery('');
 
     const character = await lookup(result.name, result.realmSlug, result.region);
     if (character) {
@@ -207,47 +200,13 @@ export function PlayerModal({ players }: PlayerModalProps) {
 
         <div className="role-editor-section">
           <div className="role-editor-label">In-Game Name (optional)</div>
-          <div className="role-editor-row" style={{ position: 'relative' }}>
-            <input
-              type="text"
-              className="role-editor-input"
-              placeholder="PlayerName-ServerName"
+          <div className="role-editor-row">
+            <CharacterSearchInput
               value={inGameName}
-              onChange={(e) => {
-                setInGameName(e.target.value);
-                setSearchQuery(e.target.value);
-                setShowDropdown(true);
-              }}
-              onFocus={() => {
-                if (searchResults.length > 0) setShowDropdown(true);
-              }}
-              onBlur={() => {
-                // Delay hiding to allow click on dropdown items
-                setTimeout(() => setShowDropdown(false), 150);
-              }}
-              maxLength={50}
+              onChange={setInGameName}
+              onSelect={handleCharacterSelect}
+              loading={lookupLoading}
             />
-            {showDropdown && searchResults.length > 0 && (
-              <div className="character-search-dropdown">
-                {searchResults.map((r) => (
-                  <button
-                    key={`${r.region}-${r.realmSlug}-${r.name}`}
-                    className="character-search-result"
-                    onMouseDown={(e) => {
-                      // Prevent blur from firing before click
-                      e.preventDefault();
-                    }}
-                    onClick={() => handleCharacterSelect(r)}
-                  >
-                    <span className="character-search-name">{r.name}</span>
-                    <span className="character-search-detail">{r.realm} · {r.className}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {(searchLoading || lookupLoading) && (
-              <div className="character-search-loading" aria-live="polite" aria-label="Searching characters" />
-            )}
           </div>
         </div>
 

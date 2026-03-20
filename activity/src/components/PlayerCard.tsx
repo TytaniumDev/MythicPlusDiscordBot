@@ -2,10 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
-import { useCharacterSearch } from '../hooks/useCharacterSearch';
 import { useCharacterLookup } from '../hooks/useCharacterLookup';
 import { CharacterHeader } from './CharacterHeader';
-import { Divider, SecondaryButton } from './ui';
+import { CharacterSearchInput, Divider, SecondaryButton } from './ui';
 import {
   playerRolesToStringArray,
   getPrimaryRole,
@@ -38,9 +37,6 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
   const [inGameName, setInGameName] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const { results: searchResults, loading: searchLoading } = useCharacterSearch(searchQuery);
   const { lookup, loading: lookupLoading } = useCharacterLookup();
 
   // Auto-save timer ref
@@ -57,8 +53,6 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
     rolesRef.current = roles;
     setInGameName(player.inGameName ?? '');
     nameRef.current = player.inGameName ?? '';
-    setSearchQuery('');
-    setShowDropdown(false);
     // Try to use existing media URL from player data
     setMediaUrl((player as Record<string, unknown>).mediaUrl as string | null ?? null);
   }, [playerId, player]);
@@ -111,15 +105,11 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
   const handleNameChange = useCallback((value: string) => {
     setInGameName(value);
     nameRef.current = value;
-    setSearchQuery(value);
-    setShowDropdown(true);
     autoSave(rolesRef.current, value);
   }, [autoSave]);
 
   const handleCharacterSelect = useCallback(async (result: RaiderioCharacterResult) => {
     if (lookupLoading || !player.discordId) return;
-    setShowDropdown(false);
-    setSearchQuery('');
 
     const character = await lookup(result.name, result.realmSlug, result.region);
     if (character) {
@@ -196,35 +186,13 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
       <div className="player-card__form">
         <div className="role-editor-section">
           <div className="role-editor-label">In-Game Name</div>
-          <div className="role-editor-row" style={{ position: 'relative' }}>
-            <input
-              type="text"
-              className="role-editor-input"
-              placeholder="PlayerName-ServerName"
+          <div className="role-editor-row">
+            <CharacterSearchInput
               value={inGameName}
-              onChange={(e) => handleNameChange(e.target.value)}
-              onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-              maxLength={50}
+              onChange={handleNameChange}
+              onSelect={handleCharacterSelect}
+              loading={lookupLoading}
             />
-            {showDropdown && searchResults.length > 0 && (
-              <div className="character-search-dropdown">
-                {searchResults.map((r) => (
-                  <button
-                    key={`${r.region}-${r.realmSlug}-${r.name}`}
-                    className="character-search-result"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handleCharacterSelect(r)}
-                  >
-                    <span className="character-search-name">{r.name}</span>
-                    <span className="character-search-detail">{r.realm} · {r.className}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {(searchLoading || lookupLoading) && (
-              <div className="character-search-loading" aria-live="polite" aria-label="Searching characters" />
-            )}
           </div>
         </div>
 

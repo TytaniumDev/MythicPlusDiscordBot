@@ -9,3 +9,4 @@ export { TextInput } from './TextInput';
 export { MultiPicker } from './MultiPicker';
 export type { PickerOption } from './MultiPicker';
 export { RoleSectionHeader } from './RoleSectionHeader';
+export { CharacterSearchInput } from './CharacterSearchInput';
