@@ -2,15 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAppStore } from '../store/store';
-
-export interface AffixDisplay {
-  id: number;
-  name: string;
-  nickname: string | null;
-  keystoneLevel: string;
-  wowheadUrl: string;
-  color: string;
-}
+import type { AffixDisplay } from '@mythicplus/shared';
 
 interface AffixData {
   period: number;

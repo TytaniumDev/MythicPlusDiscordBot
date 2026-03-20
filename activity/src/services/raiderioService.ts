@@ -1,3 +1,6 @@
+// Note: This endpoint is not part of Raider.io's official public API and may change without notice.
+// If it breaks, fall back to manual character name entry (the search is a convenience, not a requirement).
+
 export interface RaiderioCharacterResult {
   name: string;
   realm: string;

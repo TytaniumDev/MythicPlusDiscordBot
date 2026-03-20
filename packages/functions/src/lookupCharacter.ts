@@ -53,6 +53,12 @@ export const lookupCharacter = onCall(
       throw new HttpsError('invalid-argument', 'name, realm, and region are required');
     }
 
+    // Validate inputs contain only valid WoW name/realm characters (letters, hyphens, spaces, apostrophes)
+    const validPattern = /^[a-zA-Z\s'-]+$/;
+    if (!validPattern.test(name) || !validPattern.test(realm) || !validPattern.test(region)) {
+      throw new HttpsError('invalid-argument', 'Invalid characters in name, realm, or region');
+    }
+
     const db = getFirestore();
     const cacheRef = db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`);
 

@@ -29,6 +29,7 @@ export type {
   SessionStatus,
   Role,
   Utility,
+  AffixDisplay,
   WoWPlayerDict,
   WoWGroupDict,
 } from './types.js';

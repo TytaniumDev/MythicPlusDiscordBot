@@ -10,6 +10,14 @@ service cloud.firestore {
     match /preferences/{docId} {
       allow read, write: if true;
     }
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /characters/{region}/{realm}/{name} {
+      allow read: if false;
+      allow write: if false;
+    }
     match /badGroupReports/{docId} {
       allow create: if true;
       allow read, update, delete: if false;

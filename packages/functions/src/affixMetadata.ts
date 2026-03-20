@@ -1,11 +1,6 @@
-export interface AffixDisplay {
-  id: number;
-  name: string;
-  nickname: string | null;
-  keystoneLevel: string;
-  wowheadUrl: string;
-  color: string;
-}
+import type { AffixDisplay } from '@mythicplus/shared';
+
+export type { AffixDisplay };
 
 // Static affixes (always present)
 export const STATIC_AFFIXES: AffixDisplay[] = [
