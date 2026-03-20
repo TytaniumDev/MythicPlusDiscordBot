@@ -4,6 +4,7 @@ import { HeaderBar } from './HeaderBar';
 import { CountBadge } from './ui';
 
 const meta = {
+  title: 'Organisms/HeaderBar',
   component: HeaderBar,
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof HeaderBar>;

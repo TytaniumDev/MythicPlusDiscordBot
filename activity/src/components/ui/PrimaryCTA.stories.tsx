@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PrimaryCTA } from './PrimaryCTA';
 
 const meta = {
+  title: 'Atoms/PrimaryCTA',
   component: PrimaryCTA,
 } satisfies Meta<typeof PrimaryCTA>;
 

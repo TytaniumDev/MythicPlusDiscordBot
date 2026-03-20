@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TextInput } from './TextInput';
 
 const meta = {
+  title: 'Atoms/TextInput',
   component: TextInput,
 } satisfies Meta<typeof TextInput>;
 

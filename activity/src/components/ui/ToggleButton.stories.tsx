@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ToggleButton } from './ToggleButton';
 
 const meta = {
+  title: 'Atoms/ToggleButton',
   component: ToggleButton,
 } satisfies Meta<typeof ToggleButton>;
 

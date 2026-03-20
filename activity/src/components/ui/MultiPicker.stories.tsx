@@ -16,6 +16,7 @@ const utilityOptions: PickerOption[] = [
 ];
 
 const meta = {
+  title: 'Molecules/MultiPicker',
   component: MultiPicker,
   render: function Render(args) {
     const [selected, setSelected] = useState(args.selected);
