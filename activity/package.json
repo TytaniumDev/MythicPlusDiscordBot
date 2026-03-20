@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "cd .. && ./scripts/playwright-docker.sh"
+    "test": "cd .. && ./scripts/playwright-docker.sh",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "keywords": [],
   "author": "",
@@ -30,9 +32,13 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",
     "@playwright/test": "^1.58.2",
+    "@storybook/addon-a11y": "^10.3.1",
+    "@storybook/addon-docs": "^10.3.1",
+    "@storybook/react-vite": "^10.3.1",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "storybook": "^10.3.1"
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.2.1",
