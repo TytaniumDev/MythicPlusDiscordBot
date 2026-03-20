@@ -24084,8 +24084,5 @@
         }
       ]
     }
-  },
-  "imports": {
-    "P": "design_system.lib.pen"
   }
 }

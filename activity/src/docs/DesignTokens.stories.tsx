@@ -99,6 +99,24 @@ export const Colors: Story = {
           <Swatch name="Heading" cssVar="--text-heading" />
         </TokenGrid>
       </Section>
+
+      <Section title="Class Colors">
+        <TokenGrid>
+          <Swatch name="Death Knight" cssVar="--class-death-knight" />
+          <Swatch name="Demon Hunter" cssVar="--class-demon-hunter" />
+          <Swatch name="Druid" cssVar="--class-druid" />
+          <Swatch name="Evoker" cssVar="--class-evoker" />
+          <Swatch name="Hunter" cssVar="--class-hunter" />
+          <Swatch name="Mage" cssVar="--class-mage" />
+          <Swatch name="Monk" cssVar="--class-monk" />
+          <Swatch name="Paladin" cssVar="--class-paladin" />
+          <Swatch name="Priest" cssVar="--class-priest" />
+          <Swatch name="Rogue" cssVar="--class-rogue" />
+          <Swatch name="Shaman" cssVar="--class-shaman" />
+          <Swatch name="Warlock" cssVar="--class-warlock" />
+          <Swatch name="Warrior" cssVar="--class-warrior" />
+        </TokenGrid>
+      </Section>
     </div>
   ),
 };
