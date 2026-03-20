@@ -12,6 +12,9 @@ import {
   UTILITY_BUTTONS,
   type RoleButtonDef,
 } from '../lib/roles';
+import { useCharacterSearch } from '../hooks/useCharacterSearch';
+import { useCharacterLookup } from '../hooks/useCharacterLookup';
+import type { RaiderioCharacterResult } from '../services/raiderioService';
 
 interface PlayerModalProps {
   players: WoWPlayer[];
@@ -33,6 +36,11 @@ export function PlayerModal({ players }: PlayerModalProps) {
   const [saving, setSaving] = useState(false);
   const [saveText, setSaveText] = useState('Save');
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const { results: searchResults, loading: searchLoading } = useCharacterSearch(searchQuery);
+  const { lookup, loading: lookupLoading } = useCharacterLookup();
+
   // Sync state when modal opens or target player changes
   const playerId = player?.discordId ?? null;
   useEffect(() => {
@@ -41,6 +49,8 @@ export function PlayerModal({ players }: PlayerModalProps) {
       setInGameName(player.inGameName ?? '');
       setSaving(false);
       setSaveText('Save');
+      setSearchQuery('');
+      setShowDropdown(false);
     }
     // Intentionally only re-sync when switching players, not on every upstream update.
     // Using `player` as a dependency would reset unsaved edits on any Firestore change.
@@ -108,6 +118,44 @@ export function PlayerModal({ players }: PlayerModalProps) {
     }
   }, [saving, player, selectedRoles, inGameName, service]);
 
+  async function handleCharacterSelect(result: RaiderioCharacterResult) {
+    if (lookupLoading) return;
+    setShowDropdown(false);
+    setSearchQuery('');
+
+    const character = await lookup(result.name, result.realmSlug, result.region);
+    if (character && player?.discordId) {
+      // Update in-game name
+      setInGameName(character.name);
+
+      // Auto-fill role/utilities as defaults only if not already set
+      const currentRoles = playerRolesToStringArray(player);
+      if (currentRoles.length === 0) {
+        // Build role strings from character data
+        const roles: string[] = [];
+        if (character.role === 'tank') roles.push('Tank');
+        else if (character.role === 'healer') roles.push('Healer');
+        else if (character.role === 'ranged') roles.push('Ranged');
+        else if (character.role === 'melee') roles.push('Melee');
+        for (const u of character.utilities) {
+          if (u === 'brez') roles.push('Brez');
+          if (u === 'lust') roles.push('Lust');
+        }
+        setSelectedRoles(new Set(roles));
+        await service.saveRoles(player.discordId, player.name, roles, character.name);
+      } else {
+        await service.saveRoles(player.discordId, player.name, Array.from(selectedRoles), character.name);
+      }
+
+      // Save linked character for future sessions
+      await service.saveLinkedCharacter(player.discordId, {
+        name: result.name,
+        realm: result.realmSlug,
+        region: result.region,
+      });
+    }
+  }
+
   if (!modalPlayer || !player) return null;
 
   const roleKey = getPrimaryRole(player);
@@ -159,15 +207,47 @@ export function PlayerModal({ players }: PlayerModalProps) {
 
         <div className="role-editor-section">
           <div className="role-editor-label">In-Game Name (optional)</div>
-          <div className="role-editor-row">
+          <div className="role-editor-row" style={{ position: 'relative' }}>
             <input
               type="text"
               className="role-editor-input"
               placeholder="PlayerName-ServerName"
               value={inGameName}
-              onChange={(e) => setInGameName(e.target.value)}
+              onChange={(e) => {
+                setInGameName(e.target.value);
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => {
+                if (searchResults.length > 0) setShowDropdown(true);
+              }}
+              onBlur={() => {
+                // Delay hiding to allow click on dropdown items
+                setTimeout(() => setShowDropdown(false), 150);
+              }}
               maxLength={50}
             />
+            {showDropdown && searchResults.length > 0 && (
+              <div className="character-search-dropdown">
+                {searchResults.map((r) => (
+                  <button
+                    key={`${r.region}-${r.realmSlug}-${r.name}`}
+                    className="character-search-result"
+                    onMouseDown={(e) => {
+                      // Prevent blur from firing before click
+                      e.preventDefault();
+                    }}
+                    onClick={() => handleCharacterSelect(r)}
+                  >
+                    <span className="character-search-name">{r.name}</span>
+                    <span className="character-search-detail">{r.realm} · {r.className}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {(searchLoading || lookupLoading) && (
+              <div className="character-search-loading" aria-live="polite" aria-label="Searching characters" />
+            )}
           </div>
         </div>
 

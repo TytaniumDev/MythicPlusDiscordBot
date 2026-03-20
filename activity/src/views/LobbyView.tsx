@@ -5,6 +5,7 @@ import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerModal } from '../components/PlayerModal';
 import { IdentitySelector } from '../components/IdentitySelector';
+import { AffixBar } from '../components/AffixBar';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
 
 const BackArrow = () => (
@@ -55,6 +56,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
               </div>
               <div className="lobby-header-spacer" aria-hidden="true" />
             </div>
+            <AffixBar />
             <div id="player-list">
               <div style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1', textAlign: 'center' }}>
                 Waiting for players to join voice...
@@ -97,6 +99,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             </div>
             <div className="lobby-header-spacer" aria-hidden="true" />
           </div>
+
+          <AffixBar />
 
           <div id="player-list">
             {/* Left column: Tank + Heal sections stacked */}

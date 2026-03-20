@@ -13,6 +13,15 @@ export interface WoWPlayerDict {
   utilities: Utility[];
 }
 
+export interface AffixDisplay {
+  id: number;
+  name: string;
+  nickname: string | null;
+  keystoneLevel: string;
+  wowheadUrl: string;
+  color: string;
+}
+
 export interface WoWGroupDict {
   [key: string]: unknown;
   tank: WoWPlayerDict | null;
