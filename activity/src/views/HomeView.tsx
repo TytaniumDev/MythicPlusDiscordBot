@@ -1,10 +1,12 @@
 import { useAppStore } from '../store/store';
 import { useRecentGuilds } from '../hooks/useRecentGuilds';
 import { GuildCard } from '../components/GuildCard';
+import { HeaderBar } from '../components/HeaderBar';
+import { PrimaryCTA } from '../components/ui';
 import { mockGuildData } from '../lib/mockData';
 
 interface HomeViewProps {
-  onNavigate: (view: 'channels', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'channels' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function HomeView({ onNavigate }: HomeViewProps) {
@@ -12,11 +14,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
   const handleGuildClick = (guildId: string) => {
     const store = useAppStore.getState();
-    // Tear down existing subscriptions
     store.setChannelId(null);
     store.setChannelData(null);
     store.setGuildId(guildId);
-    // Subscribe handled by useGuildSubscription effect
     onNavigate('channels');
   };
 
@@ -30,9 +30,12 @@ export function HomeView({ onNavigate }: HomeViewProps) {
 
   return (
     <div className="main-layout">
+      <HeaderBar
+        title="Recent Guilds"
+        className="app-header"
+      />
       <main className="content-area">
         <section id="view-home">
-          <h2>Recent Guilds</h2>
           <div id="recent-guilds-list">
             {guilds.map((guild) => (
               <GuildCard
@@ -48,9 +51,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
             </p>
           )}
           <div id="demo-controls">
-            <button className="btn btn-success" id="start-demo-btn" onClick={startDemo}>
+            <PrimaryCTA id="start-demo-btn" onClick={startDemo}>
               Start Demo
-            </button>
+            </PrimaryCTA>
           </div>
         </section>
       </main>

@@ -18,10 +18,17 @@ export class GroupService {
   lastResults: Map<string, LastResults> = new Map();
   private serverLocks: Map<string, boolean> = new Map();
 
-  async getGroupsData(
+  /**
+   * Retrieves the eligible WoW players from the Discord channel.
+   *
+   * @param ctx - The command context.
+   * @param debug - Whether to use debug data.
+   * @returns An array of WoW players or null if none are found.
+   */
+  private async _getEligiblePlayers(
     ctx: CommandContext,
-    debug = false,
-  ): Promise<LastResults | null> {
+    debug: boolean,
+  ): Promise<WoWPlayer[] | null> {
     let players: WoWPlayer[];
 
     if (debug) {
@@ -42,35 +49,76 @@ export class GroupService {
       return null;
     }
 
-    const guildId = ctx.guild?.id ?? null;
+    return players;
+  }
 
+  /**
+   * Loads the previous groups from Firestore for a given guild ID.
+   *
+   * @param firebase - The Firebase service instance.
+   * @param guildId - The Discord guild ID.
+   */
+  private async _loadPreviousGroups(
+    firebase: FirebaseService,
+    guildId: string,
+  ): Promise<void> {
+    if (!firebase.isAvailable()) return;
+
+    try {
+      const prevGroupDicts = await firebase.getPreviousGroups(guildId);
+      if (prevGroupDicts.length > 0) {
+        const previousGroups = prevGroupDicts.map((g) => WoWGroup.fromDict(g));
+        setLastGroups(previousGroups, guildId);
+      }
+    } catch (err) {
+      logger.warn(`Failed to load previous groups for guild ${guildId}: ${err}`);
+    }
+  }
+
+  /**
+   * Saves the newly generated groups to Firestore.
+   *
+   * @param firebase - The Firebase service instance.
+   * @param guildId - The Discord guild ID.
+   * @param groups - The array of created WoW groups.
+   */
+  private async _savePreviousGroups(
+    firebase: FirebaseService,
+    guildId: string,
+    groups: WoWGroup[],
+  ): Promise<void> {
+    if (!firebase.isAvailable()) return;
+
+    try {
+      await firebase.savePreviousGroups(
+        guildId,
+        groups.map((g) => g.toDict() as Record<string, unknown>),
+      );
+    } catch (err) {
+      logger.warn(`Failed to save previous groups for guild ${guildId}: ${err}`);
+    }
+  }
+
+  async getGroupsData(
+    ctx: CommandContext,
+    debug = false,
+  ): Promise<LastResults | null> {
+    const players = await this._getEligiblePlayers(ctx, debug);
+    if (!players) {
+      return null;
+    }
+
+    const guildId = ctx.guild?.id ?? null;
     const firebase = guildId ? FirebaseService.getInstance() : null;
 
-    // Load previous groups from Firestore so the algorithm avoids repeat groupings
-    if (guildId && firebase?.isAvailable()) {
-      try {
-        const prevGroupDicts = await firebase.getPreviousGroups(String(guildId));
-        if (prevGroupDicts.length > 0) {
-          const previousGroups = prevGroupDicts.map(g => WoWGroup.fromDict(g));
-          setLastGroups(previousGroups, guildId);
-        }
-      } catch (err) {
-        logger.warn(`Failed to load previous groups for guild ${guildId}: ${err}`);
-      }
+    if (guildId && firebase) {
+      await this._loadPreviousGroups(firebase, guildId);
     }
 
     const groups = createMythicPlusGroups(players, debug, guildId);
 
-    // Persist computed groups for cross-session history
-    if (guildId && firebase?.isAvailable()) {
-      try {
-        await firebase.savePreviousGroups(
-          String(guildId),
-          groups.map(g => g.toDict() as Record<string, unknown>),
-        );
-      } catch (err) {
-        logger.warn(`Failed to save previous groups for guild ${guildId}: ${err}`);
-      }
+    if (guildId && firebase) {
+      await this._savePreviousGroups(firebase, guildId, groups);
     }
 
     return { players: [...players], groups: [...groups] };

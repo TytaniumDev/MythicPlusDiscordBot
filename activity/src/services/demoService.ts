@@ -73,6 +73,10 @@ class DemoSessionService implements SessionService {
     // No-op in demo
   }
 
+  async saveLinkedCharacter(): Promise<void> {
+    // no-op in demo mode
+  }
+
   async refreshChannels(_guildId: string): Promise<void> {
     // No-op in demo
   }

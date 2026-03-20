@@ -59,13 +59,14 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
   const cardClass = compact ? 'group-card-compact' : 'group-card';
   const heading = label ?? (isMyGroup ? `Group ${index + 1} (Your Group)` : `Group ${index + 1}`);
 
-  const inviteCmd = generateInviteCommand(group);
-  const isClickable = inviteCmd.length > 0;
+  // Exclude the current user so anyone in the group can be the inviter
+  const inviteCmd = generateInviteCommand(group, currentPlayerId ?? undefined);
+  const hasInvite = inviteCmd.length > 0;
 
   const [copied, setCopied] = useState(false);
 
-  const handleCopyInvite = async () => {
-    if (!isClickable) return;
+  const handleCopyInvite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     await copyToClipboard(inviteCmd);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -73,18 +74,9 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
 
   return (
     <div
-      className={`${cardClass}${isMyGroup ? ' is-my-group' : ''}${isClickable ? ' group-card-clickable' : ''}`}
-      onClick={isClickable ? handleCopyInvite : undefined}
-      title={isClickable ? 'Click to copy invite command' : undefined}
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={isClickable ? `Copy invite command for ${heading}` : undefined}
-      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleCopyInvite(); } : undefined}
+      className={`${cardClass}${isMyGroup ? ' is-my-group' : ''}`}
     >
-      <h4>
-        {heading}
-        {isClickable && <span className={`copy-toast${copied ? ' visible' : ''}`}>Copied!</span>}
-      </h4>
+      <h4>{heading}</h4>
       {(!hideEmpty || group.tank) && (
         <RoleRow
           color="var(--color-tank)"
@@ -116,6 +108,16 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           compact={compact}
         />
       ))}
+      {hasInvite && !compact && (
+        <button
+          type="button"
+          className="btn-copy-invite"
+          onClick={handleCopyInvite}
+          aria-label={`Copy invite command for ${heading}`}
+        >
+          {copied ? 'Copied!' : 'Copy Invite'}
+        </button>
+      )}
     </div>
   );
 }

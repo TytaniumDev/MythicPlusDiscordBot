@@ -108,7 +108,7 @@ function viewportTests(
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto(`/?data=${encodeData(lobbySittingOutData)}`);
       await expect(page.locator('#view-lobby')).toBeVisible();
-      await expect(page.locator('.role-column-header.sitting-out')).toBeVisible();
+      await expect(page.locator('.role-section-header--sitting-out')).toBeVisible();
       await expect(page.locator('.player-chip.sitting-out')).toHaveCount(2);
       await expect(page).toHaveScreenshot(`lobby-sitting-out-${viewport.width}x${viewport.height}.png`);
     });

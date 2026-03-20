@@ -46,3 +46,4 @@ playwright-report/
 # WoW Addon - embedded libraries (fetched by .pkgmeta)
 addon/libs/*/
 !addon/libs/.gitkeep
+.DS_Store
