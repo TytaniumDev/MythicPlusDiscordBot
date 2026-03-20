@@ -39,6 +39,20 @@
   --color-brez: var(--color-gold);
   --color-lust: #e85d26;
 
+  --class-death-knight: #E04050;
+  --class-demon-hunter: #B84FDE;
+  --class-druid: #FF7C0A;
+  --class-evoker: #33937F;
+  --class-hunter: #AAD372;
+  --class-mage: #3FC7EB;
+  --class-monk: #00FF98;
+  --class-paladin: #F48CBA;
+  --class-priest: #FFFFFF;
+  --class-rogue: #FFF468;
+  --class-shaman: #1E90FF;
+  --class-warlock: #8788EE;
+  --class-warrior: #C69B6D;
+
   --text-primary: #e5e7eb;
   --text-secondary: #b0b8c4;
   --text-heading: #ffffff;
