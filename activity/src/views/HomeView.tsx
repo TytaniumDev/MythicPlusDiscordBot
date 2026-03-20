@@ -6,7 +6,7 @@ import { PrimaryCTA } from '../components/ui';
 import { mockGuildData } from '../lib/mockData';
 
 interface HomeViewProps {
-  onNavigate: (view: 'channels', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'channels' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function HomeView({ onNavigate }: HomeViewProps) {

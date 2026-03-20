@@ -14,7 +14,7 @@ import { audio } from '../lib/audio';
 import { delay, CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION } from '../lib/timing';
 
 interface WheelsViewProps {
-  onNavigate: (view: 'lobby' | 'results', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'lobby' | 'results' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function WheelsView({ onNavigate }: WheelsViewProps) {
@@ -348,6 +348,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       <HeaderBar
         title={wheelStatus}
         onBack={handleCancel}
+        onTitleClick={() => onNavigate('home')}
         className="app-header"
       />
       <main className="content-area">

@@ -70,6 +70,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       <HeaderBar
         title="All Groups Formed!"
         titleColor="var(--color-gold)"
+        onTitleClick={() => onNavigate('home')}
         className="app-header"
       />
       <main className="content-area">

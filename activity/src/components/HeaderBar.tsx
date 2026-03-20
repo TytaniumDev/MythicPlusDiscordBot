@@ -10,6 +10,7 @@ const BackArrow = () => (
 interface HeaderBarProps {
   title: string;
   subtitle?: string;
+  subtitleId?: string;
   onBack?: () => void;
   onTitleClick?: () => void;
   titleColor?: string;
@@ -21,6 +22,7 @@ interface HeaderBarProps {
 export function HeaderBar({
   title,
   subtitle,
+  subtitleId,
   onBack,
   onTitleClick,
   titleColor,
@@ -56,7 +58,7 @@ export function HeaderBar({
           {title}
         </div>
         {subtitle && (
-          <div className="header-bar__subtitle">{subtitle}</div>
+          <div id={subtitleId} className="header-bar__subtitle">{subtitle}</div>
         )}
       </div>
 

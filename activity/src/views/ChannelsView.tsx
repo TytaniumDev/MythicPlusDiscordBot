@@ -12,7 +12,7 @@ const RefreshIcon = () => (
 );
 
 interface ChannelsViewProps {
-  onNavigate: (view: 'lobby' | 'home', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'lobby' | 'home' | 'channels', opts?: { replace?: boolean }) => void;
 }
 
 export function ChannelsView({ onNavigate }: ChannelsViewProps) {
@@ -67,6 +67,7 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
       <HeaderBar
         title="Select a Voice Channel"
         onBack={() => onNavigate('home')}
+        onTitleClick={() => onNavigate('home')}
         className="app-header"
       />
       <main className="content-area">
