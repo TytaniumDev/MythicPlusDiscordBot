@@ -5,6 +5,7 @@ const CLASS_UTILITIES: Record<string, Utility[]> = {
   'Druid': ['brez'],
   'Warlock': ['brez'],
   'Paladin': ['brez'],
+  'Warrior': ['brez'],
   'Mage': ['lust'],
   'Shaman': ['lust'],
   'Evoker': ['lust'],
