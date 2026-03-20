@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { mockPlayers, mockGroups, mockChannelData } from '../lib/mockData';
 import { ResultsView } from './ResultsView';
 
@@ -14,26 +13,20 @@ const meta = {
   },
   args: { onNavigate: fn() },
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentGuildId: 'demo-guild',
-          currentChannelId: 'vc-1',
-          currentPlayerId: '100000000000000007',
-          currentPlayerName: 'Tytanium',
-          identityResolved: true,
-          channelData: {
-            ...mockChannelData,
-            status: 'completed',
-            groups: mockGroups,
-            players: mockPlayers,
-          },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      currentPlayerId: '100000000000000007',
+      currentPlayerName: 'Tytanium',
+      identityResolved: true,
+      channelData: {
+        ...mockChannelData,
+        status: 'completed',
+        groups: mockGroups,
+        players: mockPlayers,
+      },
+    }),
   ],
 } satisfies Meta<typeof ResultsView>;
 

@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { mockGuildData } from '../lib/mockData';
 import { ChannelsView } from './ChannelsView';
 
@@ -14,17 +13,11 @@ const meta = {
   },
   args: { onNavigate: fn() },
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentGuildId: 'demo-guild',
-          guildData: mockGuildData,
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      guildData: mockGuildData,
+    }),
   ],
 } satisfies Meta<typeof ChannelsView>;
 
@@ -35,20 +28,18 @@ export const WithChannels: Story = {};
 
 export const Empty: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentGuildId: 'demo-guild',
-          guildData: { ...mockGuildData, voiceChannels: [] },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      guildData: { ...mockGuildData, voiceChannels: [] },
+    }),
   ],
 };
 
 export const DiscordSmall: Story = {
   parameters: { viewport: { defaultViewport: 'discordSmall' } },
+};
+
+export const DiscordLarge: Story = {
+  parameters: { viewport: { defaultViewport: 'discordLarge' } },
 };

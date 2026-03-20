@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { StatusMessage } from './StatusMessage';
 
 const meta = {
@@ -15,12 +14,6 @@ export const Empty: Story = {};
 
 export const WithMessage: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({ statusMessage: 'Spin request failed. Please try again.' });
-        return () => { useAppStore.setState({ statusMessage: '' }); };
-      }, []);
-      return <Story />;
-    },
+    withStore({ statusMessage: 'Spin request failed. Please try again.' }),
   ],
 };

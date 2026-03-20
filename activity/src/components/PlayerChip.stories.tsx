@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { PlayerChip } from './PlayerChip';
 import { mockPlayers } from '../lib/mockData';
 
@@ -8,29 +7,23 @@ const meta = {
   title: 'Molecules/PlayerChip',
   component: PlayerChip,
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          currentPlayerId: '100000000000000007',
-          channelData: {
-            channelId: 'vc-1',
-            channelName: 'Mythic+ Lobby',
-            guildId: 'demo-guild',
-            status: 'lobby',
-            players: mockPlayers,
-            groups: [],
-            claimedPlayers: ['100000000000000005'],
-            sittingOut: [],
-            isDebug: false,
-            announceResults: true,
-            createdAt: null,
-            lastActive: null,
-          },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      currentPlayerId: '100000000000000007',
+      channelData: {
+        channelId: 'vc-1',
+        channelName: 'Mythic+ Lobby',
+        guildId: 'demo-guild',
+        status: 'lobby',
+        players: mockPlayers,
+        groups: [],
+        claimedPlayers: ['100000000000000005'],
+        sittingOut: [],
+        isDebug: false,
+        announceResults: true,
+        createdAt: null,
+        lastActive: null,
+      },
+    }),
   ],
 } satisfies Meta<typeof PlayerChip>;
 

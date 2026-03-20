@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { IdentitySelector } from './IdentitySelector';
 import { mockPlayers } from '../lib/mockData';
 
@@ -15,32 +14,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Unresolved: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          identityResolved: false,
-          currentPlayerId: null,
-          currentPlayerName: null,
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      identityResolved: false,
+      currentPlayerId: null,
+      currentPlayerName: null,
+    }),
   ],
 };
 
 export const Resolved: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          identityResolved: true,
-          currentPlayerId: '100000000000000007',
-          currentPlayerName: 'Tytanium',
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      identityResolved: true,
+      currentPlayerId: '100000000000000007',
+      currentPlayerName: 'Tytanium',
+    }),
   ],
 };

@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { useAppStore } from '../store/store';
+import { withStore } from '../../.storybook/decorators';
 import { mockPlayers, mockChannelData } from '../lib/mockData';
 import { LobbyView } from './LobbyView';
 
@@ -14,21 +13,15 @@ const meta = {
   },
   args: { onNavigate: fn() },
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentGuildId: 'demo-guild',
-          currentChannelId: 'vc-1',
-          currentPlayerId: '100000000000000007',
-          currentPlayerName: 'Tytanium',
-          identityResolved: true,
-          channelData: mockChannelData,
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      currentPlayerId: '100000000000000007',
+      currentPlayerName: 'Tytanium',
+      identityResolved: true,
+      channelData: mockChannelData,
+    }),
   ],
 } satisfies Meta<typeof LobbyView>;
 
@@ -39,61 +32,49 @@ export const Default: Story = {};
 
 export const FewPlayers: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentPlayerId: '100000000000000001',
-          currentPlayerName: 'Martz',
-          identityResolved: true,
-          channelData: {
-            ...mockChannelData,
-            players: mockPlayers.slice(0, 5),
-          },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      currentPlayerId: '100000000000000001',
+      currentPlayerName: 'Martz',
+      identityResolved: true,
+      channelData: {
+        ...mockChannelData,
+        players: mockPlayers.slice(0, 5),
+      },
+    }),
   ],
 };
 
 export const EmptyLobby: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          channelData: {
-            ...mockChannelData,
-            players: [],
-          },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      channelData: {
+        ...mockChannelData,
+        players: [],
+      },
+    }),
   ],
 };
 
 export const WithSittingOut: Story = {
   decorators: [
-    (Story) => {
-      useEffect(() => {
-        useAppStore.setState({
-          isDemoMode: true,
-          currentPlayerId: '100000000000000007',
-          currentPlayerName: 'Tytanium',
-          identityResolved: true,
-          channelData: {
-            ...mockChannelData,
-            sittingOut: ['100000000000000005', '100000000000000008'],
-          },
-        });
-        return () => { useAppStore.getState().resetSession(); };
-      }, []);
-      return <Story />;
-    },
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      currentPlayerId: '100000000000000007',
+      currentPlayerName: 'Tytanium',
+      identityResolved: true,
+      channelData: {
+        ...mockChannelData,
+        sittingOut: ['100000000000000005', '100000000000000008'],
+      },
+    }),
   ],
 };
 
