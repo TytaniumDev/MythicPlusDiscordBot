@@ -464,6 +464,95 @@ body {
   border: 1px solid var(--border-subtle);
 }
 
+/* ── Affix Bar ── */
+.affix-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 10px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+  column-gap: 20px;
+  row-gap: 8px;
+}
+
+.affix-bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+
+.affix-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.affix-bar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.affix-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.affix-item-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.affix-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.affix-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.affix-name:hover {
+  color: var(--color-gold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.affix-item-bottom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.affix-keystone {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-secondary);
+}
+
+.affix-nickname {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
 #player-list {
   display: grid;
   grid-template-columns: 1fr 2fr;
