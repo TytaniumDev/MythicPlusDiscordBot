@@ -1,6 +1,7 @@
 // Initialize Firebase
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 // Configuration should be loaded/hardcoded.
 // Since this is a public web app, these credentials are public by definition.
@@ -24,5 +25,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 
-export { db };
+export { db, functions };
