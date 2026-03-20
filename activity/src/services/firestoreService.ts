@@ -196,13 +196,21 @@ class FirestoreSessionService implements SessionService {
       wowName: playerName,
       inGameName: inGameName ?? '',
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
 
     const { currentChannelId } = useAppStore.getState();
     if (currentChannelId) {
       const channelRef = doc(db, 'channels', currentChannelId);
       await updateDoc(channelRef, { refreshPlayers: true });
     }
+  }
+
+  async saveLinkedCharacter(
+    playerId: string,
+    linkedCharacter: { name: string; realm: string; region: string },
+  ): Promise<void> {
+    const prefRef = doc(db, 'preferences', playerId);
+    await setDoc(prefRef, { linkedCharacter, updatedAt: serverTimestamp() }, { merge: true });
   }
 
   async refreshChannels(guildId: string): Promise<void> {
