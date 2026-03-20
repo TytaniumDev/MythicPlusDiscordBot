@@ -2,11 +2,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { BattleNetClient } from './battlenet.js';
 import { getUtilitiesForClass, getRoleForSpec } from '@mythicplus/shared';
-import { defineSecret } from 'firebase-functions/params';
 import type { Role, Utility } from '@mythicplus/shared';
-
-const bnetClientId = defineSecret('BNET_CLIENT_ID');
-const bnetClientSecret = defineSecret('BNET_CLIENT_SECRET');
 
 export interface CharacterResult {
   name: string;
@@ -46,7 +42,6 @@ export function buildCharacterResult(
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const lookupCharacter = onCall(
-  { secrets: [bnetClientId, bnetClientSecret] },
   async (request) => {
     const { name, realm, region } = request.data as {
       name?: string;
@@ -74,7 +69,10 @@ export const lookupCharacter = onCall(
     }
 
     // Fetch from Battle.net
-    const client = new BattleNetClient(bnetClientId.value(), bnetClientSecret.value());
+    const clientId = process.env.BNET_CLIENT_ID;
+    const clientSecret = process.env.BNET_CLIENT_SECRET;
+    if (!clientId || !clientSecret) throw new HttpsError('unavailable', 'Battle.net credentials not configured');
+    const client = new BattleNetClient(clientId, clientSecret);
 
     const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
     if (!profile) {
