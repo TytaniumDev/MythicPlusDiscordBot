@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { BattleNetClient } from './battlenet.js';
+import { getBattleNetClient } from './battlenet.js';
 import { getUtilitiesForClass, getRoleForSpec } from '@mythicplus/shared';
 import type { Role, Utility } from '@mythicplus/shared';
 
@@ -75,10 +75,7 @@ export const lookupCharacter = onCall(
     }
 
     // Fetch from Battle.net
-    const clientId = process.env.BNET_CLIENT_ID;
-    const clientSecret = process.env.BNET_CLIENT_SECRET;
-    if (!clientId || !clientSecret) throw new HttpsError('unavailable', 'Battle.net credentials not configured');
-    const client = new BattleNetClient(clientId, clientSecret);
+    const client = getBattleNetClient();
 
     const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
     if (!profile) {

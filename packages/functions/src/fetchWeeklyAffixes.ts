@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { BattleNetClient } from './battlenet.js';
+import { getBattleNetClient } from './battlenet.js';
 import { resolveAffixDisplay, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
 
 export interface AffixDocument {
@@ -42,10 +42,7 @@ export const fetchWeeklyAffixes = onSchedule(
     timeZone: 'UTC',
   },
   async () => {
-    const clientId = process.env.BNET_CLIENT_ID;
-    const clientSecret = process.env.BNET_CLIENT_SECRET;
-    if (!clientId || !clientSecret) throw new Error('BNET_CLIENT_ID and BNET_CLIENT_SECRET must be set');
-    const client = new BattleNetClient(clientId, clientSecret);
+    const client = getBattleNetClient();
     const region = 'us';
 
     const periodIndex = await client.getMythicKeystonePeriodIndex(region);

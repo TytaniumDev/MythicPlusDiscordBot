@@ -85,3 +85,19 @@ export class BattleNetClient {
     return response.json();
   }
 }
+
+// Module-scope singleton — survives across warm Cloud Function invocations,
+// allowing the OAuth token to be cached between requests.
+let _client: BattleNetClient | null = null;
+
+export function getBattleNetClient(): BattleNetClient {
+  if (!_client) {
+    const clientId = process.env.BNET_CLIENT_ID;
+    const clientSecret = process.env.BNET_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      throw new Error('BNET_CLIENT_ID and BNET_CLIENT_SECRET must be set');
+    }
+    _client = new BattleNetClient(clientId, clientSecret);
+  }
+  return _client;
+}

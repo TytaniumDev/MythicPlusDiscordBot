@@ -119,6 +119,7 @@ export function PlayerModal({ players }: PlayerModalProps) {
   }, [saving, player, selectedRoles, inGameName, service]);
 
   async function handleCharacterSelect(result: RaiderioCharacterResult) {
+    if (lookupLoading) return;
     setShowDropdown(false);
     setSearchQuery('');
 

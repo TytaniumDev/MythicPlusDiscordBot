@@ -9,6 +9,24 @@ export interface RaiderioCharacterResult {
   className: string;
 }
 
+interface RaiderioSearchMatch {
+  type: string;
+  data: {
+    name: string;
+    class: { name: string };
+    realm: { name: string; slug: string };
+    region: { slug: string };
+  };
+}
+
+interface RaiderioSearchResponse {
+  matches: RaiderioSearchMatch[];
+}
+
+function isCharacterMatch(m: RaiderioSearchMatch): m is RaiderioSearchMatch & { type: 'character' } {
+  return m.type === 'character';
+}
+
 export async function searchCharacters(
   query: string,
   signal?: AbortSignal,
@@ -20,18 +38,11 @@ export async function searchCharacters(
 
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data: RaiderioSearchResponse = await response.json();
 
   return (data.matches ?? [])
-    .filter((m: { type: string }) => m.type === 'character')
-    .map((m: {
-      data: {
-        name: string;
-        class: { name: string };
-        realm: { name: string; slug: string };
-        region: { slug: string };
-      };
-    }) => ({
+    .filter(isCharacterMatch)
+    .map((m) => ({
       name: m.data.name,
       realm: m.data.realm.name,
       realmSlug: m.data.realm.slug,
