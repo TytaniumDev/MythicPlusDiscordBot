@@ -1551,9 +1551,9 @@ body {
     --groups-panel-width: 90px;
   }
 
-  /* Hide header to save space */
+  /* Compact header on mobile — header stays visible per design */
   .app-header {
-    display: none;
+    padding: 6px 12px;
   }
 
   #app {
@@ -1648,7 +1648,8 @@ body {
    Responsive: Height-constrained (<=500px tall)
    ============================================ */
 @media (max-height: 500px) {
-  .app-header {
+  .app-header,
+  .header-bar.app-header {
     display: none;
   }
 
@@ -1765,6 +1766,420 @@ body {
   border-top-color: var(--color-gold);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+}
+
+/* ============================================
+   Design System: Icon Button
+   ============================================ */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family);
+}
+
+.icon-button:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  color: var(--text-heading);
+}
+
+/* ============================================
+   Design System: Count Badge
+   ============================================ */
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--bg-primary);
+  background: var(--color-gold);
+  padding: 2px 10px;
+  border-radius: 12px;
+  line-height: 1.3;
+}
+
+/* ============================================
+   Design System: Checkbox
+   ============================================ */
+.ui-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ui-checkbox input[type="checkbox"] {
+  accent-color: var(--color-gold);
+  cursor: pointer;
+}
+
+.ui-checkbox-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Design System: Text Input
+   ============================================ */
+.ui-text-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ui-text-input-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.ui-text-input-field {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: var(--font-family);
+}
+
+.ui-text-input-field:focus {
+  border-color: var(--color-gold);
+}
+
+.ui-text-input-field::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+/* ============================================
+   Design System: Multi Picker
+   ============================================ */
+.ui-multi-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ui-multi-picker-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.ui-multi-picker-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ui-multi-picker-options .role-btn {
+  flex: 1;
+  min-width: 60px;
+}
+
+/* ============================================
+   Design System: Divider
+   ============================================ */
+.ui-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  width: 100%;
+}
+
+/* ============================================
+   Design System: Role Section Header
+   ============================================ */
+.role-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-section-header--tank {
+  color: var(--color-tank);
+  background: color-mix(in srgb, var(--color-tank) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-tank) 20%, transparent);
+}
+
+.role-section-header--healer {
+  color: var(--color-healer);
+  background: color-mix(in srgb, var(--color-healer) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-healer) 20%, transparent);
+}
+
+.role-section-header--dps {
+  color: var(--color-dps);
+  background: color-mix(in srgb, var(--color-dps) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-dps) 20%, transparent);
+}
+
+.role-section-header--unassigned {
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 20%, transparent);
+}
+
+.role-section-header--sitting-out {
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  opacity: 0.7;
+}
+
+.role-section-header__icon {
+  display: flex;
+  align-items: center;
+}
+
+.role-section-header__label {
+  letter-spacing: 0.08em;
+}
+
+.role-section-header__count {
+  font-weight: 600;
+}
+
+/* ============================================
+   Design System: Header Bar
+   ============================================ */
+.header-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.header-bar__back-spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.header-bar__icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.header-bar__center {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-bar__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-bar__subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-bar__hash {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Mono', monospace;
+  text-decoration: none;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.header-bar__hash:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ============================================
+   Design System: Character Header
+   ============================================ */
+.character-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 0 16px;
+  border-radius: 16px 16px 0 0;
+  background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
+}
+
+.character-header__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.character-header__img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid color-mix(in srgb, var(--ch-color, var(--color-tank)) 40%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ch-color, var(--color-tank)) 20%, transparent);
+}
+
+.character-header__name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.character-header__class {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* ============================================
+   Design System: Player Card
+   ============================================ */
+.player-card {
+  background: var(--bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.player-card .ui-divider {
+  margin: 0 20px;
+}
+
+.player-card__form {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.player-card__sit-out {
+  width: 100%;
+}
+
+.player-card__save {
+  width: 100%;
+}
+
+/* ============================================
+   Lobby: Split Layout (desktop)
+   ============================================ */
+.lobby-body {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.lobby-players {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.lobby-sidebar {
+  width: 305px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 899px) {
+  .lobby-body {
+    flex-direction: column;
+  }
+
+  .lobby-sidebar {
+    width: 100%;
+    order: -1;
+  }
+}
+
+@media (max-width: 599px) {
+  .header-bar {
+    padding: 8px 16px;
+  }
+
+  .header-bar__title {
+    font-size: 12px;
+  }
+
+  .header-bar__subtitle {
+    font-size: 10px;
+  }
+
+  .header-bar__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .header-bar__hash {
+    font-size: 10px;
+  }
+
+  .icon-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .icon-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .role-section-header {
+    padding: 6px 10px;
+    font-size: 0.65rem;
+  }
+}
+
+/* ============================================
+   Button icon alignment
+   ============================================ */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ============================================

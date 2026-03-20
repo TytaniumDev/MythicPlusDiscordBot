@@ -3,8 +3,22 @@ import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { GroupCard } from '../components/GroupCard';
+import { HeaderBar } from '../components/HeaderBar';
+import { SecondaryButton } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
+
+const RotateIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+  </svg>
+);
+
+const FlagIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" />
+  </svg>
+);
 
 interface ResultsViewProps {
   onNavigate: (view: ViewName, opts?: { replace?: boolean }) => void;
@@ -53,9 +67,14 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
 
   return (
     <div className="main-layout">
+      <HeaderBar
+        title="All Groups Formed!"
+        titleColor="var(--color-gold)"
+        onTitleClick={() => onNavigate('home')}
+        className="app-header"
+      />
       <main className="content-area">
         <section id="view-results">
-          <h2>All Groups Formed!</h2>
           <div id="final-groups">
             {groups.map((g, i) => {
               const remainder = !isCompleteGroup(g);
@@ -71,13 +90,14 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
             })}
           </div>
           <div className="results-actions">
-            <button
+            <SecondaryButton
               id="new-round-btn"
-              className="btn btn-secondary btn-large"
+              large
+              icon={<RotateIcon />}
               onClick={handleNewRound}
             >
               New Round
-            </button>
+            </SecondaryButton>
             {reportSubmitted ? (
               <p className="report-success">Report submitted. Thank you!</p>
             ) : showReportForm ? (
@@ -117,12 +137,12 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
                 </div>
               </div>
             ) : (
-              <button
-                className="btn btn-secondary"
+              <SecondaryButton
+                icon={<FlagIcon />}
                 onClick={() => setShowReportForm(true)}
               >
                 Report Bad Group
-              </button>
+              </SecondaryButton>
             )}
           </div>
         </section>

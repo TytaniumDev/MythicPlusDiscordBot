@@ -1,25 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { PlayerChip } from '../components/PlayerChip';
-import { PlayerModal } from '../components/PlayerModal';
+import { PlayerCard } from '../components/PlayerCard';
 import { IdentitySelector } from '../components/IdentitySelector';
 import { AffixBar } from '../components/AffixBar';
+import { HeaderBar } from '../components/HeaderBar';
+import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
 
-const BackArrow = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
+const SpinIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
   </svg>
 );
 
 interface LobbyViewProps {
-  onNavigate: (view: 'channels' | 'wheels', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'channels' | 'wheels' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const service = useSessionService();
   const players = channelData?.players || [];
   useIdentityResolver(players);
@@ -29,7 +32,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const handleSpin = async () => {
     try {
       setIsCalculating(true);
-      // In demo mode, navigate immediately then simulate
       if (useAppStore.getState().isDemoMode) {
         onNavigate('wheels');
       }
@@ -41,125 +43,141 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     }
   };
 
-  if (players.length === 0) {
-    return (
-      <div className="main-layout">
-        <main className="content-area">
-          <section id="view-lobby">
-            <div className="lobby-header">
-              <button className="btn btn-back" aria-label="Change voice channel" onClick={() => onNavigate('channels')}>
-                <BackArrow />
-              </button>
-              <div className="lobby-header-center">
-                <h2>Players</h2>
-                <span id="player-count" className="player-count">0 players</span>
-              </div>
-              <div className="lobby-header-spacer" aria-hidden="true" />
-            </div>
-            <AffixBar />
-            <div id="player-list">
-              <div style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1', textAlign: 'center' }}>
-                Waiting for players to join voice...
-              </div>
-            </div>
-            <button id="spin-btn" className="btn btn-primary btn-large" disabled>
-              Waiting for players...
-            </button>
-          </section>
-        </main>
-      </div>
-    );
-  }
-
   const sittingOut = channelData?.sittingOut ?? [];
   const activePlayers = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
   const sittingOutPlayers = players.filter(p => p.discordId && sittingOut.includes(p.discordId));
 
-  // Group active players by main role
   const tanks = activePlayers.filter((p) => getPrimaryRole(p) === 'tank');
   const healers = activePlayers.filter((p) => getPrimaryRole(p) === 'healer');
   const rangedPlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'ranged');
   const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
+  // Find the current player for PlayerCard
+  const selectedPlayer = useMemo(() => {
+    if (!currentPlayerId) return players[0] || null;
+    return players.find(p => p.discordId === currentPlayerId) || players[0] || null;
+  }, [currentPlayerId, players]);
+
+  const playerCountText = players.length === 0
+    ? '0 players'
+    : activePlayers.length === 1
+      ? '1 player'
+      : `${activePlayers.length} players`;
+
+  const subtitleText = sittingOutPlayers.length > 0
+    ? `${playerCountText} (${sittingOutPlayers.length} sitting out)`
+    : playerCountText;
+
+  if (players.length === 0) {
+    return (
+      <div className="main-layout">
+        <HeaderBar
+          title="Players"
+          subtitle="0 players"
+          onBack={() => onNavigate('channels')}
+          onTitleClick={() => onNavigate('home')}
+          className="app-header"
+          subtitleId="player-count"
+        />
+        <main className="content-area">
+          <section id="view-lobby">
+            <AffixBar />
+            <div id="player-list">
+              <div style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1', textAlign: 'center' }}>
+                Waiting for players to join voice...
+              </div>
+            </div>
+            <PrimaryCTA id="spin-btn" disabled>
+              Waiting for players...
+            </PrimaryCTA>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="main-layout">
+      <HeaderBar
+        title="Players"
+        subtitle={subtitleText}
+        onBack={() => onNavigate('channels')}
+        onTitleClick={() => onNavigate('home')}
+        className="app-header"
+        subtitleId="player-count"
+      />
       <main className="content-area">
         <section id="view-lobby">
-          <div className="lobby-header">
-            <button className="btn btn-back" aria-label="Change voice channel" onClick={() => onNavigate('channels')}>
-              <BackArrow />
-            </button>
-            <div className="lobby-header-center">
-              <h2>Players</h2>
-              <span id="player-count" className="player-count">
-                {activePlayers.length === 1 ? '1 player' : `${activePlayers.length} players`}
-                {sittingOutPlayers.length > 0 && ` (${sittingOutPlayers.length} sitting out)`}
-              </span>
-            </div>
-            <div className="lobby-header-spacer" aria-hidden="true" />
-          </div>
 
           <AffixBar />
 
-          <div id="player-list">
-            {/* Left column: Tank + Heal sections stacked */}
-            <div className="role-column">
-              <div className="role-section">
-                <div className="role-column-header tank">{`Tank (${tanks.length})`}</div>
-                {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+          <div className="lobby-body">
+            <div className="lobby-players">
+              <div id="player-list">
+                {/* Left column: Tank + Heal sections stacked */}
+                <div className="role-column">
+                  <div className="role-section">
+                    <RoleSectionHeader label="Tanks" count={tanks.length} color="tank" />
+                    {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                  </div>
+                  <div className="role-section">
+                    <RoleSectionHeader label="Heal" count={healers.length} color="healer" />
+                    {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                  </div>
+                </div>
+
+                {/* Right column: Ranged + Melee */}
+                <div className="role-column role-column-dps">
+                  <RoleSectionHeader label="Ranged" count={rangedPlayers.length} color="dps" />
+                  <div className="dps-grid">
+                    {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                  </div>
+                  <RoleSectionHeader label="Melee" count={meleePlayers.length} color="dps" />
+                  <div className="dps-grid">
+                    {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                  </div>
+                </div>
+
+                {/* Unassigned section */}
+                {unassigned.length > 0 && (
+                  <div className="role-section" style={{ gridColumn: '1 / -1' }}>
+                    <RoleSectionHeader label="Unassigned" count={unassigned.length} color="unassigned" />
+                    <div className="dps-grid">
+                      {unassigned.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sitting Out section */}
+                {sittingOutPlayers.length > 0 && (
+                  <div className="role-section" style={{ gridColumn: '1 / -1' }}>
+                    <RoleSectionHeader label="Sitting Out" count={sittingOutPlayers.length} color="sitting-out" />
+                    <div className="sitting-out-grid">
+                      {sittingOutPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="role-section">
-                <div className="role-column-header healer">{`Heal (${healers.length})`}</div>
-                {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-              </div>
+
+              <IdentitySelector players={players} />
             </div>
 
-            {/* Right column: Ranged + Melee */}
-            <div className="role-column role-column-dps">
-              <div className="role-column-header dps">{`Ranged (${rangedPlayers.length})`}</div>
-              <div className="dps-grid">
-                {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-              </div>
-              <div className="role-column-header dps">{`Melee (${meleePlayers.length})`}</div>
-              <div className="dps-grid">
-                {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-              </div>
-            </div>
-
-            {/* Unassigned section */}
-            {unassigned.length > 0 && (
-              <div className="role-section" style={{ gridColumn: '1 / -1' }}>
-                <div className="role-column-header unassigned">{`Unassigned (${unassigned.length})`}</div>
-                <div className="dps-grid">
-                  {unassigned.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                </div>
-              </div>
-            )}
-
-            {/* Sitting Out section */}
-            {sittingOutPlayers.length > 0 && (
-              <div className="role-section" style={{ gridColumn: '1 / -1' }}>
-                <div className="role-column-header sitting-out">{`Sitting Out (${sittingOutPlayers.length})`}</div>
-                <div className="sitting-out-grid">
-                  {sittingOutPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                </div>
+            {selectedPlayer && (
+              <div className="lobby-sidebar">
+                <PlayerCard player={selectedPlayer} />
               </div>
             )}
           </div>
 
-          <IdentitySelector players={players} />
-
-          <PlayerModal players={players} />
-
-          <button
+          <PrimaryCTA
             id="spin-btn"
-            className="btn btn-primary btn-large"
+            icon={<SpinIcon />}
             disabled={isCalculating}
             onClick={handleSpin}
           >
             {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
-          </button>
+          </PrimaryCTA>
         </section>
       </main>
     </div>
