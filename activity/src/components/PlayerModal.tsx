@@ -124,7 +124,7 @@ export function PlayerModal({ players }: PlayerModalProps) {
     setSearchQuery('');
 
     const character = await lookup(result.name, result.realmSlug, result.region);
-    if (character && player.discordId) {
+    if (character) {
       // Update in-game name
       setInGameName(character.name);
 
