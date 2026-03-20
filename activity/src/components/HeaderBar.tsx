@@ -45,7 +45,7 @@ export function HeaderBar({
 
       <img
         src={wheelsonIcon}
-        alt=""
+        alt="Wheelson logo"
         className="header-bar__icon"
         onClick={onTitleClick}
         style={{ cursor: onTitleClick ? 'pointer' : undefined }}
