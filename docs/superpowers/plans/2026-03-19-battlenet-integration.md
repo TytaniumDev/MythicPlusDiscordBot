@@ -1080,7 +1080,7 @@ git commit -m "feat(functions): add character lookup callable function with cach
 - Create: `activity/src/components/AffixBar.tsx`
 - Modify: `activity/src/views/LobbyView.tsx`
 
-Reference `Activity.pen` → frame "Weekly Affix Bar" in "Approach A" for visual design (colors, spacing, typography).
+**UI source of truth:** `Activity.pen` node `T93FW` ("Approach A — Sidebar Identity Panel") for the overall lobby layout and affix bar placement. Read the Pencil file using `batch_get` on `T93FW` for exact colors, spacing, typography, and layout structure.
 
 - [ ] **Step 1: Create useAffixes hook (Firestore subscription)**
 
@@ -1424,7 +1424,11 @@ git commit -m "feat(activity): add character lookup Cloud Function hook"
 - Modify: `activity/src/services/types.ts`
 - Modify: `activity/src/services/demoService.ts`
 
-This task integrates Tasks 7 and 8 into the player identity UI. The exact UI layout should reference `Activity.pen` → "Approach A" for styling. The steps below cover the data wiring.
+This task integrates Tasks 7 and 8 into the player identity UI.
+
+**UI source of truth:** `Activity.pen` node `X6Cko` ("modal") is the identity card component. Read it via `batch_get` on `X6Cko` with `readDepth: 4` to get the exact structure — portrait header (`SabiX`), stats row (`PTglt`), name section (`RbvP9`), main spec buttons (`DzjEk`), offspec buttons (`qZKA8`), utilities (`OlYB5`), and sit-out toggle (`OPbKp`). Implementation must match this component's layout, colors, and typography.
+
+The steps below cover the data wiring.
 
 - [ ] **Step 1: Add linkedCharacter to SessionService interface**
 
