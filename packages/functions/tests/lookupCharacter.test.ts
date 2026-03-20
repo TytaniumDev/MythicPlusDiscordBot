@@ -20,7 +20,7 @@ describe('buildCharacterResult', () => {
       realm: 'Stormrage',
       class: 'Warrior',
       role: 'tank',
-      utilities: ['brez'],
+      utilities: [],
       mediaUrl: 'https://render.worldofwarcraft.com/us/character/main-raw.png',
     });
   });
