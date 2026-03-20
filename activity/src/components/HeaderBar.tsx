@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { IconButton } from './ui';
+import wheelsonIcon from '../img/wheelson.png';
 
 const BackArrow = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -43,7 +44,7 @@ export function HeaderBar({
       )}
 
       <img
-        src="/Wheelson.png"
+        src={wheelsonIcon}
         alt=""
         className="header-bar__icon"
         onClick={onTitleClick}
