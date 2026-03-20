@@ -32,9 +32,10 @@ export class BattleNetClient {
     }
 
     const data = await response.json();
-    this.token = data.access_token;
+    const token: string = data.access_token;
+    this.token = token;
     this.tokenExpiry = Date.now() + (data.expires_in - 300) * 1000;
-    return this.token!;
+    return token;
   }
 
   async apiCall(region: string, path: string): Promise<Response> {

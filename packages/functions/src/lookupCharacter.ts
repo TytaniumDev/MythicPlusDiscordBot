@@ -64,10 +64,12 @@ export const lookupCharacter = onCall(
     // Check cache
     const cached = await cacheRef.get();
     if (cached.exists) {
-      const data = cached.data()!;
-      const cachedAt = data.cachedAt as Timestamp;
-      if (cachedAt && Date.now() - cachedAt.toMillis() < CACHE_TTL_MS) {
-        return data.result as CharacterResult;
+      const data = cached.data();
+      if (data) {
+        const cachedAt = data.cachedAt as Timestamp;
+        if (cachedAt && Date.now() - cachedAt.toMillis() < CACHE_TTL_MS) {
+          return data.result as CharacterResult;
+        }
       }
     }
 
