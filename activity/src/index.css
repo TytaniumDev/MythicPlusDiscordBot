@@ -1551,9 +1551,9 @@ body {
     --groups-panel-width: 90px;
   }
 
-  /* Hide header to save space */
+  /* Compact header on mobile — header stays visible per design */
   .app-header {
-    display: none;
+    padding: 6px 12px;
   }
 
   #app {
@@ -1648,7 +1648,8 @@ body {
    Responsive: Height-constrained (<=500px tall)
    ============================================ */
 @media (max-height: 500px) {
-  .app-header {
+  .app-header,
+  .header-bar.app-header {
     display: none;
   }
 
