@@ -23,6 +23,8 @@ export {
 
 export { generateInviteCommand } from './inviteCommand.js';
 
+export { getUtilitiesForClass, getRoleForSpec } from './classData.js';
+
 export type {
   SessionStatus,
   Role,
