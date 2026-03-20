@@ -1,0 +1,250 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { WoWPlayer } from '../types';
+import { useAppStore } from '../store/store';
+import { useSessionService } from '../hooks/useSession';
+import { useCharacterSearch } from '../hooks/useCharacterSearch';
+import { useCharacterLookup } from '../hooks/useCharacterLookup';
+import { CharacterHeader } from './CharacterHeader';
+import { Divider, SecondaryButton } from './ui';
+import {
+  playerRolesToStringArray,
+  getPrimaryRole,
+  MAIN_SPEC_BUTTONS,
+  OFFSPEC_BUTTONS,
+  UTILITY_BUTTONS,
+  type RoleButtonDef,
+} from '../lib/roles';
+import type { RaiderioCharacterResult } from '../services/raiderioService';
+
+const ROLE_COLOR_MAP: Record<string, string> = {
+  tank: 'var(--color-tank)',
+  healer: 'var(--color-healer)',
+  ranged: 'var(--color-dps)',
+  melee: 'var(--color-dps)',
+  unassigned: 'var(--text-secondary)',
+};
+
+interface PlayerCardProps {
+  player: WoWPlayer;
+  className?: string;
+}
+
+export function PlayerCard({ player, className = '' }: PlayerCardProps) {
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
+  const service = useSessionService();
+
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
+  const [inGameName, setInGameName] = useState('');
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const { results: searchResults, loading: searchLoading } = useCharacterSearch(searchQuery);
+  const { lookup, loading: lookupLoading } = useCharacterLookup();
+
+  // Auto-save timer ref
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rolesRef = useRef<Set<string>>(new Set());
+  const nameRef = useRef<string>('');
+
+  const playerId = player.discordId ?? null;
+
+  // Sync state when player changes
+  useEffect(() => {
+    const roles = new Set(playerRolesToStringArray(player));
+    setSelectedRoles(roles);
+    rolesRef.current = roles;
+    setInGameName(player.inGameName ?? '');
+    nameRef.current = player.inGameName ?? '';
+    setSearchQuery('');
+    setShowDropdown(false);
+    // Try to use existing media URL from player data
+    setMediaUrl((player as Record<string, unknown>).mediaUrl as string | null ?? null);
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save when roles or name change
+  const autoSave = useCallback((roles: Set<string>, name: string) => {
+    if (!player.discordId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await service.saveRoles(player.discordId!, player.name, Array.from(roles), name);
+        const store = useAppStore.getState();
+        if (!store.identityResolved && player.discordId === store.currentPlayerId) {
+          store.setIdentity(player.discordId!, player.name);
+          store.setIdentityResolved(true);
+          const guildId = store.currentGuildId;
+          localStorage.setItem(`wheelson-player-${guildId ?? 'unknown'}`, player.discordId!);
+        }
+      } catch (err) {
+        console.error('[Wheelson] Auto-save failed:', err);
+      }
+    }, 500);
+  }, [player.discordId, player.name, service]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  const toggleRole = useCallback((btnDef: RoleButtonDef, mutuallyExclusive: boolean) => {
+    setSelectedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(btnDef.id)) {
+        next.delete(btnDef.id);
+      } else {
+        if (mutuallyExclusive) {
+          MAIN_SPEC_BUTTONS.forEach((b) => next.delete(b.id));
+        }
+        next.add(btnDef.id);
+      }
+      rolesRef.current = next;
+      autoSave(next, nameRef.current);
+      return next;
+    });
+  }, [autoSave]);
+
+  const handleNameChange = useCallback((value: string) => {
+    setInGameName(value);
+    nameRef.current = value;
+    setSearchQuery(value);
+    setShowDropdown(true);
+    autoSave(rolesRef.current, value);
+  }, [autoSave]);
+
+  const handleCharacterSelect = useCallback(async (result: RaiderioCharacterResult) => {
+    if (lookupLoading || !player.discordId) return;
+    setShowDropdown(false);
+    setSearchQuery('');
+
+    const character = await lookup(result.name, result.realmSlug, result.region);
+    if (character) {
+      setInGameName(character.name);
+      nameRef.current = character.name;
+      if (character.mediaUrl) setMediaUrl(character.mediaUrl);
+
+      const currentRoles = playerRolesToStringArray(player);
+      if (currentRoles.length === 0) {
+        const roles: string[] = [];
+        if (character.role === 'tank') roles.push('Tank');
+        else if (character.role === 'healer') roles.push('Healer');
+        else if (character.role === 'ranged') roles.push('Ranged');
+        else if (character.role === 'melee') roles.push('Melee');
+        for (const u of character.utilities) {
+          if (u === 'brez') roles.push('Brez');
+          if (u === 'lust') roles.push('Lust');
+        }
+        const roleSet = new Set(roles);
+        setSelectedRoles(roleSet);
+        rolesRef.current = roleSet;
+        await service.saveRoles(player.discordId, player.name, roles, character.name);
+      } else {
+        await service.saveRoles(player.discordId, player.name, Array.from(selectedRoles), character.name);
+      }
+
+      await service.saveLinkedCharacter(player.discordId, {
+        name: result.name,
+        realm: result.realmSlug,
+        region: result.region,
+      });
+    }
+  }, [lookupLoading, player, lookup, selectedRoles, service]);
+
+  const isMe = player.discordId === currentPlayerId;
+  const isMeSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
+  const primaryRole = getPrimaryRole(player);
+  const color = ROLE_COLOR_MAP[primaryRole] ?? ROLE_COLOR_MAP.unassigned;
+
+  // Compute class name from in-game name or character lookup
+  const classSubtitle = player.inGameName || undefined;
+
+  function renderSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
+    return (
+      <div className="role-editor-section">
+        <div className="role-editor-label">{label}</div>
+        <div className="role-editor-row">
+          {buttons.map((btnDef) => (
+            <button
+              key={btnDef.id}
+              className={`role-btn${selectedRoles.has(btnDef.id) ? ` ${btnDef.activeClass}` : ''}`}
+              data-role-id={btnDef.id}
+              onClick={() => toggleRole(btnDef, mutuallyExclusive)}
+            >
+              {btnDef.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`player-card ${className}`} data-testid="player-card">
+      <CharacterHeader
+        name={player.name}
+        subtitle={classSubtitle}
+        color={color}
+        imageUrl={mediaUrl}
+      />
+
+      <Divider />
+
+      <div className="player-card__form">
+        <div className="role-editor-section">
+          <div className="role-editor-label">In-Game Name</div>
+          <div className="role-editor-row" style={{ position: 'relative' }}>
+            <input
+              type="text"
+              className="role-editor-input"
+              placeholder="PlayerName-ServerName"
+              value={inGameName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+              maxLength={50}
+            />
+            {showDropdown && searchResults.length > 0 && (
+              <div className="character-search-dropdown">
+                {searchResults.map((r) => (
+                  <button
+                    key={`${r.region}-${r.realmSlug}-${r.name}`}
+                    className="character-search-result"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleCharacterSelect(r)}
+                  >
+                    <span className="character-search-name">{r.name}</span>
+                    <span className="character-search-detail">{r.realm} · {r.className}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {(searchLoading || lookupLoading) && (
+              <div className="character-search-loading" aria-live="polite" aria-label="Searching characters" />
+            )}
+          </div>
+        </div>
+
+        {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
+        {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
+        {renderSection('Utilities', UTILITY_BUTTONS, false)}
+
+        {isMe && (
+          <div className="role-editor-section" style={{ marginTop: 4 }}>
+            <div className="role-editor-row">
+              <SecondaryButton
+                className={`player-card__sit-out ${isMeSittingOut ? 'active-sitting-out' : ''}`}
+                onClick={() => { if (player.discordId) service.toggleSitOut(player.discordId); }}
+              >
+                {isMeSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
+              </SecondaryButton>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

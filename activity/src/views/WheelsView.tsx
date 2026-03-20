@@ -5,17 +5,13 @@ import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
+import { HeaderBar } from '../components/HeaderBar';
+import { PrimaryCTA, Checkbox } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
 import { delay, CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION } from '../lib/timing';
-
-const BackArrow = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
-  </svg>
-);
 
 interface WheelsViewProps {
   onNavigate: (view: 'lobby' | 'results', opts?: { replace?: boolean }) => void;
@@ -44,7 +40,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
   const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults !== false);
 
-  // Sync local checkbox state when Firestore announceResults changes
   useEffect(() => {
     setAnnounceChecked(channelData?.announceResults !== false);
   }, [channelData?.announceResults]);
@@ -73,7 +68,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   const pools = markedPools;
 
-  // Start spin sequence when groups arrive
   useEffect(() => {
     if (!channelData || channelData.status !== 'spinning') return;
 
@@ -96,7 +90,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       const p = initPools(channelData.players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
 
-      // Reset carousel
       gridRef.current?.grid?.resetCarouselDots();
       gridRef.current?.grid?.setCarouselSlide(0);
 
@@ -106,7 +99,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [channelData, spinSequenceStarted]);
 
-  // Process Firestore-driven revealed groups
   useEffect(() => {
     if (!channelData || isDemoMode || !spinSequenceStarted) return;
     const revealed = channelData.revealedGroups ?? 0;
@@ -122,7 +114,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [channelData?.revealedGroups, isDemoMode, spinSequenceStarted]);
 
-  // Force redraw when entering view
   useEffect(() => {
     requestAnimationFrame(() => {
       gridRef.current?.grid?.forceRedraw();
@@ -172,8 +163,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     updateNextButton(newIdx, store.fullGroups.length);
   }, [updateNextButton]);
 
-  // Ref to hold the latest checkForPendingReveals, breaking the circular
-  // dependency between spin callbacks and checkForPendingReveals.
   const checkForPendingRevealsRef = useRef<() => void>(() => {});
 
   const spinForCurrentGroupGrid: () => Promise<void> = useCallback(async () => {
@@ -221,7 +210,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     store.setSpinAnimating(false);
     advanceAfterSpin(idx);
 
-    // Check for pending reveals
     checkForPendingRevealsRef.current();
   }, [advanceAfterSpin, markedPools]);
 
@@ -305,14 +293,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [catchUpRevealedGroups, runSpinAnimation]);
 
-  // Keep the ref in sync with the latest checkForPendingReveals
   checkForPendingRevealsRef.current = checkForPendingReveals;
 
   const handleNextClick = useCallback(async () => {
     const store = useAppStore.getState();
 
     if (store.currentGroupIndex >= store.fullGroups.length) {
-      // Finish
       onNavigate('results', { replace: true });
       await service.finishSequence();
       return;
@@ -329,7 +315,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       return;
     }
 
-    // Live mode: write to Firestore
     setNextBtnDisabled(true);
     try {
       await service.revealGroup(store.currentGroupIndex);
@@ -360,16 +345,13 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   return (
     <div className="main-layout">
+      <HeaderBar
+        title={wheelStatus}
+        onBack={handleCancel}
+        className="app-header"
+      />
       <main className="content-area">
         <section id="view-wheels">
-          <div className="wheels-header">
-            <button id="wheels-back-btn" className="btn btn-back" aria-label="Back to lobby" onClick={handleCancel}>
-              <BackArrow />
-            </button>
-            <div id="wheel-status" className="wheel-status">{wheelStatus}</div>
-            <div className="wheels-header-spacer" aria-hidden="true" />
-          </div>
-
           <div className="wheels-content">
             <WheelsGridComponent ref={gridRef} pools={pools} />
 
@@ -389,33 +371,29 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                   ))}
                 </div>
               </aside>
-              <label className="announce-option">
-                <input
-                  type="checkbox"
-                  id="announce-checkbox"
-                  checked={announceChecked}
-                  onChange={(e) => handleAnnounceChange(e.target.checked)}
-                />
-                <span>Post results to chat</span>
-              </label>
+              <Checkbox
+                id="announce-checkbox"
+                label="Post results to chat"
+                checked={announceChecked}
+                onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
+                className="announce-option"
+              />
             </div>
           </div>
 
           {nextBtnVisible && (
-            <button
+            <PrimaryCTA
               id="next-btn"
-              className="btn btn-primary btn-large"
               disabled={nextBtnDisabled}
               onClick={handleNextClick}
             >
               {nextBtnText}
-            </button>
+            </PrimaryCTA>
           )}
-          {/* Hidden ghost button so #next-btn always exists in the DOM for Playwright test selectors */}
           {!nextBtnVisible && (
-            <button id="next-btn" className="btn btn-primary btn-large hidden">
+            <PrimaryCTA id="next-btn" className="hidden">
               Spin for Group 1
-            </button>
+            </PrimaryCTA>
           )}
         </section>
       </main>

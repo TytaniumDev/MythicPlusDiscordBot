@@ -2,9 +2,17 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { ChannelCard } from '../components/ChannelCard';
+import { HeaderBar } from '../components/HeaderBar';
+import { SecondaryButton } from '../components/ui';
+
+const RefreshIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+  </svg>
+);
 
 interface ChannelsViewProps {
-  onNavigate: (view: 'lobby', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'lobby' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function ChannelsView({ onNavigate }: ChannelsViewProps) {
@@ -14,7 +22,6 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
   const service = useSessionService();
   const channels = guildData?.voiceChannels || [];
 
-  // Auto-refresh voice channels once when the view loads with empty channels
   const hasAutoRefreshed = useRef(false);
   useEffect(() => {
     if (!hasAutoRefreshed.current && guildData && channels.length === 0 && currentGuildId) {
@@ -52,23 +59,27 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
       return;
     }
 
-    // Subscribe to channel (handled by useChannelSubscription effect)
     onNavigate('lobby');
   }, [isDemoMode, currentGuildId, service, onNavigate]);
 
   return (
     <div className="main-layout">
+      <HeaderBar
+        title="Select a Voice Channel"
+        onBack={() => onNavigate('home')}
+        className="app-header"
+      />
       <main className="content-area">
         <section id="view-channels">
-          <h2>Select a Voice Channel</h2>
-          <button
+          <SecondaryButton
             id="refresh-channels-btn"
-            className="btn btn-secondary btn-refresh"
+            className="btn-refresh"
+            icon={<RefreshIcon />}
             aria-label="Refresh channel list"
             onClick={handleRefresh}
           >
             Refresh channels
-          </button>
+          </SecondaryButton>
           <div id="channel-list">
             {channels.length === 0 && (
               <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
