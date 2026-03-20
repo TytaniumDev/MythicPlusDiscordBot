@@ -53,8 +53,8 @@ export const lookupCharacter = onCall(
       throw new HttpsError('invalid-argument', 'name, realm, and region are required');
     }
 
-    // Validate inputs contain only valid WoW name/realm characters (letters, hyphens, spaces, apostrophes)
-    const validPattern = /^[a-zA-Z\s'-]+$/;
+    // Validate inputs contain only valid WoW name/realm slug characters (letters, digits, hyphens, spaces, apostrophes)
+    const validPattern = /^[a-zA-Z0-9\s'-]+$/;
     if (!validPattern.test(name) || !validPattern.test(realm) || !validPattern.test(region)) {
       throw new HttpsError('invalid-argument', 'Invalid characters in name, realm, or region');
     }
