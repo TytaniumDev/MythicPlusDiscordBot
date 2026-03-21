@@ -191,10 +191,11 @@ test.describe('Mobile Functional (393x852)', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('.mobile-drawer')).toBeVisible();
 
-    // Expand drawer
+    // Expand drawer and wait for transition to settle
     await page.locator('.mobile-drawer__header').click();
     await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
     await expect(page.locator('[data-testid="player-card"]')).toBeVisible();
+    await page.waitForTimeout(400);
 
     await expect(page).toHaveScreenshot('lobby-mobile-drawer-expanded.png');
 
