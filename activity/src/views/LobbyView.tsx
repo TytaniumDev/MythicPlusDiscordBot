@@ -88,9 +88,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           className="app-header"
           subtitleId="player-count"
         />
+        <AffixBar />
         <main className="content-area">
           <section id="view-lobby">
-            <AffixBar />
             <div id="player-list">
               <div style={{ color: 'var(--text-secondary)', gridColumn: '1 / -1', textAlign: 'center' }}>
                 Waiting for players to join voice...
@@ -115,10 +115,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         className="app-header"
         subtitleId="player-count"
       />
+      <AffixBar />
       <main className="content-area">
         <section id="view-lobby">
-
-          <AffixBar />
 
           <div className="lobby-body">
             <div className="lobby-players">
