@@ -24,7 +24,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   identityResolved: false,
 
   // Player modal
-  modalPlayer: null,
+  activePlayer: null,
 
   // Spin sequence
   fullGroups: [],
@@ -54,7 +54,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
-  setModalPlayer: (player: WoWPlayer | null) => set({ modalPlayer: player }),
+  setActivePlayer: (player: WoWPlayer | null) => set({ activePlayer: player }),
+  updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => set((s) => {
+    if (!s.channelData) return s;
+    const players = s.channelData.players.map((p) =>
+      p.discordId === discordId ? { ...p, ...fields } : p,
+    );
+    return { channelData: { ...s.channelData, players } };
+  }),
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) =>
     set({ fullGroups: groups, remainderGroups: remainder }),
   setCurrentGroupIndex: (index: number) => set({ currentGroupIndex: index }),
@@ -82,7 +89,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentPlayerId: null,
       currentPlayerName: null,
       identityResolved: false,
-      modalPlayer: null,
+      activePlayer: null,
     }),
   resetSession: () => {
     get().resetIdentity();

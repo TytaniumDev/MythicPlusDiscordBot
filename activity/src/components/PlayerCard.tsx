@@ -7,6 +7,8 @@ import { CharacterHeader } from './CharacterHeader';
 import { CharacterSearchInput, Divider, SecondaryButton } from './ui';
 import {
   playerRolesToStringArray,
+  roleStringsToPlayerFields,
+  computeToggledRoles,
   getPrimaryRole,
   MAIN_SPEC_BUTTONS,
   OFFSPEC_BUTTONS,
@@ -29,7 +31,6 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ player, className = '' }: PlayerCardProps) {
-  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
   const service = useSessionService();
 
@@ -60,6 +61,14 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
   // Auto-save when roles or name change
   const autoSave = useCallback((roles: Set<string>, name: string) => {
     if (!player.discordId) return;
+
+    // Optimistically update the store so chips reflect changes immediately
+    const id = player.discordId;
+    queueMicrotask(() => {
+      const fields = roleStringsToPlayerFields(roles);
+      useAppStore.getState().updatePlayer(id, { ...fields, inGameName: name || undefined });
+    });
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(async () => {
@@ -87,15 +96,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
 
   const toggleRole = useCallback((btnDef: RoleButtonDef, mutuallyExclusive: boolean) => {
     setSelectedRoles((prev) => {
-      const next = new Set(prev);
-      if (next.has(btnDef.id)) {
-        next.delete(btnDef.id);
-      } else {
-        if (mutuallyExclusive) {
-          MAIN_SPEC_BUTTONS.forEach((b) => next.delete(b.id));
-        }
-        next.add(btnDef.id);
-      }
+      const next = computeToggledRoles(prev, btnDef.id, mutuallyExclusive);
       rolesRef.current = next;
       autoSave(next, nameRef.current);
       return next;
@@ -144,8 +145,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
     }
   }, [lookupLoading, player, lookup, selectedRoles, service]);
 
-  const isMe = player.discordId === currentPlayerId;
-  const isMeSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
+  const isSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
   const primaryRole = getPrimaryRole(player);
   const color = ROLE_COLOR_MAP[primaryRole] ?? ROLE_COLOR_MAP.unassigned;
 
@@ -200,18 +200,16 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
         {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
         {renderSection('Utilities', UTILITY_BUTTONS, false)}
 
-        {isMe && (
-          <div className="role-editor-section" style={{ marginTop: 4 }}>
-            <div className="role-editor-row">
-              <SecondaryButton
-                className={`player-card__sit-out ${isMeSittingOut ? 'active-sitting-out' : ''}`}
-                onClick={() => { if (player.discordId) service.toggleSitOut(player.discordId); }}
-              >
-                {isMeSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
-              </SecondaryButton>
-            </div>
+        <div className="role-editor-section" style={{ marginTop: 4 }}>
+          <div className="role-editor-row">
+            <SecondaryButton
+              className={`player-card__sit-out ${isSittingOut ? 'active-sitting-out' : ''}`}
+              onClick={() => { if (player.discordId) service.toggleSitOut(player.discordId); }}
+            >
+              {isSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
+            </SecondaryButton>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
