@@ -1,0 +1,8 @@
+name: CI Retrigger
+
+on:
+  workflow_dispatch:
+
+jobs:
+  CI:
+    uses: ./.github/workflows/ci-shared.yml
