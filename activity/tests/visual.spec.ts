@@ -135,8 +135,10 @@ function viewportTests(
       await expect(page.locator('#wheel-dps2')).toBeAttached();
       await expect(page.locator('#wheel-dps3')).toBeAttached();
 
-      // Side panel visible
-      await expect(page.locator('#side-panel')).toBeVisible();
+      // Side panel visible on desktop/tablet, hidden on mobile (<600px)
+      if (viewport.width >= 600) {
+        await expect(page.locator('#side-panel')).toBeVisible();
+      }
 
       await expect(page).toHaveScreenshot(`wheels-static-${viewport.width}x${viewport.height}.png`);
     });
@@ -151,8 +153,10 @@ function viewportTests(
       await expect(nextBtn).toBeEnabled();
       await expect(nextBtn).toHaveText('Spin for Group 1');
 
-      // Side panel visible but no groups yet
-      await expect(page.locator('#side-panel')).toBeVisible();
+      // Side panel visible on desktop/tablet, hidden on mobile (<600px)
+      if (viewport.width >= 600) {
+        await expect(page.locator('#side-panel')).toBeVisible();
+      }
 
       await expect(page).toHaveScreenshot(`spinning-ready-${viewport.width}x${viewport.height}.png`);
     });
@@ -245,9 +249,10 @@ test.describe('Carousel Mode Tests', () => {
       await expect(page.locator('.app-header')).toBeHidden();
     });
 
-    test('Side panel visible in wheels view', async ({ page }) => {
+    test('Side panel hidden on mobile, replaced by group pager', async ({ page }) => {
       await page.goto(`/?data=${encodeData(staticWheelsData)}`);
-      await expect(page.locator('#side-panel')).toBeVisible();
+      // Side column is not rendered on mobile (<600px)
+      await expect(page.locator('.side-column')).not.toBeVisible();
     });
   });
 });
