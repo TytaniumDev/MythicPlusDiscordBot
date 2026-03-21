@@ -1282,6 +1282,8 @@ body {
    Group Cards (side panel + results)
    ============================================ */
 .group-card {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1341,8 +1343,8 @@ body {
 .btn-copy-invite {
   display: block;
   width: 100%;
-  margin-top: 8px;
-  padding: 4px 0;
+  margin-top: auto;
+  padding: 8px 0 4px;
   background: transparent;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
@@ -1408,8 +1410,8 @@ body {
 }
 
 #final-groups {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 220px);
   justify-content: center;
   gap: 12px;
   margin-bottom: 24px;
@@ -1417,8 +1419,6 @@ body {
 
 #final-groups .group-card {
   padding: 16px;
-  width: 220px;
-  flex-shrink: 0;
 }
 
 #final-groups .group-card h4 {
