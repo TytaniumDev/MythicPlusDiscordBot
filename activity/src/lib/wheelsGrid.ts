@@ -43,7 +43,6 @@ export class WheelsGrid {
     // Build the .wheels-container (grid/carousel)
     this.containerEl = document.createElement('div');
     this.containerEl.className = 'wheels-container';
-    this.containerEl.style.setProperty('--carousel-index', '0');
 
     // Create the 5 wheels
     this.tank = new Wheel({ role: 'tank', label: 'Tank', labelClass: 'tank', ariaLabel: 'Tank Selection Wheel' });
@@ -198,7 +197,10 @@ export class WheelsGrid {
   /** Navigate to a carousel slide */
   setCarouselSlide(index: number) {
     this.carouselIndex = Math.max(0, Math.min(this.dots.length - 1, index));
-    this.containerEl.style.setProperty('--carousel-index', String(this.carouselIndex));
+
+    // Scroll the wheel slot into view (scroll-snap handles alignment)
+    const slot = this.wheels[this.carouselIndex].element;
+    slot.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
     this.dots.forEach((dot, i) => {
       const isActive = i === this.carouselIndex;
@@ -209,10 +211,6 @@ export class WheelsGrid {
         dot.removeAttribute('aria-current');
       }
     });
-
-    // Force redraw of all wheels — the canvas may have had zero dimensions
-    // while off-screen during carousel transitions.
-    requestAnimationFrame(() => this.forceRedraw());
   }
 
   /** Mark a carousel dot as completed */

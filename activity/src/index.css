@@ -1613,16 +1613,22 @@ body {
     margin-bottom: 4px;
   }
 
-  /* Switch wheels container to carousel mode */
+  /* Switch wheels container to scroll-snap carousel */
   .wheels-container {
     display: flex;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     width: 100%;
     flex: 1;
     min-height: 0;
     align-items: center;
-    transform: translateX(calc(-100% * var(--carousel-index, 0)));
-    transition: transform 0.35s ease-out;
+  }
+
+  .wheels-container::-webkit-scrollbar {
+    display: none;
   }
 
   /* Reset grid placements */
@@ -1638,6 +1644,7 @@ body {
     min-width: 100%;
     flex-shrink: 0;
     justify-content: center;
+    scroll-snap-align: center;
   }
 
   .wheel-frame {
@@ -1689,22 +1696,6 @@ body {
 
   .sitting-out-grid {
     grid-template-columns: 1fr;
-  }
-
-  .lobby-players {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding-bottom: 150px; /* Space for fixed spin btn (above) + drawer header (64px) */
-  }
-
-  #view-lobby {
-    overflow: hidden;
-  }
-
-  /* Hide the inline spin button on mobile — it's in the fixed footer */
-  #view-lobby > .btn {
-    display: none;
   }
 
   .wheels-content {
@@ -2223,6 +2214,17 @@ button.role-section-header--collapsible {
   .lobby-sidebar {
     width: 100%;
     order: -1;
+  }
+
+  .lobby-players {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 150px;
+  }
+
+  #view-lobby {
+    overflow: hidden;
   }
 }
 

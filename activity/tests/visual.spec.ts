@@ -140,6 +140,8 @@ function viewportTests(
         await expect(page.locator('#side-panel')).toBeVisible();
       }
 
+      // Wait for canvas rendering to stabilize
+      await page.waitForTimeout(200);
       await expect(page).toHaveScreenshot(`wheels-static-${viewport.width}x${viewport.height}.png`);
     });
 
@@ -212,25 +214,16 @@ test.describe('Carousel Mode Tests', () => {
       await expect(page.locator('#slot-tank')).toBeInViewport();
     });
 
-    test('Carousel navigation via CSS variable', async ({ page }) => {
+    test('Carousel navigation via dot click scrolls to wheel', async ({ page }) => {
       await page.goto(`/?data=${encodeData(staticWheelsData)}`);
       await expect(page.locator('#view-wheels')).toBeVisible();
 
-      // Navigate to healer (index 1)
-      await page.evaluate(() => {
-        const container = document.querySelector('.wheels-container') as HTMLElement;
-        container.style.setProperty('--carousel-index', '1');
-      });
-
-      // Wait for transition
+      // Navigate to healer (index 1) by clicking the dot
+      await page.locator('.carousel-dot[data-index="1"]').click();
       await page.waitForTimeout(400);
 
-      // Verify the container transform shifted by -100%
-      const transformValue = await page.locator('.wheels-container').evaluate(
-        (el) => getComputedStyle(el).transform,
-      );
-      // transform should be a matrix with a negative X translation
-      expect(transformValue).not.toBe('none');
+      // The healer slot should now be in viewport
+      await expect(page.locator('#slot-healer')).toBeInViewport();
     });
   });
 

@@ -20,3 +20,8 @@ export function useIsCarouselMode(): boolean {
 export function useIsCompactPanel(): boolean {
   return useMediaQuery('(max-width: 899px)');
 }
+
+/** Use mobile drawer layout for lobby (at tablet breakpoint and below) */
+export function useIsMobileLobby(): boolean {
+  return useMediaQuery('(max-width: 899px)');
+}

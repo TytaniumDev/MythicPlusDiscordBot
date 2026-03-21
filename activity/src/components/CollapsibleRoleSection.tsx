@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { RoleSectionHeader } from './ui';
-import { useIsCarouselMode } from '../hooks/useMediaQuery';
+import { useIsMobileLobby } from '../hooks/useMediaQuery';
 
 interface CollapsibleRoleSectionProps {
   label: string;
@@ -17,7 +17,7 @@ export function CollapsibleRoleSection({
   children,
   defaultCollapsed = false,
 }: CollapsibleRoleSectionProps) {
-  const isMobile = useIsCarouselMode();
+  const isMobile = useIsMobileLobby();
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   if (!isMobile) {

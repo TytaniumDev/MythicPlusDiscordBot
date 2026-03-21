@@ -9,7 +9,7 @@ import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
-import { useIsCarouselMode } from '../hooks/useMediaQuery';
+import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
 const SpinIcon = () => (
@@ -29,7 +29,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const players = channelData?.players || [];
   useIdentityResolver(players);
 
-  const isMobile = useIsCarouselMode();
+  const isMobile = useIsMobileLobby();
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleSpin = async () => {
