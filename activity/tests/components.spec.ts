@@ -137,12 +137,16 @@ test.describe('Component: PlayerCard', () => {
     await expect(card).toHaveScreenshot('player-card.png');
   });
 
-  test('Player card on mobile', async ({ page }) => {
+  test('Player card on mobile (via drawer)', async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
+
+    // Expand the mobile drawer to reveal the player card
+    await page.locator('.mobile-drawer__header').click();
+    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
 
     const card = page.locator('[data-testid="player-card"]');
     await expect(card).toBeVisible();

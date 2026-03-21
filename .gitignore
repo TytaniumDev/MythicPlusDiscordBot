@@ -48,3 +48,6 @@ playwright-report/
 addon/libs/*/
 !addon/libs/.gitkeep
 .DS_Store
+
+# Claude Code
+.claude/worktrees/

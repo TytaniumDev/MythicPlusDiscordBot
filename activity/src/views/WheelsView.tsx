@@ -5,6 +5,7 @@ import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
+import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, Checkbox } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
@@ -180,7 +181,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setNextBtnDisabled(true);
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
-    if (!markedPools) return;
+    if (!markedPools) {
+      store.setSpinAnimating(false);
+      grid.isAnimating = false;
+      return;
+    }
 
     grid.setAllSpinning();
     grid.clearAllResults();
@@ -229,7 +234,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
     grid.clearAllResults();
-    if (!markedPools) return;
+    if (!markedPools) {
+      store.setSpinAnimating(false);
+      grid.isAnimating = false;
+      return;
+    }
+    grid.setCarouselSlide(0);
     grid.initWheels(markedPools);
     grid.resetCarouselDots();
 
@@ -345,6 +355,16 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [isDemoMode, service]);
 
+  const announceCheckbox = (
+    <Checkbox
+      id="announce-checkbox"
+      label="Post results to chat"
+      checked={announceChecked}
+      onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
+      className="announce-option"
+    />
+  );
+
   return (
     <div className="main-layout">
       <HeaderBar
@@ -358,31 +378,34 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           <div className="wheels-content">
             <WheelsGridComponent ref={gridRef} pools={pools} />
 
-            <div id="side-column" className="side-column">
-              <aside id="side-panel" className="side-panel">
-                <h3>Groups</h3>
-                <div id="groups-list">
-                  {groupCards.map((card, i) => (
-                    <GroupCard
-                      key={i}
-                      group={card.group}
-                      index={card.index}
-                      label={card.label}
-                      hideEmpty={card.hideEmpty}
-                      compact={isCompact}
-                    />
-                  ))}
-                </div>
-              </aside>
-              <Checkbox
-                id="announce-checkbox"
-                label="Post results to chat"
-                checked={announceChecked}
-                onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
-                className="announce-option"
-              />
-            </div>
+            {!isCarousel && (
+              <div id="side-column" className="side-column">
+                <aside id="side-panel" className="side-panel">
+                  <h3>Groups</h3>
+                  <div id="groups-list">
+                    {groupCards.map((card) => (
+                      <GroupCard
+                        key={card.index}
+                        group={card.group}
+                        index={card.index}
+                        label={card.label}
+                        hideEmpty={card.hideEmpty}
+                        compact={isCompact}
+                      />
+                    ))}
+                  </div>
+                </aside>
+                {announceCheckbox}
+              </div>
+            )}
           </div>
+
+          {isCarousel && (
+            <>
+              <MobileGroupPager groupCards={groupCards} />
+              {announceCheckbox}
+            </>
+          )}
 
           {nextBtnVisible && (
             <PrimaryCTA

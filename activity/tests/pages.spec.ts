@@ -162,3 +162,69 @@ function designViewportTests(
 designViewportTests('Desktop', DESIGN_VIEWPORTS.desktop);
 designViewportTests('Tablet',  DESIGN_VIEWPORTS.tablet);
 designViewportTests('Mobile',  DESIGN_VIEWPORTS.mobile);
+
+// ── Mobile-specific functional tests ────────────────────────
+test.describe('Mobile Functional (393x852)', () => {
+  test.use({ viewport: DESIGN_VIEWPORTS.mobile });
+
+  test('Lobby — drawer footer is visible and player list is scrollable', async ({ page }) => {
+    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('#view-lobby')).toBeVisible();
+
+    // Drawer footer should be visible
+    await expect(page.locator('.mobile-drawer')).toBeVisible();
+    await expect(page.locator('.mobile-drawer__name')).toBeVisible();
+
+    // Spin button should be visible (not pushed off-screen)
+    await expect(page.locator('#spin-btn')).toBeVisible();
+    await expect(page.locator('#spin-btn')).toBeInViewport();
+
+    // Player list should be visible
+    await expect(page.locator('#player-list')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('lobby-mobile-drawer-collapsed.png');
+  });
+
+  test('Lobby — drawer expands and collapses', async ({ page }) => {
+    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('.mobile-drawer')).toBeVisible();
+
+    // Expand drawer
+    await page.locator('.mobile-drawer__header').click();
+    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
+    await expect(page.locator('[data-testid="player-card"]')).toBeVisible();
+
+    // Collapse by clicking header again
+    await page.locator('.mobile-drawer__header').click();
+    await expect(page.locator('.mobile-drawer--expanded')).not.toBeVisible();
+  });
+
+  test('Lobby — drawer collapses on backdrop click', async ({ page }) => {
+    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+    // Expand drawer
+    await page.locator('.mobile-drawer__header').click();
+    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
+
+    // Click backdrop to collapse
+    await page.locator('.drawer-backdrop').click({ position: { x: 10, y: 10 } });
+    await expect(page.locator('.mobile-drawer--expanded')).not.toBeVisible();
+  });
+
+  test('Wheels — group pager appears below wheel, side column hidden', async ({ page }) => {
+    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+    await page.goto(`/?data=${encodeData(spinningReadyData)}`);
+    await expect(page.locator('#view-wheels')).toBeVisible();
+
+    // Side column should NOT be visible on mobile
+    await expect(page.locator('.side-column')).not.toBeVisible();
+
+    // Spin button should be visible
+    await expect(page.locator('#next-btn')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('wheels-mobile-ready.png');
+  });
+});

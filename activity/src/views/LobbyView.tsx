@@ -7,7 +7,10 @@ import { PlayerCard } from '../components/PlayerCard';
 import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
+import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
+import { useIsMobileLobby } from '../hooks/useMediaQuery';
+import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
 const SpinIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -26,6 +29,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const players = channelData?.players || [];
   useIdentityResolver(players);
 
+  const isMobile = useIsMobileLobby();
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleSpin = async () => {
@@ -106,7 +110,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   }
 
   return (
-    <div className="main-layout">
+    <div className={`main-layout${isMobile ? ' mobile-lobby' : ''}`}>
       <HeaderBar
         title="Players"
         subtitle={subtitleText}
@@ -125,25 +129,29 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 {/* Left column: Tank + Heal sections stacked */}
                 <div className="role-column">
                   <div className="role-section">
-                    <RoleSectionHeader label="Tanks" count={tanks.length} color="tank" />
-                    {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    <CollapsibleRoleSection label="Tanks" count={tanks.length} color="tank">
+                      {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </CollapsibleRoleSection>
                   </div>
                   <div className="role-section">
-                    <RoleSectionHeader label="Heal" count={healers.length} color="healer" />
-                    {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    <CollapsibleRoleSection label="Heal" count={healers.length} color="healer">
+                      {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </CollapsibleRoleSection>
                   </div>
                 </div>
 
                 {/* Right column: Ranged + Melee */}
                 <div className="role-column role-column-dps">
-                  <RoleSectionHeader label="Ranged" count={rangedPlayers.length} color="dps" />
-                  <div className="dps-grid">
-                    {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                  </div>
-                  <RoleSectionHeader label="Melee" count={meleePlayers.length} color="dps" />
-                  <div className="dps-grid">
-                    {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                  </div>
+                  <CollapsibleRoleSection label="Ranged" count={rangedPlayers.length} color="dps">
+                    <div className="dps-grid">
+                      {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </CollapsibleRoleSection>
+                  <CollapsibleRoleSection label="Melee" count={meleePlayers.length} color="dps">
+                    <div className="dps-grid">
+                      {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </CollapsibleRoleSection>
                 </div>
 
                 {/* Unassigned section */}
@@ -169,13 +177,29 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
             </div>
 
-            {selectedPlayer && (
+            {!isMobile && selectedPlayer && (
               <div className="lobby-sidebar">
                 <PlayerCard player={selectedPlayer} />
               </div>
             )}
           </div>
 
+          {!isMobile && (
+            <PrimaryCTA
+              id="spin-btn"
+              icon={<SpinIcon />}
+              disabled={isCalculating}
+              onClick={handleSpin}
+            >
+              {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+            </PrimaryCTA>
+          )}
+        </section>
+      </main>
+
+      {isMobile && selectedPlayer && <MobilePlayerDrawer player={selectedPlayer} />}
+      {isMobile && (
+        <div className="mobile-spin-btn">
           <PrimaryCTA
             id="spin-btn"
             icon={<SpinIcon />}
@@ -184,8 +208,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           >
             {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
           </PrimaryCTA>
-        </section>
-      </main>
+        </div>
+      )}
     </div>
   );
 }
