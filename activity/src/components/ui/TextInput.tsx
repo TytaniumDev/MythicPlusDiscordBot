@@ -6,7 +6,7 @@ interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export function TextInput({ label, className = '', id, ...props }: TextInputProps) {
   const autoId = useId();
-  const inputId = id ?? autoId;
+  const inputId = id || autoId;
   return (
     <div className={`ui-text-input ${className}`}>
       <label className="ui-text-input-label" htmlFor={inputId}>{label}</label>
