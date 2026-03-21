@@ -1695,7 +1695,7 @@ body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: 140px; /* Space for fixed footer: spin btn + drawer header */
+    padding-bottom: 150px; /* Space for fixed spin btn (above) + drawer header (64px) */
   }
 
   #view-lobby {
@@ -2275,20 +2275,14 @@ button.role-section-header--collapsible {
 /* ============================================
    Mobile Lobby Footer (Spin + Drawer)
    ============================================ */
-.mobile-lobby-footer {
+.mobile-spin-btn {
   position: fixed;
-  bottom: 0;
+  bottom: 64px;
   left: 0;
   right: 0;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-lobby-footer .btn {
-  margin: 0 var(--page-gutter) 0;
-  flex-shrink: 0;
-  z-index: 101;
+  z-index: 99;
+  padding: 8px var(--page-gutter);
+  background: linear-gradient(to top, var(--bg-primary) 60%, transparent);
 }
 
 /* ============================================
@@ -2302,20 +2296,22 @@ button.role-section-header--collapsible {
 }
 
 .mobile-drawer {
-  position: relative;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-subtle);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-  max-height: 70dvh;
-  transform: translateY(calc(100% - 64px));
-  transition: transform 0.3s ease;
+  max-height: 64px;
+  transition: max-height 0.3s ease;
   overflow: hidden;
 }
 
 .mobile-drawer--expanded {
-  transform: translateY(0);
+  max-height: 70dvh;
   overflow-y: auto;
 }
 

@@ -209,6 +209,10 @@ export class WheelsGrid {
         dot.removeAttribute('aria-current');
       }
     });
+
+    // Force redraw of all wheels — the canvas may have had zero dimensions
+    // while off-screen during carousel transitions.
+    requestAnimationFrame(() => this.forceRedraw());
   }
 
   /** Mark a carousel dot as completed */

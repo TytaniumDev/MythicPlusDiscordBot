@@ -194,35 +194,22 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
               {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
             </PrimaryCTA>
           )}
-
-          {isMobile && selectedPlayer && (
-            <div className="mobile-lobby-footer">
-              <PrimaryCTA
-                id="spin-btn"
-                icon={<SpinIcon />}
-                disabled={isCalculating}
-                onClick={handleSpin}
-              >
-                {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
-              </PrimaryCTA>
-              <MobilePlayerDrawer player={selectedPlayer} />
-            </div>
-          )}
-
-          {isMobile && !selectedPlayer && (
-            <div className="mobile-lobby-footer">
-              <PrimaryCTA
-                id="spin-btn"
-                icon={<SpinIcon />}
-                disabled={isCalculating}
-                onClick={handleSpin}
-              >
-                {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
-              </PrimaryCTA>
-            </div>
-          )}
         </section>
       </main>
+
+      {isMobile && selectedPlayer && <MobilePlayerDrawer player={selectedPlayer} />}
+      {isMobile && (
+        <div className="mobile-spin-btn">
+          <PrimaryCTA
+            id="spin-btn"
+            icon={<SpinIcon />}
+            disabled={isCalculating}
+            onClick={handleSpin}
+          >
+            {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+          </PrimaryCTA>
+        </div>
+      )}
     </div>
   );
 }
