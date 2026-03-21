@@ -355,6 +355,16 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [isDemoMode, service]);
 
+  const announceCheckbox = (
+    <Checkbox
+      id="announce-checkbox"
+      label="Post results to chat"
+      checked={announceChecked}
+      onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
+      className="announce-option"
+    />
+  );
+
   return (
     <div className="main-layout">
       <HeaderBar
@@ -373,9 +383,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                 <aside id="side-panel" className="side-panel">
                   <h3>Groups</h3>
                   <div id="groups-list">
-                    {groupCards.map((card, i) => (
+                    {groupCards.map((card) => (
                       <GroupCard
-                        key={i}
+                        key={card.index}
                         group={card.group}
                         index={card.index}
                         label={card.label}
@@ -385,13 +395,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                     ))}
                   </div>
                 </aside>
-                <Checkbox
-                  id="announce-checkbox"
-                  label="Post results to chat"
-                  checked={announceChecked}
-                  onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
-                  className="announce-option"
-                />
+                {announceCheckbox}
               </div>
             )}
           </div>
@@ -399,13 +403,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           {isCarousel && (
             <>
               <MobileGroupPager groupCards={groupCards} />
-              <Checkbox
-                id="announce-checkbox"
-                label="Post results to chat"
-                checked={announceChecked}
-                onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
-                className="announce-option"
-              />
+              {announceCheckbox}
             </>
           )}
 

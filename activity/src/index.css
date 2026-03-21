@@ -1695,11 +1695,16 @@ body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: 72px;
+    padding-bottom: 140px; /* Space for fixed footer: spin btn + drawer header */
   }
 
   #view-lobby {
     overflow: hidden;
+  }
+
+  /* Hide the inline spin button on mobile — it's in the fixed footer */
+  #view-lobby > .btn {
+    display: none;
   }
 
   .wheels-content {
@@ -1989,6 +1994,17 @@ body {
   letter-spacing: 0.05em;
 }
 
+button.role-section-header--collapsible {
+  cursor: pointer;
+  width: 100%;
+  font-family: var(--font-family);
+}
+
+.role-section-header__chevron {
+  margin-left: auto;
+  font-size: 0.6rem;
+}
+
 .role-section-header--tank {
   color: var(--color-tank);
   background: color-mix(in srgb, var(--color-tank) 10%, transparent);
@@ -2257,6 +2273,25 @@ body {
 }
 
 /* ============================================
+   Mobile Lobby Footer (Spin + Drawer)
+   ============================================ */
+.mobile-lobby-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-lobby-footer .btn {
+  margin: 0 var(--page-gutter) 0;
+  flex-shrink: 0;
+  z-index: 101;
+}
+
+/* ============================================
    Mobile Player Drawer
    ============================================ */
 .drawer-backdrop {
@@ -2267,10 +2302,7 @@ body {
 }
 
 .mobile-drawer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 100;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-subtle);
@@ -2378,6 +2410,12 @@ body {
   -webkit-overflow-scrolling: touch;
   padding: 0 5%;
   scrollbar-width: none;
+  justify-content: center;
+}
+
+/* Allow scrolling when multiple cards overflow */
+.mobile-group-pager__scroll:has(.mobile-group-pager__card:nth-child(2)) {
+  justify-content: flex-start;
 }
 
 .mobile-group-pager__scroll::-webkit-scrollbar {

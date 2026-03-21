@@ -23,8 +23,8 @@ export function MobileGroupPager({ groupCards }: MobileGroupPagerProps) {
   return (
     <div className="mobile-group-pager">
       <div className="mobile-group-pager__scroll" ref={scrollRef}>
-        {groupCards.map((card, i) => (
-          <div className="mobile-group-pager__card" key={i}>
+        {groupCards.map((card) => (
+          <div className="mobile-group-pager__card" key={card.index}>
             <GroupCard
               group={card.group}
               index={card.index}

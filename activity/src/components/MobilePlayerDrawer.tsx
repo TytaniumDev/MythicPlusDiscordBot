@@ -34,7 +34,7 @@ export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
   }, [expanded]);
 
   const mainRole = getPrimaryRole(player);
-  const offspecs = player.offspecs || [];
+  const offspecs = player.offspecs;
 
   return (
     <>

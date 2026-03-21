@@ -7,6 +7,7 @@ import { PlayerCard } from '../components/PlayerCard';
 import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
+import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
 import { useIsCarouselMode } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
@@ -128,25 +129,29 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 {/* Left column: Tank + Heal sections stacked */}
                 <div className="role-column">
                   <div className="role-section">
-                    <RoleSectionHeader label="Tanks" count={tanks.length} color="tank" />
-                    {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    <CollapsibleRoleSection label="Tanks" count={tanks.length} color="tank">
+                      {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </CollapsibleRoleSection>
                   </div>
                   <div className="role-section">
-                    <RoleSectionHeader label="Heal" count={healers.length} color="healer" />
-                    {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    <CollapsibleRoleSection label="Heal" count={healers.length} color="healer">
+                      {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </CollapsibleRoleSection>
                   </div>
                 </div>
 
                 {/* Right column: Ranged + Melee */}
                 <div className="role-column role-column-dps">
-                  <RoleSectionHeader label="Ranged" count={rangedPlayers.length} color="dps" />
-                  <div className="dps-grid">
-                    {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                  </div>
-                  <RoleSectionHeader label="Melee" count={meleePlayers.length} color="dps" />
-                  <div className="dps-grid">
-                    {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
-                  </div>
+                  <CollapsibleRoleSection label="Ranged" count={rangedPlayers.length} color="dps">
+                    <div className="dps-grid">
+                      {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </CollapsibleRoleSection>
+                  <CollapsibleRoleSection label="Melee" count={meleePlayers.length} color="dps">
+                    <div className="dps-grid">
+                      {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                    </div>
+                  </CollapsibleRoleSection>
                 </div>
 
                 {/* Unassigned section */}
@@ -179,18 +184,43 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             )}
           </div>
 
-          {isMobile && selectedPlayer && (
-            <MobilePlayerDrawer player={selectedPlayer} />
+          {!isMobile && (
+            <PrimaryCTA
+              id="spin-btn"
+              icon={<SpinIcon />}
+              disabled={isCalculating}
+              onClick={handleSpin}
+            >
+              {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+            </PrimaryCTA>
           )}
 
-          <PrimaryCTA
-            id="spin-btn"
-            icon={<SpinIcon />}
-            disabled={isCalculating}
-            onClick={handleSpin}
-          >
-            {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
-          </PrimaryCTA>
+          {isMobile && selectedPlayer && (
+            <div className="mobile-lobby-footer">
+              <PrimaryCTA
+                id="spin-btn"
+                icon={<SpinIcon />}
+                disabled={isCalculating}
+                onClick={handleSpin}
+              >
+                {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+              </PrimaryCTA>
+              <MobilePlayerDrawer player={selectedPlayer} />
+            </div>
+          )}
+
+          {isMobile && !selectedPlayer && (
+            <div className="mobile-lobby-footer">
+              <PrimaryCTA
+                id="spin-btn"
+                icon={<SpinIcon />}
+                disabled={isCalculating}
+                onClick={handleSpin}
+              >
+                {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+              </PrimaryCTA>
+            </div>
+          )}
         </section>
       </main>
     </div>
