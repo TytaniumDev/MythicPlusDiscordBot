@@ -2165,7 +2165,7 @@ body {
 }
 
 .lobby-sidebar {
-  width: 305px;
+  width: 340px;
   flex-shrink: 0;
   overflow-y: auto;
 }
