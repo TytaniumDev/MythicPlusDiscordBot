@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: write
       actions: write
+    outputs:
+      snapshot-pushed: ${{ steps.snapshot-commit.outputs.pushed }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -69,13 +71,15 @@ jobs:
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Retrigger CI checks
-        if: steps.snapshot-commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH_REF: ${{ github.head_ref }}
-        run: gh workflow run ci-retrigger.yml --ref "$BRANCH_REF"
-
       - name: Verify snapshots (Docker)
         if: steps.bot-check.outputs.skip != 'true'
         run: ./scripts/playwright-docker.sh
+
+  # When the bot pushes snapshot updates, the new commit won't get
+  # pull_request-triggered CI checks (GitHub Actions pushes don't fire
+  # PR events). Run CI inline so branch protection required checks
+  # (CI / Lint, CI / Build, CI / Test) are satisfied on the new SHA.
+  CI:
+    needs: verify-activity
+    if: needs.verify-activity.outputs.snapshot-pushed == 'true'
+    uses: ./.github/workflows/ci-shared.yml
