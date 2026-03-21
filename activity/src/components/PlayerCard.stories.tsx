@@ -57,5 +57,6 @@ export const SittingOut: Story = {
         sittingOut: [mockPlayers[4].discordId!],
       },
     }),
+    (Story) => <div style={{ width: 320 }}><Story /></div>,
   ],
 };
