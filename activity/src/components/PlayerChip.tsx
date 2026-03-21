@@ -37,7 +37,7 @@ export function PlayerChip({ player }: PlayerChipProps) {
 
   return (
     <div
-      className={`player-chip${isSelected ? ' is-me' : ''}${isSittingOut ? ' sitting-out' : ''}`}
+      className={`player-chip${isSelected ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="button"

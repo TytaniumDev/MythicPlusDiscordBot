@@ -52,12 +52,13 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
-  // Set default selection to current player on mount
+  // Set default selection to current player on mount, reset if active player leaves
   const activePlayer = useAppStore((s) => s.activePlayer);
   useEffect(() => {
-    if (activePlayer || players.length === 0) return;
+    const needsDefault = !activePlayer || !players.some(p => p.discordId === activePlayer.discordId);
+    if (!needsDefault || players.length === 0) return;
     const defaultPlayer = (currentPlayerId && players.find(p => p.discordId === currentPlayerId)) || players[0];
-    if (defaultPlayer) useAppStore.getState().setActivePlayer(defaultPlayer);
+    useAppStore.getState().setActivePlayer(defaultPlayer ?? null);
   }, [activePlayer, currentPlayerId, players]);
 
   // Selected player always follows activePlayer

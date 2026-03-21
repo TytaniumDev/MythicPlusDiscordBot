@@ -750,7 +750,7 @@ body {
 }
 
 /* ── Player Chip: Current user highlight ── */
-.player-chip.is-me {
+.player-chip.is-selected {
   border-color: var(--color-gold);
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
 }
