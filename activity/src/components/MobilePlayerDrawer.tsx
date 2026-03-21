@@ -71,11 +71,9 @@ export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
             {expanded ? '\u25BE' : '\u25B4'}
           </span>
         </button>
-        {expanded && (
-          <div className="mobile-drawer__body">
-            <PlayerCard player={player} />
-          </div>
-        )}
+        <div className="mobile-drawer__body">
+          <PlayerCard player={player} />
+        </div>
       </div>
     </>
   );
