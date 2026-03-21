@@ -2033,6 +2033,10 @@ body {
   flex: 1;
   min-width: 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 32px;
 }
 
 .header-bar__title {
