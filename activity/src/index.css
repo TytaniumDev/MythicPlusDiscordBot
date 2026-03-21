@@ -1751,9 +1751,10 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
-  background: var(--bg-card);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   max-height: 200px;
   overflow-y: auto;
   margin-top: 4px;
