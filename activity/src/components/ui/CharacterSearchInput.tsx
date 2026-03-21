@@ -52,6 +52,7 @@ export function CharacterSearchInput({
               onClick={() => {
                 setShowDropdown(false);
                 setSearchQuery('');
+                onChange(`${r.name}-${r.realm}`);
                 onSelect(r);
               }}
             >

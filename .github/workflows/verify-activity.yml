@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -54,6 +55,7 @@ jobs:
         run: ./scripts/playwright-docker.sh --update-snapshots=all
 
       - name: Commit updated snapshots
+        id: snapshot-commit
         if: steps.bot-check.outputs.skip != 'true'
         run: |
           git add activity/tests/__screenshots__/
@@ -64,7 +66,15 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git commit -m "chore: update visual test snapshots"
             git push
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Retrigger CI checks
+        if: steps.snapshot-commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH_REF: ${{ github.head_ref }}
+        run: gh workflow run ci-retrigger.yml --ref "$BRANCH_REF"
 
       - name: Verify snapshots (Docker)
         if: steps.bot-check.outputs.skip != 'true'
