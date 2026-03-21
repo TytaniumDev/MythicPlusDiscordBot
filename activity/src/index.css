@@ -1701,6 +1701,10 @@ body {
   #view-lobby {
     overflow: hidden;
   }
+
+  .wheels-content {
+    flex-direction: column;
+  }
 }
 
 /* ============================================
@@ -2353,6 +2357,47 @@ body {
   border: none;
   box-shadow: none;
   background: transparent;
+}
+
+/* ============================================
+   Mobile Group Pager
+   ============================================ */
+.mobile-group-pager {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.mobile-group-pager__scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 5%;
+  scrollbar-width: none;
+}
+
+.mobile-group-pager__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-group-pager__card {
+  flex: 0 0 90%;
+  scroll-snap-align: center;
+}
+
+.mobile-group-pager__card .group-card {
+  width: 100%;
+}
+
+.mobile-group-pager__indicator {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  padding: 4px 0;
 }
 
 /* ============================================

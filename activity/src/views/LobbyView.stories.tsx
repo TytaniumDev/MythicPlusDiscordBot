@@ -85,3 +85,7 @@ export const DiscordSmall: Story = {
 export const DiscordLarge: Story = {
   parameters: { viewport: { defaultViewport: 'discordLarge' } },
 };
+
+export const Mobile: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+};

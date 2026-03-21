@@ -5,6 +5,7 @@ import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
+import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, Checkbox } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
@@ -358,22 +359,37 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           <div className="wheels-content">
             <WheelsGridComponent ref={gridRef} pools={pools} />
 
-            <div id="side-column" className="side-column">
-              <aside id="side-panel" className="side-panel">
-                <h3>Groups</h3>
-                <div id="groups-list">
-                  {groupCards.map((card, i) => (
-                    <GroupCard
-                      key={i}
-                      group={card.group}
-                      index={card.index}
-                      label={card.label}
-                      hideEmpty={card.hideEmpty}
-                      compact={isCompact}
-                    />
-                  ))}
-                </div>
-              </aside>
+            {!isCarousel && (
+              <div id="side-column" className="side-column">
+                <aside id="side-panel" className="side-panel">
+                  <h3>Groups</h3>
+                  <div id="groups-list">
+                    {groupCards.map((card, i) => (
+                      <GroupCard
+                        key={i}
+                        group={card.group}
+                        index={card.index}
+                        label={card.label}
+                        hideEmpty={card.hideEmpty}
+                        compact={isCompact}
+                      />
+                    ))}
+                  </div>
+                </aside>
+                <Checkbox
+                  id="announce-checkbox"
+                  label="Post results to chat"
+                  checked={announceChecked}
+                  onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
+                  className="announce-option"
+                />
+              </div>
+            )}
+          </div>
+
+          {isCarousel && (
+            <>
+              <MobileGroupPager groupCards={groupCards} />
               <Checkbox
                 id="announce-checkbox"
                 label="Post results to chat"
@@ -381,8 +397,8 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                 onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
                 className="announce-option"
               />
-            </div>
-          </div>
+            </>
+          )}
 
           {nextBtnVisible && (
             <PrimaryCTA
