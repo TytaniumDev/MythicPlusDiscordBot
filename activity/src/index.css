@@ -2220,10 +2220,14 @@ button.role-section-header--collapsible {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+  }
+
+  /* Reserve space for fixed footer (spin btn + drawer) */
+  .mobile-lobby .lobby-players {
     padding-bottom: 150px;
   }
 
-  #view-lobby {
+  .mobile-lobby #view-lobby {
     overflow: hidden;
   }
 }

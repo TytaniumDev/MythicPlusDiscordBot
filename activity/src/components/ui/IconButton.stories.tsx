@@ -16,3 +16,5 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Back: Story = { args: { icon: <BackArrow />, label: 'Go back' } };
+
+export const Disabled: Story = { args: { icon: <BackArrow />, label: 'Go back', disabled: true } };

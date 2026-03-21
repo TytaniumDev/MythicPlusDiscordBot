@@ -110,7 +110,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   }
 
   return (
-    <div className="main-layout">
+    <div className={`main-layout${isMobile ? ' mobile-lobby' : ''}`}>
       <HeaderBar
         title="Players"
         subtitle={subtitleText}
