@@ -2289,6 +2289,11 @@ button.role-section-header--collapsible {
   z-index: 99;
   padding: 8px var(--page-gutter);
   background: linear-gradient(to top, var(--bg-primary) 60%, transparent);
+  display: flex;
+}
+
+.mobile-spin-btn .btn {
+  flex: 1;
 }
 
 /* ============================================
