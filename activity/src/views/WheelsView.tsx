@@ -38,10 +38,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnVisible, setNextBtnVisible] = useState(false);
   const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
-  const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults !== false);
+  const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults === true);
 
   useEffect(() => {
-    setAnnounceChecked(channelData?.announceResults !== false);
+    setAnnounceChecked(channelData?.announceResults === true);
   }, [channelData?.announceResults]);
 
   const markedPools = useMemo(() => {
