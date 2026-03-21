@@ -1749,7 +1749,8 @@ body {
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
+  min-width: 100%;
+  width: max-content;
   z-index: 50;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
@@ -1762,8 +1763,8 @@ body {
 
 .character-search-result {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   width: 100%;
   padding: 8px 12px;
   background: none;
@@ -1772,6 +1773,7 @@ body {
   color: var(--text-primary);
   font-size: 13px;
   text-align: left;
+  white-space: nowrap;
 }
 
 .character-search-result:hover {
@@ -1788,14 +1790,15 @@ body {
 }
 
 @keyframes spin {
-  to { transform: translateY(-50%) rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
 .character-search-loading {
   position: absolute;
   right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
   width: 14px;
   height: 14px;
   border: 2px solid var(--border-subtle);
