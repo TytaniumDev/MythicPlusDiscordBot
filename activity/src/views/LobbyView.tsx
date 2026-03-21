@@ -64,7 +64,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   // Selected player always follows activePlayer
   const selectedPlayer = useMemo(() => {
     if (!activePlayer) return null;
-    return players.find(p => p.discordId === activePlayer.discordId) ?? activePlayer;
+    return players.find(p => p.discordId === activePlayer.discordId) ?? null;
   }, [activePlayer, players]);
 
   const playerCountText = players.length === 0
