@@ -8,6 +8,8 @@ import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { getPrimaryRole, hasAnyRole } from '../lib/roles';
+import { useIsCarouselMode } from '../hooks/useMediaQuery';
+import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
 const SpinIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -26,6 +28,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const players = channelData?.players || [];
   useIdentityResolver(players);
 
+  const isMobile = useIsCarouselMode();
   const [isCalculating, setIsCalculating] = useState(false);
 
   const handleSpin = async () => {
@@ -169,12 +172,16 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
             </div>
 
-            {selectedPlayer && (
+            {!isMobile && selectedPlayer && (
               <div className="lobby-sidebar">
                 <PlayerCard player={selectedPlayer} />
               </div>
             )}
           </div>
+
+          {isMobile && selectedPlayer && (
+            <MobilePlayerDrawer player={selectedPlayer} />
+          )}
 
           <PrimaryCTA
             id="spin-btn"

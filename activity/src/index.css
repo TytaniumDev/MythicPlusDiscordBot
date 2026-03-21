@@ -1690,6 +1690,17 @@ body {
   .sitting-out-grid {
     grid-template-columns: 1fr;
   }
+
+  .lobby-players {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 72px;
+  }
+
+  #view-lobby {
+    overflow: hidden;
+  }
 }
 
 /* ============================================
@@ -2239,6 +2250,109 @@ body {
 .btn-icon {
   display: inline-flex;
   align-items: center;
+}
+
+/* ============================================
+   Mobile Player Drawer
+   ============================================ */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 90;
+}
+
+.mobile-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(0);
+  transition: max-height 0.3s ease;
+  max-height: 64px;
+  overflow: hidden;
+}
+
+.mobile-drawer--expanded {
+  max-height: 70dvh;
+  overflow-y: auto;
+}
+
+.mobile-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  min-height: 64px;
+}
+
+.mobile-drawer__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mobile-drawer__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-drawer__chips {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mobile-drawer__chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.mobile-drawer__chip--tank { color: var(--color-tank); background: color-mix(in srgb, var(--color-tank) 20%, transparent); }
+.mobile-drawer__chip--healer { color: var(--color-healer); background: color-mix(in srgb, var(--color-healer) 20%, transparent); }
+.mobile-drawer__chip--ranged, .mobile-drawer__chip--melee { color: var(--color-dps); background: color-mix(in srgb, var(--color-dps) 20%, transparent); }
+
+.mobile-drawer__chip--offspec {
+  background: transparent;
+  border-color: currentColor;
+  opacity: 0.7;
+}
+
+.mobile-drawer__chevron {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.mobile-drawer__body {
+  padding: 0 8px 8px;
+}
+
+.mobile-drawer__body .player-card {
+  border: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 /* ============================================
