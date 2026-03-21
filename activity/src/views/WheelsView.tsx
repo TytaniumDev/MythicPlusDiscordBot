@@ -181,7 +181,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setNextBtnDisabled(true);
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
-    if (!markedPools) return;
+    if (!markedPools) {
+      store.setSpinAnimating(false);
+      grid.isAnimating = false;
+      return;
+    }
 
     grid.setAllSpinning();
     grid.clearAllResults();
@@ -230,7 +234,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setWheelStatus(`Spinning for Group ${idx + 1}...`);
 
     grid.clearAllResults();
-    if (!markedPools) return;
+    if (!markedPools) {
+      store.setSpinAnimating(false);
+      grid.isAnimating = false;
+      return;
+    }
+    grid.setCarouselSlide(0);
     grid.initWheels(markedPools);
     grid.resetCarouselDots();
 
