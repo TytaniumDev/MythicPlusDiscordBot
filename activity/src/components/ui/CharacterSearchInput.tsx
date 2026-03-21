@@ -63,7 +63,7 @@ export function CharacterSearchInput({
         </div>
       )}
       {(searchLoading || externalLoading) && (
-        <div className="character-search-loading" aria-live="polite" aria-label="Searching characters" />
+        <div className="character-search-loading" role="status" aria-live="polite" aria-label="Searching characters" />
       )}
     </div>
   );

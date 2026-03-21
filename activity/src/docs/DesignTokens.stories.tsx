@@ -55,7 +55,7 @@ function TokenGrid({ children }: { children: React.ReactNode }) {
 
 export const Colors: Story = {
   render: () => (
-    <div style={{ padding: 32, maxWidth: 900, fontFamily: 'var(--font-family)' }}>
+    <div tabIndex={0} style={{ padding: 32, maxWidth: 900, fontFamily: 'var(--font-family)' }}>
       <h2 style={{ color: 'var(--text-heading)', fontSize: 24, marginBottom: 24 }}>Color Tokens</h2>
 
       <Section title="Brand">
