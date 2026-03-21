@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerCard } from '../components/PlayerCard';
-import { IdentitySelector } from '../components/IdentitySelector';
 import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
@@ -53,11 +52,19 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
-  // Find the current player for PlayerCard
+  // Set default selection to current player on mount
+  const activePlayer = useAppStore((s) => s.activePlayer);
+  useEffect(() => {
+    if (activePlayer || players.length === 0) return;
+    const defaultPlayer = (currentPlayerId && players.find(p => p.discordId === currentPlayerId)) || players[0];
+    if (defaultPlayer) useAppStore.getState().setActivePlayer(defaultPlayer);
+  }, [activePlayer, currentPlayerId, players]);
+
+  // Selected player always follows activePlayer
   const selectedPlayer = useMemo(() => {
-    if (!currentPlayerId) return players[0] || null;
-    return players.find(p => p.discordId === currentPlayerId) || players[0] || null;
-  }, [currentPlayerId, players]);
+    if (!activePlayer) return null;
+    return players.find(p => p.discordId === activePlayer.discordId) ?? activePlayer;
+  }, [activePlayer, players]);
 
   const playerCountText = players.length === 0
     ? '0 players'
@@ -160,7 +167,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 )}
               </div>
 
-              <IdentitySelector players={players} />
             </div>
 
             {selectedPlayer && (

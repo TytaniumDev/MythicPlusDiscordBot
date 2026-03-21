@@ -1,3 +1,4 @@
+import type { Role, Utility } from '@mythicplus/shared';
 import { WoWPlayer, WheelEntry } from '../types';
 
 export interface RoleTag {
@@ -53,6 +54,23 @@ export function utilityIcons(player?: WoWPlayer | null): string {
   return icons;
 }
 
+const MAIN_ROLE_MAP: Record<string, Role> = { Tank: 'tank', Healer: 'healer', Ranged: 'ranged', Melee: 'melee' };
+const OFFSPEC_MAP: Record<string, Role> = { 'Tank Offspec': 'tank', 'Healer Offspec': 'healer', 'Ranged Offspec': 'ranged', 'Melee Offspec': 'melee' };
+const UTILITY_MAP: Record<string, Utility> = { Brez: 'brez', Lust: 'lust' };
+
+/** Convert a set of role button IDs back to WoWPlayer role fields. */
+export function roleStringsToPlayerFields(roles: Iterable<string>): { mainRole: Role | null; offspecs: Role[]; utilities: Utility[] } {
+  let mainRole: Role | null = null;
+  const offspecs: Role[] = [];
+  const utilities: Utility[] = [];
+  for (const r of roles) {
+    if (MAIN_ROLE_MAP[r]) mainRole = MAIN_ROLE_MAP[r];
+    else if (OFFSPEC_MAP[r]) offspecs.push(OFFSPEC_MAP[r]);
+    else if (UTILITY_MAP[r]) utilities.push(UTILITY_MAP[r]);
+  }
+  return { mainRole, offspecs, utilities };
+}
+
 export function playerRolesToStringArray(p: WoWPlayer): string[] {
   const roles: string[] = [];
   if (p.mainRole === 'tank') roles.push('Tank');
@@ -92,6 +110,49 @@ export const UTILITY_BUTTONS: RoleButtonDef[] = [
   { id: 'Brez', label: 'Brez', activeClass: 'active-brez' },
   { id: 'Lust', label: 'Lust', activeClass: 'active-lust' },
 ];
+
+/**
+ * Pure function to compute the next role set after toggling a role button.
+ * Handles main/offspec swap logic:
+ * - Switching main spec removes it from offspec and swaps old main into offspec
+ * - Adding an offspec that matches current main is a no-op
+ */
+export function computeToggledRoles(
+  prev: ReadonlySet<string>,
+  roleId: string,
+  mutuallyExclusive: boolean,
+): Set<string> {
+  const next = new Set(prev);
+
+  if (next.has(roleId)) {
+    next.delete(roleId);
+    return next;
+  }
+
+  if (mutuallyExclusive) {
+    const oldMain = MAIN_SPEC_BUTTONS.find((b) => next.has(b.id));
+    MAIN_SPEC_BUTTONS.forEach((b) => next.delete(b.id));
+    next.add(roleId);
+
+    // If the new main was an offspec, swap: remove it from offspec, add old main as offspec
+    const newOffspecId = `${roleId} Offspec`;
+    if (next.has(newOffspecId)) {
+      next.delete(newOffspecId);
+      if (oldMain) {
+        next.add(`${oldMain.id} Offspec`);
+      }
+    }
+  } else {
+    // Offspec toggle: don't allow offspec matching current main
+    const mainId = roleId.replace(' Offspec', '');
+    if (MAIN_SPEC_BUTTONS.some((b) => b.id === mainId && next.has(b.id))) {
+      return new Set(prev); // no-op
+    }
+    next.add(roleId);
+  }
+
+  return next;
+}
 
 export function initPools(players: WoWPlayer[]): { tanks: WheelEntry[]; healers: WheelEntry[]; dps: WheelEntry[] } {
   const tanks = players

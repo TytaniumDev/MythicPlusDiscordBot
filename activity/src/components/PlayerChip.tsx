@@ -13,19 +13,19 @@ interface PlayerChipProps {
 }
 
 export function PlayerChip({ player }: PlayerChipProps) {
-  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const claimedPlayers = useAppStore((s) => s.channelData?.claimedPlayers) ?? [];
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
   const roleKey = getPrimaryRole(player);
   const roleName = formatRoleName(roleKey);
   const tags = getRoleTags(player);
 
-  const isMe = currentPlayerId && player.discordId === currentPlayerId;
+  const activePlayer = useAppStore((s) => s.activePlayer);
+  const isSelected = activePlayer != null && player.discordId === activePlayer.discordId;
   const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
   const isSittingOut = player.discordId != null && sittingOut.includes(player.discordId);
 
   const handleClick = () => {
-    useAppStore.getState().setModalPlayer(player);
+    useAppStore.getState().setActivePlayer(player);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -37,7 +37,7 @@ export function PlayerChip({ player }: PlayerChipProps) {
 
   return (
     <div
-      className={`player-chip${isMe ? ' is-me' : ''}${isSittingOut ? ' sitting-out' : ''}`}
+      className={`player-chip${isSelected ? ' is-me' : ''}${isSittingOut ? ' sitting-out' : ''}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="button"
