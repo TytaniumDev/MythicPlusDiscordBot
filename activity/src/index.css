@@ -924,7 +924,7 @@ body {
 
 .role-btn.active-dps {
   background: color-mix(in srgb, var(--color-dps) 20%, transparent);
-  color: var(--color-dps);
+  color: color-mix(in srgb, var(--color-dps), white 30%);
   border-color: color-mix(in srgb, var(--color-dps) 40%, transparent);
 }
 
@@ -942,7 +942,7 @@ body {
 
 .role-btn.active-lust {
   background: color-mix(in srgb, var(--color-lust) 20%, transparent);
-  color: var(--color-lust);
+  color: color-mix(in srgb, var(--color-lust), white 30%);
   border-color: color-mix(in srgb, var(--color-lust) 40%, transparent);
 }
 
