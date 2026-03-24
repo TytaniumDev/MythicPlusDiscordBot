@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+UPDATE_SNAPSHOTS=0
+if [ "${1:-}" = "--update-snapshots" ] || [ "${1:-}" = "--update-snapshots=all" ]; then
+    UPDATE_SNAPSHOTS=1
+fi
+
 echo "Starting Frontend Verification..."
 
 cd activity
@@ -19,8 +24,14 @@ npm run build
 echo "4. Building Storybook..."
 npm run build-storybook
 
-echo "5. Running Playwright Tests (Docker)..."
 cd ..
-./scripts/playwright-docker.sh
+
+if [ "$UPDATE_SNAPSHOTS" -eq 1 ]; then
+    echo "5. Updating Playwright Snapshots (Docker)..."
+    ./scripts/playwright-docker.sh --update-snapshots=all
+else
+    echo "5. Running Playwright Tests (Docker)..."
+    ./scripts/playwright-docker.sh
+fi
 
 echo "✅ Frontend Verification Complete!"

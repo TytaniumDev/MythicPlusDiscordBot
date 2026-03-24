@@ -37,6 +37,18 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
 
 **Key Rule:** Never log secrets or inline multi-line secrets in workflows.
 
+**CI Execution Standard:** CI pipelines (`.github/workflows/ci-shared.yml`, `.github/workflows/verify-activity.yml`) must execute unified verification scripts instead of inline YAML commands to guarantee environment parity.
+
+For the backend, CI executes:
+```bash
+./scripts/verify-ts.sh
+```
+
+For the frontend, CI executes:
+```bash
+./scripts/verify-activity.sh
+```
+
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
 2. **Environment:** Ensure the environment is set up and dependencies are installed.
