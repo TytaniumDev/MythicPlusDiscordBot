@@ -47,16 +47,20 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
 
   const playerId = player.discordId ?? null;
 
-  // Sync state when player changes
+  // Sync roles and name when player data changes from Firestore
   useEffect(() => {
     const roles = new Set(playerRolesToStringArray(player));
     setSelectedRoles(roles);
     rolesRef.current = roles;
     setInGameName(player.inGameName ?? '');
     nameRef.current = player.inGameName ?? '';
-    // Try to use existing media URL from player data
-    setMediaUrl((player as Record<string, unknown>).mediaUrl as string | null ?? null);
   }, [playerId, player]);
+
+  // Only reset mediaUrl when the player identity changes (not on every Firestore update),
+  // so the image persists through the Firestore sync triggered by saveRoles.
+  useEffect(() => {
+    setMediaUrl(player.mediaUrl ?? null);
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save when roles or name change
   const autoSave = useCallback((roles: Set<string>, name: string) => {
@@ -141,7 +145,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
         name: result.name,
         realm: result.realmSlug,
         region: result.region,
-      });
+      }, character.mediaUrl);
     }
   }, [lookupLoading, player, lookup, selectedRoles, service]);
 

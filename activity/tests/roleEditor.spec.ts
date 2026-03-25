@@ -16,6 +16,9 @@ test.describe('PlayerCard Inline Editor', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    // Click a player chip to select them and show the PlayerCard
+    await page.locator('.player-chip').first().click();
+
     const playerCard = page.locator('[data-testid="player-card"]');
     await expect(playerCard).toBeVisible();
 
@@ -29,6 +32,7 @@ test.describe('PlayerCard Inline Editor', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    await page.locator('.player-chip').first().click();
     const playerCard = page.locator('[data-testid="player-card"]');
 
     // Main spec section exists
@@ -46,6 +50,7 @@ test.describe('PlayerCard Inline Editor', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    await page.locator('.player-chip').first().click();
     const playerCard = page.locator('[data-testid="player-card"]');
 
     await expect(playerCard.locator('.role-editor-label', { hasText: 'Offspec' })).toBeVisible();
@@ -58,6 +63,7 @@ test.describe('PlayerCard Inline Editor', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    await page.locator('.player-chip').first().click();
     const playerCard = page.locator('[data-testid="player-card"]');
     const input = playerCard.locator('.role-editor-input');
     await expect(input).toBeVisible();
@@ -78,6 +84,7 @@ test.describe('PlayerCard Inline Editor', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    await page.locator('.player-chip').first().click();
     const playerCard = page.locator('[data-testid="player-card"]');
     await expect(playerCard).toBeVisible();
 

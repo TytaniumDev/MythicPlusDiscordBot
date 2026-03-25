@@ -36,8 +36,10 @@ npm run typecheck                       # TypeScript check
 
 **Playwright tests MUST run in Docker** (`./scripts/playwright-docker.sh`).
 Never run `npx playwright test` directly — screenshots are pixel-compared with
-zero tolerance and will differ outside the Docker container due to OS-level font
-rendering differences. The config enforces this with a `PLAYWRIGHT_TEST` env guard.
+a 2% tolerance (`maxDiffPixelRatio: 0.02`) to absorb Chromium's sub-pixel
+rendering noise across Docker runs, but will still differ significantly outside
+the Docker container due to OS-level font rendering differences. The config
+enforces Docker usage with a `PLAYWRIGHT_TEST` env guard.
 
 ## Related Repositories
 
