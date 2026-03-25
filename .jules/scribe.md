@@ -72,3 +72,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Shared Workflow Dependencies:** When CI logic is abstracted into shared workflows, local documentation can easily become stale ("Documentation Drift").
 2.  **Verification of external dependencies:** When auditing documentation, always verify that referenced tools, scripts, or workflows actually exist locally, or are correctly referenced as external/shared dependencies. Do not assume a script exists just because the documentation says it does.
+
+### [2024-05-26] Obsolescence of Explicit Commands in Favor of UI
+**Context:** Documentation previously referenced `/roles` and `/readycheck` commands (`packages/bot/src/commands/roles.ts`) for managing player preferences. However, these commands no longer exist in the codebase.
+**Learning:**
+1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
+2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.

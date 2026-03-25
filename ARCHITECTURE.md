@@ -74,7 +74,6 @@ flowchart TB
 - **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
 - **Commands** (in `packages/bot/src/commands/`):
   - **groups**: `/wheel` (text groups), `/activity` (interactive wheel), `/badgroup` (report bad logic), and `onVoiceStateUpdate` (lobby sync).
-  - **roles**: `/roles` (interactive Role Board), `/readycheck` (audit saved roles). Uses `roleUi.ts` for interactive elements.
   - **general**: `/bug` & `/featurerequest` (GitHub integration), `/version`, `/status`, `/invite`.
   - **debug**: Debugging utilities.
 - **Services** (in `packages/bot/src/services/`):
@@ -219,7 +218,7 @@ sequenceDiagram
 | Concern | Where it lives |
 |--------|-----------------|
 | Slash commands (`/activity`, `/wheel`) | `packages/bot/src/commands/groups.ts` |
-| Role Board / Saved Roles | `packages/bot/src/commands/roles.ts`, `packages/bot/src/core/roleUi.ts`, `packages/bot/src/core/storage.ts` |
+| Role Board / Saved Roles | `packages/bot/src/core/roleUi.ts`, `packages/bot/src/core/storage.ts` |
 | GitHub Issues (`/bug`, `/badgroup`) | `packages/bot/src/core/issues.ts`, `packages/bot/src/commands/general.ts`, `packages/bot/src/commands/groups.ts` |
 | Voice → lobby sync | `packages/bot/src/commands/groups.ts` (`onVoiceStateUpdate`) → `SessionService.updateChannelPlayers` |
 | Session create/listen/update | `SessionService` + `FirebaseService` |
