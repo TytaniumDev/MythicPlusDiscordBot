@@ -54,7 +54,7 @@ jobs:
 
       - name: Update & verify snapshots (Docker)
         if: steps.bot-check.outputs.skip != 'true'
-        run: ./scripts/playwright-docker.sh --update-snapshots=all
+        run: ./scripts/playwright-docker.sh --update-and-verify
 
       - name: Commit updated snapshots
         id: snapshot-commit

@@ -33,7 +33,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? Number(process.env.PLAYWRIGHT_WORKERS) || 2 : undefined,
   reporter: process.env.CI ? 'dot' : 'list',
   // Snapshot settings for deterministic visual tests
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
