@@ -15,6 +15,7 @@ vi.mock('../src/core/preferenceService.js', () => {
     getPreferenceSync: vi.fn().mockReturnValue(null),
     getPreferenceByNameSync: vi.fn().mockReturnValue(null),
     getInGameNameSync: vi.fn().mockReturnValue(''),
+    getMediaUrlSync: vi.fn().mockReturnValue(null),
   };
   return {
     getPreferenceService: vi.fn().mockReturnValue(mockSvc),
