@@ -31,6 +31,7 @@ try {
   });
 } catch {
   // No valid Firebase config (e.g. Storybook) — auth features are unavailable.
+  console.info('[Wheelson] Firebase Auth not initialized; auth features will be unavailable.');
 }
 
 export { db, functions, auth };
