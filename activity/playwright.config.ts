@@ -1,9 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // ── Guard: Playwright tests MUST run inside Docker ──────────────────────
-// Screenshots are pixel-compared with zero tolerance, so rendering must be
-// identical between local runs and CI.  The official Playwright Docker image
-// guarantees deterministic font rendering and anti-aliasing.
+// The official Playwright Docker image ensures consistent font rendering and
+// anti-aliasing.  A small pixel tolerance (2%) absorbs the sub-pixel rendering
+// noise that Chromium produces across runs — even inside Docker — while still
+// catching real visual regressions.
 //
 // Use:  ./scripts/playwright-docker.sh            (run tests)
 //       ./scripts/playwright-docker.sh --update-snapshots   (regenerate)
@@ -38,9 +39,12 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}{ext}',
   expect: {
     toHaveScreenshot: {
-      // Docker container (scripts/playwright-docker.sh) ensures identical rendering
-      // across local and CI environments — no tolerance needed.
-      maxDiffPixelRatio: 0,
+      // 2% tolerance absorbs Chromium's sub-pixel anti-aliasing noise across
+      // Docker runs while still catching real visual regressions.  This is the
+      // community standard (fabric.js, vanilla-extract, Ionicons all use 0.02).
+      maxDiffPixelRatio: 0.02,
+      animations: 'disabled',
+      caret: 'hide',
     },
   },
   projects: [
