@@ -172,6 +172,9 @@ test.describe('Mobile Functional (393x852)', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    // Click a player chip to select them
+    await page.locator('.player-chip').first().click();
+
     // Drawer footer should be visible
     await expect(page.locator('.mobile-drawer')).toBeVisible();
     await expect(page.locator('.mobile-drawer__name')).toBeVisible();
@@ -189,6 +192,10 @@ test.describe('Mobile Functional (393x852)', () => {
   test('Lobby — drawer expands and collapses', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('#view-lobby')).toBeVisible();
+
+    // Click a player chip to select them
+    await page.locator('.player-chip').first().click();
     await expect(page.locator('.mobile-drawer')).toBeVisible();
 
     // Expand drawer
@@ -204,6 +211,9 @@ test.describe('Mobile Functional (393x852)', () => {
   test('Lobby — drawer collapses on backdrop click', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+    // Click a player chip to select them
+    await page.locator('.player-chip').first().click();
 
     // Expand drawer
     await page.locator('.mobile-drawer__header').click();
