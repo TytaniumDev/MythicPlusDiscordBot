@@ -49,6 +49,9 @@ export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastU
   if (!response.ok) throw new Error(`Raider.IO request failed: ${response.status}`);
 
   const data = await response.json();
+  if (!Array.isArray(data.affix_details) || data.affix_details.length === 0) {
+    throw new Error('Raider.IO response missing affix_details');
+  }
   const affixIds: number[] = data.affix_details.map((a: { id: number }) => a.id);
 
   const doc = buildAffixDocument(affixIds, 'us');
