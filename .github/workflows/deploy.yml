@@ -11,10 +11,10 @@ jobs:
   ci:
     uses: ./.github/workflows/ci-shared.yml
 
-  deploy-firestore-rules:
+  deploy-firebase:
     needs: [ci]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: |
           DELIM=$(openssl rand -hex 16)
           SECRETS=$(doppler secrets download --no-file --format json)
-          KEYS='["FIREBASE_CREDENTIALS_JSON"]'
+          KEYS='["FIREBASE_CREDENTIALS_JSON","BNET_CLIENT_ID","BNET_CLIENT_SECRET"]'
           echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
             to_entries[] | select(.key | IN($keys[])) | .value
           ' | while IFS= read -r val; do
@@ -45,15 +45,29 @@ jobs:
         with:
           node-version: 22
 
-      - name: Deploy Firestore rules
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build functions
+        run: npm -w packages/functions run build
+
+      - name: Deploy Firestore rules and Cloud Functions
         run: |
           echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-          npx firebase-tools@14 deploy --only firestore:rules --non-interactive --force
+
+          # Write Battle.net secrets as runtime env vars for Cloud Functions
+          printf 'BNET_CLIENT_ID=%s\nBNET_CLIENT_SECRET=%s\n' \
+            "$BNET_CLIENT_ID" "$BNET_CLIENT_SECRET" \
+            > packages/functions/.env
+
+          npx firebase-tools@14 deploy --only firestore:rules,functions --non-interactive --force
 
       - name: Clean up credentials
         if: always()
-        run: rm -f "$RUNNER_TEMP/firebase-sa.json"
+        run: |
+          rm -f "$RUNNER_TEMP/firebase-sa.json"
+          rm -f packages/functions/.env
 
   build-and-push:
     needs: [ci]
