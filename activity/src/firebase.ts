@@ -16,13 +16,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const functions = getFunctions(app);
-const auth = getAuth(app);
 
-// Sign in anonymously so Cloud Function callables receive request.auth.
-// The promise is not awaited here — Firebase SDK queues callable requests
-// until auth resolves, so functions called after import will work correctly.
-signInAnonymously(auth).catch((err) => {
-  console.warn('[Wheelson] Anonymous auth failed:', err);
-});
+// Auth is optional — getAuth() throws when the API key is missing (e.g. Storybook).
+// Guard it so non-auth features keep working without Firebase credentials.
+let auth: ReturnType<typeof getAuth> | null = null;
+try {
+  auth = getAuth(app);
+
+  // Sign in anonymously so Cloud Function callables receive request.auth.
+  // The promise is not awaited here — Firebase SDK queues callable requests
+  // until auth resolves, so functions called after import will work correctly.
+  signInAnonymously(auth).catch((err) => {
+    console.warn('[Wheelson] Anonymous auth failed:', err);
+  });
+} catch {
+  // No valid Firebase config (e.g. Storybook) — auth features are unavailable.
+}
 
 export { db, functions, auth };

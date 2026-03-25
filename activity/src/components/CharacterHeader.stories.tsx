@@ -25,3 +25,13 @@ export const DPS: Story = {
 export const Unassigned: Story = {
   args: { name: 'NewPlayer', color: 'var(--text-secondary)' },
 };
+
+/** Tytaniormu-Uldum with inset character render from Battle.net */
+export const WithCharacterImage: Story = {
+  args: {
+    name: 'Tytaniormu',
+    subtitle: 'Tytaniormu-Uldum',
+    color: 'var(--color-dps)',
+    imageUrl: 'https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg',
+  },
+};
