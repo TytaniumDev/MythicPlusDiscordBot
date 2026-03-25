@@ -24,7 +24,7 @@ export const STATIC_AFFIXES: AffixDisplay[] = [
 export const BARGAIN_AFFIXES: Record<number, AffixDisplay> = {
   148: { id: 148, name: "Xal'atath's Bargain: Ascendant", nickname: 'Kick/CC 10 Orbs', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=148/xalataths-bargain-ascendant', color: '#a855f7' },
   158: { id: 158, name: "Xal'atath's Bargain: Voidbound", nickname: 'Kill Add', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=158/xalataths-bargain-voidbound', color: '#a855f7' },
-  162: { id: 162, name: "Xal'atath's Bargain: Pulsar", nickname: "Touch 5 Orbs", keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=162/xalataths-bargain-pulsar', color: '#a855f7' },
+  162: { id: 162, name: "Xal'atath's Bargain: Pulsar", nickname: 'Touch 5 Orbs', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=162/xalataths-bargain-pulsar', color: '#a855f7' },
   160: { id: 160, name: "Xal'atath's Bargain: Devour", nickname: 'Dispel Allies', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=160/xalataths-bargain-devour', color: '#a855f7' },
 };
 
