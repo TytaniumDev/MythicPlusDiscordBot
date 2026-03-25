@@ -208,9 +208,12 @@ class FirestoreSessionService implements SessionService {
   async saveLinkedCharacter(
     playerId: string,
     linkedCharacter: { name: string; realm: string; region: string },
+    mediaUrl?: string | null,
   ): Promise<void> {
     const prefRef = doc(db, 'preferences', playerId);
-    await setDoc(prefRef, { linkedCharacter, updatedAt: serverTimestamp() }, { merge: true });
+    const payload: Record<string, unknown> = { linkedCharacter, updatedAt: serverTimestamp() };
+    if (mediaUrl) payload.mediaUrl = mediaUrl;
+    await setDoc(prefRef, payload, { merge: true });
   }
 
   async refreshChannels(guildId: string): Promise<void> {

@@ -8,7 +8,7 @@ export interface SessionService {
   cancelToLobby(): Promise<void>;
   updateAnnounce(value: boolean): Promise<void>;
   saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void>;
-  saveLinkedCharacter(playerId: string, linkedCharacter: { name: string; realm: string; region: string }): Promise<void>;
+  saveLinkedCharacter(playerId: string, linkedCharacter: { name: string; realm: string; region: string }, mediaUrl?: string | null): Promise<void>;
   refreshChannels(guildId: string): Promise<void>;
   selectChannel(channelId: string, channelName: string, guildId: string): Promise<void>;
   createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void>;

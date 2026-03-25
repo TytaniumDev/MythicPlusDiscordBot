@@ -11,6 +11,7 @@ export interface WoWPlayerDict {
   mainRole: Role | null;
   offspecs: Role[];
   utilities: Utility[];
+  mediaUrl?: string | null;
 }
 
 export interface AffixDisplay {

@@ -16,6 +16,7 @@ export interface IPreferenceService {
   getPreferenceSync(discordId: string): string[] | null;
   getPreferenceByNameSync(name: string): string[] | null;
   getInGameNameSync(discordId: string): string;
+  getMediaUrlSync(discordId: string): string | null;
   resolveDiscordId(name: string): string | null;
 }
 
@@ -38,6 +39,7 @@ export class PreferenceService implements IPreferenceService {
   private _cache: Record<string, string[]> = {};
   private _nameToId: Record<string, string> = {};
   private _inGameNameCache: Record<string, string> = {};
+  private _mediaUrlCache: Record<string, string> = {};
 
   constructor(firebase?: FirebaseService) {
     this.firebase = firebase ?? FirebaseService.getInstance();
@@ -61,9 +63,11 @@ export class PreferenceService implements IPreferenceService {
         const roles = (data.roles as string[]) ?? [];
         const name = (data.wowName as string) ?? '';
         const inGameName = (data.inGameName as string) ?? '';
+        const mediaUrl = (data.mediaUrl as string) ?? '';
         this._cache[discordId] = roles;
         if (name) this._nameToId[name] = discordId;
         if (inGameName) this._inGameNameCache[discordId] = inGameName;
+        if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
       }
       logger.info(`Loaded ${Object.keys(docs).length} preferences from Firestore`);
     } catch {
@@ -109,9 +113,11 @@ export class PreferenceService implements IPreferenceService {
           const roles = (data.roles as string[]) ?? [];
           const name = (data.wowName as string) ?? '';
           const inGameName = (data.inGameName as string) ?? '';
+          const mediaUrl = (data.mediaUrl as string) ?? '';
           this._cache[discordId] = roles;
           if (name) this._nameToId[name] = discordId;
           if (inGameName) this._inGameNameCache[discordId] = inGameName;
+          if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
           return roles;
         }
       } catch {
@@ -152,6 +158,7 @@ export class PreferenceService implements IPreferenceService {
 
     Reflect.deleteProperty(this._cache, discordId);
     Reflect.deleteProperty(this._inGameNameCache, discordId);
+    Reflect.deleteProperty(this._mediaUrlCache, discordId);
     this._clearNameMapping(discordId);
     if (name) clearPlayerPreference(name);
 
@@ -183,14 +190,18 @@ export class PreferenceService implements IPreferenceService {
         const roles = (data.roles as string[]) ?? [];
         const name = (data.wowName as string) ?? '';
         const inGameName = (data.inGameName as string) ?? '';
+        const mediaUrl = (data.mediaUrl as string) ?? '';
         this._cache[discordId] = roles;
         this._clearNameMapping(discordId);
         if (name) this._nameToId[name] = discordId;
         if (inGameName) this._inGameNameCache[discordId] = inGameName;
         else Reflect.deleteProperty(this._inGameNameCache, discordId);
+        if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
+        else Reflect.deleteProperty(this._mediaUrlCache, discordId);
       } else {
         Reflect.deleteProperty(this._cache, discordId);
         Reflect.deleteProperty(this._inGameNameCache, discordId);
+        Reflect.deleteProperty(this._mediaUrlCache, discordId);
         this._clearNameMapping(discordId);
       }
     } catch {
@@ -204,6 +215,10 @@ export class PreferenceService implements IPreferenceService {
 
   getInGameNameSync(discordId: string): string {
     return this._inGameNameCache[discordId] ?? '';
+  }
+
+  getMediaUrlSync(discordId: string): string | null {
+    return this._mediaUrlCache[discordId] ?? null;
   }
 
   getPreferenceByNameSync(name: string): string[] | null {
