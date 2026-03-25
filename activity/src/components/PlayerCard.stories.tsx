@@ -46,6 +46,21 @@ export const Unassigned: Story = {
   },
 };
 
+/** Player with character image from Battle.net (Tytaniormu-Uldum) */
+export const WithCharacterImage: Story = {
+  args: {
+    player: {
+      name: 'Tytanium',
+      discordId: '100000000000000007',
+      inGameName: 'Tytaniormu-Uldum',
+      mainRole: 'ranged',
+      offspecs: ['healer'],
+      utilities: ['lust'],
+      mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg',
+    },
+  },
+};
+
 /** Player sitting out this round */
 export const SittingOut: Story = {
   args: { player: mockPlayers[4] }, // Pandemonium

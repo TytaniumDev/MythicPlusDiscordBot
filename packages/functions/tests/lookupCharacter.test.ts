@@ -10,7 +10,7 @@ describe('buildCharacterResult', () => {
       active_specialization: { name: 'Protection' },
     };
     const media = {
-      assets: [{ key: 'main-raw', value: 'https://render.worldofwarcraft.com/us/character/main-raw.png' }],
+      assets: [{ key: 'inset', value: 'https://render.worldofwarcraft.com/us/character/inset.jpg' }],
     };
 
     const result = buildCharacterResult(profile, media);
@@ -21,7 +21,7 @@ describe('buildCharacterResult', () => {
       class: 'Warrior',
       role: 'tank',
       utilities: [],
-      mediaUrl: 'https://render.worldofwarcraft.com/us/character/main-raw.png',
+      mediaUrl: 'https://render.worldofwarcraft.com/us/character/inset.jpg',
     });
   });
 
