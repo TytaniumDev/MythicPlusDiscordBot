@@ -388,7 +388,6 @@ async function main() {
           await firebase.deleteDoc('badGroupReports', docId);
           return;
         }
-        lastGlobalReportTimestamp = now;
 
         // Per-guild rate limit: one report per minute per guild
         const reportGuildId = String(data.guildId ?? 'unknown');
@@ -398,6 +397,9 @@ async function main() {
           await firebase.deleteDoc('badGroupReports', docId);
           return;
         }
+
+        // Both checks passed — update timestamps so future reports are rate-limited
+        lastGlobalReportTimestamp = now;
         reportTimestamps.set(reportGuildId, now);
 
         const playersData = (data.players ?? []) as Record<string, unknown>[];
