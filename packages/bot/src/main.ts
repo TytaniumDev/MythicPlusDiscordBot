@@ -374,13 +374,24 @@ async function main() {
     // Listen for bad group reports from the activity frontend
     const firebase = FirebaseService.getInstance();
     const reportTimestamps = new Map<string, number>(); // per-guild rate limit
+    let lastGlobalReportTimestamp = 0; // global hard cap (defense-in-depth)
     const REPORT_COOLDOWN_MS = 60_000; // 1 minute between reports per guild
+    const GLOBAL_REPORT_COOLDOWN_MS = 10_000; // 10 seconds between any reports globally
 
     badGroupReportListener = firebase.listenForBadGroupReports(async (docId, data) => {
       try {
+        const now = Date.now();
+
+        // Global hard cap: defense-in-depth against rate-limit bypass
+        if (now - lastGlobalReportTimestamp < GLOBAL_REPORT_COOLDOWN_MS) {
+          logger.warn(`Global rate-limited bad group report (doc ${docId}), skipping`);
+          await firebase.deleteDoc('badGroupReports', docId);
+          return;
+        }
+        lastGlobalReportTimestamp = now;
+
         // Per-guild rate limit: one report per minute per guild
         const reportGuildId = String(data.guildId ?? 'unknown');
-        const now = Date.now();
         const lastTimestamp = reportTimestamps.get(reportGuildId) ?? 0;
         if (now - lastTimestamp < REPORT_COOLDOWN_MS) {
           logger.warn(`Rate-limited bad group report from guild ${reportGuildId} (doc ${docId}), skipping`);

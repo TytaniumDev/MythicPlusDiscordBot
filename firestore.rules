@@ -22,6 +22,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if
         request.resource.data.guildId is string &&
+        request.resource.data.status == 'lobby' &&
         exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
       allow update: if
         // guildId must not change
@@ -52,9 +53,12 @@ service cloud.firestore {
     }
 
     // --- Bad Group Reports ---
-    // Clients can only create reports; reading/updating/deleting is forbidden.
+    // Clients can only create reports; the guildId must reference an existing guild
+    // to prevent rate-limit bypass via fake guild IDs. Reading/updating/deleting is forbidden.
     match /badGroupReports/{docId} {
-      allow create: if true;
+      allow create: if
+        request.resource.data.guildId is string &&
+        exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
       allow read, update, delete: if false;
     }
   }
