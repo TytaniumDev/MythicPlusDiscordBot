@@ -68,8 +68,10 @@ export function createMythicPlusGroups(
   );
   const availableTanks = [...mainTanks, ...offTanks, ...offTanksWithHeal];
 
-  // Healers
-  const mainHealers = shuffle(players.filter((p) => p.healerMain));
+  // Healers — partition so DPS-capable healers are used last (mirrors tank logic)
+  const pureMainHealers = shuffle(players.filter((p) => p.healerMain && !p.offdps));
+  const flexMainHealers = shuffle(players.filter((p) => p.healerMain && p.offdps));
+  const mainHealers = [...pureMainHealers, ...flexMainHealers];
   const offHealers = shuffle(players.filter((p) => p.offhealer && !p.healerMain));
   const availableHealers = [...mainHealers, ...offHealers];
   let offhealersToGrab = Math.max(0, maximumPossibleGroups - mainHealers.length);

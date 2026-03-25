@@ -283,6 +283,57 @@ describe('GroupCreator', () => {
     }
   });
 
+  it('prefers pure healers over flex healers so versatile players can fill DPS', () => {
+    // Reproduction of issue #317: Quill (healer main + many offspecs including DPS)
+    // was placed as healer instead of Selinora (pure healer, no offspecs), leaving
+    // Group 3 short one DPS and creating a 4th remainder group with just Selinora.
+    // Fix: pure healers (no offdps) are preferred before flex healers (have offdps).
+    for (let trial = 0; trial < 20; trial++) {
+      clear();
+      const players = [
+        WoWPlayer.create('Vanyali', ['Ranged']),
+        WoWPlayer.create('jim', ['Melee', 'Tank Offspec']),
+        WoWPlayer.create('Temma', ['Tank', 'Melee Offspec', 'Brez']),
+        WoWPlayer.create('Sorovar', ['Healer', 'Ranged Offspec']),
+        WoWPlayer.create('Blueshift', ['Ranged']),
+        WoWPlayer.create('Quill', [
+          'Healer',
+          'Tank Offspec',
+          'Healer Offspec',
+          'Ranged Offspec',
+          'Melee Offspec',
+          'Brez',
+        ]),
+        WoWPlayer.create('FourX', ['Ranged']),
+        WoWPlayer.create('Gazzi', ['Tank', 'Brez']),
+        WoWPlayer.create('Poppybrosjr', ['Ranged', 'Lust']),
+        WoWPlayer.create('Tytaniormu', ['Ranged', 'Lust']),
+        WoWPlayer.create('Volkareth', ['Ranged', 'Healer Offspec', 'Lust']),
+        WoWPlayer.create('Agromat', ['Melee']),
+        WoWPlayer.create('Mickey', ['Melee']),
+        WoWPlayer.create('Selinora', ['Healer']),
+        WoWPlayer.create('Cyonoc', ['Healer', 'Brez']),
+        WoWPlayer.create('Alchemy', ['Ranged', 'Brez']),
+      ];
+      const groups = createMythicPlusGroups(players);
+
+      // With 16 players = floor(16/5)=3 full groups + 1 remainder player.
+      // The first 3 groups must always be complete.
+      const mainGroups = groups.slice(0, 3);
+      for (const group of mainGroups) {
+        expect(group.isComplete).toBe(true);
+      }
+
+      // Pure healers (Selinora, Cyonoc) must never be in a remainder group
+      // when a flex healer could have taken a DPS slot instead.
+      const remainderPlayers = groups
+        .slice(3)
+        .flatMap((g) => g.players);
+      expect(remainderPlayers.find((p) => p.name === 'Selinora')).toBeUndefined();
+      expect(remainderPlayers.find((p) => p.name === 'Cyonoc')).toBeUndefined();
+    }
+  });
+
   it('avoids old teammates when possible', () => {
     const tank = TankWarrior('Tank');
     const healer = HealerPriest('Healer');
