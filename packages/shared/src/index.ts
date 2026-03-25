@@ -25,6 +25,13 @@ export { generateInviteCommand } from './inviteCommand.js';
 
 export { getUtilitiesForClass, getRoleForSpec } from './classData.js';
 
+export {
+  STATIC_AFFIXES,
+  BARGAIN_AFFIXES,
+  FORT_TYRAN_AFFIXES,
+  resolveAffixDisplay,
+} from './affixMetadata.js';
+
 export type {
   SessionStatus,
   Role,

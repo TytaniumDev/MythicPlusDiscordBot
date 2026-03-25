@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAppStore } from '../store/store';
+import { STATIC_AFFIXES } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
 
 interface AffixData {
@@ -9,13 +10,6 @@ interface AffixData {
   region: string;
   affixes: AffixDisplay[];
 }
-
-// Static affixes that are always active this season, used as fallback when
-// the weekly Firestore document hasn't been populated yet.
-const STATIC_AFFIX_FALLBACK: AffixDisplay[] = [
-  { id: 165, name: "Lindormi's Guidance", nickname: 'training wheels', keystoneLevel: '+2–5', wowheadUrl: 'https://www.wowhead.com/affix=165/lindormis-guidance', color: '#22c55e' },
-  { id: 147, name: "Xal'atath's Guile", nickname: 'death penalty', keystoneLevel: '+12', wowheadUrl: 'https://www.wowhead.com/affix=147/xalataths-guile', color: '#f59e0b' },
-];
 
 export function useAffixes(): AffixData | null {
   const [data, setData] = useState<AffixData | null>(null);
@@ -43,7 +37,7 @@ export function useAffixes(): AffixData | null {
           setData(snap.data() as AffixData);
         } else {
           // Weekly Cloud Function hasn't run yet — show static affixes as fallback
-          setData({ period: 0, region: 'us', affixes: STATIC_AFFIX_FALLBACK });
+          setData({ period: 0, region: 'us', affixes: STATIC_AFFIXES });
         }
       },
       (error) => console.error('[Wheelson] Failed to load affixes:', error),
