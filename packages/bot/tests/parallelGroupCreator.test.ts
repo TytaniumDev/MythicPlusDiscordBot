@@ -312,7 +312,7 @@ describe('GroupCreator', () => {
         WoWPlayer.create('Agromat', ['Melee']),
         WoWPlayer.create('Mickey', ['Melee']),
         WoWPlayer.create('Selinora', ['Healer']),
-        WoWPlayer.create('Cyonoc', ['Healer', 'Healer Offspec', 'Brez']),
+        WoWPlayer.create('Cyonoc', ['Healer', 'Brez']),
         WoWPlayer.create('Alchemy', ['Ranged', 'Brez']),
       ];
       const groups = createMythicPlusGroups(players);
@@ -324,13 +324,13 @@ describe('GroupCreator', () => {
         expect(group.isComplete).toBe(true);
       }
 
-      // Selinora (pure healer, no offspecs) must never be in a remainder group
-      // when a flex healer like Quill could have taken a DPS slot instead.
-      const selinora = groups
+      // Pure healers (Selinora, Cyonoc) must never be in a remainder group
+      // when a flex healer could have taken a DPS slot instead.
+      const remainderPlayers = groups
         .slice(3)
-        .flatMap((g) => g.players)
-        .find((p) => p.name === 'Selinora');
-      expect(selinora).toBeUndefined();
+        .flatMap((g) => g.players);
+      expect(remainderPlayers.find((p) => p.name === 'Selinora')).toBeUndefined();
+      expect(remainderPlayers.find((p) => p.name === 'Cyonoc')).toBeUndefined();
     }
   });
 
