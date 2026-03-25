@@ -48,8 +48,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build functions
-        run: npm -w packages/functions run build
+      - name: Build shared + functions
+        run: |
+          npm -w packages/shared run build
+          # Firebase loads shared via Node.js which can't resolve .ts sources,
+          # so point main at the compiled output for deploy only
+          node -e "const p=require('./packages/shared/package.json'); p.main='dist/index.js'; require('fs').writeFileSync('./packages/shared/package.json', JSON.stringify(p, null, 2)+'\n')"
+          npm -w packages/functions run build
 
       - name: Deploy Firestore rules and Cloud Functions
         run: |
