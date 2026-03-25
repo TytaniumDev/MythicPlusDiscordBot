@@ -25,10 +25,13 @@ try {
 if (_isEmbedded) {
   const mappings: { prefix: string; target: string }[] = [
     { prefix: '/firebase', target: 'firestore.googleapis.com' },
+    // Firebase Auth endpoints needed for anonymous sign-in
+    { prefix: '/auth', target: 'identitytoolkit.googleapis.com' },
+    { prefix: '/authtoken', target: 'securetoken.googleapis.com' },
   ];
 
   // Cloud Functions callable endpoint must also be proxied in embedded mode.
-  // NOTE: A matching URL mapping must also be added in the Discord Developer Portal.
+  // NOTE: All prefix → target mappings must also be added in the Discord Developer Portal.
   const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
   if (projectId) {
     mappings.push({ prefix: '/functions', target: `us-central1-${projectId}.cloudfunctions.net` });

@@ -44,6 +44,9 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 export const lookupCharacter = onCall(
   { enforceAppCheck: false },
   async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
     const { name, realm, region } = request.data as {
       name?: string;
       realm?: string;
