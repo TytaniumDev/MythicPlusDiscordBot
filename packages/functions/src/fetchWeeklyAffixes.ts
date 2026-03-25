@@ -1,8 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getBattleNetClient } from './battlenet.js';
-import { resolveAffixDisplay, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
+import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
 
 export interface AffixDocument {
   period: number;
@@ -13,47 +12,46 @@ export interface AffixDocument {
 
 // Pure logic — testable without Firebase
 export function buildAffixDocument(
-  periodData: { id: number; affix_details: Array<{ id: number; name: string }> },
+  affixIds: number[],
   region: string,
 ): Omit<AffixDocument, 'lastUpdated'> & { lastUpdated: Date } {
   const affixes: AffixDisplay[] = [];
 
-  for (const affix of periodData.affix_details) {
-    const display = resolveAffixDisplay(affix.id);
+  for (const id of affixIds) {
+    const display = resolveAffixDisplay(id);
     if (display) affixes.push(display);
   }
 
-  // Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort/Tyran (+7) → Guile (+12)
-  const SORT_ORDER: Record<number, number> = { 165: 0, 147: 3, 10: 2, 9: 2 };
+  // Lindormi's Guidance is always active at +2–5 but Raider.IO omits it
+  const lindormis = STATIC_AFFIXES.find(a => a.id === 165);
+  if (lindormis && !affixes.some(a => a.id === 165)) {
+    affixes.push(lindormis);
+  }
+
+  // Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort (+7) → Tyran (+7) → Guile (+12)
+  const SORT_ORDER: Record<number, number> = { 165: 0, 147: 4, 10: 2, 9: 3 };
   Object.keys(BARGAIN_AFFIXES).forEach(id => { SORT_ORDER[Number(id)] = 1; });
   affixes.sort((a, b) => (SORT_ORDER[a.id] ?? 99) - (SORT_ORDER[b.id] ?? 99));
 
   return {
-    period: periodData.id,
+    period: 0,
     region,
     lastUpdated: new Date(),
     affixes,
   };
 }
 
-// Shared logic: fetch current affixes from Battle.net and write to Firestore
+const RAIDERIO_AFFIXES_URL = 'https://raider.io/api/v1/mythic-plus/affixes?region=us&locale=en';
+
+// Shared logic: fetch current affixes from Raider.IO and write to Firestore
 export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastUpdated'> & { lastUpdated: Date }> {
-  const client = getBattleNetClient();
-  const region = 'us';
+  const response = await fetch(RAIDERIO_AFFIXES_URL);
+  if (!response.ok) throw new Error(`Raider.IO request failed: ${response.status}`);
 
-  const periodIndex = await client.getMythicKeystonePeriodIndex(region);
-  if (!periodIndex) throw new Error('Failed to fetch period index');
+  const data = await response.json();
+  const affixIds: number[] = data.affix_details.map((a: { id: number }) => a.id);
 
-  const currentPeriodId = periodIndex.current_period.id;
-
-  const periodResponse = await client.apiCall(
-    region,
-    `/data/wow/mythic-keystone/period/${currentPeriodId}?namespace=dynamic-${region}&locale=en_US`,
-  );
-  if (!periodResponse.ok) throw new Error(`Failed to fetch period ${currentPeriodId}`);
-  const periodData = await periodResponse.json();
-
-  const doc = buildAffixDocument(periodData, region);
+  const doc = buildAffixDocument(affixIds, 'us');
 
   const db = getFirestore();
   await db.doc('config/affixes').set({

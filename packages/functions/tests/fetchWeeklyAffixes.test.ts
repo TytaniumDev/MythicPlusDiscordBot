@@ -2,23 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { buildAffixDocument } from '../src/fetchWeeklyAffixes';
 
 describe('buildAffixDocument', () => {
-  it('maps Battle.net period response to affix display data', () => {
-    const periodData = {
-      id: 1000,
-      affix_details: [
-        { id: 160, name: "Xal'atath's Bargain: Devour" },
-        { id: 10, name: 'Fortified' },
-        { id: 165, name: "Lindormi's Guidance" },
-        { id: 147, name: "Xal'atath's Guile" },
-      ],
-    };
+  it('resolves affix IDs to display data and sorts by keystone level', () => {
+    const result = buildAffixDocument([160, 10, 147], 'us');
 
-    const result = buildAffixDocument(periodData, 'us');
-
-    expect(result.period).toBe(1000);
     expect(result.region).toBe('us');
+    // Lindormi's (165) is injected automatically, so 4 total
     expect(result.affixes).toHaveLength(4);
-    // Should be sorted: Lindormi's (0) → Devour (1) → Fortified (2) → Guile (3)
+    // Sorted: Lindormi's (0) → Devour (1) → Fortified (2) → Guile (4)
     expect(result.affixes[0].id).toBe(165);
     expect(result.affixes[1].id).toBe(160);
     expect(result.affixes[2].id).toBe(10);
@@ -33,16 +23,32 @@ describe('buildAffixDocument', () => {
   });
 
   it('skips unknown affix IDs', () => {
-    const periodData = {
-      id: 1000,
-      affix_details: [
-        { id: 99999, name: 'Unknown Affix' },
-        { id: 10, name: 'Fortified' },
-      ],
-    };
+    const result = buildAffixDocument([99999, 10], 'us');
+    // Fortified + injected Lindormi's = 2
+    expect(result.affixes).toHaveLength(2);
+    expect(result.affixes[0].id).toBe(165);
+    expect(result.affixes[1].id).toBe(10);
+  });
 
-    const result = buildAffixDocument(periodData, 'us');
-    expect(result.affixes).toHaveLength(1);
-    expect(result.affixes[0].id).toBe(10);
+  it('injects Lindormi\'s Guidance when not in input', () => {
+    const result = buildAffixDocument([162, 10, 9, 147], 'us');
+    expect(result.affixes.some(a => a.id === 165)).toBe(true);
+    expect(result.affixes).toHaveLength(5);
+  });
+
+  it('does not duplicate Lindormi\'s Guidance if already present', () => {
+    const result = buildAffixDocument([165, 162, 10, 147], 'us');
+    const lindormisCount = result.affixes.filter(a => a.id === 165).length;
+    expect(lindormisCount).toBe(1);
+  });
+
+  it('handles both Fortified and Tyrannical', () => {
+    const result = buildAffixDocument([162, 10, 9, 147], 'us');
+    expect(result.affixes.some(a => a.id === 10)).toBe(true);
+    expect(result.affixes.some(a => a.id === 9)).toBe(true);
+    // Fort (order 2) before Tyran (order 3)
+    const fortIdx = result.affixes.findIndex(a => a.id === 10);
+    const tyranIdx = result.affixes.findIndex(a => a.id === 9);
+    expect(fortIdx).toBeLessThan(tyranIdx);
   });
 });
