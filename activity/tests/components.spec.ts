@@ -132,6 +132,8 @@ test.describe('Component: PlayerCard', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    // Click a player chip to select them and show the PlayerCard
+    await page.locator('.player-chip').first().click();
     const card = page.locator('[data-testid="player-card"]');
     await expect(card).toBeVisible();
     await expect(card).toHaveScreenshot('player-card.png');
@@ -143,6 +145,9 @@ test.describe('Component: PlayerCard', () => {
     const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
+
+    // Click a player chip to select them
+    await page.locator('.player-chip').first().click();
 
     // Expand the mobile drawer to reveal the player card
     await page.locator('.mobile-drawer__header').click();
