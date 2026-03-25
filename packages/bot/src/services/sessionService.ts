@@ -170,7 +170,7 @@ export class SessionService {
     if (!active) return;
 
     this.activeChannels.delete(channelId);
-    this.announcedChannels.delete(active.docId);
+    this.announcedChannels.delete(channelId);
 
     if (this.channelListeners.has(active.docId)) {
       const watch = this.channelListeners.get(active.docId);

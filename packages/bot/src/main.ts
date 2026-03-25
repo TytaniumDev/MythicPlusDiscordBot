@@ -373,19 +373,34 @@ async function main() {
 
     // Listen for bad group reports from the activity frontend
     const firebase = FirebaseService.getInstance();
-    let lastReportTimestamp = 0; // global rate limit (guildId is untrusted client data)
-    const REPORT_COOLDOWN_MS = 60_000; // 1 minute between any reports
+    const reportTimestamps = new Map<string, number>(); // per-guild rate limit
+    let lastGlobalReportTimestamp = 0; // global hard cap (defense-in-depth)
+    const REPORT_COOLDOWN_MS = 60_000; // 1 minute between reports per guild
+    const GLOBAL_REPORT_COOLDOWN_MS = 10_000; // 10 seconds between any reports globally
 
     badGroupReportListener = firebase.listenForBadGroupReports(async (docId, data) => {
       try {
-        // Global rate limit: one report per minute across all sources
         const now = Date.now();
-        if (now - lastReportTimestamp < REPORT_COOLDOWN_MS) {
-          logger.warn(`Rate-limited bad group report (doc ${docId}), skipping`);
+
+        // Global hard cap: defense-in-depth against rate-limit bypass
+        if (now - lastGlobalReportTimestamp < GLOBAL_REPORT_COOLDOWN_MS) {
+          logger.warn(`Global rate-limited bad group report (doc ${docId}), skipping`);
           await firebase.deleteDoc('badGroupReports', docId);
           return;
         }
-        lastReportTimestamp = now;
+
+        // Per-guild rate limit: one report per minute per guild
+        const reportGuildId = String(data.guildId ?? 'unknown');
+        const lastTimestamp = reportTimestamps.get(reportGuildId) ?? 0;
+        if (now - lastTimestamp < REPORT_COOLDOWN_MS) {
+          logger.warn(`Rate-limited bad group report from guild ${reportGuildId} (doc ${docId}), skipping`);
+          await firebase.deleteDoc('badGroupReports', docId);
+          return;
+        }
+
+        // Both checks passed — update timestamps so future reports are rate-limited
+        lastGlobalReportTimestamp = now;
+        reportTimestamps.set(reportGuildId, now);
 
         const playersData = (data.players ?? []) as Record<string, unknown>[];
         const groupsData = (data.groups ?? []) as Record<string, unknown>[];

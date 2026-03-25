@@ -1,25 +1,64 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // --- Guilds ---
+    // Clients can read, create, and update guild docs but never delete them.
+    // The bot (Admin SDK) bypasses these rules entirely.
     match /guilds/{guildId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if guildId.matches('^[0-9]+$') || guildId == 'demo-guild';
+      allow update: if
+        // guildId field must not change
+        (!('guildId' in request.resource.data) || request.resource.data.guildId == resource.data.guildId);
+      allow delete: if false;
     }
+
+    // --- Channels ---
+    // Clients can read, create, and update channel docs but never delete them.
+    // On create the guildId must reference an existing guild doc.
+    // On update the guildId cannot be changed and status must be a known value.
     match /channels/{channelId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if
+        request.resource.data.guildId is string &&
+        request.resource.data.status == 'lobby' &&
+        exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
+      allow update: if
+        // guildId must not change
+        request.resource.data.guildId == resource.data.guildId &&
+        // status must be a known value
+        request.resource.data.status in ['lobby', 'spinning', 'completed'];
+      allow delete: if false;
     }
+
+    // --- Preferences ---
+    // Clients can read and write preferences but never delete them.
     match /preferences/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
     }
+
+    // --- Config ---
     match /config/{docId} {
       allow read: if true;
       allow write: if false;
     }
+
+    // --- Characters ---
     match /characters/{region}/{realm}/{name} {
       allow read: if false;
       allow write: if false;
     }
+
+    // --- Bad Group Reports ---
+    // Clients can only create reports; the guildId must reference an existing guild
+    // to prevent rate-limit bypass via fake guild IDs. Reading/updating/deleting is forbidden.
     match /badGroupReports/{docId} {
-      allow create: if true;
+      allow create: if
+        request.resource.data.guildId is string &&
+        exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
       allow read, update, delete: if false;
     }
   }
