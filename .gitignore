@@ -51,3 +51,4 @@ addon/libs/*/
 
 # Claude Code
 .claude/worktrees/
+coverage/
