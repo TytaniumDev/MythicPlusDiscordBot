@@ -448,14 +448,6 @@ body {
   flex-shrink: 0;
 }
 
-#spin-btn {
-  width: 100%;
-  max-width: 500px;
-  align-self: center;
-  margin-top: 16px;
-  flex-shrink: 0;
-}
-
 .lobby-header {
   display: flex;
   align-items: center;
@@ -2290,6 +2282,7 @@ button.role-section-header--collapsible {
   padding: 8px var(--page-gutter);
   background: linear-gradient(to top, var(--bg-primary) 60%, transparent);
   display: flex;
+  justify-content: center;
 }
 
 .mobile-spin-btn .btn {
