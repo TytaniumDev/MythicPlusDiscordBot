@@ -1,4 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onCall } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getBattleNetClient } from './battlenet.js';
 import { resolveAffixDisplay, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
@@ -35,7 +36,35 @@ export function buildAffixDocument(
   };
 }
 
-// Firebase Cloud Function
+// Shared logic: fetch current affixes from Battle.net and write to Firestore
+export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastUpdated'> & { lastUpdated: Date }> {
+  const client = getBattleNetClient();
+  const region = 'us';
+
+  const periodIndex = await client.getMythicKeystonePeriodIndex(region);
+  if (!periodIndex) throw new Error('Failed to fetch period index');
+
+  const currentPeriodId = periodIndex.current_period.id;
+
+  const periodResponse = await client.apiCall(
+    region,
+    `/data/wow/mythic-keystone/period/${currentPeriodId}?namespace=dynamic-${region}&locale=en_US`,
+  );
+  if (!periodResponse.ok) throw new Error(`Failed to fetch period ${currentPeriodId}`);
+  const periodData = await periodResponse.json();
+
+  const doc = buildAffixDocument(periodData, region);
+
+  const db = getFirestore();
+  await db.doc('config/affixes').set({
+    ...doc,
+    lastUpdated: FieldValue.serverTimestamp(),
+  });
+
+  return doc;
+}
+
+// Scheduled: fires weekly on Tuesdays
 export const fetchWeeklyAffixes = onSchedule(
   {
     // Fires 2 hours after NA weekly reset (15:00 UTC). EU resets Wednesday 04:00 UTC,
@@ -44,27 +73,12 @@ export const fetchWeeklyAffixes = onSchedule(
     timeZone: 'UTC',
   },
   async () => {
-    const client = getBattleNetClient();
-    const region = 'us';
-
-    const periodIndex = await client.getMythicKeystonePeriodIndex(region);
-    if (!periodIndex) throw new Error('Failed to fetch period index');
-
-    const currentPeriodId = periodIndex.current_period.id;
-
-    const periodResponse = await client.apiCall(
-      region,
-      `/data/wow/mythic-keystone/period/${currentPeriodId}?namespace=dynamic-${region}&locale=en_US`,
-    );
-    if (!periodResponse.ok) throw new Error(`Failed to fetch period ${currentPeriodId}`);
-    const periodData = await periodResponse.json();
-
-    const doc = buildAffixDocument(periodData, region);
-
-    const db = getFirestore();
-    await db.doc('config/affixes').set({
-      ...doc,
-      lastUpdated: FieldValue.serverTimestamp(),
-    });
+    await fetchAndWriteAffixes();
   },
 );
+
+// On-demand: callable for manual refresh (e.g. after deploy, or if scheduled run failed)
+export const refreshAffixes = onCall(async () => {
+  const doc = await fetchAndWriteAffixes();
+  return { period: doc.period, region: doc.region, affixCount: doc.affixes.length };
+});
