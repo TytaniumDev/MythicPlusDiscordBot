@@ -122,6 +122,14 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
       nameRef.current = character.name;
       if (character.mediaUrl) setMediaUrl(character.mediaUrl);
 
+      // Save linkedCharacter + mediaUrl BEFORE saveRoles so the bot's
+      // refreshPlayers cycle reads the mediaUrl from the preference doc.
+      await service.saveLinkedCharacter(player.discordId, {
+        name: result.name,
+        realm: result.realmSlug,
+        region: result.region,
+      }, character.mediaUrl);
+
       const currentRoles = playerRolesToStringArray(player);
       if (currentRoles.length === 0) {
         const roles: string[] = [];
@@ -140,12 +148,6 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
       } else {
         await service.saveRoles(player.discordId, player.name, Array.from(selectedRoles), character.name);
       }
-
-      await service.saveLinkedCharacter(player.discordId, {
-        name: result.name,
-        realm: result.realmSlug,
-        region: result.region,
-      }, character.mediaUrl);
     }
   }, [lookupLoading, player, lookup, selectedRoles, service]);
 

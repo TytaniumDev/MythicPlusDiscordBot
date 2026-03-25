@@ -23,9 +23,18 @@ try {
 }
 
 if (_isEmbedded) {
-  patchUrlMappings([
+  const mappings: { prefix: string; target: string }[] = [
     { prefix: '/firebase', target: 'firestore.googleapis.com' },
-  ]);
+  ];
+
+  // Cloud Functions callable endpoint must also be proxied in embedded mode.
+  // NOTE: A matching URL mapping must also be added in the Discord Developer Portal.
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
+  if (projectId) {
+    mappings.push({ prefix: '/functions', target: `us-central1-${projectId}.cloudfunctions.net` });
+  }
+
+  patchUrlMappings(mappings);
 }
 
 export const isEmbedded = _isEmbedded;
