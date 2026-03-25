@@ -52,7 +52,7 @@ jobs:
           npm run typecheck
           npm run build
 
-      - name: Update snapshots (Docker)
+      - name: Update & verify snapshots (Docker)
         if: steps.bot-check.outputs.skip != 'true'
         run: ./scripts/playwright-docker.sh --update-snapshots=all
 
@@ -70,10 +70,6 @@ jobs:
             git push
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Verify snapshots (Docker)
-        if: steps.bot-check.outputs.skip != 'true'
-        run: ./scripts/playwright-docker.sh
 
   # When the bot pushes snapshot updates, the new commit won't get
   # pull_request-triggered CI checks (GitHub Actions pushes don't fire
