@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAppStore } from '../store/store';
+import { STATIC_AFFIXES } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
 
 interface AffixData {
@@ -32,7 +33,12 @@ export function useAffixes(): AffixData | null {
     const unsub = onSnapshot(
       doc(db, 'config', 'affixes'),
       (snap) => {
-        if (snap.exists()) setData(snap.data() as AffixData);
+        if (snap.exists()) {
+          setData(snap.data() as AffixData);
+        } else {
+          // Weekly Cloud Function hasn't run yet — show static affixes as fallback
+          setData({ period: 0, region: 'us', affixes: STATIC_AFFIXES });
+        }
       },
       (error) => console.error('[Wheelson] Failed to load affixes:', error),
     );
