@@ -14,11 +14,11 @@ Add a `refreshAffixes` Firebase `onCall` callable that reuses the existing `buil
 
 ### Changes
 
-1. **`packages/functions/src/fetchWeeklyAffixes.ts`** — Extract the shared fetch-and-write logic into a helper function. Add `refreshAffixes` as an `onCall` export that calls the helper. Refactor `fetchWeeklyAffixes` to also call the helper.
+1. **`packages/functions/src/fetchWeeklyAffixes.ts`** — Extract the shared fetch-and-write logic into a `fetchAndWriteAffixes()` helper. Add `refreshAffixes` as an `onCall` export (with auth guard) that calls the helper. Refactor `fetchWeeklyAffixes` to also call the helper.
 
 2. **`packages/functions/src/index.ts`** — Add `export { refreshAffixes }` alongside the existing exports.
 
-3. **`packages/functions/tests/fetchWeeklyAffixes.test.ts`** — Add a test verifying the shared helper logic (core logic is already tested via `buildAffixDocument` tests).
+No new tests needed — `fetchAndWriteAffixes` is a thin orchestrator over `buildAffixDocument` (already tested) + Battle.net client + Firestore. Testing it would require mocking both external services for minimal value.
 
 ### No changes needed
 

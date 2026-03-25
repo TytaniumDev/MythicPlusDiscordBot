@@ -1,5 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getBattleNetClient } from './battlenet.js';
 import { resolveAffixDisplay, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
@@ -78,7 +78,10 @@ export const fetchWeeklyAffixes = onSchedule(
 );
 
 // On-demand: callable for manual refresh (e.g. after deploy, or if scheduled run failed)
-export const refreshAffixes = onCall(async () => {
+export const refreshAffixes = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication required');
+  }
   const doc = await fetchAndWriteAffixes();
   return { period: doc.period, region: doc.region, affixCount: doc.affixes.length };
 });
