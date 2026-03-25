@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
@@ -24,7 +24,6 @@ interface LobbyViewProps {
 
 export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
-  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const service = useSessionService();
   const players = channelData?.players || [];
   useIdentityResolver(players);
@@ -56,14 +55,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
-  // Set default selection to current player on mount, reset if active player leaves
   const activePlayer = useAppStore((s) => s.activePlayer);
-  useEffect(() => {
-    const needsDefault = !activePlayer || !players.some(p => p.discordId === activePlayer.discordId);
-    if (!needsDefault || players.length === 0) return;
-    const defaultPlayer = (currentPlayerId && players.find(p => p.discordId === currentPlayerId)) || players[0];
-    useAppStore.getState().setActivePlayer(defaultPlayer ?? null);
-  }, [activePlayer, currentPlayerId, players]);
 
   // Selected player always follows activePlayer
   const selectedPlayer = useMemo(() => {
