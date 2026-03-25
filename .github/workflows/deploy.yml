@@ -53,7 +53,8 @@ jobs:
           npm -w packages/shared run build
           # Firebase loads shared via Node.js which can't resolve .ts sources,
           # so point main at the compiled output for deploy only
-          node -e "const p=require('./packages/shared/package.json'); p.main='dist/index.js'; require('fs').writeFileSync('./packages/shared/package.json', JSON.stringify(p, null, 2)+'\n')"
+          jq '.main = "dist/index.js"' packages/shared/package.json > /tmp/pkg.json \
+            && mv /tmp/pkg.json packages/shared/package.json
           npm -w packages/functions run build
 
       - name: Deploy Firestore rules and Cloud Functions

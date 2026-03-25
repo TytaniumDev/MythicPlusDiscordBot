@@ -34,7 +34,7 @@ export function buildAffixDocument(
   affixes.sort((a, b) => (SORT_ORDER[a.id] ?? 99) - (SORT_ORDER[b.id] ?? 99));
 
   return {
-    period: 0,
+    period: 0, // Raider.IO does not return a WoW period ID
     region,
     lastUpdated: new Date(),
     affixes,
