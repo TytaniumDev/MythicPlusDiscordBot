@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
+import { useAppStore } from '../store/store';
+import { lookupCharacterProfile } from '../services/raiderioService';
 import type { Role, Utility } from '@mythicplus/shared';
 
 export interface CharacterData {
@@ -12,6 +14,12 @@ export interface CharacterData {
   mediaUrl: string | null;
 }
 
+const RAIDERIO_ROLE_MAP: Record<string, Role> = {
+  tank: 'tank',
+  healing: 'healer',
+  dps: 'melee', // Raider.io doesn't distinguish melee/ranged — default to melee
+};
+
 export function useCharacterLookup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +28,25 @@ export function useCharacterLookup() {
     setLoading(true);
     setError(null);
 
+    const isDemoMode = useAppStore.getState().isDemoMode;
+
     try {
+      if (isDemoMode) {
+        const profile = await lookupCharacterProfile(name, realm, region);
+        if (!profile) {
+          setError('Character not found');
+          return null;
+        }
+        return {
+          name: profile.name,
+          realm: profile.realm,
+          class: profile.className,
+          role: RAIDERIO_ROLE_MAP[profile.role] ?? 'melee',
+          utilities: [],
+          mediaUrl: profile.thumbnailUrl || null,
+        };
+      }
+
       const fn = httpsCallable<
         { name: string; realm: string; region: string },
         CharacterData
