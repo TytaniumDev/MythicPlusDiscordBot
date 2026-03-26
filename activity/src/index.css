@@ -2522,6 +2522,16 @@ button.role-section-header--collapsible {
   flex-shrink: 0;
 }
 
+/* ── Setup View ───────────────────────────────────── */
+.setup-view {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.setup-view__form {
+  padding: 0.5rem 0;
+}
+
 /* ============================================
    Reduced Motion
    ============================================ */
