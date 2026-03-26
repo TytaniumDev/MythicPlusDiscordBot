@@ -2556,7 +2556,7 @@ button.role-section-header--collapsible {
   padding: 1rem;
 }
 .edit-modal {
-  background: var(--bg-card);
+  background: var(--bg-primary);
   border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
   width: 100%;
