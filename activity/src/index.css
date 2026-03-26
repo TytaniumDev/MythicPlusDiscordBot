@@ -756,13 +756,16 @@ body {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
 }
 
-/* ── Player Chip: Claimed checkmark ── */
-.claimed-check {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  color: #2ecc71;
-  filter: drop-shadow(0 0 2px rgba(46, 204, 113, 0.4));
+/* ── PlayerChip ready states ──────────────────────── */
+.player-chip .ready-check {
+  color: var(--color-healer);
+}
+.player-chip .not-ready-x {
+  color: var(--color-error, #ef4444);
+  opacity: 0.6;
+}
+.player-chip.not-ready {
+  opacity: 0.6;
 }
 
 /* ── Identity Selector ── */
