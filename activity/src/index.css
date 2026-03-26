@@ -2438,6 +2438,90 @@ button.role-section-header--collapsible {
   padding: 4px 0;
 }
 
+/* ── Identity View ────────────────────────────────── */
+.identity-picker {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+.identity-picker__title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.identity-picker__subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 1.5rem;
+}
+.identity-picker__help {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+}
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.identity-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.identity-card:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  background: var(--bg-card-hover);
+}
+.identity-card--selected {
+  border-color: var(--color-gold);
+  background: rgba(245, 158, 11, 0.08);
+}
+.identity-card--claimed {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.identity-card__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.identity-card__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.identity-card__check {
+  margin-left: auto;
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+.identity-card__claimed {
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
 /* ============================================
    Reduced Motion
    ============================================ */
