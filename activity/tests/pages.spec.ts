@@ -26,16 +26,21 @@ const DESIGN_VIEWPORTS = {
 // ── Test Data ────────────────────────────────────────────────
 const channelPickerData = mockGuildData;
 
+// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
+
 const lobbyData = {
   ...mockChannelData,
   status: 'lobby',
   players: mockPlayers,
+  identity: lobbyIdentity,
 };
 
 const lobbyEmptyData = {
   ...mockChannelData,
   status: 'lobby',
   players: [],
+  identity: { id: 'test-user', name: 'TestUser' },
 };
 
 const lobbySittingOutData = {
@@ -43,6 +48,7 @@ const lobbySittingOutData = {
   status: 'lobby',
   players: mockPlayers,
   sittingOut: [mockPlayers[5].discordId, mockPlayers[7].discordId],
+  identity: lobbyIdentity,
 };
 
 const staticWheelsData = {
@@ -108,6 +114,33 @@ function designViewportTests(
       const channelCount = mockGuildData.voiceChannels?.length || 0;
       await expect(page.locator('.channel-card')).toHaveCount(channelCount);
       await expect(page).toHaveScreenshot(`channels-${viewport.width}x${viewport.height}.png`);
+    });
+
+    test('Identity View', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      const identityData = {
+        ...mockChannelData,
+        status: 'lobby',
+        players: mockPlayers,
+        // No identity — will show identity picker
+      };
+      await page.goto(`/?data=${encodeData(identityData)}`);
+      await expect(page.locator('#view-identity')).toBeVisible();
+      await expect(page).toHaveScreenshot(`identity-${viewport.width}x${viewport.height}.png`);
+    });
+
+    test('Setup View', async ({ page }) => {
+      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+      // Martz (index 0) has mainRole but no inGameName — lands on setup
+      const setupData = {
+        ...mockChannelData,
+        status: 'lobby',
+        players: mockPlayers,
+        identity: { id: mockPlayers[0].discordId, name: mockPlayers[0].name },
+      };
+      await page.goto(`/?data=${encodeData(setupData)}`);
+      await expect(page.locator('#view-setup')).toBeVisible();
+      await expect(page).toHaveScreenshot(`setup-${viewport.width}x${viewport.height}.png`);
     });
 
     test('Lobby View — with players', async ({ page }) => {
