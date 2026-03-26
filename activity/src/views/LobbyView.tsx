@@ -4,11 +4,12 @@ import { useSessionService } from '../hooks/useSession';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerCard } from '../components/PlayerCard';
 import { EditPlayerModal } from '../components/EditPlayerModal';
+import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
-import { getPrimaryRole, hasAnyRole, getReadyCount } from '../lib/roles';
+import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers } from '../lib/roles';
 import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
@@ -30,12 +31,34 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const isMobile = useIsMobileLobby();
   const [isCalculating, setIsCalculating] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<typeof players[number] | null>(null);
+  const [showSpinWarning, setShowSpinWarning] = useState(false);
 
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
 
-  const handleSpin = async () => {
+  const sittingOut = channelData?.sittingOut ?? [];
+
+  const handleSpinClick = () => {
+    const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
+    if (missingRole.length > 0 || missingNameOnly.length > 0) {
+      setShowSpinWarning(true);
+    } else {
+      doSpin();
+    }
+  };
+
+  const doSpin = async () => {
+    setShowSpinWarning(false);
     try {
       setIsCalculating(true);
+
+      // Auto-sit-out players missing a role
+      const { missingRole } = categorizeUnreadyPlayers(players, sittingOut);
+      for (const p of missingRole) {
+        if (p.discordId && !sittingOut.includes(p.discordId)) {
+          await service.toggleSitOut(p.discordId);
+        }
+      }
+
       if (useAppStore.getState().isDemoMode) {
         onNavigate('wheels');
       }
@@ -47,7 +70,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     }
   };
 
-  const sittingOut = channelData?.sittingOut ?? [];
   const activePlayers = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
   const sittingOutPlayers = players.filter(p => p.discordId && sittingOut.includes(p.discordId));
 
@@ -203,7 +225,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
               id="spin-btn"
               icon={<SpinIcon />}
               disabled={isCalculating}
-              onClick={handleSpin}
+              onClick={handleSpinClick}
             >
               {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
             </PrimaryCTA>
@@ -218,7 +240,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             id="spin-btn"
             icon={<SpinIcon />}
             disabled={isCalculating}
-            onClick={handleSpin}
+            onClick={handleSpinClick}
           >
             {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
           </PrimaryCTA>
@@ -230,6 +252,17 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           onClose={() => setEditingPlayer(null)}
         />
       )}
+      {showSpinWarning && (() => {
+        const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
+        return (
+          <SpinWarningDialog
+            missingRole={missingRole}
+            missingNameOnly={missingNameOnly}
+            onGoBack={() => setShowSpinWarning(false)}
+            onSpinAnyway={doSpin}
+          />
+        );
+      })()}
     </div>
   );
 }
