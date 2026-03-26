@@ -88,16 +88,19 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const allReady = ready === total && total > 0;
   const readyText = `${ready}/${total} Ready`;
 
-  const handleChipClick = (player: typeof players[number]) => {
+  const handleChipClick = (e: React.MouseEvent, player: typeof players[number]) => {
     if (player.discordId === currentPlayerId) {
       useAppStore.getState().setActivePlayer(player);
     } else {
+      // Prevent PlayerChip's internal handleClick from setting activePlayer
+      e.stopPropagation();
+      useAppStore.getState().setActivePlayer(null);
       setEditingPlayer(player);
     }
   };
 
   const renderChip = (p: typeof players[number]) => (
-    <div key={p.discordId || p.name} onClick={(e) => { e.stopPropagation(); handleChipClick(p); }}>
+    <div key={p.discordId || p.name} onClickCapture={(e) => handleChipClick(e, p)}>
       <PlayerChip player={p} />
     </div>
   );
