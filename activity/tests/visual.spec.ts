@@ -31,16 +31,21 @@ const VIEWPORTS = {
 // ── Shared Test Data (using new guild + channel model) ────────
 const channelPickerData = mockGuildData;
 
+// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
+
 const lobbyData = {
   ...mockChannelData,
   status: 'lobby',
   players: mockPlayers,
+  identity: lobbyIdentity,
 };
 
 const lobbyEmptyData = {
   ...mockChannelData,
   status: 'lobby',
   players: [],
+  identity: { id: 'test-user', name: 'TestUser' },
 };
 
 const staticWheelsData = {
@@ -62,6 +67,7 @@ const lobbySittingOutData = {
   status: 'lobby',
   players: mockPlayers,
   sittingOut: [mockPlayers[5].discordId, mockPlayers[7].discordId], // Will, hammer13
+  identity: lobbyIdentity,
 };
 
 const resultsData = {
@@ -257,6 +263,7 @@ test.describe('Functional Tests', () => {
       ...mockChannelData,
       status: 'lobby',
       players: mockPlayers,
+      identity: lobbyIdentity,
     };
     await page.goto(`/?data=${encodeData(data)}`);
 

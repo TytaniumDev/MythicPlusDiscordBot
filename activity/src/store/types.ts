@@ -5,7 +5,7 @@ export function isCompleteGroup(group: WoWGroup): boolean {
 }
 
 
-export type ViewName = 'home' | 'channels' | 'lobby' | 'wheels' | 'results';
+export type ViewName = 'home' | 'channels' | 'identity' | 'setup' | 'lobby' | 'wheels' | 'results';
 
 export interface AppState {
   // Navigation

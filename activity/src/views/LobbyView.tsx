@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
-import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerCard } from '../components/PlayerCard';
+import { EditPlayerModal } from '../components/EditPlayerModal';
+import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
-import { getPrimaryRole, hasAnyRole } from '../lib/roles';
+import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers } from '../lib/roles';
 import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
@@ -26,14 +27,38 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
   const players = channelData?.players || [];
-  useIdentityResolver(players);
 
   const isMobile = useIsMobileLobby();
   const [isCalculating, setIsCalculating] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<typeof players[number] | null>(null);
+  const [showSpinWarning, setShowSpinWarning] = useState(false);
 
-  const handleSpin = async () => {
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+
+  const sittingOut = channelData?.sittingOut ?? [];
+
+  const handleSpinClick = () => {
+    const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
+    if (missingRole.length > 0 || missingNameOnly.length > 0) {
+      setShowSpinWarning(true);
+    } else {
+      doSpin();
+    }
+  };
+
+  const doSpin = async () => {
+    setShowSpinWarning(false);
     try {
       setIsCalculating(true);
+
+      // Auto-sit-out players missing a role
+      const { missingRole } = categorizeUnreadyPlayers(players, sittingOut);
+      for (const p of missingRole) {
+        if (p.discordId && !sittingOut.includes(p.discordId)) {
+          await service.toggleSitOut(p.discordId);
+        }
+      }
+
       if (useAppStore.getState().isDemoMode) {
         onNavigate('wheels');
       }
@@ -45,7 +70,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     }
   };
 
-  const sittingOut = channelData?.sittingOut ?? [];
   const activePlayers = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
   const sittingOutPlayers = players.filter(p => p.discordId && sittingOut.includes(p.discordId));
 
@@ -55,13 +79,31 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const meleePlayers = activePlayers.filter((p) => getPrimaryRole(p) === 'melee');
   const unassigned = activePlayers.filter((p) => !hasAnyRole(p));
 
-  const activePlayer = useAppStore((s) => s.activePlayer);
+  const myPlayer = useMemo(
+    () => players.find(p => p.discordId === currentPlayerId) ?? null,
+    [players, currentPlayerId],
+  );
 
-  // Selected player always follows activePlayer
-  const selectedPlayer = useMemo(() => {
-    if (!activePlayer) return null;
-    return players.find(p => p.discordId === activePlayer.discordId) ?? null;
-  }, [activePlayer, players]);
+  const { ready, total } = getReadyCount(players, sittingOut);
+  const allReady = ready === total && total > 0;
+  const readyText = `${ready}/${total} Ready`;
+
+  const handleChipClick = (e: React.MouseEvent, player: typeof players[number]) => {
+    if (player.discordId === currentPlayerId) {
+      useAppStore.getState().setActivePlayer(player);
+    } else {
+      // Prevent PlayerChip's internal handleClick from setting activePlayer
+      e.stopPropagation();
+      useAppStore.getState().setActivePlayer(null);
+      setEditingPlayer(player);
+    }
+  };
+
+  const renderChip = (p: typeof players[number]) => (
+    <div key={p.discordId || p.name} onClickCapture={(e) => handleChipClick(e, p)}>
+      <PlayerChip player={p} />
+    </div>
+  );
 
   const playerCountText = players.length === 0
     ? '0 players'
@@ -110,6 +152,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         onTitleClick={() => onNavigate('home')}
         className="app-header"
         subtitleId="player-count"
+        extra={
+          <span className={`ready-badge ${allReady ? 'ready-badge--all' : 'ready-badge--partial'}`}>
+            {readyText}
+          </span>
+        }
       />
       <AffixBar />
       <main className="content-area">
@@ -122,12 +169,12 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 <div className="role-column">
                   <div className="role-section">
                     <CollapsibleRoleSection label="Tanks" count={tanks.length} color="tank">
-                      {tanks.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {tanks.map(renderChip)}
                     </CollapsibleRoleSection>
                   </div>
                   <div className="role-section">
                     <CollapsibleRoleSection label="Heal" count={healers.length} color="healer">
-                      {healers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {healers.map(renderChip)}
                     </CollapsibleRoleSection>
                   </div>
                 </div>
@@ -136,12 +183,12 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                 <div className="role-column role-column-dps">
                   <CollapsibleRoleSection label="Ranged" count={rangedPlayers.length} color="dps">
                     <div className="dps-grid">
-                      {rangedPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {rangedPlayers.map(renderChip)}
                     </div>
                   </CollapsibleRoleSection>
                   <CollapsibleRoleSection label="Melee" count={meleePlayers.length} color="dps">
                     <div className="dps-grid">
-                      {meleePlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {meleePlayers.map(renderChip)}
                     </div>
                   </CollapsibleRoleSection>
                 </div>
@@ -151,7 +198,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                   <div className="role-section" style={{ gridColumn: '1 / -1' }}>
                     <RoleSectionHeader label="Unassigned" count={unassigned.length} color="unassigned" />
                     <div className="dps-grid">
-                      {unassigned.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {unassigned.map(renderChip)}
                     </div>
                   </div>
                 )}
@@ -161,7 +208,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
                   <div className="role-section" style={{ gridColumn: '1 / -1' }}>
                     <RoleSectionHeader label="Sitting Out" count={sittingOutPlayers.length} color="sitting-out" />
                     <div className="sitting-out-grid">
-                      {sittingOutPlayers.map((p) => <PlayerChip key={p.discordId || p.name} player={p} />)}
+                      {sittingOutPlayers.map(renderChip)}
                     </div>
                   </div>
                 )}
@@ -169,9 +216,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
             </div>
 
-            {!isMobile && selectedPlayer && (
+            {!isMobile && myPlayer && (
               <div className="lobby-sidebar">
-                <PlayerCard player={selectedPlayer} />
+                <PlayerCard player={myPlayer} />
               </div>
             )}
           </div>
@@ -181,7 +228,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
               id="spin-btn"
               icon={<SpinIcon />}
               disabled={isCalculating}
-              onClick={handleSpin}
+              onClick={handleSpinClick}
             >
               {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
             </PrimaryCTA>
@@ -189,19 +236,36 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         </section>
       </main>
 
-      {isMobile && selectedPlayer && <MobilePlayerDrawer player={selectedPlayer} />}
+      {isMobile && myPlayer && <MobilePlayerDrawer player={myPlayer} />}
       {isMobile && (
         <div className="mobile-spin-btn">
           <PrimaryCTA
             id="spin-btn"
             icon={<SpinIcon />}
             disabled={isCalculating}
-            onClick={handleSpin}
+            onClick={handleSpinClick}
           >
             {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
           </PrimaryCTA>
         </div>
       )}
+      {editingPlayer && (
+        <EditPlayerModal
+          player={editingPlayer}
+          onClose={() => setEditingPlayer(null)}
+        />
+      )}
+      {showSpinWarning && (() => {
+        const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
+        return (
+          <SpinWarningDialog
+            missingRole={missingRole}
+            missingNameOnly={missingNameOnly}
+            onGoBack={() => setShowSpinWarning(false)}
+            onSpinAnyway={doSpin}
+          />
+        );
+      })()}
     </div>
   );
 }

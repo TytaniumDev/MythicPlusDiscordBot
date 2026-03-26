@@ -169,3 +169,26 @@ export function initPools(players: WoWPlayer[]): { tanks: WheelEntry[]; healers:
 
   return { tanks, healers, dps };
 }
+
+/** A player is "ready" when they have a WoW name and a main role. */
+export function isPlayerReady(p: WoWPlayer): boolean {
+  return !!p.inGameName && p.mainRole !== null;
+}
+
+/** Count ready players from a list, excluding sitting-out players. */
+export function getReadyCount(players: WoWPlayer[], sittingOut: string[]): { ready: number; total: number } {
+  const active = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
+  const ready = active.filter(isPlayerReady).length;
+  return { ready, total: active.length };
+}
+
+/** Categorize unready players for the spin warning dialog. */
+export function categorizeUnreadyPlayers(players: WoWPlayer[], sittingOut: string[]): {
+  missingRole: WoWPlayer[];
+  missingNameOnly: WoWPlayer[];
+} {
+  const active = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
+  const missingRole = active.filter(p => p.mainRole === null);
+  const missingNameOnly = active.filter(p => p.mainRole !== null && !p.inGameName);
+  return { missingRole, missingNameOnly };
+}

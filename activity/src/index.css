@@ -756,13 +756,16 @@ body {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.25);
 }
 
-/* ── Player Chip: Claimed checkmark ── */
-.claimed-check {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  color: #2ecc71;
-  filter: drop-shadow(0 0 2px rgba(46, 204, 113, 0.4));
+/* ── PlayerChip ready states ──────────────────────── */
+.player-chip .ready-check {
+  color: var(--color-healer);
+}
+.player-chip .not-ready-x {
+  color: var(--color-error, #ef4444);
+  opacity: 0.6;
+}
+.player-chip.not-ready {
+  opacity: 0.6;
 }
 
 /* ── Identity Selector ── */
@@ -2436,6 +2439,240 @@ button.role-section-header--collapsible {
   font-size: 0.7rem;
   color: var(--text-secondary);
   padding: 4px 0;
+}
+
+/* ── Identity View ────────────────────────────────── */
+.identity-picker {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+.identity-picker__title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.identity-picker__subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 1.5rem;
+}
+.identity-picker__help {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+}
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.identity-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.identity-card:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  background: var(--bg-card-hover);
+}
+.identity-card--selected {
+  border-color: var(--color-gold);
+  background: rgba(245, 158, 11, 0.08);
+}
+.identity-card--claimed {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.identity-card__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.identity-card__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.identity-card__check {
+  margin-left: auto;
+  color: var(--color-gold);
+  flex-shrink: 0;
+}
+.identity-card__claimed {
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* ── Setup View ───────────────────────────────────── */
+.setup-view {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1rem;
+  text-align: center;
+}
+.setup-view .character-header {
+  border-radius: 0;
+  padding-top: 2rem;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
+}
+.setup-view__form {
+  padding: 0.5rem 0;
+}
+.setup-view > .btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* ── Edit Player Modal ────────────────────────────── */
+.edit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+.edit-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 1rem;
+}
+.edit-modal .character-header {
+  border-radius: 0.75rem 0.75rem 0 0;
+  padding-top: 1.5rem;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
+}
+.edit-modal__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+.edit-modal__close:hover {
+  color: var(--text-primary);
+}
+.edit-modal__form {
+  padding: 0.5rem 0;
+}
+
+/* ── Ready Badge ──────────────────────────────────── */
+.ready-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+}
+.ready-badge--all {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-healer);
+}
+.ready-badge--partial {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+/* ── Spin Warning Dialog ──────────────────────────── */
+.spin-warning {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+  padding: 1.5rem;
+  text-align: center;
+}
+.spin-warning__icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.spin-warning__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.spin-warning__subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+.spin-warning__section {
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+.spin-warning__section--error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+.spin-warning__section--warn {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+.spin-warning__section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.spin-warning__section--error .spin-warning__section-label { color: #ef4444; }
+.spin-warning__section--warn .spin-warning__section-label { color: #f59e0b; }
+.spin-warning__player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+.spin-warning__reason {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+.spin-warning__actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.spin-warning__actions > * {
+  flex: 1;
 }
 
 /* ============================================

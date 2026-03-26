@@ -6,6 +6,7 @@ import { App } from './App';
 import { useAppStore } from './store/store';
 import { setupDiscordSdk } from './discordSdk';
 import { statusToView, routeToView } from './lib/routing';
+import { isPlayerReady } from './lib/roles';
 import type { ChannelData, GuildData } from './types';
 import './index.css';
 
@@ -37,8 +38,21 @@ async function init() {
       } else {
         const cd = data as ChannelData;
         store.setChannelData(cd);
-        const view = statusToView(cd.status);
-        store.setView(view);
+        // If identity is injected, use statusToView; otherwise gate to identity for lobby
+        if (data.identity) {
+          let view = statusToView(cd.status);
+          // Gate lobby behind setup when player isn't ready
+          if (view === 'lobby') {
+            const me = cd.players.find(p => p.discordId === data.identity.id);
+            if (me && !isPlayerReady(me)) {
+              view = 'setup';
+            }
+          }
+          store.setView(view);
+        } else {
+          const view = statusToView(cd.status);
+          store.setView(view === 'lobby' ? 'identity' : view);
+        }
       }
 
       // Support test identity injection (e.g. { identity: { id, name } })

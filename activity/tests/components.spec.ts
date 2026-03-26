@@ -16,6 +16,9 @@ const DETERMINISTIC_RANDOM_SCRIPT = `
   })();
 `;
 
+// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
+
 // Default viewport for component tests
 test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -86,7 +89,7 @@ test.describe('Component: ChannelCard', () => {
 test.describe('Component: PlayerChip', () => {
   test('Player chips in lobby', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
@@ -101,7 +104,7 @@ test.describe('Component: PlayerChip', () => {
 test.describe('Component: RoleSectionHeader', () => {
   test('Role section headers in lobby', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
@@ -128,7 +131,7 @@ test.describe('Component: GroupCard', () => {
 test.describe('Component: PlayerCard', () => {
   test('Player card in lobby sidebar', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
@@ -142,7 +145,7 @@ test.describe('Component: PlayerCard', () => {
   test('Player card on mobile (via drawer)', async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
@@ -163,7 +166,7 @@ test.describe('Component: PlayerCard', () => {
 test.describe('Component: PrimaryCTA', () => {
   test('Spin button appearance', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers };
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
@@ -174,7 +177,7 @@ test.describe('Component: PrimaryCTA', () => {
 
   test('Disabled state', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const emptyLobby = { ...mockChannelData, status: 'lobby', players: [] };
+    const emptyLobby = { ...mockChannelData, status: 'lobby', players: [], identity: { id: 'test-user', name: 'TestUser' } };
     await page.goto(`/?data=${encodeData(emptyLobby)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
