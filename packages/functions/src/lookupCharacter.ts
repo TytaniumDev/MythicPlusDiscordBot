@@ -26,8 +26,8 @@ export function buildCharacterResult(
   const className = profile.character_class.name;
   const specName = profile.active_specialization.name;
 
-  const mainRawAsset = media?.assets?.find(a => a.key === 'main-raw');
-  const mediaUrl = mainRawAsset?.value ?? null;
+  const insetAsset = media?.assets?.find(a => a.key === 'inset');
+  const mediaUrl = insetAsset?.value ?? null;
 
   return {
     name: profile.name,
