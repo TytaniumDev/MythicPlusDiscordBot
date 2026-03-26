@@ -72,7 +72,8 @@ export async function lookupCharacterProfile(
       role: data.active_spec_role?.toLowerCase() ?? '',
       thumbnailUrl,
     };
-  } catch {
+  } catch (err) {
+    console.warn('[Wheelson] Raider.io profile lookup failed:', err);
     return null;
   }
 }
