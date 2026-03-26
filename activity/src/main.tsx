@@ -37,8 +37,14 @@ async function init() {
       } else {
         const cd = data as ChannelData;
         store.setChannelData(cd);
-        const view = statusToView(cd.status);
-        store.setView(view);
+        // If identity is injected, use statusToView; otherwise gate to identity for lobby
+        if (data.identity) {
+          const view = statusToView(cd.status);
+          store.setView(view);
+        } else {
+          const view = statusToView(cd.status);
+          store.setView(view === 'lobby' ? 'identity' : view);
+        }
       }
 
       // Support test identity injection (e.g. { identity: { id, name } })

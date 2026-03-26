@@ -4,9 +4,12 @@ import { useGuildSubscription, useChannelSubscription } from './hooks/useSession
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { statusToView, routeToView, viewToRoute } from './lib/routing';
 import type { ViewName } from './store/types';
+import { isPlayerReady } from './lib/roles';
 import { Layout } from './components/Layout';
 import { HomeView } from './views/HomeView';
 import { ChannelsView } from './views/ChannelsView';
+import { IdentityView } from './views/IdentityView';
+import { SetupView } from './views/SetupView';
 import { LobbyView } from './views/LobbyView';
 import { WheelsView } from './views/WheelsView';
 import { ResultsView } from './views/ResultsView';
@@ -47,8 +50,33 @@ export function App() {
       store.resetSpinState();
       store.setIdentityResolved(false);
     }
+    // Gate lobby behind identity + setup
     if (view === 'lobby') {
       store.resetSpinState();
+      // Try localStorage resolution if identity isn't resolved yet
+      if (!store.identityResolved) {
+        const guildId = store.currentGuildId;
+        const savedId = localStorage.getItem(`wheelson-player-${guildId ?? 'unknown'}`);
+        const players = store.channelData?.players ?? [];
+        const match = savedId ? players.find(p => p.discordId === savedId) : null;
+        if (match) {
+          // Returning player — resolve identity from localStorage
+          store.setIdentity(match.discordId ?? null, match.name);
+          store.setIdentityResolved(true);
+          // Check if setup is complete
+          if (!isPlayerReady(match)) {
+            view = 'setup' as ViewName;
+          }
+          // else: stay on lobby (fully set up returning player)
+        } else {
+          view = 'identity' as ViewName;
+        }
+      } else {
+        const me = store.channelData?.players?.find(p => p.discordId === store.currentPlayerId);
+        if (me && !isPlayerReady(me)) {
+          view = 'setup' as ViewName;
+        }
+      }
     }
 
     store.setView(view);
@@ -104,7 +132,33 @@ export function App() {
         s.resetSpinState();
         s.setIdentityResolved(false);
       }
-      if (view === 'lobby') s.resetSpinState();
+      if (view === 'lobby') {
+        s.resetSpinState();
+        const s2 = useAppStore.getState();
+        if (!s2.identityResolved) {
+          const guildId = s2.currentGuildId;
+          const savedId = localStorage.getItem(`wheelson-player-${guildId ?? 'unknown'}`);
+          const players = s2.channelData?.players ?? [];
+          const match = savedId ? players.find(p => p.discordId === savedId) : null;
+          if (match) {
+            s2.setIdentity(match.discordId ?? null, match.name);
+            s2.setIdentityResolved(true);
+            if (!isPlayerReady(match)) {
+              view = 'setup' as ViewName;
+              history.replaceState({ view }, '', viewToRoute(view, s2.currentGuildId));
+            }
+          } else {
+            view = 'identity' as ViewName;
+            history.replaceState({ view }, '', viewToRoute(view, s2.currentGuildId));
+          }
+        } else {
+          const me = s2.channelData?.players?.find(p => p.discordId === s2.currentPlayerId);
+          if (me && !isPlayerReady(me)) {
+            view = 'setup' as ViewName;
+            history.replaceState({ view }, '', viewToRoute(view, s2.currentGuildId));
+          }
+        }
+      }
       s.setView(view);
       s.setStatusMessage('');
     };
@@ -121,6 +175,8 @@ export function App() {
     <Layout onNavigateHome={handleNavigateHome}>
       {currentView === 'home' && <HomeView onNavigate={navigateTo} />}
       {currentView === 'channels' && <ChannelsView onNavigate={navigateTo} />}
+      {currentView === 'identity' && <IdentityView onNavigate={navigateTo} />}
+      {currentView === 'setup' && <SetupView onNavigate={navigateTo} />}
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
       {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
