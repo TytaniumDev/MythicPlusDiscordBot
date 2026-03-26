@@ -2116,7 +2116,7 @@ button.role-section-header--collapsible {
   gap: 8px;
   padding: 10px 0 16px;
   border-radius: 16px 16px 0 0;
-  background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 15%, transparent) 0%, transparent 90%);
 }
 
 .character-header__avatar {

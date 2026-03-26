@@ -69,12 +69,16 @@ class DemoSessionService implements SessionService {
     // No-op in demo
   }
 
-  async saveRoles(_playerId: string, _playerName: string, _roles: string[], _inGameName?: string): Promise<void> {
-    // No-op in demo
+  async saveRoles(playerId: string, _playerName: string, _roles: string[], inGameName?: string): Promise<void> {
+    if (inGameName !== undefined) {
+      useAppStore.getState().updatePlayer(playerId, { inGameName });
+    }
   }
 
-  async saveLinkedCharacter(): Promise<void> {
-    // no-op in demo mode
+  async saveLinkedCharacter(playerId: string, _linkedCharacter: { name: string; realm: string; region: string }, mediaUrl?: string | null): Promise<void> {
+    if (mediaUrl) {
+      useAppStore.getState().updatePlayer(playerId, { mediaUrl });
+    }
   }
 
   async refreshChannels(_guildId: string): Promise<void> {
