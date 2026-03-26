@@ -2529,17 +2529,19 @@ button.role-section-header--collapsible {
 .setup-view {
   max-width: 420px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 2rem 1rem 1rem;
   text-align: center;
 }
 .setup-view .character-header {
   border-radius: 0;
+  overflow: visible;
 }
 .setup-view__form {
   padding: 0.5rem 0;
 }
 .setup-view > .btn {
   width: 100%;
+  margin-top: 1rem;
 }
 
 /* ── Edit Player Modal ────────────────────────────── */
