@@ -2529,12 +2529,13 @@ button.role-section-header--collapsible {
 .setup-view {
   max-width: 420px;
   margin: 0 auto;
-  padding: 2rem 1rem 1rem;
+  padding: 1rem;
   text-align: center;
 }
 .setup-view .character-header {
   border-radius: 0;
-  overflow: visible;
+  padding-top: 2rem;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
 }
 .setup-view__form {
   padding: 0.5rem 0;
@@ -2567,8 +2568,9 @@ button.role-section-header--collapsible {
   padding: 1rem;
 }
 .edit-modal .character-header {
-  border-radius: 0;
-  overflow: visible;
+  border-radius: 0.75rem 0.75rem 0 0;
+  padding-top: 1.5rem;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--ch-color, var(--color-tank)) 22%, transparent) 0%, transparent 70%);
 }
 .edit-modal__close {
   position: absolute;

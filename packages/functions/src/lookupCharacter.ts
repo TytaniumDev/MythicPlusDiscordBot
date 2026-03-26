@@ -82,7 +82,7 @@ export const lookupCharacter = onCall(
     const client = getBattleNetClient();
 
     const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
-    if (!profile) {
+    if (!profile || !profile.character_class || !profile.active_specialization) {
       throw new HttpsError('not-found', `Character "${name}" not found on ${realm}`);
     }
 
