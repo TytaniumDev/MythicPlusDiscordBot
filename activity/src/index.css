@@ -2576,6 +2576,23 @@ button.role-section-header--collapsible {
   padding: 0.5rem 0;
 }
 
+/* ── Ready Badge ──────────────────────────────────── */
+.ready-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+}
+.ready-badge--all {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-healer);
+}
+.ready-badge--partial {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
 /* ============================================
    Reduced Motion
    ============================================ */
