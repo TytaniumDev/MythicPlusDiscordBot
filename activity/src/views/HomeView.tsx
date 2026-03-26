@@ -25,6 +25,9 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     store.setDemoMode(true);
     store.setGuildId('demo-guild');
     store.setGuildData(mockGuildData);
+    // Clear identity so the guided flow (identity → setup → lobby) shows fresh
+    store.resetIdentity();
+    localStorage.removeItem('wheelson-player-demo-guild');
     onNavigate('channels');
   };
 

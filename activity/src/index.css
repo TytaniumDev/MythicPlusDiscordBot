@@ -2566,6 +2566,10 @@ button.role-section-header--collapsible {
   position: relative;
   padding: 1rem;
 }
+.edit-modal .character-header {
+  border-radius: 0;
+  overflow: visible;
+}
 .edit-modal__close {
   position: absolute;
   top: 0.75rem;
