@@ -2,7 +2,7 @@
 
 # MythicPlusDiscordBot 💎
 
-### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 🎨 Storybook ](https://tytaniumdev.github.io/MythicPlusDiscordBot/storybook/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 <br/>
 
@@ -24,28 +24,15 @@
 
 Get up and running in less than 5 minutes.
 
-1.  **Clone the repo**
-    ```bash
-    git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git
-    cd MythicPlusDiscordBot
-    ```
+```bash
+git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git
+cd MythicPlusDiscordBot
+npm ci
+echo "BOT_TOKEN=your_token_here" > .env
+npm -w @mythicplus/bot run dev
+```
 
-2.  **Install Dependencies**
-    This project uses `npm` workspaces.
-    ```bash
-    npm ci
-    ```
-
-3.  **Configure Environment**
-    Create a `.env` file in the `packages/bot` directory (or the root directory):
-    ```bash
-    echo "BOT_TOKEN=your_token_here" > .env
-    ```
-
-4.  **Run the Bot**
-    ```bash
-    npm -w @mythicplus/bot run dev
-    ```
+For advanced setup (Docker, Raspberry Pi), see our [Deployment Guide](./DEPLOYMENT.md).
 
 ## ✨ Key Features
 
