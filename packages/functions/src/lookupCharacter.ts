@@ -19,12 +19,14 @@ export function buildCharacterResult(
     name: string;
     realm: { slug: string; name: string };
     character_class: { name: string };
-    active_specialization: { name: string };
+    active_specialization?: { name: string };
+    active_spec?: { name: string };
   },
   media: { assets: Array<{ key: string; value: string }> } | null,
 ): CharacterResult {
   const className = profile.character_class.name;
-  const specName = profile.active_specialization.name;
+  const spec = profile.active_specialization ?? profile.active_spec;
+  const specName = spec?.name ?? 'Unknown';
 
   const insetAsset = media?.assets?.find(a => a.key === 'inset');
   const mediaUrl = insetAsset?.value ?? null;
@@ -82,7 +84,7 @@ export const lookupCharacter = onCall(
     const client = getBattleNetClient();
 
     const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
-    if (!profile || !profile.character_class || !profile.active_specialization) {
+    if (!profile || !profile.character_class) {
       throw new HttpsError('not-found', `Character "${name}" not found on ${realm}`);
     }
 
