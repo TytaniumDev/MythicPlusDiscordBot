@@ -13,8 +13,13 @@ export function setLastGroups(groups: WoWGroup[], guildId: string | number | nul
 
 /** Fisher-Yates shuffle (in-place). */
 function shuffle<T>(arr: T[]): T[] {
+  if (arr.length <= 1) return arr;
+  const array = new Uint32Array(arr.length);
+  globalThis.crypto.getRandomValues(array);
+
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const randomFraction = array[i] / (0xffffffff + 1);
+    const j = Math.floor(randomFraction * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
