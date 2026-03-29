@@ -148,6 +148,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
               className={`role-btn${selectedRoles.has(btnDef.id) ? ` ${btnDef.activeClass}` : ''}`}
               data-role-id={btnDef.id}
               onClick={() => toggleRole(btnDef, mutuallyExclusive)}
+              aria-pressed={selectedRoles.has(btnDef.id)}
             >
               {btnDef.label}
             </button>
