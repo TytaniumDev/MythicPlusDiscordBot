@@ -45,16 +45,9 @@ jobs:
         if: steps.bot-check.outputs.skip != 'true'
         run: npm ci
 
-      - name: Typecheck and build
+      - name: Verify Activity
         if: steps.bot-check.outputs.skip != 'true'
-        run: |
-          cd activity
-          npm run typecheck
-          npm run build
-
-      - name: Update & verify snapshots (Docker)
-        if: steps.bot-check.outputs.skip != 'true'
-        run: ./scripts/playwright-docker.sh --update-and-verify
+        run: ./scripts/verify-activity.sh --update-and-verify
 
       - name: Commit updated snapshots
         id: snapshot-commit

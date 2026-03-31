@@ -13,7 +13,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      - run: ./scripts/verify-ts.sh --lint
 
   Build:
     runs-on: ubuntu-latest
@@ -24,8 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx -w packages/shared tsc --noEmit
-      - run: npx -w packages/bot tsc --noEmit
+      - run: ./scripts/verify-ts.sh --build
 
   Test:
     runs-on: ubuntu-latest
@@ -36,4 +35,4 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm -w packages/bot run test
+      - run: ./scripts/verify-ts.sh --test
