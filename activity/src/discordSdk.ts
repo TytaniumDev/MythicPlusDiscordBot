@@ -56,7 +56,7 @@ export function remapImageUrl(url: string | null | undefined): string | null {
   try {
     const parsed = new URL(url);
     if (parsed.hostname === IMAGE_PROXY_TARGET) {
-      return `${IMAGE_PROXY_PREFIX}${parsed.pathname}`;
+      return `${IMAGE_PROXY_PREFIX}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return url;
   } catch {
