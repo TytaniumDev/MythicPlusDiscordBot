@@ -7,6 +7,7 @@ import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGri
 import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
+import { CancelRollDialog } from '../components/CancelRollDialog';
 import { PrimaryCTA, Checkbox } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
@@ -40,6 +41,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
   const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults === true);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   useEffect(() => {
     setAnnounceChecked(channelData?.announceResults === true);
@@ -337,7 +339,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [service, onNavigate, isCarousel, spinForCurrentGroupCarousel, spinForCurrentGroupGrid]);
 
-  const handleCancel = useCallback(async () => {
+  const handleCancel = useCallback(() => {
+    setShowCancelDialog(true);
+  }, []);
+
+  const confirmCancel = useCallback(async () => {
+    setShowCancelDialog(false);
     onNavigate('lobby');
     gridRef.current?.grid?.cancelAll();
     useAppStore.getState().resetSpinState();
@@ -364,6 +371,28 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       className="announce-option"
     />
   );
+
+  const isInitiator = useMemo(() => {
+    const myId = useAppStore.getState().currentPlayerId;
+    return !!(myId && channelData?.spinnerId === myId);
+  }, [channelData?.spinnerId]);
+
+  const canCancelDirectly = useMemo(() => {
+    if (isInitiator) return true;
+    if (!channelData?.spinStartedAt) return true; // Should not happen
+
+    let startTime: number;
+    if (typeof channelData.spinStartedAt === 'string') {
+      startTime = new Date(channelData.spinStartedAt).getTime();
+    } else if (channelData.spinStartedAt?.seconds) {
+      startTime = channelData.spinStartedAt.seconds * 1000;
+    } else {
+      return true;
+    }
+
+    const twoMinutesInMs = 2 * 60 * 1000;
+    return Date.now() - startTime > twoMinutesInMs;
+  }, [isInitiator, channelData?.spinStartedAt]);
 
   return (
     <div className="main-layout">
@@ -423,6 +452,15 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           )}
         </section>
       </main>
+
+      {showCancelDialog && (
+        <CancelRollDialog
+          isInitiator={isInitiator}
+          canCancelDirectly={canCancelDirectly}
+          onGoBack={() => setShowCancelDialog(false)}
+          onConfirmCancel={confirmCancel}
+        />
+      )}
     </div>
   );
 }

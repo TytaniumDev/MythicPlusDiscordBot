@@ -114,7 +114,7 @@ class FirestoreSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const { currentChannelId, channelData, guildData } = useAppStore.getState();
+    const { currentChannelId, channelData, guildData, currentPlayerId } = useAppStore.getState();
     if (!currentChannelId || !channelData) return;
 
     const guildId = channelData.guildId || null;
@@ -149,6 +149,8 @@ class FirestoreSessionService implements SessionService {
       status: 'spinning',
       groups: groups.map(g => g.toDict()),
       revealedGroups: 0,
+      spinnerId: currentPlayerId,
+      spinStartedAt: serverTimestamp(),
     });
   }
 

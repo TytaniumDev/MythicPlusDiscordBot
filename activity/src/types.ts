@@ -41,6 +41,8 @@ export interface ChannelData {
   announceResults: boolean;
   createdAt: unknown;
   lastActive: unknown;
+  spinnerId?: string | null;
+  spinStartedAt?: any;
 }
 
 export interface RecentGuild {

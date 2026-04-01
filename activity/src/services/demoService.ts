@@ -34,6 +34,8 @@ class DemoSessionService implements SessionService {
         status: 'spinning',
         groups: groups.map(g => g.toDict()),
         revealedGroups: 0,
+        spinnerId: store.currentPlayerId,
+        spinStartedAt: new Date().toISOString(),
       } as ChannelData);
     }, 500);
   }
