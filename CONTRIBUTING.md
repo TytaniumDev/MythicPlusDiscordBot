@@ -11,7 +11,7 @@ This project is a monorepo that uses **npm workspaces** for package management, 
     ```bash
     npm install
     ```
-    This installs dependencies for all packages in the workspace (`packages/bot`, `packages/shared`, and `activity/`).
+    This installs dependencies for all packages in the workspace (`packages/bot`, `packages/shared`, `packages/functions`, and `activity/`).
 
 ## Verification
 
@@ -69,6 +69,7 @@ This project has strict requirements to prevent secret leaks and ensure CI relia
     -   `src/services/`: Services bridging commands and external systems (Firebase, state).
     -   `tests/`: Unit tests using Vitest.
 -   `packages/shared/`: Shared models and business logic (e.g., `parallelGroupCreator.ts`).
+-   `packages/functions/`: Firebase Cloud Functions for external API integrations.
 -   `activity/`: Frontend code for the Discord Activity (React/TypeScript/Vite).
 -   `scripts/`: Utility scripts for verification and CI.
 

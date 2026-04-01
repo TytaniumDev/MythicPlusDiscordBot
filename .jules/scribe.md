@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2024-05-27] Documentation Drift: Cloud Functions
+**Context:** Added the new `packages/functions/` workspace with `lookupCharacter` and `fetchWeeklyAffixes` Cloud Functions, but they were missing from `ARCHITECTURE.md`.
+**Learning:**
+1. **New Services:** When a new workspace or top-level logical service is added to the monorepo, its role and integration points MUST be documented in `ARCHITECTURE.md`.
+2. **Diagram Updates:** System diagrams (like Mermaid flowcharts) must be updated to reflect newly introduced nodes, such as external APIs or cloud functions, to prevent visual drift.

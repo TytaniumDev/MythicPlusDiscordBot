@@ -38,8 +38,15 @@ flowchart TB
         SessionService --> GroupService
     end
 
+    subgraph CloudFunctions["Firebase Cloud Functions"]
+        LookupCharacter[lookupCharacter]
+        FetchWeeklyAffixes[fetchWeeklyAffixes]
+    end
+
     subgraph Firebase["Firebase Firestore"]
         Sessions[Collection: sessions]
+        Affixes[Collection: affixes]
+        Characters[Collection: characters]
     end
 
     subgraph LocalStorage["Local Storage"]
@@ -49,7 +56,12 @@ flowchart TB
     subgraph Frontend["Activity Frontend (TypeScript/Vite)"]
         UI[Lobby, Wheel, Results]
         UI --> FirestoreClient[Firestore client SDK]
+        UI --> RaiderIo[Raider.io API]
+        UI --> LookupCharacter
     end
+
+    FetchWeeklyAffixes -->|write| Affixes
+    LookupCharacter -->|read/write cache| Characters
 
     User -->|/activity, /wheel, voice join/leave| Channel
     Channel -->|commands, events| Bot
@@ -63,7 +75,8 @@ flowchart TB
 - **Bot**: handles commands, builds groups, and owns the “session” lifecycle; it talks to Firestore via `FirebaseService` and `SessionService`.
 - **Firestore**: single source of truth for each Activity session (players, status, groups). Bot and frontend both connect to the same project.
 - **Local Storage**: persist user role preferences (Tank/Healer/DPS) in a local JSON file.
-- **Activity frontend**: a web app (Discord Activity or standalone URL) that subscribes to one session document and drives the lobby → wheel → results flow.
+- **Cloud Functions**: Firebase Cloud Functions are used to fetch data from external APIs (Battle.net) and store the results in Firestore.
+- **Activity frontend**: a web app (Discord Activity or standalone URL) that subscribes to one session document and drives the lobby → wheel → results flow. It also calls Cloud Functions to get API data for auto-filling and displays current affixes from Firestore.
 
 ---
 
@@ -89,7 +102,17 @@ flowchart TB
 
 The bot does **not** serve the Activity UI; it only creates sessions, reacts to Firestore updates, and posts messages/embeds in Discord.
 
-### 2. Data Persistence (Hybrid Model)
+### 2. Firebase Cloud Functions (API Integration)
+
+The project leverages Firebase Cloud Functions to securely interact with external APIs (like Battle.net) and provide supplementary data to the Activity frontend without modifying the core Discord bot.
+
+- **Workspace**: `packages/functions/src/`
+- **Functions**:
+  - `fetchWeeklyAffixes`: A scheduled function that fetches current weekly affixes from the Raider.IO API and writes them to the `affixes` collection in Firestore.
+  - `lookupCharacter`: A callable function that accepts a region, realm, and character name, retrieves profile data from the Battle.net API, and caches the result in the `characters` collection.
+- **Role**: Serves as a secure proxy to external APIs, keeping API credentials out of the Discord bot environment.
+
+### 3. Data Persistence (Hybrid Model)
 
 The system uses a **Hybrid Persistence** model:
 
@@ -103,10 +126,10 @@ The system uses a **Hybrid Persistence** model:
     *   **Scope**: Persistent across restarts (volume mounted in Docker).
     *   **File**: `player_preferences.json` (managed by `core/storage.ts`).
 
-### 3. Firebase (Firestore)
+### 4. Firebase (Firestore)
 
-- **Role**: Real-time sync between the bot and the Activity frontend. No direct HTTP API between frontend and bot.
-- **Data**: One collection, `sessions`. Each document is one Activity instance.
+- **Role**: Real-time sync between the bot and the Activity frontend. No direct HTTP API between frontend and bot. Also used as a cache and data source for external API data (Affixes, Characters).
+- **Data**: Collections: `sessions`, `affixes`, `characters`.
 
 **Session document shape (conceptual):**
 
@@ -133,11 +156,11 @@ erDiagram
 ```
 
 - **Bot**: creates the document (status `lobby`), updates `players` on voice changes, and on `request_spin` writes `status: spinning` and `groups`. Listens for `completed` to announce in Discord.
-- **Frontend**: subscribes with `onSnapshot` to the document (using `sessionId` from the URL), updates `status` to `request_spin` when the user clicks Spin, then to `completed` when the wheel animation finishes.
+- **Frontend**: subscribes with `onSnapshot` to the document (using `sessionId` from the URL), updates `status` to `request_spin` when the user clicks Spin, then to `completed` when the wheel animation finishes. It also reads `affixes` and `characters` on demand.
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
 
-### 4. Activity Frontend (TypeScript / Vite)
+### 5. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
 - **Entry**: `activity/src/main.ts`. On load it reads `sessionId` from the query string (`?sessionId=...`). If missing, it shows a message like “Use /activity in Discord.”
@@ -225,6 +248,8 @@ sequenceDiagram
 | Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
 | “Spin” handling | `SessionService.processSpinRequest` |
 | Activity UI and wheel | `activity/src/main.ts`, `activity/src/wheel.ts` |
+| Character Lookup | `packages/functions/src/lookupCharacter.ts` |
+| Weekly Affix Sync | `packages/functions/src/fetchWeeklyAffixes.ts` |
 | Session cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
 
 ---
@@ -260,8 +285,12 @@ flowchart LR
         Issues[GitHub Issues]
     end
 
+    subgraph CloudFunctions
+        CF[lookupCharacter, fetchWeeklyAffixes]
+    end
+
     subgraph Firestore
-        S[(sessions)]
+        S[(sessions, affixes, characters)]
     end
 
     subgraph Activity
@@ -279,11 +308,14 @@ flowchart LR
     SS --> S
     Role --> Store
     Cmd --> Issues
+    UI --> CF
+    CF <--> S
 ```
 
 - **Bot**: commands and voice events → GroupService + SessionService → FirebaseService → Firestore.
-- **Firestore**: shared session state.
-- **Activity**: URL with `sessionId` → subscribe to session → user clicks Spin → write status → read updates and drive UI.
+- **Firestore**: shared session state, characters cache, and weekly affixes.
+- **Activity**: URL with `sessionId` → subscribe to session → user clicks Spin → write status → read updates and drive UI. It also interacts with Cloud Functions for character and affix data.
+- **Cloud Functions**: Proxies to external APIs and writes to Firestore.
 - **Storage**: User role preferences are saved locally.
 - **Issues**: Bug reports are sent to GitHub.
 
