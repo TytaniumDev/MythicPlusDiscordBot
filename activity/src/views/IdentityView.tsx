@@ -11,14 +11,12 @@ interface IdentityViewProps {
 
 export function IdentityView({ onNavigate }: IdentityViewProps) {
   const channelData = useAppStore((s) => s.channelData);
-  const claimedPlayers = channelData?.claimedPlayers ?? [];
   const players = channelData?.players ?? [];
   const { selectPlayer } = useIdentity();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const handleSelect = (player: WoWPlayer) => {
     if (!player.discordId) return;
-    if (claimedPlayers.includes(player.discordId)) return;
     setSelectedId(player.discordId);
   };
 
@@ -65,22 +63,19 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
             <div className="identity-grid">
               {players.map((player) => {
                 const id = player.discordId ?? player.name;
-                const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
                 const isSelected = player.discordId === selectedId;
                 return (
                   <button
                     key={id}
-                    className={`identity-card${isSelected ? ' identity-card--selected' : ''}${isClaimed ? ' identity-card--claimed' : ''}`}
+                    className={`identity-card${isSelected ? ' identity-card--selected' : ''}`}
                     onClick={() => handleSelect(player)}
-                    disabled={isClaimed}
-                    aria-label={isClaimed ? `${player.name} (already claimed)` : `Select ${player.name}`}
+                    aria-label={`Select ${player.name}`}
                   >
                     <div className="identity-card__avatar">
                       {player.name.charAt(0).toUpperCase()}
                     </div>
                     <span className="identity-card__name">{player.name}</span>
                     {isSelected && <span className="identity-card__check">{'\u2713'}</span>}
-                    {isClaimed && <span className="identity-card__claimed">Claimed</span>}
                   </button>
                 );
               })}
