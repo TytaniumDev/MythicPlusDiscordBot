@@ -11,6 +11,7 @@ interface IdentityViewProps {
 
 export function IdentityView({ onNavigate }: IdentityViewProps) {
   const channelData = useAppStore((s) => s.channelData);
+  const claimedPlayers = channelData?.claimedPlayers ?? [];
   const players = channelData?.players ?? [];
   const { selectPlayer } = useIdentity();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,19 +64,21 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
             <div className="identity-grid">
               {players.map((player) => {
                 const id = player.discordId ?? player.name;
+                const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
                 const isSelected = player.discordId === selectedId;
                 return (
                   <button
                     key={id}
-                    className={`identity-card${isSelected ? ' identity-card--selected' : ''}`}
+                    className={`identity-card${isSelected ? ' identity-card--selected' : ''}${isClaimed ? ' identity-card--claimed' : ''}`}
                     onClick={() => handleSelect(player)}
-                    aria-label={`Select ${player.name}`}
+                    aria-label={isClaimed ? `${player.name} (claimed)` : `Select ${player.name}`}
                   >
                     <div className="identity-card__avatar">
                       {player.name.charAt(0).toUpperCase()}
                     </div>
                     <span className="identity-card__name">{player.name}</span>
                     {isSelected && <span className="identity-card__check">{'\u2713'}</span>}
+                    {isClaimed && <span className="identity-card__claimed">Claimed</span>}
                   </button>
                 );
               })}
