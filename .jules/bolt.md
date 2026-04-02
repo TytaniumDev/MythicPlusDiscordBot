@@ -29,3 +29,6 @@
 ## 2026-03-12 - [O(1) Array Allocations in Group Creation loops]
 **Learning:** Found an O(N) intermediate array allocation in an inner loop for selecting players during group creation. By merging the filtering step into the selection step, we eliminate intermediate array allocations and avoid iterating through the entire list to find a single valid player.
 **Action:** Always avoid creating intermediate arrays (e.g. `filteredList`) in hot paths where a short-circuit return is possible, especially when iterating over a small subset of elements.
+## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
+**Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
+**Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
