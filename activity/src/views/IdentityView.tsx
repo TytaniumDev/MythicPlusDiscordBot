@@ -18,6 +18,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
 
   const handleSelect = (player: WoWPlayer) => {
     if (!player.discordId) return;
+    if (claimedPlayers.includes(player.discordId)) return;
     setSelectedId(player.discordId);
   };
 
@@ -71,7 +72,8 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                     key={id}
                     className={`identity-card${isSelected ? ' identity-card--selected' : ''}${isClaimed ? ' identity-card--claimed' : ''}`}
                     onClick={() => handleSelect(player)}
-                    aria-label={isClaimed ? `${player.name} (claimed)` : `Select ${player.name}`}
+                    disabled={isClaimed}
+                    aria-label={isClaimed ? `${player.name} (already claimed)` : `Select ${player.name}`}
                   >
                     <div className="identity-card__avatar">
                       {player.name.charAt(0).toUpperCase()}

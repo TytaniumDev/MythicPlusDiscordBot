@@ -2492,7 +2492,8 @@ button.role-section-header--collapsible {
   background: rgba(245, 158, 11, 0.08);
 }
 .identity-card--claimed {
-  opacity: 0.65;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .identity-card__avatar {
   width: 28px;

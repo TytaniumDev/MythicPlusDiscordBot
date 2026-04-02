@@ -110,21 +110,6 @@ export function App() {
       let view = parsed.view;
       const store = useAppStore.getState();
 
-      // Intercept navigation away from synchronized views (wheels/results)
-      // with a confirmation prompt, unless in demo mode
-      const syncedViews: ViewName[] = ['wheels', 'results'];
-      if (
-        syncedViews.includes(store.currentView) &&
-        !syncedViews.includes(view) &&
-        !store.isDemoMode
-      ) {
-        // Push the URL back to prevent the navigation
-        const currentRoute = viewToRoute(store.currentView, store.currentGuildId);
-        history.pushState({ view: store.currentView }, '', currentRoute);
-        store.setPendingBrowserBack(true);
-        return;
-      }
-
       let guildChanged = false;
       if (parsed.guildId && parsed.guildId !== store.currentGuildId && view !== 'home') {
         guildChanged = true;

@@ -1,5 +1,3 @@
-import { remapImageUrl } from '../discordSdk';
-
 interface CharacterHeaderProps {
   name: string;
   subtitle?: string;
@@ -8,14 +6,12 @@ interface CharacterHeaderProps {
 }
 
 export function CharacterHeader({ name, subtitle, color = 'var(--color-tank)', imageUrl }: CharacterHeaderProps) {
-  const proxiedUrl = remapImageUrl(imageUrl);
-
   return (
     <div className="character-header" style={{ '--ch-color': color } as React.CSSProperties}>
       <div className="character-header__avatar">
-        {proxiedUrl ? (
+        {imageUrl ? (
           <img
-            src={proxiedUrl}
+            src={imageUrl}
             alt={`${name} character model`}
             className="character-header__img"
           />

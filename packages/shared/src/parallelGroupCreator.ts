@@ -26,6 +26,11 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
   if (idx !== -1) list.splice(idx, 1);
 }
 
+/** Check if a player (by name) is in a list. */
+function isInList(list: WoWPlayer[], player: WoWPlayer): boolean {
+  return list.some((p) => p.equals(player));
+}
+
 export function createMythicPlusGroups(
   players: WoWPlayer[],
   _debug = true,
@@ -172,8 +177,7 @@ export function createMythicPlusGroups(
         const lustPlayer = grabNextAvailablePlayer(
           lustPlayers,
           currentGroup,
-          // ⚡ Bolt Opt: O(1) property check replaces O(N) array search
-          (p) => !(p.tankMain || p.offtank),
+          (p) => !isInList(availableTanks, p),
         );
 
         if (lustPlayer !== null) {
@@ -197,16 +201,14 @@ export function createMythicPlusGroups(
           brezPlayer = grabNextAvailablePlayer(
             brezPlayers,
             currentGroup,
-            // ⚡ Bolt Opt: O(1) property check replaces O(N) array search
-            (p) => !(p.tankMain || p.offtank) && !(p.healerMain || p.offhealer),
+            (p) => !isInList(availableTanks, p) && !isInList(availableHealers, p),
           );
         } else {
           // We don't have a healer, so grab any brez
           brezPlayer = grabNextAvailablePlayer(
             brezPlayers,
             currentGroup,
-            // ⚡ Bolt Opt: O(1) property check replaces O(N) array search
-            (p) => !(p.tankMain || p.offtank),
+            (p) => !isInList(availableTanks, p),
           );
         }
 

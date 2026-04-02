@@ -12,7 +12,6 @@ export function ToggleButton({ label, active, activeColor, className = '', ...pr
   return (
     <button
       className={`role-btn ${activeClass} ${className}`}
-      aria-pressed={!!active}
       {...props}
     >
       {label}

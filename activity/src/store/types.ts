@@ -46,9 +46,6 @@ export interface AppState {
   // Side panel group cards
   groupCards: GroupCardData[];
 
-  // Browser back interception for synchronized views
-  pendingBrowserBack: boolean;
-
   // Actions
   setView: (view: ViewName) => void;
   setGuildId: (id: string | null) => void;
@@ -70,7 +67,6 @@ export interface AppState {
   setPools: (tanks: WheelEntry[], healers: WheelEntry[], dps: WheelEntry[]) => void;
   addGroupCard: (card: GroupCardData) => void;
   clearGroupCards: () => void;
-  setPendingBrowserBack: (val: boolean) => void;
   resetSpinState: () => void;
   resetIdentity: () => void;
   resetSession: () => void;

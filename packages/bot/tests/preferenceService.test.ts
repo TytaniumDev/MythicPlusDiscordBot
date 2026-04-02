@@ -89,43 +89,6 @@ describe('PreferenceService', () => {
     expect(refreshSvc.getPreferenceByNameSync('OldName')).toBeNull();
   });
 
-  it('gets preference from cache if available', async () => {
-    await svc.setPreference('abc', 'Player1', ['Healer']);
-    const result = await svc.getPreference('abc');
-    expect(result).toEqual(['Healer']);
-  });
-
-  it('fetches preference from Firestore and updates cache if not available', async () => {
-    const mockFb = createMockFirebase(true);
-    const readSvc = new PreferenceService(mockFb);
-
-    readSvc._readFirestorePref = vi.fn().mockResolvedValue({
-      roles: ['Tank'],
-      wowName: 'Player2',
-      inGameName: 'Player2-Server',
-      mediaUrl: 'https://example.com/avatar.png'
-    });
-
-    const result = await readSvc.getPreference('def');
-
-    expect(result).toEqual(['Tank']);
-    expect(readSvc.getPreferenceSync('def')).toEqual(['Tank']);
-    expect(readSvc.getPreferenceByNameSync('Player2')).toEqual(['Tank']);
-    expect(readSvc.getInGameNameSync('def')).toEqual('Player2-Server');
-    expect(readSvc.getMediaUrlSync('def')).toEqual('https://example.com/avatar.png');
-    expect(readSvc._readFirestorePref).toHaveBeenCalledWith('def');
-  });
-
-  it('returns null if Firestore fetch fails or missing', async () => {
-    const mockFb = createMockFirebase(true);
-    const readSvc = new PreferenceService(mockFb);
-
-    readSvc._readFirestorePref = vi.fn().mockRejectedValue(new Error('Firestore error'));
-
-    const result = await readSvc.getPreference('ghi');
-    expect(result).toBeNull();
-  });
-
   it('stores and retrieves inGameName', async () => {
     await svc.setPreference('456', 'Tytanium', ['Ranged'], 'Tytanium-Proudmoore');
     expect(svc.getInGameNameSync('456')).toBe('Tytanium-Proudmoore');

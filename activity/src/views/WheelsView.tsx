@@ -7,7 +7,6 @@ import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGri
 import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
-import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { PrimaryCTA, Checkbox } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
@@ -41,17 +40,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
   const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults === true);
-  const [showConfirmBack, setShowConfirmBack] = useState(false);
-  const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
 
   useEffect(() => {
     setAnnounceChecked(channelData?.announceResults === true);
   }, [channelData?.announceResults]);
-
-  // Show confirmation dialog when browser back is intercepted
-  useEffect(() => {
-    if (pendingBrowserBack) setShowConfirmBack(true);
-  }, [pendingBrowserBack]);
 
   const markedPools = useMemo(() => {
     if (poolTanks.length === 0 && poolHealers.length === 0 && poolDps.length === 0) return null;
@@ -352,25 +344,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     await service.cancelToLobby();
   }, [service, onNavigate]);
 
-  const requestBack = useCallback(() => {
-    if (isDemoMode) {
-      handleCancel();
-    } else {
-      setShowConfirmBack(true);
-    }
-  }, [isDemoMode, handleCancel]);
-
-  const confirmBack = useCallback(() => {
-    setShowConfirmBack(false);
-    useAppStore.getState().setPendingBrowserBack(false);
-    handleCancel();
-  }, [handleCancel]);
-
-  const cancelBack = useCallback(() => {
-    setShowConfirmBack(false);
-    useAppStore.getState().setPendingBrowserBack(false);
-  }, []);
-
   const handleAnnounceChange = useCallback(async (checked: boolean) => {
     setAnnounceChecked(checked);
     if (!isDemoMode) {
@@ -396,7 +369,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     <div className="main-layout">
       <HeaderBar
         title={wheelStatus}
-        onBack={requestBack}
+        onBack={handleCancel}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
       />
@@ -450,9 +423,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           )}
         </section>
       </main>
-      {showConfirmBack && (
-        <ConfirmBackDialog onConfirm={confirmBack} onCancel={cancelBack} />
-      )}
     </div>
   );
 }

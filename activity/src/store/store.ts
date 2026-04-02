@@ -41,9 +41,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Side panel
   groupCards: [],
 
-  // Browser back interception
-  pendingBrowserBack: false,
-
   // Actions
   setView: (view: ViewName) => set({ currentView: view }),
   setGuildId: (id: string | null) => set({ currentGuildId: id }),
@@ -75,7 +72,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   addGroupCard: (card: GroupCardData) =>
     set((s) => ({ groupCards: [...s.groupCards, card] })),
   clearGroupCards: () => set({ groupCards: [] }),
-  setPendingBrowserBack: (val: boolean) => set({ pendingBrowserBack: val }),
   resetSpinState: () =>
     set({
       fullGroups: [],
@@ -87,7 +83,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       poolHealers: [],
       poolDps: [],
       groupCards: [],
-      pendingBrowserBack: false,
     }),
   resetIdentity: () =>
     set({

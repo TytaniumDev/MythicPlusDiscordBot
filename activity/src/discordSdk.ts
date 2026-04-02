@@ -22,17 +22,12 @@ try {
   _isEmbedded = true;
 }
 
-const IMAGE_PROXY_PREFIX = '/blizzard-renders';
-const IMAGE_PROXY_TARGET = 'render.worldofwarcraft.com';
-
 if (_isEmbedded) {
   const mappings: { prefix: string; target: string }[] = [
     { prefix: '/firebase', target: 'firestore.googleapis.com' },
     // Firebase Auth endpoints needed for anonymous sign-in
     { prefix: '/auth', target: 'identitytoolkit.googleapis.com' },
     { prefix: '/authtoken', target: 'securetoken.googleapis.com' },
-    // Battle.net character renders (profile pictures)
-    { prefix: IMAGE_PROXY_PREFIX, target: IMAGE_PROXY_TARGET },
   ];
 
   // Cloud Functions callable endpoint must also be proxied in embedded mode.
@@ -46,23 +41,6 @@ if (_isEmbedded) {
 }
 
 export const isEmbedded = _isEmbedded;
-
-/**
- * Rewrite an external image URL to go through Discord's activity proxy.
- * Must be used for <img> src attributes since patchUrlMappings only patches fetch/XHR.
- */
-export function remapImageUrl(url: string | null | undefined): string | null {
-  if (!url || !_isEmbedded) return url || null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === IMAGE_PROXY_TARGET) {
-      return `${IMAGE_PROXY_PREFIX}${parsed.pathname}${parsed.search}${parsed.hash}`;
-    }
-    return url;
-  } catch {
-    return url;
-  }
-}
 
 let _sdkInstance: DiscordSDK | null = null;
 

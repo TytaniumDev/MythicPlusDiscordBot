@@ -416,25 +416,23 @@ export class FirebaseService implements IFirebaseService {
 
   // Collection Operations
 
-  /**
-   * Helper method to delete documents in batches of 500.
-   *
-   * @param docs - Array of FirebaseDocSnapshot to delete.
-   * @returns Total count of documents deleted.
-   */
-  private async _deleteDocumentsInBatches(docs: FirebaseDocSnapshot[]): Promise<number> {
-    if (!this.db || docs.length === 0) return 0;
+  async deleteOldDocs(collection: string, seconds: number): Promise<number> {
+    if (!this.db) return 0;
 
-    let batch = this.db.batch();
+    const db = this.db;
+    const cutoff = new Date(Date.now() - seconds * 1000);
+
+    const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
+    let batch = db.batch();
     let count = 0;
     const promises: Promise<unknown>[] = [];
 
-    for (const doc of docs) {
+    for (const doc of snapshot.docs) {
       batch.delete(doc.ref);
       count++;
       if (count % 500 === 0) {
         promises.push(batch.commit());
-        batch = this.db.batch();
+        batch = db.batch();
       }
     }
 
@@ -443,17 +441,6 @@ export class FirebaseService implements IFirebaseService {
     }
 
     await Promise.all(promises);
-    return count;
-  }
-
-  async deleteOldDocs(collection: string, seconds: number): Promise<number> {
-    if (!this.db) return 0;
-
-    const db = this.db;
-    const cutoff = new Date(Date.now() - seconds * 1000);
-
-    const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
-    const count = await this._deleteDocumentsInBatches(snapshot.docs);
 
     if (count > 0) {
       logger.info(
@@ -469,7 +456,25 @@ export class FirebaseService implements IFirebaseService {
 
     const db = this.db;
     const snapshot = await db.collection(collection).get();
-    const count = await this._deleteDocumentsInBatches(snapshot.docs);
+
+    let batch = db.batch();
+    let count = 0;
+    const promises: Promise<unknown>[] = [];
+
+    for (const docSnap of snapshot.docs) {
+      batch.delete(docSnap.ref);
+      count++;
+      if (count % 500 === 0) {
+        promises.push(batch.commit());
+        batch = db.batch();
+      }
+    }
+
+    if (count % 500 !== 0) {
+      promises.push(batch.commit());
+    }
+
+    await Promise.all(promises);
 
     if (count > 0) {
       logger.info(`Deleted all ${count} doc(s) from ${collection} collection`);

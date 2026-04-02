@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { GroupCard } from '../components/GroupCard';
 import { HeaderBar } from '../components/HeaderBar';
-import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { SecondaryButton } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
@@ -31,29 +30,6 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const groups = channelData?.groups || [];
   const players = channelData?.players || [];
   useIdentityResolver(players);
-
-  const [showConfirmBack, setShowConfirmBack] = useState(false);
-  const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
-
-  useEffect(() => {
-    if (pendingBrowserBack) setShowConfirmBack(true);
-  }, [pendingBrowserBack]);
-
-  const confirmBack = useCallback(async () => {
-    setShowConfirmBack(false);
-    useAppStore.getState().setPendingBrowserBack(false);
-    try {
-      await service.newRound();
-      onNavigate('lobby');
-    } catch {
-      onNavigate('home');
-    }
-  }, [service, onNavigate]);
-
-  const cancelBack = useCallback(() => {
-    setShowConfirmBack(false);
-    useAppStore.getState().setPendingBrowserBack(false);
-  }, []);
 
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportTitle, setReportTitle] = useState('');
@@ -171,14 +147,6 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
           </div>
         </section>
       </main>
-      {showConfirmBack && (
-        <ConfirmBackDialog
-          title="Leave Results?"
-          message="This will end the current session and return everyone to the lobby."
-          onConfirm={confirmBack}
-          onCancel={cancelBack}
-        />
-      )}
     </div>
   );
 }
