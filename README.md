@@ -2,7 +2,7 @@
 
 # MythicPlusDiscordBot 💎
 
-### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 🎨 Storybook ](https://tytaniumdev.github.io/MythicPlusDiscordBot/storybook/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/) [ 📖 Documentation ](#documentation-map) [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 <br/>
 
@@ -59,6 +59,7 @@ Get up and running in less than 5 minutes.
 *   **🚀 Deployment**: [Deployment Guide](./DEPLOYMENT.md) - Docker, Raspberry Pi, and GitHub Actions setup.
 *   **🎮 Activity Setup**: [Activity Configuration](./ACTIVITY_SETUP.md) - Configuring the Discord Activity and Frontend.
 *   **🔥 Firebase Setup**: [Firebase Configuration](./FIREBASE_SETUP.md) - Database and Auth configuration.
+*   **🤖 Agent Context**: [AGENTS.md](./AGENTS.md) - Instructions and standards for AI agents.
 *   **👨‍💻 Contributing**: [Development Standards](./CONTRIBUTING.md) - Development standards and guidelines.
 *   **🛡️ CI Standards**: [CI & Security Standards](./docs/CI_STANDARDS.md) - CI and security standards.
 
