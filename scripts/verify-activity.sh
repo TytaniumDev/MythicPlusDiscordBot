@@ -21,6 +21,6 @@ npm run build-storybook
 
 echo "5. Running Playwright Tests (Docker)..."
 cd ..
-./scripts/playwright-docker.sh
+./scripts/playwright-docker.sh "$@"
 
 echo "✅ Frontend Verification Complete!"
