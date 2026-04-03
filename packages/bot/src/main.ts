@@ -30,7 +30,7 @@ import { GeneralHandler } from './commands/general.js';
 import { GroupsHandler } from './commands/groups.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
-import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
+import { getWowName, getPlayerList } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
@@ -88,7 +88,7 @@ function wrapMessage(msg: DjsMessage): { edit(opts: { embed: PlainEmbed }): Prom
 // Adapter: Discord.js GuildMember → handler DiscordMember
 // ---------------------------------------------------------------------------
 
-function adaptMember(m: { nickname: string | null; displayName: string; id: string; user: { bot: boolean } }): DiscordMember & { bot: boolean; id: string } {
+function adaptMember(m: { nickname: string | null; displayName: string; id: string; user: { bot: boolean } }): { nick: string | null; global_name: string; id: string; bot: boolean; toString(): string } {
   return {
     nick: m.nickname,
     global_name: m.displayName,
