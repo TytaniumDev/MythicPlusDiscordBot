@@ -122,6 +122,33 @@ export class SessionService {
     await this.firebase.updateChannelDoc(active.docId, { players: playersData });
   }
 
+  async updateMultipleChannelsPlayers(channelIds: string[], guild: Guild): Promise<void> {
+    const updates: { channelId: string; data: Record<string, unknown> }[] = [];
+
+    for (const channelId of channelIds) {
+      const active = this.activeChannels.get(channelId);
+      if (!active) continue;
+
+      const channel = guild.get_channel(channelId);
+      let playersData: Record<string, unknown>[] = [];
+
+      if (channel) {
+        const members = channel.members.filter((m) => !m.bot);
+        const players = getPlayerList(members);
+        playersData = players.map((p) => p.toDict());
+      }
+
+      updates.push({
+        channelId: active.docId,
+        data: { players: playersData },
+      });
+    }
+
+    if (updates.length > 0) {
+      await this.firebase.updateChannelDocs(updates);
+    }
+  }
+
   async refreshGuildVoiceChannels(guild: Guild): Promise<void> {
     const voiceChannelsData: { id: string; name: string; userCount: number }[] = [];
     for (const vc of guild.voice_channels) {

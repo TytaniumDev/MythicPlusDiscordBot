@@ -71,6 +71,7 @@ export interface IFirebaseService {
     debug?: boolean,
   ): Promise<string>;
   updateChannelDoc(channelId: string, data: Record<string, unknown>): Promise<void>;
+  updateChannelDocs(updates: { channelId: string; data: Record<string, unknown> }[]): Promise<void>;
   deleteChannelDoc(channelId: string): Promise<void>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
   deleteAllInCollection(collection: string): Promise<number>;
@@ -251,6 +252,32 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection('channels').doc(channelId);
     await docRef.update(data);
+  }
+
+  async updateChannelDocs(updates: { channelId: string; data: Record<string, unknown> }[]): Promise<void> {
+    if (!this.db || updates.length === 0) return;
+
+    const db = this.db;
+    let batch = db.batch();
+    let count = 0;
+    const promises: Promise<void>[] = [];
+
+    for (const update of updates) {
+      const docRef = db.collection('channels').doc(update.channelId);
+      batch.update(docRef, update.data);
+      count++;
+
+      if (count % 500 === 0) {
+        promises.push(batch.commit());
+        batch = db.batch();
+      }
+    }
+
+    if (count % 500 !== 0) {
+      promises.push(batch.commit());
+    }
+
+    await Promise.all(promises);
   }
 
   async deleteChannelDoc(channelId: string): Promise<void> {

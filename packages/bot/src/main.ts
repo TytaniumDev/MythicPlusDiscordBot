@@ -1061,9 +1061,7 @@ async function main() {
           if (channelIds.length > 0) {
             const guildAdapter = createBotAdapter(client).get_guild(guild.id);
             if (guildAdapter) {
-              await Promise.all(
-                channelIds.map((chId) => sessionService.updateChannelPlayers(chId, guildAdapter)),
-              );
+              await sessionService.updateMultipleChannelsPlayers(channelIds, guildAdapter);
             }
           }
         }
