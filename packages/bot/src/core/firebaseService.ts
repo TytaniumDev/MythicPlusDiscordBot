@@ -19,6 +19,7 @@ export let ARRAY_REMOVE: (...elements: unknown[]) => unknown = (...elements) => 
 type FirebaseDb = {
   collection: (name: string) => FirebaseCollection;
   batch: () => FirebaseBatch;
+  getAll: (...documentRefs: FirebaseDocRef[]) => Promise<FirebaseDocSnapshot[]>;
 };
 
 type FirebaseCollection = {

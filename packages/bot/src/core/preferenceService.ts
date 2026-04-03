@@ -13,6 +13,7 @@ export interface IPreferenceService {
   setPreference(discordId: string, name: string, roles: string[], inGameName?: string): Promise<void>;
   clearPreference(discordId: string): Promise<void>;
   refreshPreference(discordId: string): Promise<void>;
+  refreshPreferences(discordIds: string[]): Promise<void>;
   getPreferenceSync(discordId: string): string[] | null;
   getPreferenceByNameSync(name: string): string[] | null;
   getInGameNameSync(discordId: string): string;
@@ -206,6 +207,56 @@ export class PreferenceService implements IPreferenceService {
       }
     } catch {
       logger.error(`Firestore refresh failed for ${discordId}`);
+    }
+  }
+
+  async refreshPreferences(discordIds: string[]): Promise<void> {
+    if (!this._firebaseOk() || !this.firebase.db) return;
+    if (discordIds.length === 0) return;
+
+    try {
+      const db = this.firebase.db;
+      const refCollection = db.collection('preferences');
+
+      // getAll supports up to 100 documents per batch realistically
+      // But we will chunk by 100 just to be safe
+      const chunkSize = 100;
+      for (let i = 0; i < discordIds.length; i += chunkSize) {
+        const chunkIds = discordIds.slice(i, i + chunkSize);
+        const refs = chunkIds.map(id => refCollection.doc(id));
+
+        const docs = await db.getAll(...refs);
+
+        for (let j = 0; j < docs.length; j++) {
+          const docSnap = docs[j];
+          const discordId = chunkIds[j];
+
+          if (docSnap.exists) {
+            const data = docSnap.data() as Record<string, unknown>;
+            const roles = (data.roles as string[]) ?? [];
+            const name = (data.wowName as string) ?? '';
+            const inGameName = (data.inGameName as string) ?? '';
+            const mediaUrl = (data.mediaUrl as string) ?? '';
+
+            this._cache[discordId] = roles;
+            this._clearNameMapping(discordId);
+            if (name) this._nameToId[name] = discordId;
+
+            if (inGameName) this._inGameNameCache[discordId] = inGameName;
+            else Reflect.deleteProperty(this._inGameNameCache, discordId);
+
+            if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
+            else Reflect.deleteProperty(this._mediaUrlCache, discordId);
+          } else {
+            Reflect.deleteProperty(this._cache, discordId);
+            Reflect.deleteProperty(this._inGameNameCache, discordId);
+            Reflect.deleteProperty(this._mediaUrlCache, discordId);
+            this._clearNameMapping(discordId);
+          }
+        }
+      }
+    } catch (e) {
+      logger.error(`Firestore batch refresh failed for ${discordIds.length} users: ${e}`);
     }
   }
 

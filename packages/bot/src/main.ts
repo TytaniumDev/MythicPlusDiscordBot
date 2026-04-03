@@ -514,9 +514,7 @@ async function main() {
 
         // Refresh preference cache for these members so roles are up-to-date
         const prefSvc = getPreferenceService();
-        await Promise.all(
-          members.map((m) => prefSvc.refreshPreference(m.id)),
-        );
+        await prefSvc.refreshPreferences(members.map((m) => m.id));
 
         const players = getPlayerList(members.map((m) => adaptMember(m)));
         const playersData = players.map((p) => p.toDict());
