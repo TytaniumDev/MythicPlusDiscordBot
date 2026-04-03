@@ -28,6 +28,7 @@ vi.mock('firebase-functions/v2/https', async (importOriginal) => {
     ...actual,
     onCall: vi.fn((opts, handler) => {
       const fn = handler;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (fn as any).run = handler;
       return fn;
     }),
@@ -129,6 +130,7 @@ describe('lookupCharacter rate limiting', () => {
     });
 
     // We need to call the actual handler. Since we mocked onCall to return the handler, we can call it directly.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect((lookupCharacter as any).run(mockRequest))
       .rejects.toThrow(new HttpsError('resource-exhausted', 'Rate limit exceeded'));
   });
@@ -167,6 +169,7 @@ describe('lookupCharacter rate limiting', () => {
     mockGetCharacterMedia.mockResolvedValue({ assets: [] });
 
     // Should not throw, should instead call transaction.set to reset
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (lookupCharacter as any).run(mockRequest);
     expect(mockSet).toHaveBeenCalled();
   });
