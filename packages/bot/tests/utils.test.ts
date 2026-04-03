@@ -53,6 +53,60 @@ describe('getWowName', () => {
     };
     expect(getWowName(member3)).toBe('UserName');
   });
+
+  it('removes multiple dots from names', () => {
+    const member: DiscordMember = {
+      nick: 'A.B.C.D.',
+      id: '4',
+      toString: () => 'Default',
+    };
+    expect(getWowName(member)).toBe('ABCD');
+  });
+
+  it('removes starting and ending dots', () => {
+    const member: DiscordMember = {
+      nick: '.Name.',
+      id: '5',
+      toString: () => 'Default',
+    };
+    expect(getWowName(member)).toBe('Name');
+  });
+
+  it('leaves names without dots unchanged', () => {
+    const member: DiscordMember = {
+      nick: 'NormalName',
+      id: '6',
+      toString: () => 'Default',
+    };
+    expect(getWowName(member)).toBe('NormalName');
+  });
+
+  it('uses toString when nick and global_name are undefined', () => {
+    const member: DiscordMember = {
+      id: '7',
+      toString: () => 'StringName',
+    };
+    expect(getWowName(member)).toBe('StringName');
+  });
+
+  it('handles empty string properly', () => {
+    const member: DiscordMember = {
+      nick: '',
+      id: '8',
+      toString: () => 'Default',
+    };
+    expect(getWowName(member)).toBe('');
+  });
+
+  it('handles null properties properly', () => {
+    const member: DiscordMember = {
+      nick: null,
+      global_name: 'NullTester',
+      id: '9',
+      toString: () => 'Default',
+    };
+    expect(getWowName(member)).toBe('NullTester');
+  });
 });
 
 describe('getDebugPlayers', () => {
