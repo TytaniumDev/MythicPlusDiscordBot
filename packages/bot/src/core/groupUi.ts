@@ -1,4 +1,5 @@
-import { generateInviteCommand, type WoWGroup } from '@mythicplus/shared';
+import { generateInviteCommand } from '@mythicplus/shared';
+import type { WoWGroup } from '@mythicplus/shared';
 import { PLACEHOLDER_CHAR } from './config.js';
 import { getMaskedName, showShortTyping } from './utils.js';
 
