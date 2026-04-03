@@ -51,6 +51,9 @@ export function createMythicPlusGroups(
   players = [...players];
   const usedPlayers = new Set<string>(); // Track by name
 
+  // Track ineligible players per group incrementally
+  const groupIneligiblePlayers = new Map<WoWGroup, { processedCount: number, ineligible: Set<string> }>();
+
   const maximumPossibleGroups = Math.floor(players.length / 5);
 
   // Tanks — partition offtanks so healer-capable players are used last
@@ -122,16 +125,28 @@ export function createMythicPlusGroups(
     group: WoWGroup,
     predicate?: (player: WoWPlayer) => boolean,
   ): WoWPlayer | null {
+    // Get or initialize the incremental tracker for this group
+    let tracker = groupIneligiblePlayers.get(group);
+    if (!tracker) {
+      tracker = { processedCount: 0, ineligible: new Set<string>() };
+      groupIneligiblePlayers.set(group, tracker);
+    }
+
     const teammates = group.players;
 
-    // Pre-check: Find all players that are ineligible due to previous grouping
-    const ineligiblePlayers = new Set<string>();
-    for (const teammate of teammates) {
-      const prev = lastGroupsDict.get(teammate.name);
-      if (prev) {
-        for (const name of prev) ineligiblePlayers.add(name);
+    // Incrementally update the ineligible set only for newly added players
+    if (tracker.processedCount < teammates.length) {
+      for (let i = tracker.processedCount; i < teammates.length; i++) {
+        const teammate = teammates[i];
+        const prev = lastGroupsDict.get(teammate.name);
+        if (prev) {
+          for (const name of prev) tracker.ineligible.add(name);
+        }
       }
+      tracker.processedCount = teammates.length;
     }
+
+    const ineligiblePlayers = tracker.ineligible;
 
     // Try to grab a player from the available list who hasn't played with this group before
     for (const player of availablePlayers) {
