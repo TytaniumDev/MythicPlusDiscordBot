@@ -13,62 +13,30 @@ on:
 jobs:
   verify-activity:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: write
-    outputs:
-      snapshot-pushed: ${{ steps.snapshot-commit.outputs.pushed }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Check if last commit is automated snapshot update
-        id: bot-check
-        run: |
-          AUTHOR=$(git log -1 --format='%an')
-          MSG=$(git log -1 --format='%s')
-          if [ "$AUTHOR" = "github-actions[bot]" ] && [[ "$MSG" == "chore: update visual test snapshots"* ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping — last commit was an automated snapshot update."
-          fi
 
       - name: Setup Node
-        if: steps.bot-check.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
-        if: steps.bot-check.outputs.skip != 'true'
         run: npm ci
 
-      - name: Verify Activity
-        if: steps.bot-check.outputs.skip != 'true'
+      - name: Verify Activity (typecheck, build, Storybook, Playwright)
         run: ./scripts/verify-activity.sh --update-and-verify
 
-      - name: Commit updated snapshots
-        id: snapshot-commit
-        if: steps.bot-check.outputs.skip != 'true'
+      - name: Fail if snapshots are outdated
         run: |
-          git add activity/tests/__screenshots__/
-          if git diff --cached --quiet; then
-            echo "No snapshot changes to commit."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: update visual test snapshots"
-            git push
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          if ! git diff --quiet activity/tests/__screenshots__/; then
+            echo "::error::Visual test snapshots are outdated. Run locally and commit the results:"
+            echo "::error::  ./scripts/playwright-docker.sh --update-snapshots"
+            echo ""
+            echo "Changed snapshots:"
+            git diff --name-only activity/tests/__screenshots__/
+            exit 1
           fi
-
-  # When the bot pushes snapshot updates, the new commit won't get
-  # pull_request-triggered CI checks (GitHub Actions pushes don't fire
-  # PR events). Run CI inline so branch protection required checks
-  # (CI / Lint, CI / Build, CI / Test) are satisfied on the new SHA.
-  CI:
-    needs: verify-activity
-    if: needs.verify-activity.outputs.snapshot-pushed == 'true'
-    uses: ./.github/workflows/ci-shared.yml
+          echo "All snapshots are up-to-date."

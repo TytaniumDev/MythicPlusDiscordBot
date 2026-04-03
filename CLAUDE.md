@@ -115,6 +115,16 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 - Frontend E2E tests use Playwright and are in `activity/tests/`
 - Shared package test helpers: `packages/bot/tests/prebuiltClasses.ts`
 
+### Visual Snapshot Tests
+
+**If you modify any UI code** (`activity/src/`), you MUST update visual test snapshots before committing:
+
+```bash
+./scripts/playwright-docker.sh --update-snapshots
+```
+
+Then commit the updated screenshots in `activity/tests/__screenshots__/` alongside your code changes. CI will fail if committed snapshots don't match what the Docker Playwright run produces. Never commit snapshots generated outside Docker.
+
 ## Environment Variables
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
