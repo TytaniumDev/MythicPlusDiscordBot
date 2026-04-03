@@ -44,11 +44,12 @@ export function buildCharacterResult(
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const lookupCharacter = onCall(
-  { enforceAppCheck: false },
+  { enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');
     }
+
     const { name, realm, region } = request.data as {
       name?: string;
       realm?: string;
@@ -66,6 +67,29 @@ export const lookupCharacter = onCall(
     }
 
     const db = getFirestore();
+    const uid = request.auth.uid;
+    const rateLimitRef = db.doc(`rateLimits/${uid}`);
+
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(rateLimitRef);
+      const now = Date.now();
+      const data = doc.data();
+
+      if (!data || (now - (data.lastReset?.toMillis() || 0) > 60000)) {
+        transaction.set(rateLimitRef, {
+          count: 1,
+          lastReset: Timestamp.now(),
+        });
+      } else {
+        if (data.count >= 5) {
+          throw new HttpsError('resource-exhausted', 'Rate limit exceeded');
+        }
+        transaction.update(rateLimitRef, {
+          count: data.count + 1,
+        });
+      }
+    });
+
     const cacheRef = db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`);
 
     // Check cache
