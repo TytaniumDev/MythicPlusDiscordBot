@@ -1,10 +1,8 @@
-import { SessionService, type Bot, type Guild } from '../services/sessionService.js';
+import { SessionService, type Bot, type Guild, type VoiceChannel } from '../services/sessionService.js';
 import type { GroupService } from '../services/groupService.js';
 import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
-
-import { type VoiceChannel } from '../services/sessionService.js';
 
 export interface GroupsContext {
   guild: { id: string } | null;
