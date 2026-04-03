@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import {
   STORAGE_FILE,
@@ -10,6 +10,7 @@ import {
   getAllPreferences,
   _resetCache,
 } from '../src/core/storage.js';
+import logger from '../src/core/logger.js';
 
 describe('Storage', () => {
   let backupExists = false;
@@ -27,9 +28,13 @@ describe('Storage', () => {
       fs.unlinkSync(STORAGE_FILE);
     }
     if (backupExists) {
+      if (fs.existsSync(STORAGE_FILE)) {
+        fs.unlinkSync(STORAGE_FILE);
+      }
       fs.renameSync(STORAGE_FILE + '.bak', STORAGE_FILE);
     }
     _resetCache();
+    vi.restoreAllMocks();
   });
 
   it('caches after first load', () => {
@@ -76,13 +81,44 @@ describe('Storage', () => {
   });
 
   it('handles corrupt file', () => {
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
     fs.writeFileSync(STORAGE_FILE, '{invalid json');
     const prefs = loadPreferences();
     expect(prefs).toEqual({});
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Error loading preferences: SyntaxError'),
+    );
+  });
+
+  it('handles read errors', () => {
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+    const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
+      throw new Error('Read failed');
+    });
+    // We need the file to exist for ensureLoaded to try reading it
+    fs.writeFileSync(STORAGE_FILE, '{}');
+
+    const prefs = loadPreferences();
+    expect(prefs).toEqual({});
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Error loading preferences: Error'));
+
+    readSpy.mockRestore();
   });
 
   it('returns empty when file does not exist', () => {
     const prefs = loadPreferences();
     expect(prefs).toEqual({});
+  });
+
+  it('handles save errors', () => {
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+    const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {
+      throw new Error('Write failed');
+    });
+
+    savePreferences({ Test: ['Role'] });
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Error saving preferences: Error'));
+
+    writeSpy.mockRestore();
   });
 });
