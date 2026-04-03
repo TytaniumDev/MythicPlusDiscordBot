@@ -123,6 +123,9 @@ export class PreferenceService implements IPreferenceService {
   }
 
   async setPreference(discordId: string, name: string, roles: string[], inGameName?: string): Promise<void> {
+    if (discordId === '__proto__' || discordId === 'constructor' || discordId === 'prototype') return;
+    if (name === '__proto__' || name === 'constructor' || name === 'prototype') return;
+
     this._cache[discordId] = roles;
     this._nameToId[name] = discordId;
     if (inGameName !== undefined) {
@@ -146,6 +149,8 @@ export class PreferenceService implements IPreferenceService {
   }
 
   async clearPreference(discordId: string): Promise<void> {
+    if (discordId === '__proto__' || discordId === 'constructor' || discordId === 'prototype') return;
+
     // Find name for local cleanup
     const name =
       Object.entries(this._nameToId).find(([, did]) => did === discordId)?.[0] ?? null;
@@ -177,15 +182,21 @@ export class PreferenceService implements IPreferenceService {
 
   async refreshPreference(discordId: string): Promise<void> {
     if (!this._firebaseOk()) return;
+    if (discordId === '__proto__' || discordId === 'constructor' || discordId === 'prototype') return;
+
     try {
       const data = await this._readFirestorePref(discordId);
       if (data !== null) {
         const roles = (data.roles as string[]) ?? [];
         const name = (data.wowName as string) ?? '';
         const inGameName = (data.inGameName as string) ?? '';
+
         this._cache[discordId] = roles;
         this._clearNameMapping(discordId);
-        if (name) this._nameToId[name] = discordId;
+
+        if (name && name !== '__proto__' && name !== 'constructor' && name !== 'prototype') {
+          this._nameToId[name] = discordId;
+        }
         if (inGameName) this._inGameNameCache[discordId] = inGameName;
         else Reflect.deleteProperty(this._inGameNameCache, discordId);
       } else {

@@ -50,12 +50,14 @@ export function getPlayerPreference(playerName: string): string[] | null {
 }
 
 export function setPlayerPreference(playerName: string, roles: string[]): void {
+  if (playerName === '__proto__' || playerName === 'constructor' || playerName === 'prototype') return;
   const prefs = loadPreferences();
   prefs[playerName] = roles;
   savePreferences(prefs);
 }
 
 export function clearPlayerPreference(playerName: string): boolean {
+  if (playerName === '__proto__' || playerName === 'constructor' || playerName === 'prototype') return false;
   const prefs = loadPreferences();
   if (playerName in prefs) {
     Reflect.deleteProperty(prefs, playerName);
