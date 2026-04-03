@@ -1,6 +1,8 @@
 import { WoWGroup, WoWPlayer, createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
-import { announceGroup, type Sendable } from '../core/groupUi.js';
-import { getDebugPlayers, getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
+import { announceGroup } from '../core/groupUi.js';
+import type { Sendable } from '../core/groupUi.js';
+import { getDebugPlayers, getPlayerList } from '../core/utils.js';
+import type { DiscordMember, TypingChannel } from '../core/utils.js';
 import { FirebaseService } from '../core/firebaseService.js';
 import logger from '../core/logger.js';
 
