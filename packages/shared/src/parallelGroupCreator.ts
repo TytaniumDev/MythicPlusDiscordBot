@@ -166,8 +166,13 @@ export function createMythicPlusGroups(
   }
 
   function fillTanks(): void {
-    for (const currentGroup of groups) {
-      currentGroup.tank = grabNextAvailablePlayer(availableTanks, currentGroup);
+    const tiers = [mainTanks, offTanks, offTanksWithHeal];
+    for (const tier of tiers) {
+      for (const currentGroup of groups) {
+        if (currentGroup.tank === null) {
+          currentGroup.tank = grabNextAvailablePlayer(tier, currentGroup);
+        }
+      }
     }
   }
 
@@ -225,42 +230,43 @@ export function createMythicPlusGroups(
   }
 
   function fillHealers(): void {
-    for (const currentGroup of groups) {
-      if (currentGroup.healer === null) {
-        const mainHealer = grabNextAvailablePlayer(mainHealers, currentGroup);
-        if (mainHealer !== null) {
-          currentGroup.healer = mainHealer;
-        } else {
-          const offHealer = grabNextAvailablePlayer(availableHealers, currentGroup);
-          if (offHealer !== null) {
-            currentGroup.healer = offHealer;
-          }
+    const tiers = [pureMainHealers, flexMainHealers, offHealers];
+    for (const tier of tiers) {
+      for (const currentGroup of groups) {
+        if (currentGroup.healer === null) {
+          currentGroup.healer = grabNextAvailablePlayer(tier, currentGroup);
         }
       }
     }
   }
 
   function fillRanged(): void {
-    for (const currentGroup of groups) {
-      if (!currentGroup.hasRanged) {
-        const rangedDps = grabNextAvailablePlayer(
-          availableDps,
-          currentGroup,
-          (p) => p.ranged,
-        );
-        if (rangedDps !== null) {
-          currentGroup.dps.push(rangedDps);
+    const tiers = [mainDps, offDps];
+    for (const tier of tiers) {
+      for (const currentGroup of groups) {
+        if (!currentGroup.hasRanged) {
+          const rangedDps = grabNextAvailablePlayer(
+            tier,
+            currentGroup,
+            (p) => p.ranged,
+          );
+          if (rangedDps !== null) {
+            currentGroup.dps.push(rangedDps);
+          }
         }
       }
     }
   }
 
   function fillRemainingDps(): void {
-    for (const currentGroup of groups) {
-      while (currentGroup.dps.length < 3) {
-        const dpsPlayer = grabNextAvailablePlayer(availableDps, currentGroup);
-        if (dpsPlayer === null) break;
-        currentGroup.dps.push(dpsPlayer);
+    const tiers = [mainDps, offDps];
+    for (const tier of tiers) {
+      for (const currentGroup of groups) {
+        while (currentGroup.dps.length < 3) {
+          const dpsPlayer = grabNextAvailablePlayer(tier, currentGroup);
+          if (dpsPlayer === null) break;
+          currentGroup.dps.push(dpsPlayer);
+        }
       }
     }
   }
@@ -288,8 +294,8 @@ export function createMythicPlusGroups(
             remainderGroup.dps.push(player);
             placed = true;
           }
-          // Priority 2: place by offspec
-          else if (player.offtank && remainderGroup.tank === null) {
+          // Priority 2: place by offspec (excluding healer-mains as tanks)
+          else if (player.offtank && remainderGroup.tank === null && !player.healerMain) {
             remainderGroup.tank = player;
             placed = true;
           } else if (player.offhealer && remainderGroup.healer === null) {
@@ -297,6 +303,11 @@ export function createMythicPlusGroups(
             placed = true;
           } else if (player.offdps && remainderGroup.dps.length < 3) {
             remainderGroup.dps.push(player);
+            placed = true;
+          }
+          // Priority 3: healer-mains as tank if no other option
+          else if (player.offtank && remainderGroup.tank === null) {
+            remainderGroup.tank = player;
             placed = true;
           }
 

@@ -364,4 +364,49 @@ describe('GroupCreator', () => {
     const intersection = new Set([...dpsNames].filter((n) => expectedFreshDps.has(n)));
     expect(intersection.size).toBe(3);
   });
+
+  it('picks off-healer over main-healer in fillHealers when main-healer is a repeat teammate', () => {
+    const T1 = WoWPlayer.create('T1', ['Tank']);
+    const H1 = WoWPlayer.create('H1', ['Healer']);
+    const OH = WoWPlayer.create('OH', ['Ranged', 'Healer Offspec']);
+    const D1 = WoWPlayer.create('D1', ['Ranged']);
+    const D2 = WoWPlayer.create('D2', ['Ranged']);
+    const D3 = WoWPlayer.create('D3', ['Ranged']);
+
+    // T1 played with H1.
+    const h1 = new WoWGroup();
+    h1.tank = T1;
+    h1.healer = H1;
+    setLastGroups([h1]);
+
+    const players = [T1, H1, OH, D1, D2, D3];
+    const groups = createMythicPlusGroups(players);
+    const g0 = groups[0];
+
+    // Priority inversion check: H1 (main healer) should be picked over OH (off healer)
+    // even though T1 (tank) already played with H1.
+    expect(g0.healer?.name).toBe('H1');
+  });
+
+  it('demonstrates handleRemainders current behavior with healer-tank', () => {
+    // jim: Melee main, Tank offspec
+    const jim = WoWPlayer.create('jim', ['Melee', 'Tank Offspec']);
+    // Quill: Healer main, Tank offspec
+    const Quill = WoWPlayer.create('Quill', ['Healer', 'Tank Offspec']);
+    // D1: Ranged main
+    const D1 = WoWPlayer.create('D1', ['Ranged']);
+
+    // Players for handleRemainders. In handleRemainders, players are processed in order.
+    // D1 becomes DPS. Then jim (melee main) becomes DPS. Then Quill (healer main) becomes Healer.
+    // The tank slot remains empty because no tank-main was in the list.
+    const players = [D1, jim, Quill];
+
+    const groups = createMythicPlusGroups(players);
+    const g = groups[0];
+
+    expect(g.tank).toBeNull();
+    expect(g.healer?.name).toBe('Quill');
+    expect(g.dps.map((p) => p.name)).toContain('jim');
+    expect(g.dps.map((p) => p.name)).toContain('D1');
+  });
 });
