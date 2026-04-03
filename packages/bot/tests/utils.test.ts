@@ -103,10 +103,16 @@ describe('getPlayerList', () => {
 });
 
 describe('getMaskedName', () => {
-  it('returns question marks equal to string length', () => {
-    expect(getMaskedName('abc')).toBe('???');
+  it('returns all asterisks for lengths <= 2', () => {
     expect(getMaskedName('')).toBe('');
-    expect(getMaskedName('hello world')).toBe('???????????');
+    expect(getMaskedName('A')).toBe('*');
+    expect(getMaskedName('AB')).toBe('**');
+  });
+
+  it('keeps first and last character, masks middle with asterisks for lengths > 2', () => {
+    expect(getMaskedName('ABC')).toBe('A*C');
+    expect(getMaskedName('HelloWorld')).toBe('H********d');
+    expect(getMaskedName('A B C!')).toBe('A****!');
   });
 });
 
