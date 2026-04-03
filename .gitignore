@@ -49,6 +49,9 @@ addon/libs/*/
 !addon/libs/.gitkeep
 .DS_Store
 
+# MCP debug artifacts
+.playwright-mcp/
+
 # Claude Code
 .claude/worktrees/
 coverage/
