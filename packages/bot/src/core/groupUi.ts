@@ -52,9 +52,9 @@ export function getGroupDisplayNames(group: WoWGroup): GroupDisplayNames {
   return {
     tankName: group.tank?.name ?? PLACEHOLDER_CHAR,
     healerName: group.healer?.name ?? PLACEHOLDER_CHAR,
-    dps1Name: group.dps.length > 0 ? group.dps[0].name : PLACEHOLDER_CHAR,
-    dps2Name: group.dps.length > 1 ? group.dps[1].name : PLACEHOLDER_CHAR,
-    dps3Name: group.dps.length > 2 ? group.dps[2].name : PLACEHOLDER_CHAR,
+    dps1Name: group.dps[0]?.name ?? PLACEHOLDER_CHAR,
+    dps2Name: group.dps[1]?.name ?? PLACEHOLDER_CHAR,
+    dps3Name: group.dps[2]?.name ?? PLACEHOLDER_CHAR,
     brezPlayer: allPlayers.find((p) => p.hasBrez)?.name ?? 'None',
     lustPlayer: allPlayers.find((p) => p.hasLust)?.name ?? 'None',
   };
