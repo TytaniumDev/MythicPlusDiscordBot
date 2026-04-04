@@ -46,6 +46,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Rate Limits ---
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
     // --- Characters ---
     match /characters/{region}/{realm}/{name} {
       allow read: if false;
