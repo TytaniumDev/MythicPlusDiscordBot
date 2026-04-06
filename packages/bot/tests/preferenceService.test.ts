@@ -171,9 +171,9 @@ describe('PreferenceService', () => {
   });
 
   describe('Firestore CRUD helpers', () => {
-    let mockDb: any;
-    let mockDocRef: any;
-    let mockCollectionRef: any;
+    let mockDb: Record<string, ReturnType<typeof vi.fn>>;
+    let mockDocRef: Record<string, ReturnType<typeof vi.fn>>;
+    let mockCollectionRef: Record<string, ReturnType<typeof vi.fn>>;
     let readSvc: PreferenceService;
 
     beforeEach(() => {
@@ -191,7 +191,7 @@ describe('PreferenceService', () => {
       };
 
       const mockFb = createMockFirebase(true);
-      mockFb.db = mockDb;
+      mockFb.db = mockDb as unknown as FirebaseService['db'];
       readSvc = new PreferenceService(mockFb);
     });
 
@@ -270,13 +270,13 @@ describe('PreferenceService', () => {
 
   describe('loadCache fallbacks', () => {
     it('loadCache falls back to local and logs error if fetching fails', async () => {
-      const mockDb: any = {
+      const mockDb: Record<string, ReturnType<typeof vi.fn>> = {
         collection: vi.fn().mockReturnValue({
           get: vi.fn().mockRejectedValue(new Error('Fetch failed')),
         }),
       };
       const mockFb = createMockFirebase(true);
-      mockFb.db = mockDb;
+      mockFb.db = mockDb as unknown as FirebaseService['db'];
       const testSvc = new PreferenceService(mockFb);
 
       const { getAllPreferences } = await import('../src/core/storage.js');
@@ -293,7 +293,7 @@ describe('PreferenceService', () => {
       const mockFb = createMockFirebase(true);
       mockFb.db = null;
       const testSvc = new PreferenceService(mockFb);
-      const docs = await (testSvc as any)._fetchAllPreferences();
+      const docs = await (testSvc as unknown as { _fetchAllPreferences: () => Promise<unknown> })._fetchAllPreferences();
       expect(docs).toEqual({});
     });
   });
