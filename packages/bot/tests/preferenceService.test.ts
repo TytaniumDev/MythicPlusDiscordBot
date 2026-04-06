@@ -169,4 +169,132 @@ describe('PreferenceService', () => {
     expect(refreshSvc.getPreferenceSync('123')).toBeNull();
     expect(refreshSvc.getPreferenceByNameSync('Martz')).toBeNull();
   });
+
+  describe('Firestore CRUD helpers', () => {
+    let mockDb: any;
+    let mockDocRef: any;
+    let mockCollectionRef: any;
+    let readSvc: PreferenceService;
+
+    beforeEach(() => {
+      mockDocRef = {
+        get: vi.fn(),
+        set: vi.fn(),
+        delete: vi.fn(),
+      };
+      mockCollectionRef = {
+        doc: vi.fn().mockReturnValue(mockDocRef),
+        get: vi.fn(),
+      };
+      mockDb = {
+        collection: vi.fn().mockReturnValue(mockCollectionRef),
+      };
+
+      const mockFb = createMockFirebase(true);
+      mockFb.db = mockDb;
+      readSvc = new PreferenceService(mockFb);
+    });
+
+    it('_readFirestorePref returns data if doc exists', async () => {
+      mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ roles: ['Tank'] }),
+      });
+      const data = await readSvc._readFirestorePref('123');
+      expect(data).toEqual({ roles: ['Tank'] });
+      expect(mockDb.collection).toHaveBeenCalledWith('preferences');
+      expect(mockCollectionRef.doc).toHaveBeenCalledWith('123');
+    });
+
+    it('_readFirestorePref returns null if doc does not exist', async () => {
+      mockDocRef.get.mockResolvedValue({ exists: false });
+      const data = await readSvc._readFirestorePref('123');
+      expect(data).toBeNull();
+    });
+
+    it('_readFirestorePref returns null if db is not initialized', async () => {
+      const mockFbNoDb = createMockFirebase(true);
+      mockFbNoDb.db = null;
+      const noDbSvc = new PreferenceService(mockFbNoDb);
+      const data = await noDbSvc._readFirestorePref('123');
+      expect(data).toBeNull();
+    });
+
+    it('_writeFirestorePref writes preference data with merge true', async () => {
+      await readSvc._writeFirestorePref('123', 'Player1', ['Healer']);
+      expect(mockDocRef.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roles: ['Healer'],
+          wowName: 'Player1',
+        }),
+        { merge: true }
+      );
+      // Ensure inGameName wasn't included in payload
+      const args = mockDocRef.set.mock.calls[0][0];
+      expect(args).not.toHaveProperty('inGameName');
+    });
+
+    it('_writeFirestorePref includes inGameName if provided', async () => {
+      await readSvc._writeFirestorePref('123', 'Player1', ['Healer'], 'Player1-Realm');
+      expect(mockDocRef.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roles: ['Healer'],
+          wowName: 'Player1',
+          inGameName: 'Player1-Realm',
+        }),
+        { merge: true }
+      );
+    });
+
+    it('_writeFirestorePref does nothing if db is not initialized', async () => {
+      const mockFbNoDb = createMockFirebase(true);
+      mockFbNoDb.db = null;
+      const noDbSvc = new PreferenceService(mockFbNoDb);
+      await noDbSvc._writeFirestorePref('123', 'P1', []);
+      expect(mockDocRef.set).not.toHaveBeenCalled();
+    });
+
+    it('_deleteFirestorePref deletes doc', async () => {
+      await readSvc._deleteFirestorePref('123');
+      expect(mockDocRef.delete).toHaveBeenCalled();
+    });
+
+    it('_deleteFirestorePref does nothing if db is not initialized', async () => {
+      const mockFbNoDb = createMockFirebase(true);
+      mockFbNoDb.db = null;
+      const noDbSvc = new PreferenceService(mockFbNoDb);
+      await noDbSvc._deleteFirestorePref('123');
+      expect(mockDocRef.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadCache fallbacks', () => {
+    it('loadCache falls back to local and logs error if fetching fails', async () => {
+      const mockDb: any = {
+        collection: vi.fn().mockReturnValue({
+          get: vi.fn().mockRejectedValue(new Error('Fetch failed')),
+        }),
+      };
+      const mockFb = createMockFirebase(true);
+      mockFb.db = mockDb;
+      const testSvc = new PreferenceService(mockFb);
+
+      const { getAllPreferences } = await import('../src/core/storage.js');
+      vi.mocked(getAllPreferences).mockReturnValue({
+        FallbackPlayer: ['Healer'],
+      });
+
+      await testSvc.loadCache();
+
+      expect(testSvc.getPreferenceByNameSync('FallbackPlayer')).toEqual(['Healer']);
+    });
+
+    it('_fetchAllPreferences handles null db', async () => {
+      const mockFb = createMockFirebase(true);
+      mockFb.db = null;
+      const testSvc = new PreferenceService(mockFb);
+      const docs = await (testSvc as any)._fetchAllPreferences();
+      expect(docs).toEqual({});
+    });
+  });
 });
