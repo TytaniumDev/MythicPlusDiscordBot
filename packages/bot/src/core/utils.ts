@@ -24,17 +24,7 @@ export interface TypingChannel {
 }
 
 export function getWowName(member: DiscordMember): string {
-  const nick = member.nick;
-  let rawName: string;
-
-  if (nick != null) {
-    rawName = String(nick);
-  } else if (member.global_name != null) {
-    rawName = member.global_name;
-  } else {
-    rawName = String(member);
-  }
-
+  const rawName = member.nick ?? member.global_name ?? member.toString();
   return rawName.replace(/\./g, '');
 }
 
