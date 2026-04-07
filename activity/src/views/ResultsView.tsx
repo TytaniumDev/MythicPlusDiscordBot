@@ -130,6 +130,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
                 <input
                   type="text"
                   placeholder="Issue title"
+                  aria-label="Issue title"
                   value={reportTitle}
                   onChange={(e) => setReportTitle(e.target.value)}
                   className="report-input"
@@ -137,6 +138,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
                 />
                 <textarea
                   placeholder="Describe what's wrong with the group formation"
+                  aria-label="Issue description"
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   className="report-textarea"
