@@ -2,6 +2,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
+import { enforceRateLimit } from './rateLimit.js';
 
 export interface AffixDocument {
   period: number;
@@ -79,10 +80,14 @@ export const fetchWeeklyAffixes = onSchedule(
 );
 
 // On-demand: callable for manual refresh (e.g. after deploy, or if scheduled run failed)
-export const refreshAffixes = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Authentication required');
+export const refreshAffixes = onCall(
+  { enforceAppCheck: true },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required');
+    }
+    await enforceRateLimit(request.auth.uid, 'refreshAffixes', 5, 60000);
+    const doc = await fetchAndWriteAffixes();
+    return { period: doc.period, region: doc.region, affixCount: doc.affixes.length };
   }
-  const doc = await fetchAndWriteAffixes();
-  return { period: doc.period, region: doc.region, affixCount: doc.affixes.length };
-});
+);

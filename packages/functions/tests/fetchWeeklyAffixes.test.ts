@@ -16,7 +16,7 @@ describe('buildAffixDocument', () => {
 
     const devour = result.affixes.find(a => a.id === 160);
     expect(devour).toMatchObject({
-      nickname: 'dispel',
+      nickname: 'Dispel Allies',
       keystoneLevel: '+4–11',
       color: '#a855f7',
     });
