@@ -2686,8 +2686,8 @@ button.role-section-header--collapsible {
 }
 
 .spotlight-card {
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-subtle);
   border-radius: var(--radius-lg, 12px);
   padding: 24px 32px;
   min-width: 260px;
