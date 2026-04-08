@@ -130,7 +130,7 @@ describe('GroupsHandler.badgroup', () => {
 
     const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    vi.mocked(reportBadGroup).mockResolvedValue({ html_url: 'http://url' });
+    vi.mocked(reportBadGroup).mockResolvedValue({ number: 1, html_url: 'http://url', title: 'Title' });
 
     const ctx = makeCtx();
 

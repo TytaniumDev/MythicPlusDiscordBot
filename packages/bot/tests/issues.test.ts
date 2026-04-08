@@ -16,7 +16,6 @@ vi.mock('../src/core/config.js', () => ({
 import * as config from '../src/core/config.js';
 import {
   GitHubError,
-  GitHubIssueResponse,
   createGithubIssue,
   submitGithubIssueModal,
   getVersionString,
