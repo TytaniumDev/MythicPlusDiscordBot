@@ -27,16 +27,4 @@ jobs:
         run: npm ci
 
       - name: Verify Activity (typecheck, build, Storybook, Playwright)
-        run: ./scripts/verify-activity.sh --update-and-verify
-
-      - name: Fail if snapshots are outdated
-        run: |
-          if ! git diff --quiet activity/tests/__screenshots__/; then
-            echo "::error::Visual test snapshots are outdated. Run locally and commit the results:"
-            echo "::error::  ./scripts/playwright-docker.sh --update-snapshots"
-            echo ""
-            echo "Changed snapshots:"
-            git diff --name-only activity/tests/__screenshots__/
-            exit 1
-          fi
-          echo "All snapshots are up-to-date."
+        run: ./scripts/verify-activity.sh

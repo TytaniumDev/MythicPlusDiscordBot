@@ -228,7 +228,7 @@ export class FirebaseService implements IFirebaseService {
         players: [],
         groups: [],
         isDebug: debug,
-        announceResults: true,
+        announceResults: false,
         createdAt: SERVER_TIMESTAMP,
         lastActive: SERVER_TIMESTAMP,
       });
