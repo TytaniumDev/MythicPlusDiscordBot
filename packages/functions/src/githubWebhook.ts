@@ -107,6 +107,12 @@ export const onGithubIssueWebhook = onRequest(
       return;
     }
 
+    const eventType = req.headers['x-github-event'];
+    if (eventType !== 'issues') {
+      res.status(200).json({ result: 'ignored' });
+      return;
+    }
+
     const payload = req.body as WebhookPayload;
     const result = await handleIssueWebhook(payload, discordBotToken.value());
 
