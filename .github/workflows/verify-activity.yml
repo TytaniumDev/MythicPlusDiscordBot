@@ -10,12 +10,18 @@ on:
       - '.github/workflows/verify-activity.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   verify-activity:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
