@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
+import { withStore } from '../../.storybook/decorators';
 import { HeaderBar } from './HeaderBar';
 import { CountBadge } from './ui';
 
 const meta = {
   title: 'Organisms/HeaderBar',
   component: HeaderBar,
+  decorators: [withStore({ isDemoMode: true })],
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof HeaderBar>;
 
