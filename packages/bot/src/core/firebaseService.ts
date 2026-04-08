@@ -74,6 +74,11 @@ export interface IFirebaseService {
   deleteChannelDoc(channelId: string): Promise<void>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
   deleteAllInCollection(collection: string): Promise<number>;
+  subscribeToIssue(issueNumber: number, userId: string): Promise<void>;
+  unsubscribeFromIssue(issueNumber: number, userId: string): Promise<void>;
+  listenForNotifications(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null;
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
@@ -258,6 +263,72 @@ export class FirebaseService implements IFirebaseService {
     const docRef = this.db.collection('channels').doc(channelId);
     await docRef.delete();
     logger.debug(`Deleted channel doc ${channelId} from Firestore`);
+  }
+
+  // Issue Subscription Operations
+
+  async subscribeToIssue(issueNumber: number, userId: string): Promise<void> {
+    if (!this.db) throw new Error('Firebase is not initialized.');
+
+    const docId = String(issueNumber);
+    const docRef = this.db.collection('issueSubscriptions').doc(docId);
+
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      await docRef.set({
+        issueNumber,
+        userIds: [userId],
+        createdAt: SERVER_TIMESTAMP,
+        lastUpdated: SERVER_TIMESTAMP,
+      });
+    } else {
+      await docRef.update({
+        userIds: ARRAY_UNION(userId),
+        lastUpdated: SERVER_TIMESTAMP,
+      });
+    }
+    logger.info(`User ${userId} subscribed to issue #${issueNumber}`);
+  }
+
+  async unsubscribeFromIssue(issueNumber: number, userId: string): Promise<void> {
+    if (!this.db) throw new Error('Firebase is not initialized.');
+
+    const docId = String(issueNumber);
+    const docRef = this.db.collection('issueSubscriptions').doc(docId);
+
+    await docRef.update({
+      userIds: ARRAY_REMOVE(userId),
+      lastUpdated: SERVER_TIMESTAMP,
+    });
+    logger.info(`User ${userId} unsubscribed from issue #${issueNumber}`);
+  }
+
+  // Notification Listener
+
+  listenForNotifications(
+    callback: (docId: string, data: Record<string, unknown>) => void,
+  ): { unsubscribe(): void } | null {
+    if (!this.db) return null;
+
+    const collectionRef = this.db.collection('notifications');
+    const unsubscribe = collectionRef.onSnapshot(
+      (...args: unknown[]) => {
+        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data) {
+              callback(change.doc.id, data);
+            }
+          }
+        }
+      },
+      (...errArgs: unknown[]) => {
+        logger.error(`Notification listener error: ${errArgs[0]}`);
+      },
+    );
+
+    return { unsubscribe: unsubscribe as () => void };
   }
 
   // Bad Group Report Listener

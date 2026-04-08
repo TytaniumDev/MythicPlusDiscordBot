@@ -159,7 +159,12 @@ function createInteractionSender(interaction: ChatInputCommandInteraction) {
     },
     async send(
       content: string | { embed: PlainEmbed },
-      opts?: { embed?: PlainEmbed; ephemeral?: boolean; view?: string },
+      opts?: {
+        embed?: PlainEmbed;
+        ephemeral?: boolean;
+        view?: string;
+        issueNumber?: number;
+      },
     ) {
       // Build payload
       const payload: Record<string, unknown> = {};
@@ -181,6 +186,17 @@ function createInteractionSender(interaction: ChatInputCommandInteraction) {
             .setCustomId('role:edit')
             .setLabel('Edit My Roles')
             .setStyle(DjsButtonStyle.Success),
+        );
+        components.push(row);
+      }
+
+      // Add "Subscribe" button for issues
+      if (opts?.issueNumber) {
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`subscribe_issue:${opts.issueNumber}`)
+            .setLabel('Subscribe to Updates')
+            .setStyle(DjsButtonStyle.Primary),
         );
         components.push(row);
       }
@@ -232,6 +248,18 @@ const commands = [
     .setDescription('Request a feature')
     .addStringOption((opt) =>
       opt.setName('text').setDescription('Quick feature description (skips the form)').setRequired(false),
+    ),
+  new SlashCommandBuilder()
+    .setName('subscribe')
+    .setDescription('Subscribe to updates for a GitHub issue')
+    .addStringOption((opt) =>
+      opt.setName('issue').setDescription('Issue number or GitHub URL').setRequired(true),
+    ),
+  new SlashCommandBuilder()
+    .setName('unsubscribe')
+    .setDescription('Unsubscribe from updates for a GitHub issue')
+    .addStringOption((opt) =>
+      opt.setName('issue').setDescription('Issue number or GitHub URL').setRequired(true),
     ),
   new SlashCommandBuilder().setName('sitout').setDescription('Toggle sitting out of the current wheel spin round'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
@@ -331,6 +359,7 @@ async function main() {
   let channelRefreshListener: { unsubscribe(): void } | null = null;
   let channelStatusListener: { unsubscribe(): void } | null = null;
   let channelRemovedListener: { unsubscribe(): void } | null = null;
+  let notificationListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -598,6 +627,46 @@ async function main() {
     if (channelRemovedListener) {
       logger.info('Listening for channel doc removals');
     }
+
+    // Listen for issue notifications to deliver as DMs
+    notificationListener = firebase.listenForNotifications(async (docId, data) => {
+      try {
+        const userId = String(data.userId ?? '');
+        const message = String(data.message ?? '');
+        const url = String(data.url ?? '');
+
+        if (!userId || !message) {
+          await firebase.deleteDoc('notifications', docId);
+          return;
+        }
+
+        const user = await readyClient.users.fetch(userId);
+        if (user) {
+          const embed = new EmbedBuilder()
+            .setTitle('GitHub Issue Update')
+            .setDescription(message)
+            .setURL(url)
+            .setColor(0x3498db)
+            .setTimestamp();
+
+          await user.send({ embeds: [embed] });
+          logger.info(`Delivered DM to ${user.tag} for notification ${docId}`);
+        }
+      } catch (e) {
+        logger.error(`Failed to deliver notification ${docId}: ${e}`);
+      } finally {
+        // Always delete the notification doc after processing
+        try {
+          await firebase.deleteDoc('notifications', docId);
+        } catch (delErr) {
+          logger.error(`Failed to delete notification doc ${docId}: ${delErr}`);
+        }
+      }
+    });
+
+    if (notificationListener) {
+      logger.info('Listening for issue notifications');
+    }
   });
 
   // -- Interaction handler --
@@ -799,7 +868,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            await sender.send(`✅ Bug reported: ${issue.html_url}`);
+            await sender.send(`✅ Bug reported: ${issue.html_url}`, {
+              issueNumber: issue.number as number,
+            });
           } catch (e) {
             logger.error(`Failed to submit quick bug: ${e}`);
             const msg = e instanceof Error ? e.message : String(e);
@@ -848,6 +919,45 @@ async function main() {
         break;
       }
 
+      case 'subscribe':
+      case 'unsubscribe': {
+        const issueStr = interaction.options.getString('issue', true);
+        let issueNumber: number | null = null;
+
+        // Parse issue number from string or URL
+        if (/^\d+$/.test(issueStr)) {
+          issueNumber = parseInt(issueStr, 10);
+        } else {
+          const match = issueStr.match(/\/issues\/(\d+)/);
+          if (match) {
+            issueNumber = parseInt(match[1], 10);
+          }
+        }
+
+        if (issueNumber === null) {
+          await interaction.reply({
+            content: '❌ Invalid issue format. Please provide an issue number (e.g., `123`) or a GitHub issue URL.',
+            ephemeral: true,
+          });
+          break;
+        }
+
+        if (interaction.commandName === 'subscribe') {
+          await firebase.subscribeToIssue(issueNumber, interaction.user.id);
+          await interaction.reply({
+            content: `✅ You've subscribed to updates for issue #${issueNumber}! Wheelson will DM you when there are changes.`,
+            ephemeral: true,
+          });
+        } else {
+          await firebase.unsubscribeFromIssue(issueNumber, interaction.user.id);
+          await interaction.reply({
+            content: `✅ You've unsubscribed from updates for issue #${issueNumber}.`,
+            ephemeral: true,
+          });
+        }
+        break;
+      }
+
       case 'featurerequest': {
         const quickFeatureText = interaction.options.getString('text');
 
@@ -869,7 +979,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            await sender.send(`✅ Feature request created: ${issue.html_url}`);
+            await sender.send(`✅ Feature request created: ${issue.html_url}`, {
+              issueNumber: issue.number as number,
+            });
           } catch (e) {
             logger.error(`Failed to submit quick feature request: ${e}`);
             const msg = e instanceof Error ? e.message : String(e);
@@ -957,6 +1069,17 @@ async function main() {
   // -- Button handler --
   async function handleButton(interaction: ButtonInteraction) {
     const customId = interaction.customId;
+
+    const subscribeMatch = customId.match(/^subscribe_issue:(\d+)$/);
+    if (subscribeMatch) {
+      const issueNumber = parseInt(subscribeMatch[1], 10);
+      await firebase.subscribeToIssue(issueNumber, interaction.user.id);
+      await interaction.reply({
+        content: `✅ You've subscribed to updates for issue #${issueNumber}! Wheelson will DM you when there are changes.`,
+        ephemeral: true,
+      });
+      return;
+    }
 
     if (customId === 'role:edit') {
       // Start role selection for the user who clicked
@@ -1110,7 +1233,18 @@ async function main() {
           reporterName,
           reporterId,
         });
-        await interaction.editReply(`✅ Issue created: ${issue.html_url}`);
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`subscribe_issue:${issue.number}`)
+            .setLabel('Subscribe to Updates')
+            .setStyle(DjsButtonStyle.Primary),
+        );
+
+        await interaction.editReply({
+          content: `✅ Issue created: ${issue.html_url}`,
+          components: [row],
+        });
       } catch (e) {
         logger.error(`Failed to submit ${customId}: ${e}`);
         const msg = e instanceof Error ? e.message : String(e);
@@ -1140,7 +1274,18 @@ async function main() {
           players: lastResults.players,
           groups: lastResults.groups,
         });
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}`);
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`subscribe_issue:${issue.number}`)
+            .setLabel('Subscribe to Updates')
+            .setStyle(DjsButtonStyle.Primary),
+        );
+
+        await interaction.editReply({
+          content: `✅ Bad group reported: ${issue.html_url}`,
+          components: [row],
+        });
       } catch (e) {
         logger.error(`Failed to submit badgroup modal: ${e}`);
         const msg = e instanceof Error ? e.message : String(e);
@@ -1214,6 +1359,7 @@ async function main() {
     channelRefreshListener?.unsubscribe();
     channelStatusListener?.unsubscribe();
     channelRemovedListener?.unsubscribe();
+    notificationListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

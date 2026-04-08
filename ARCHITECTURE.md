@@ -26,7 +26,7 @@ flowchart TB
     end
 
     subgraph Bot["Discord Bot (TypeScript)"]
-        Cogs[Commands: groups, roles, general, debug]
+        Cogs[Commands: groups, roles, general, debug, subscribe]
         GroupService[GroupService]
         SessionService[SessionService]
         FirebaseService[FirebaseService]
@@ -36,10 +36,13 @@ flowchart TB
         Cogs --> Core
         SessionService --> FirebaseService
         SessionService --> GroupService
+        FirebaseService -.->|Listen for Notifications| Notifications
     end
 
     subgraph Firebase["Firebase Firestore"]
         Sessions[Collection: sessions]
+        Subscriptions[Collection: issueSubscriptions]
+        Notifications[Collection: notifications]
     end
 
     subgraph LocalStorage["Local Storage"]
@@ -51,7 +54,17 @@ flowchart TB
         UI --> FirestoreClient[Firestore client SDK]
     end
 
-    User -->|/activity, /wheel, voice join/leave| Channel
+    subgraph Functions["Firebase Cloud Functions"]
+        Webhook[githubWebhook]
+        Lookup[lookupCharacter]
+        Affixes[fetchWeeklyAffixes]
+    end
+
+    GitHub[GitHub API] -->|Webhooks| Webhook
+    Webhook --> Subscriptions
+    Webhook --> Notifications
+
+    User -->|/activity, /wheel, /subscribe, voice join/leave| Channel
     Channel -->|commands, events| Bot
     Bot -->|read/write, real-time listener| Sessions
     Bot -->|read/write| Preferences
@@ -74,7 +87,7 @@ flowchart TB
 - **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, syncs slash commands, and on startup cleans up old Firestore sessions (e.g. older than 24 hours).
 - **Commands** (in `packages/bot/src/commands/`):
   - **groups**: `/wheel` (text groups), `/activity` (interactive wheel), `/badgroup` (report bad logic), and `onVoiceStateUpdate` (lobby sync).
-  - **general**: `/bug` & `/featurerequest` (GitHub integration), `/version`, `/status`, `/invite`.
+  - **general**: `/bug` & `/featurerequest` (GitHub integration), `/subscribe` & `/unsubscribe`, `/version`, `/status`, `/invite`.
   - **debug**: Debugging utilities.
 - **Services** (in `packages/bot/src/services/`):
   - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`createMythicPlusGroups`), and handles the “wheel” flows.
@@ -94,9 +107,9 @@ The bot does **not** serve the Activity UI; it only creates sessions, reacts to 
 The system uses a **Hybrid Persistence** model:
 
 1.  **Firebase Firestore (Cloud)**:
-    *   **Purpose**: Real-time synchronization of "Activity Sessions" between the TypeScript Bot and the TypeScript Frontend.
-    *   **Scope**: Ephemeral. Sessions are created on demand and cleaned up after 24 hours.
-    *   **Collection**: `sessions`.
+    *   **Purpose**: Real-time synchronization of "Activity Sessions" and GitHub issue notifications.
+    *   **Scope**: Hybrid. Sessions are ephemeral (24h TTL), while issue subscriptions are persistent.
+    *   **Collections**: `sessions`, `issueSubscriptions`, `notifications`.
 
 2.  **Local JSON (Disk)**:
     *   **Purpose**: Long-term storage of user role preferences (e.g., "Player A prefers Tank").
@@ -105,8 +118,11 @@ The system uses a **Hybrid Persistence** model:
 
 ### 3. Firebase (Firestore)
 
-- **Role**: Real-time sync between the bot and the Activity frontend. No direct HTTP API between frontend and bot.
-- **Data**: One collection, `sessions`. Each document is one Activity instance.
+- **Role**: Real-time sync between the bot and the Activity frontend, and delivery of GitHub issue notifications.
+- **Data**:
+  - `sessions`: One document per Activity instance.
+  - `issueSubscriptions`: Maps GitHub issue numbers to interested Discord users.
+  - `notifications`: Ephemeral tasks for the bot to deliver DMs.
 
 **Session document shape (conceptual):**
 
