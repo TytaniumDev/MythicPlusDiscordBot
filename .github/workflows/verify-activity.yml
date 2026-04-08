@@ -10,18 +10,12 @@ on:
       - '.github/workflows/verify-activity.yml'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   verify-activity:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -33,21 +27,4 @@ jobs:
         run: npm ci
 
       - name: Verify Activity (typecheck, build, Storybook, Playwright)
-        run: ./scripts/verify-activity.sh --update-and-verify
-
-      - name: Auto-commit updated snapshots
-        if: github.event_name == 'pull_request'
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          if git diff --quiet activity/tests/__screenshots__/; then
-            echo "All snapshots are up-to-date."
-            exit 0
-          fi
-          echo "Snapshots changed — committing updates..."
-          git diff --name-only activity/tests/__screenshots__/
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add activity/tests/__screenshots__/
-          git commit -m "chore: update visual snapshots [skip ci]"
-          git push origin "HEAD:$HEAD_REF"
+        run: ./scripts/verify-activity.sh
