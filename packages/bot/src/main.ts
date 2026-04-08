@@ -599,7 +599,7 @@ async function main() {
         if (sessionService.announcedChannels.has(channelId)) return;
         sessionService.announcedChannels.add(channelId);
 
-        const announceResults = data.announceResults !== false;
+        const announceResults = data.announceResults === true;
         if (!announceResults) {
           logger.debug(`Channel ${channelId} completed but announceResults is false, skipping`);
           return;
