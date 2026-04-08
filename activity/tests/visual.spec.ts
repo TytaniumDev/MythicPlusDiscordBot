@@ -159,7 +159,7 @@ function viewportTests(
       const nextBtn = page.locator('#next-btn');
       await expect(nextBtn).toBeVisible();
       await expect(nextBtn).toBeEnabled();
-      await expect(nextBtn).toHaveText('Spin for Group 1');
+      await expect(nextBtn).toHaveText('Spin');
 
       // Side panel visible on desktop/tablet, hidden on mobile (<600px)
       if (viewport.width >= 600) {
