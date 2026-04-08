@@ -8,12 +8,19 @@ import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
+import { SpotlightCard } from '../components/SpotlightCard';
 import { PrimaryCTA } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
-import { delay, CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION } from '../lib/timing';
+import {
+  delay,
+  CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION,
+  SPOTLIGHT_HOLD_DURATION, SPOTLIGHT_ENTER_DURATION, SPOTLIGHT_EXIT_DURATION,
+  WHEELS_FADE_DURATION, POST_LAND_PAUSE,
+  PROGRESS_FADE_DURATION,
+} from '../lib/timing';
 
 interface WheelsViewProps {
   onNavigate: (view: 'lobby' | 'results' | 'home', opts?: { replace?: boolean }) => void;
@@ -37,9 +44,15 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const gridRef = useRef<WheelsGridRef>(null);
 
   const [wheelStatus, setWheelStatus] = useState('Calculating...');
-  const [nextBtnVisible, setNextBtnVisible] = useState(false);
-  const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
-  const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
+  const [showSpinBtn, setShowSpinBtn] = useState(false);
+  const [spinBtnDisabled, setSpinBtnDisabled] = useState(false);
+  const [autoAdvanceRunning, setAutoAdvanceRunning] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [progressFading, setProgressFading] = useState(false);
+  const [wheelsHidden, setWheelsHidden] = useState(false);
+  const [spotlightGroup, setSpotlightGroup] = useState<{ group: import('../types').WoWGroup; index: number; label?: string } | null>(null);
+  const [spotlightVisible, setSpotlightVisible] = useState(false);
+  const [spotlightExit, setSpotlightExit] = useState(false);
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
 
@@ -79,7 +92,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       const p = initPools(channelData.players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
       setWheelStatus('Static preview');
-      setNextBtnVisible(false);
+      setShowSpinBtn(false);
       return;
     }
 
@@ -97,26 +110,27 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       gridRef.current?.grid?.resetCarouselDots();
       gridRef.current?.grid?.setCarouselSlide(0);
 
-      setNextBtnVisible(true);
-      setNextBtnText('Spin for Group 1');
-      setNextBtnDisabled(false);
+      setShowSpinBtn(true);
+      setWheelStatus('Ready to spin!');
     }
   }, [channelData, spinSequenceStarted]);
 
   useEffect(() => {
-    if (!channelData || isDemoMode || !spinSequenceStarted) return;
+    if (!channelData || !spinSequenceStarted) return;
+    const store = useAppStore.getState();
     const revealed = channelData.revealedGroups ?? 0;
-    const idx = useAppStore.getState().currentGroupIndex;
-    const animating = useAppStore.getState().isSpinAnimating;
+    const totalFull = store.fullGroups.length;
 
-    if (revealed > idx && !animating) {
-      if (revealed > idx + 1) {
-        catchUpRevealedGroups(revealed);
-      } else {
-        runSpinAnimation();
+    if (revealed >= totalFull && !autoAdvanceRunning && !store.isSpinAnimating) {
+      if (store.groupCards.length >= totalFull) return;
+      if (store.currentGroupIndex >= totalFull) {
+        onNavigate('results', { replace: true });
+        service.finishSequence();
+        return;
       }
+      runAutoAdvanceLoop();
     }
-  }, [channelData?.revealedGroups, isDemoMode, spinSequenceStarted]);
+  }, [channelData?.revealedGroups, spinSequenceStarted, autoAdvanceRunning]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -124,71 +138,14 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     });
   }, []);
 
-  const catchUpRevealedGroups = useCallback((count: number) => {
-    const store = useAppStore.getState();
-    const groups = store.fullGroups;
-    for (let i = store.currentGroupIndex; i < count && i < groups.length; i++) {
-      store.addGroupCard({ group: groups[i], index: i });
-    }
-    const newIndex = Math.min(count, groups.length);
-    store.setCurrentGroupIndex(newIndex);
+  const autoAdvanceRef = useRef(false);
 
-    if (newIndex >= groups.length && store.remainderGroups.length > 0) {
-      store.remainderGroups.forEach((rg, i) => {
-        store.addGroupCard({ group: rg, index: groups.length + i, label: 'Remainder', hideEmpty: true });
-      });
-    }
-
-    updateNextButton(newIndex, groups.length);
-  }, []);
-
-  const updateNextButton = useCallback((idx: number, totalFull: number) => {
-    setNextBtnVisible(true);
-    if (idx >= totalFull) {
-      setNextBtnText('Finish');
-      setNextBtnDisabled(false);
-    } else {
-      setNextBtnText(`Spin for Group ${idx + 1}`);
-      setNextBtnDisabled(false);
-    }
-  }, []);
-
-  const advanceAfterSpin = useCallback((idx: number) => {
-    const store = useAppStore.getState();
-    const newIdx = idx + 1;
-    store.setCurrentGroupIndex(newIdx);
-
-    if (newIdx >= store.fullGroups.length && store.remainderGroups.length > 0) {
-      store.remainderGroups.forEach((rg, i) => {
-        store.addGroupCard({ group: rg, index: store.fullGroups.length + i, label: 'Remainder', hideEmpty: true });
-      });
-    }
-
-    updateNextButton(newIdx, store.fullGroups.length);
-  }, [updateNextButton]);
-
-  // Ref to hold the latest checkForPendingReveals, breaking the circular
-  // dependency between spin callbacks and checkForPendingReveals.
-  const checkForPendingRevealsRef = useRef<() => void>(() => {});
-
-  const spinForCurrentGroupGrid: () => Promise<void> = useCallback(async () => {
+  const spinOneGroupGrid = useCallback(async (groupIndex: number) => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
-    const idx = store.currentGroupIndex;
-    const group = store.fullGroups[idx];
-    if (!group) return;
-
-    store.setSpinAnimating(true);
-    grid.isAnimating = true;
-    setNextBtnDisabled(true);
-    setWheelStatus(`Spinning for Group ${idx + 1}...`);
-
-    if (!markedPools) {
-      store.setSpinAnimating(false);
-      grid.isAnimating = false;
-      return;
-    }
+    const group = store.fullGroups[groupIndex];
+    if (!group || !markedPools) return;
 
     grid.setAllSpinning();
     grid.clearAllResults();
@@ -204,44 +161,18 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       if (dpsWheels[i]) spinPromises.push(dpsWheels[i].spinTo(dpsPlayer.name, dpsDurations[i]));
     });
 
-    try {
-      await Promise.all(spinPromises);
-    } catch {
-      store.setSpinAnimating(false);
-      return;
-    }
-
+    await Promise.all(spinPromises);
     grid.clearSpinningState();
-    grid.isAnimating = false;
-    audio.victory();
+  }, [markedPools]);
 
-    setWheelStatus(`Group ${idx + 1} Formed!`);
-    store.addGroupCard({ group, index: idx });
-    store.setSpinAnimating(false);
-    advanceAfterSpin(idx);
-
-    checkForPendingRevealsRef.current();
-  }, [advanceAfterSpin, markedPools]);
-
-  const spinForCurrentGroupCarousel: () => Promise<void> = useCallback(async () => {
+  const spinOneGroupCarousel = useCallback(async (groupIndex: number) => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
-    const idx = store.currentGroupIndex;
-    const group = store.fullGroups[idx];
-    if (!group) return;
-
-    store.setSpinAnimating(true);
-    grid.isAnimating = true;
-    setNextBtnDisabled(true);
-    setWheelStatus(`Spinning for Group ${idx + 1}...`);
+    const group = store.fullGroups[groupIndex];
+    if (!group || !markedPools) return;
 
     grid.clearAllResults();
-    if (!markedPools) {
-      store.setSpinAnimating(false);
-      grid.isAnimating = false;
-      return;
-    }
     grid.setCarouselSlide(0);
     grid.initWheels(markedPools);
     grid.resetCarouselDots();
@@ -249,98 +180,164 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     const wheels = grid.orderedWheels();
     const winners = [group.tank, group.healer, group.dps[0] || null, group.dps[1] || null, group.dps[2] || null];
 
-    try {
-      for (let slideIndex = 0; slideIndex < wheels.length; slideIndex++) {
-        const wheel = wheels[slideIndex];
-        const winner = winners[slideIndex];
-        if (!winner) continue;
+    for (let slideIndex = 0; slideIndex < wheels.length; slideIndex++) {
+      const wheel = wheels[slideIndex];
+      const winner = winners[slideIndex];
+      if (!winner) continue;
 
-        grid.setCarouselSlide(slideIndex);
-        const slot = grid.getSlot(slideIndex);
-        slot?.classList.add('spinning');
+      grid.setCarouselSlide(slideIndex);
+      const slot = grid.getSlot(slideIndex);
+      slot?.classList.add('spinning');
 
-        await delay(350);
-        await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
+      await delay(350);
+      await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
 
-        slot?.classList.remove('spinning');
-        grid.markDotCompleted(slideIndex);
-        await delay(CAROUSEL_ADVANCE_DELAY);
-      }
-    } catch {
-      store.setSpinAnimating(false);
-      return;
+      slot?.classList.remove('spinning');
+      grid.markDotCompleted(slideIndex);
+      await delay(CAROUSEL_ADVANCE_DELAY);
     }
+  }, [markedPools]);
 
-    grid.isAnimating = false;
-    audio.victory();
+  const updateProgress = useCallback(async (text: string) => {
+    setProgressFading(true);
+    await delay(PROGRESS_FADE_DURATION);
+    setProgressText(text);
+    setProgressFading(false);
+  }, []);
 
-    setWheelStatus(`Group ${idx + 1} Formed!`);
-    store.addGroupCard({ group, index: idx });
-    store.setSpinAnimating(false);
-    advanceAfterSpin(idx);
-
-    checkForPendingRevealsRef.current();
-  }, [advanceAfterSpin, markedPools]);
-
-  const runSpinAnimation: () => Promise<void> = useCallback(async () => {
+  const runAutoAdvanceLoop = useCallback(async () => {
+    const store = useAppStore.getState();
     const grid = gridRef.current?.grid;
-    if (!grid) return;
-    const store = useAppStore.getState();
-    if (store.isSpinAnimating || store.currentGroupIndex >= store.fullGroups.length) return;
+    if (!grid || autoAdvanceRef.current) return;
 
-    if (grid.isCarouselMode()) {
-      await spinForCurrentGroupCarousel();
-    } else {
-      await spinForCurrentGroupGrid();
-    }
-  }, [spinForCurrentGroupGrid, spinForCurrentGroupCarousel]);
+    autoAdvanceRef.current = true;
+    setAutoAdvanceRunning(true);
+    setShowSpinBtn(false);
+    store.setSpinAnimating(true);
 
-  const checkForPendingReveals: () => void = useCallback(() => {
-    const store = useAppStore.getState();
-    if (!store.channelData || store.isDemoMode) return;
-    const revealed = store.channelData.revealedGroups ?? 0;
-    if (revealed > store.currentGroupIndex && !store.isSpinAnimating) {
-      if (revealed > store.currentGroupIndex + 1) {
-        catchUpRevealedGroups(revealed);
-      } else {
-        runSpinAnimation();
+    const totalFull = store.fullGroups.length;
+    const isCarouselMode = grid.isCarouselMode();
+
+    for (let i = 0; i < totalFull; i++) {
+      if (!autoAdvanceRef.current) break;
+
+      store.setCurrentGroupIndex(i);
+      await updateProgress(`Group ${i + 1} of ${totalFull}`);
+      setWheelStatus(`Spinning for Group ${i + 1}...`);
+
+      // Fade wheels in (skip for first group — already visible)
+      if (i > 0) {
+        setWheelsHidden(false);
+        await delay(WHEELS_FADE_DURATION);
       }
+
+      // Spin wheels
+      if (isCarouselMode) {
+        await spinOneGroupCarousel(i);
+      } else {
+        await spinOneGroupGrid(i);
+      }
+
+      // Post-land pause
+      setWheelStatus(`Group ${i + 1} Formed!`);
+      await delay(POST_LAND_PAUSE);
+
+      // Fade out wheels
+      setWheelsHidden(true);
+      await delay(WHEELS_FADE_DURATION);
+
+      // Show spotlight card
+      const group = store.fullGroups[i];
+      setSpotlightGroup({ group, index: i });
+      setSpotlightExit(false);
+      setSpotlightVisible(true);
+      audio.victory();
+      await delay(SPOTLIGHT_ENTER_DURATION);
+
+      // Hold spotlight
+      await delay(SPOTLIGHT_HOLD_DURATION);
+
+      // Exit spotlight
+      setSpotlightVisible(false);
+      setSpotlightExit(true);
+      await delay(SPOTLIGHT_EXIT_DURATION);
+
+      // Add to group cards and hide spotlight
+      store.addGroupCard({ group, index: i });
+      setSpotlightGroup(null);
+      setSpotlightExit(false);
+
     }
-  }, [catchUpRevealedGroups, runSpinAnimation]);
 
-  checkForPendingRevealsRef.current = checkForPendingReveals;
+    // Show remainder groups with spotlight cards (no wheel spin)
+    for (let ri = 0; ri < store.remainderGroups.length; ri++) {
+      if (!autoAdvanceRef.current) break;
 
-  const handleNextClick = useCallback(async () => {
-    const store = useAppStore.getState();
+      const rg = store.remainderGroups[ri];
+      const rgIndex = totalFull + ri;
+      await updateProgress(`Remainder ${ri + 1} of ${store.remainderGroups.length}`);
 
-    if (store.currentGroupIndex >= store.fullGroups.length) {
-      onNavigate('results', { replace: true });
+      setSpotlightGroup({ group: rg, index: rgIndex, label: 'Remainder' });
+      setSpotlightExit(false);
+      setSpotlightVisible(true);
+      audio.victory();
+      await delay(SPOTLIGHT_ENTER_DURATION);
+
+      await delay(SPOTLIGHT_HOLD_DURATION);
+
+      setSpotlightVisible(false);
+      setSpotlightExit(true);
+      await delay(SPOTLIGHT_EXIT_DURATION);
+
+      store.addGroupCard({ group: rg, index: rgIndex, label: 'Remainder', hideEmpty: true });
+      setSpotlightGroup(null);
+      setSpotlightExit(false);
+    }
+
+    // Sequence complete — transition to results
+    store.setCurrentGroupIndex(totalFull);
+    store.setSpinAnimating(false);
+    autoAdvanceRef.current = false;
+    setAutoAdvanceRunning(false);
+
+    await delay(300);
+    onNavigate('results', { replace: true });
+    try {
       await service.finishSequence();
-      return;
+    } catch (err) {
+      console.error('[Wheelson] Failed to finish sequence:', err);
     }
+  }, [spinOneGroupGrid, spinOneGroupCarousel, updateProgress, onNavigate, service]);
 
-    if (store.isSpinAnimating) return;
+  const handleSpinClick = useCallback(async () => {
+    const store = useAppStore.getState();
+    if (store.isSpinAnimating || autoAdvanceRunning) return;
+
+    setSpinBtnDisabled(true);
+    setShowSpinBtn(false);
 
     if (store.isDemoMode) {
-      if (isCarousel) {
-        await spinForCurrentGroupCarousel();
-      } else {
-        await spinForCurrentGroupGrid();
-      }
+      runAutoAdvanceLoop().catch((err) => {
+        console.error('[Wheelson] Demo advance failed:', err);
+        setShowSpinBtn(true);
+        setSpinBtnDisabled(false);
+      });
       return;
     }
 
-    setNextBtnDisabled(true);
     try {
-      await service.revealGroup(store.currentGroupIndex);
+      await service.revealAllGroups();
     } catch (err) {
-      console.error('[Wheelson] Failed to reveal group:', err);
+      console.error('[Wheelson] Failed to reveal groups:', err);
       setWheelStatus('Failed to spin. Please try again.');
-      setNextBtnDisabled(false);
+      setShowSpinBtn(true);
+      setSpinBtnDisabled(false);
     }
-  }, [service, onNavigate, isCarousel, spinForCurrentGroupCarousel, spinForCurrentGroupGrid]);
+  }, [service, autoAdvanceRunning, runAutoAdvanceLoop]);
 
   const handleCancel = useCallback(async () => {
+    autoAdvanceRef.current = false;
+    setAutoAdvanceRunning(false);
     onNavigate('lobby');
     gridRef.current?.grid?.cancelAll();
     useAppStore.getState().resetSpinState();
@@ -377,7 +374,23 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       <main className="content-area">
         <section id="view-wheels">
           <div className="wheels-content">
-            <WheelsGridComponent ref={gridRef} pools={pools} />
+            <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div className={`wheels-area-fade${wheelsHidden ? ' wheels-hidden' : ''}`}>
+                <WheelsGridComponent ref={gridRef} pools={pools} />
+              </div>
+
+              {spotlightGroup && (
+                <div className="spotlight-overlay">
+                  <SpotlightCard
+                    group={spotlightGroup.group}
+                    index={spotlightGroup.index}
+                    visible={spotlightVisible}
+                    exit={spotlightExit}
+                    label={spotlightGroup.label}
+                  />
+                </div>
+              )}
+            </div>
 
             {!isCarousel && (
               <div id="side-column" className="side-column">
@@ -404,18 +417,25 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
             <MobileGroupPager groupCards={groupCards} />
           )}
 
-          {nextBtnVisible && (
+          {showSpinBtn && (
             <PrimaryCTA
               id="next-btn"
-              disabled={nextBtnDisabled}
-              onClick={handleNextClick}
+              disabled={spinBtnDisabled}
+              onClick={handleSpinClick}
             >
-              {nextBtnText}
+              Spin
             </PrimaryCTA>
           )}
-          {!nextBtnVisible && (
+          {!showSpinBtn && autoAdvanceRunning && (
+            <div className="spin-progress">
+              <span className={`spin-progress-text${progressFading ? ' fade-out' : ''}`}>
+                {progressText}
+              </span>
+            </div>
+          )}
+          {!showSpinBtn && !autoAdvanceRunning && (
             <PrimaryCTA id="next-btn" className="hidden">
-              Spin for Group 1
+              Spin
             </PrimaryCTA>
           )}
         </section>

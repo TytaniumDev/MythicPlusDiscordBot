@@ -38,8 +38,8 @@ class DemoSessionService implements SessionService {
     }, 500);
   }
 
-  async revealGroup(_index: number): Promise<void> {
-    // Demo mode: animation handled directly, no Firestore needed
+  async revealAllGroups(): Promise<void> {
+    // Demo mode: animation handled directly by WheelsView auto-advance loop
   }
 
   async finishSequence(): Promise<void> {

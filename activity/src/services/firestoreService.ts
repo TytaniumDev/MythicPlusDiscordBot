@@ -158,11 +158,11 @@ class FirestoreSessionService implements SessionService {
     });
   }
 
-  async revealGroup(index: number): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
+  async revealAllGroups(): Promise<void> {
+    const { currentChannelId, fullGroups } = useAppStore.getState();
     if (!currentChannelId) return;
     const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { revealedGroups: index + 1 });
+    await updateDoc(docRef, { revealedGroups: fullGroups.length });
   }
 
   async finishSequence(): Promise<void> {
