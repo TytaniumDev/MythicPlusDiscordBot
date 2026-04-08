@@ -1,14 +1,14 @@
 import { WoWGroup, WoWPlayer } from './models.js';
 
-/** Per-guild history of last groups — avoids cross-guild contamination. */
-const lastGroups = new Map<string | number | null, WoWGroup[]>();
+/** Per-guild history of all rounds tonight — avoids cross-guild contamination. */
+const groupHistory = new Map<string | number | null, WoWGroup[][]>();
 
 export function clear(): void {
-  lastGroups.clear();
+  groupHistory.clear();
 }
 
-export function setLastGroups(groups: WoWGroup[], guildId: string | number | null = null): void {
-  lastGroups.set(guildId, groups);
+export function setGroupHistory(rounds: WoWGroup[][], guildId: string | number | null = null): void {
+  groupHistory.set(guildId, rounds);
 }
 
 /** Fisher-Yates shuffle (in-place). */
@@ -31,18 +31,18 @@ export function createMythicPlusGroups(
   _debug = true,
   guildId: string | number | null = null,
 ): WoWGroup[] {
-  const previousGroups = lastGroups.get(guildId) ?? [];
+  const rounds = groupHistory.get(guildId) ?? [];
 
-  // Pre-compute teammate lookups for O(1) check
-  const lastGroupsDict = new Map<string, Set<string>>();
-  for (const group of previousGroups) {
-    const members = group.players;
-    for (const member of members) {
-      const existing = lastGroupsDict.get(member.name);
-      const teammates = existing ?? new Set<string>();
-      if (!existing) lastGroupsDict.set(member.name, teammates);
-      for (const m of members) {
-        if (!m.equals(member)) teammates.add(m.name);
+  // Build pair-count matrix from all rounds: how many times each pair has been grouped
+  const pairCounts = new Map<string, number>();
+  for (const round of rounds) {
+    for (const group of round) {
+      const members = group.players;
+      for (let i = 0; i < members.length; i++) {
+        for (let j = i + 1; j < members.length; j++) {
+          const key = [members[i].name, members[j].name].sort().join('|');
+          pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
+        }
       }
     }
   }
@@ -124,35 +124,31 @@ export function createMythicPlusGroups(
   ): WoWPlayer | null {
     const teammates = group.players;
 
-    // Pre-check: Find all players that are ineligible due to previous grouping
-    const ineligiblePlayers = new Set<string>();
-    for (const teammate of teammates) {
-      const prev = lastGroupsDict.get(teammate.name);
-      if (prev) {
-        for (const name of prev) ineligiblePlayers.add(name);
-      }
-    }
+    let bestPlayer: WoWPlayer | null = null;
+    let bestScore = Infinity;
 
-    // Try to grab a player from the available list who hasn't played with this group before
     for (const player of availablePlayers) {
-      if (ineligiblePlayers.has(player.name)) continue;
-      if (!usedPlayers.has(player.name)) {
-        if (predicate && !predicate(player)) continue;
-        removePlayer(player);
-        return player;
+      if (usedPlayers.has(player.name)) continue;
+      if (predicate && !predicate(player)) continue;
+
+      // Score = total times this player has been grouped with current teammates
+      let score = 0;
+      for (const teammate of teammates) {
+        const key = [player.name, teammate.name].sort().join('|');
+        score += pairCounts.get(key) ?? 0;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestPlayer = player;
       }
     }
 
-    // Fallback if we can't find a player who hasn't played with this group before
-    for (const player of availablePlayers) {
-      if (!usedPlayers.has(player.name)) {
-        if (predicate && !predicate(player)) continue;
-        removePlayer(player);
-        return player;
-      }
+    if (bestPlayer) {
+      removePlayer(bestPlayer);
     }
 
-    return null;
+    return bestPlayer;
   }
 
   // Start forming full groups
@@ -322,6 +318,6 @@ export function createMythicPlusGroups(
   fillRemainingDps();
   handleRemainders();
 
-  lastGroups.set(guildId, groups);
+  groupHistory.set(guildId, [...rounds, groups]);
   return groups;
 }
