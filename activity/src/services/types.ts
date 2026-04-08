@@ -2,7 +2,7 @@ export interface SessionService {
   subscribeToGuild(guildId: string): () => void;
   subscribeToChannel(channelId: string): () => void;
   requestSpin(): Promise<void>;
-  revealGroup(index: number): Promise<void>;
+  revealAllGroups(): Promise<void>;
   finishSequence(): Promise<void>;
   newRound(): Promise<void>;
   cancelToLobby(): Promise<void>;
