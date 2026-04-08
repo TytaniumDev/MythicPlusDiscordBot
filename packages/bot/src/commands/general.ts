@@ -113,7 +113,7 @@ export class GeneralHandler {
     };
 
     const lines = affixes.map((a) => {
-      const dot = colorDot[a.color] ?? '⚪';
+      const dot = colorDot[a.color?.toLowerCase()] ?? '⚪';
       const nick = a.nickname ? ` — *${a.nickname}*` : '';
       return `${dot} [**${a.name}**](${a.wowheadUrl}) (${a.keystoneLevel})${nick}`;
     });
@@ -121,7 +121,7 @@ export class GeneralHandler {
     const embed: EmbedData = {
       title: "This Week's Affixes",
       color: 0x9146ff,
-      fields: [{ name: '\u200b', value: lines.join('\n'), inline: false }],
+      fields: [{ name: '\u200b', value: lines.join('\n') || 'No affixes available.', inline: false }],
     };
     await ctx.send('', { embed, ephemeral: true });
   }
