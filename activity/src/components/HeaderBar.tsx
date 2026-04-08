@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { IconButton } from './ui';
+import { AffixBar } from './AffixBar';
 import wheelsonIcon from '../img/wheelson.png';
 
 const BackArrow = () => (
@@ -30,7 +31,7 @@ export function HeaderBar({
   extra,
   className = '',
 }: HeaderBarProps) {
-  return (
+  return (<>
     <header className={`header-bar ${className}`}>
       {onBack ? (
         <IconButton
@@ -76,5 +77,7 @@ export function HeaderBar({
         </a>
       </div>
     </header>
+    <AffixBar />
+  </>
   );
 }

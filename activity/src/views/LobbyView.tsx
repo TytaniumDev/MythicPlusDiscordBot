@@ -5,7 +5,6 @@ import { PlayerChip } from '../components/PlayerChip';
 import { PlayerCard } from '../components/PlayerCard';
 import { EditPlayerModal } from '../components/EditPlayerModal';
 import { SpinWarningDialog } from '../components/SpinWarningDialog';
-import { AffixBar } from '../components/AffixBar';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
@@ -126,7 +125,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           className="app-header"
           subtitleId="player-count"
         />
-        <AffixBar />
         <main className="content-area">
           <section id="view-lobby">
             <div id="player-list">
@@ -158,7 +156,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           </span>
         }
       />
-      <AffixBar />
       <main className="content-area">
         <section id="view-lobby">
 
