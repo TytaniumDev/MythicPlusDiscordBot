@@ -10,6 +10,12 @@ export class GitHubError extends Error {
   }
 }
 
+export interface GitHubIssueResponse {
+  number: number;
+  html_url: string;
+  title: string;
+}
+
 async function getRecentLogs(): Promise<string | null> {
   if (fs.existsSync(config.LOG_FILE)) {
     try {
@@ -37,7 +43,7 @@ export async function createGithubIssue(
   title: string,
   body: string,
   labels: string[],
-): Promise<Record<string, unknown>> {
+): Promise<GitHubIssueResponse> {
   if (!config.GITHUB_TOKEN || !config.GITHUB_REPO_OWNER || !config.GITHUB_REPO_NAME) {
     throw new GitHubError(
       'GitHub configuration is missing. Please check your .env file.',
@@ -56,14 +62,14 @@ export async function createGithubIssue(
   });
 
   if (response.status === 201) {
-    return (await response.json()) as Record<string, unknown>;
+    return (await response.json()) as GitHubIssueResponse;
   }
   throw new GitHubError(`Failed to create issue: HTTP ${response.status}`);
 }
 
 export async function searchGithubIssues(
   errorType: string,
-): Promise<Record<string, unknown> | null> {
+): Promise<GitHubIssueResponse | null> {
   if (!config.GITHUB_TOKEN || !config.GITHUB_REPO_OWNER || !config.GITHUB_REPO_NAME) {
     return null;
   }
@@ -81,7 +87,7 @@ export async function searchGithubIssues(
 
     if (response.status === 200) {
       const data = (await response.json()) as Record<string, unknown>;
-      const items = (data.items ?? []) as Record<string, unknown>[];
+      const items = (data.items ?? []) as GitHubIssueResponse[];
       const totalCount = (data.total_count ?? 0) as number;
       if (totalCount > 0 && items.length > 0) {
         return items[0];
@@ -96,7 +102,7 @@ export async function searchGithubIssues(
 export async function createErrorIssue(
   error: Error,
   contextInfo: string,
-): Promise<Record<string, unknown> | null> {
+): Promise<GitHubIssueResponse | null> {
   if (!config.GITHUB_TOKEN) return null;
 
   try {
@@ -152,7 +158,7 @@ export interface GitHubIssueModalData {
 
 export async function submitGithubIssueModal(
   data: GitHubIssueModalData,
-): Promise<Record<string, unknown>> {
+): Promise<GitHubIssueResponse> {
   const versionStr = getVersionString();
   const safeReporterName = sanitizeForGithub(data.reporterName);
   const safeReporterId = sanitizeForGithub(data.reporterId);
@@ -195,7 +201,7 @@ export interface BadGroupReportData {
 
 export async function reportBadGroup(
   data: BadGroupReportData,
-): Promise<Record<string, unknown>> {
+): Promise<GitHubIssueResponse> {
   const safeTitle = sanitizeForGithub(data.title);
   const safeDescription = sanitizeForGithub(data.description);
   const safeReporterName = sanitizeForGithub(data.reporterName);
