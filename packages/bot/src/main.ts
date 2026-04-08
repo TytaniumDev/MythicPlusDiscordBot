@@ -32,7 +32,8 @@ import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
-import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, STATIC_AFFIXES } from '@mythicplus/shared';
+import type { AffixDisplay } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import {
@@ -233,6 +234,7 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('text').setDescription('Quick feature description (skips the form)').setRequired(false),
     ),
+  new SlashCommandBuilder().setName('affixes').setDescription("Show this week's Mythic+ affixes"),
   new SlashCommandBuilder().setName('sitout').setDescription('Toggle sitting out of the current wheel spin round'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
 ];
@@ -656,6 +658,26 @@ async function main() {
       case 'invite':
         await generalHandler.invite({ guild: guildObj, send: sender.send });
         break;
+
+      case 'affixes': {
+        let affixes: AffixDisplay[] = STATIC_AFFIXES;
+        const firebase = FirebaseService.getInstance();
+        if (firebase.isAvailable() && firebase.db) {
+          try {
+            const snap = await firebase.db.collection('config').doc('affixes').get();
+            if (snap.exists) {
+              const data = snap.data();
+              if (data && Array.isArray(data.affixes)) {
+                affixes = data.affixes as AffixDisplay[];
+              }
+            }
+          } catch (e) {
+            logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
+          }
+        }
+        await generalHandler.affixes({ guild: guildObj, send: sender.send }, affixes);
+        break;
+      }
 
       case 'wheel': {
         const voiceChannel = member?.voice.channel;

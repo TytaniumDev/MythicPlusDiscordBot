@@ -20,6 +20,7 @@ vi.mock('os', () => ({
 }));
 
 import { GeneralHandler, type GeneralContext, type VoiceClient } from '../src/commands/general.js';
+import type { AffixDisplay } from '@mythicplus/shared';
 import * as config from '../src/core/config.js';
 
 function makeCtx(overrides: Partial<GeneralContext> = {}): GeneralContext {
@@ -100,6 +101,65 @@ describe('GeneralHandler.status', () => {
     expect(fields['Commit']).toBe('[`abc1234`](https://github.com/Owner/Repo/commit/abc123456789)');
     expect(fields['System Load']).toBe('0.50, 0.40, 0.30');
     expect(embed.footer.text).toContain('Server ID: 12345');
+  });
+});
+
+describe('GeneralHandler.affixes', () => {
+  const sampleAffixes: AffixDisplay[] = [
+    { id: 165, name: "Lindormi's Guidance", nickname: 'training wheels', keystoneLevel: '+2–5', wowheadUrl: 'https://www.wowhead.com/affix=165/lindormis-guidance', color: '#22c55e' },
+    { id: 160, name: "Xal'atath's Bargain: Devour", nickname: 'Dispel Allies', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=160/xalataths-bargain-devour', color: '#a855f7' },
+    { id: 10, name: 'Fortified', nickname: null, keystoneLevel: '+7', wowheadUrl: 'https://www.wowhead.com/affix=10/fortified', color: '#ef4444' },
+    { id: 147, name: "Xal'atath's Guile", nickname: 'death penalty', keystoneLevel: '+12', wowheadUrl: 'https://www.wowhead.com/affix=147/xalataths-guile', color: '#f59e0b' },
+  ];
+
+  it('sends an ephemeral embed with all affixes', async () => {
+    const handler = new GeneralHandler();
+    const ctx = makeCtx();
+
+    await handler.affixes(ctx, sampleAffixes);
+
+    expect(ctx.send).toHaveBeenCalledOnce();
+    const [, options] = vi.mocked(ctx.send).mock.calls[0];
+    const opts = options as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(opts.ephemeral).toBe(true);
+
+    const embed = opts.embed;
+    expect(embed.title).toBe("This Week's Affixes");
+    const value: string = embed.fields[0].value;
+    expect(value).toContain("Lindormi's Guidance");
+    expect(value).toContain('training wheels');
+    expect(value).toContain('Fortified');
+    expect(value).toContain('+7');
+    expect(value).toContain("Xal'atath's Guile");
+    expect(value).toContain('death penalty');
+  });
+
+  it('includes wowhead links for each affix', async () => {
+    const handler = new GeneralHandler();
+    const ctx = makeCtx();
+
+    await handler.affixes(ctx, sampleAffixes);
+
+    const [, options] = vi.mocked(ctx.send).mock.calls[0];
+    const value: string = (options as any).embed.fields[0].value; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(value).toContain('https://www.wowhead.com/affix=165/lindormis-guidance');
+    expect(value).toContain('https://www.wowhead.com/affix=10/fortified');
+  });
+
+  it('omits nickname when null', async () => {
+    const handler = new GeneralHandler();
+    const ctx = makeCtx();
+
+    const affixes: AffixDisplay[] = [
+      { id: 10, name: 'Fortified', nickname: null, keystoneLevel: '+7', wowheadUrl: 'https://www.wowhead.com/affix=10/fortified', color: '#ef4444' },
+    ];
+
+    await handler.affixes(ctx, affixes);
+
+    const [, options] = vi.mocked(ctx.send).mock.calls[0];
+    const value: string = (options as any).embed.fields[0].value; // eslint-disable-line @typescript-eslint/no-explicit-any
+    // Should not have a trailing dash/em-dash for null nicknames
+    expect(value).not.toContain('— *');
   });
 });
 
