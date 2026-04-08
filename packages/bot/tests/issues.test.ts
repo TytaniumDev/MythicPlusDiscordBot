@@ -57,6 +57,24 @@ describe('createGithubIssue', () => {
       GitHubError,
     );
   });
+
+  it('returns typed issue data with number, html_url, and title', async () => {
+    setConfig({ GITHUB_TOKEN: 'fake_token' });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      status: 201,
+      json: vi.fn().mockResolvedValue({
+        number: 42,
+        html_url: 'http://github.com/issue/42',
+        title: 'Test Issue',
+      }),
+    });
+
+    const result = await createGithubIssue('Test Issue', 'Body', ['bug']);
+    expect(result.number).toBe(42);
+    expect(result.html_url).toBe('http://github.com/issue/42');
+    expect(result.title).toBe('Test Issue');
+  });
 });
 
 describe('submitGithubIssueModal', () => {

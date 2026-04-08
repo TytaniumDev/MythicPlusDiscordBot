@@ -35,7 +35,9 @@ import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup, STATIC_AFFIXES } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
+import type { GitHubIssueResponse } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
+import { IssueTrackingService } from './services/issueTrackingService.js';
 import {
   createMainSpecView,
   createOffspecView,
@@ -143,6 +145,42 @@ function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel 
       return await ch.send({ embeds: [toDiscordEmbed(content.embed)] });
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Issue tracking service + reporter notification helper
+// ---------------------------------------------------------------------------
+
+const issueTrackingService = new IssueTrackingService();
+
+async function notifyReporterOfIssue(
+  user: { id: string; send: (content: string) => Promise<unknown> },
+  issue: GitHubIssueResponse,
+): Promise<boolean> {
+  let tracked = false;
+  try {
+    await issueTrackingService.trackIssue({
+      issueNumber: issue.number,
+      discordUserId: user.id,
+      issueUrl: issue.html_url,
+      issueTitle: issue.title,
+    });
+    tracked = true;
+  } catch (e) {
+    logger.warn(`Failed to store issue tracking for #${issue.number}: ${e}`);
+  }
+
+  try {
+    const trackingNote = tracked
+      ? "\nI'll DM you when it's resolved."
+      : '';
+    await user.send(
+      `Your report has been submitted! You can track it here: ${issue.html_url}${trackingNote}`,
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -784,19 +822,34 @@ async function main() {
           break;
         }
 
-        await groupsHandler.badgroup(
-          {
-            guild: guildObj,
-            author: {
-              id: interaction.user.id,
-              name: member?.displayName ?? interaction.user.displayName,
-            },
-            send: sender.send,
-            defer: sender.defer,
-          },
-          title,
-          description,
-        );
+        if (!title) break;
+
+        await sender.defer({ ephemeral: true });
+        try {
+          const guildId = guildObj?.id ?? null;
+          const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
+          if (!lastResults) {
+            await sender.send('❌ No group creation data found for this server. Run /wheel first.');
+            break;
+          }
+
+          const reporterName = member?.displayName ?? interaction.user.displayName;
+          const issue = await reportBadGroup({
+            reporterName,
+            reporterId: interaction.user.id,
+            title,
+            description: description ?? title,
+            players: lastResults.players,
+            groups: lastResults.groups,
+          });
+          const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+          const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+          await sender.send(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
+        } catch (e) {
+          logger.error(`Failed to submit quick badgroup: ${e}`);
+          const msg = e instanceof Error ? e.message : String(e);
+          await sender.send(`❌ Failed to create issue: ${msg}`);
+        }
         break;
       }
 
@@ -821,7 +874,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            await sender.send(`✅ Bug reported: ${issue.html_url}`);
+            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+            await sender.send(`✅ Bug reported: ${issue.html_url}${dmHint}`);
           } catch (e) {
             logger.error(`Failed to submit quick bug: ${e}`);
             const msg = e instanceof Error ? e.message : String(e);
@@ -891,7 +946,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            await sender.send(`✅ Feature request created: ${issue.html_url}`);
+            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+            await sender.send(`✅ Feature request created: ${issue.html_url}${dmHint}`);
           } catch (e) {
             logger.error(`Failed to submit quick feature request: ${e}`);
             const msg = e instanceof Error ? e.message : String(e);
@@ -1132,7 +1189,9 @@ async function main() {
           reporterName,
           reporterId,
         });
-        await interaction.editReply(`✅ Issue created: ${issue.html_url}`);
+        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+        await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
       } catch (e) {
         logger.error(`Failed to submit ${customId}: ${e}`);
         const msg = e instanceof Error ? e.message : String(e);
@@ -1162,7 +1221,9 @@ async function main() {
           players: lastResults.players,
           groups: lastResults.groups,
         });
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}`);
+        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
       } catch (e) {
         logger.error(`Failed to submit badgroup modal: ${e}`);
         const msg = e instanceof Error ? e.message : String(e);
