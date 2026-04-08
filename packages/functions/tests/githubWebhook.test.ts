@@ -135,4 +135,21 @@ describe('handleIssueWebhook', () => {
     );
     expect(result).toBe('no-tracking');
   });
+
+  it('still deletes tracking doc even when DM fails', async () => {
+    mockDocData.mockReturnValue({
+      discordUserId: '999',
+      issueUrl: 'https://github.com/owner/repo/issues/42',
+      issueTitle: 'Fix the thing',
+    });
+    global.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 403 });
+
+    const result = await handleIssueWebhook(
+      { action: 'closed', issue: { number: 42 } },
+      'bot-token',
+    );
+
+    expect(result).toBe('notified');
+    expect(mockDocDelete).toHaveBeenCalled();
+  });
 });

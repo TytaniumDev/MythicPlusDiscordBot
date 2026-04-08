@@ -44,11 +44,14 @@ export async function sendDiscordDm(
   const channel = (await channelRes.json()) as { id: string };
 
   // Send message
-  await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+  const msgRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ content }),
   });
+  if (!msgRes.ok) {
+    throw new Error(`Failed to send DM message: ${msgRes.status}`);
+  }
 }
 
 interface WebhookPayload {
