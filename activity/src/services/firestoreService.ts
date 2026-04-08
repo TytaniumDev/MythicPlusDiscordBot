@@ -231,7 +231,6 @@ class FirestoreSessionService implements SessionService {
       groups: [],
       sittingOut: [],
       isDebug: false,
-      announceResults: false,
       refreshPlayers: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
