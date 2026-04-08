@@ -2674,6 +2674,101 @@ button.role-section-header--collapsible {
   flex: 1;
 }
 
+/* ── Spotlight Card ─────────────────────────────────────── */
+.spotlight-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.spotlight-card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px 32px;
+  min-width: 260px;
+  max-width: 340px;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+  pointer-events: none;
+}
+
+.spotlight-card.spotlight-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spotlight-card.spotlight-exit {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.85);
+  transition: opacity 400ms ease-in, transform 400ms ease-in;
+}
+
+.spotlight-card.is-my-group {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+.spotlight-heading {
+  text-align: center;
+  font-size: 1.25rem;
+  margin: 0 0 16px 0;
+  color: var(--color-gold);
+}
+
+.spotlight-role {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.95rem;
+}
+
+/* ── Wheels Fade ────────────────────────────────────────── */
+.wheels-area-fade {
+  transition: opacity 300ms ease-in-out;
+}
+
+.wheels-area-fade.wheels-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Progress Indicator ─────────────────────────────────── */
+.spin-progress {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  padding: 12px 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spin-progress-text {
+  transition: opacity 200ms ease;
+}
+
+.spin-progress-text.fade-out {
+  opacity: 0;
+}
+
+/* ── Results Crossfade ──────────────────────────────────── */
+.results-crossfade {
+  animation: fadeIn 500ms ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ============================================
    Reduced Motion
    ============================================ */
