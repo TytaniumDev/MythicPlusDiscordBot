@@ -96,7 +96,7 @@ export const onGithubIssueWebhook = onRequest(
       return;
     }
 
-    const rawBody = JSON.stringify(req.body);
+    const rawBody = ((req as unknown as { rawBody: Buffer }).rawBody ?? '').toString();
     const signature = req.headers['x-hub-signature-256'] as string;
 
     if (!verifyGithubSignature(rawBody, signature, githubWebhookSecret.value())) {
