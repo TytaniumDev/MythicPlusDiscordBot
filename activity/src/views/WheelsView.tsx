@@ -8,7 +8,7 @@ import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
-import { PrimaryCTA, Checkbox } from '../components/ui';
+import { PrimaryCTA } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
@@ -40,13 +40,8 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [nextBtnVisible, setNextBtnVisible] = useState(false);
   const [nextBtnText, setNextBtnText] = useState('Spin for Group 1');
   const [nextBtnDisabled, setNextBtnDisabled] = useState(false);
-  const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults === true);
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
-
-  useEffect(() => {
-    setAnnounceChecked(channelData?.announceResults === true);
-  }, [channelData?.announceResults]);
 
   // Show confirmation dialog when browser back is intercepted
   useEffect(() => {
@@ -371,27 +366,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     useAppStore.getState().setPendingBrowserBack(false);
   }, []);
 
-  const handleAnnounceChange = useCallback(async (checked: boolean) => {
-    setAnnounceChecked(checked);
-    if (!isDemoMode) {
-      try {
-        await service.updateAnnounce(checked);
-      } catch (err) {
-        console.error('[Wheelson] Failed to update announce setting:', err);
-      }
-    }
-  }, [isDemoMode, service]);
-
-  const announceCheckbox = (
-    <Checkbox
-      id="announce-checkbox"
-      label="Post results to chat"
-      checked={announceChecked}
-      onChange={(e) => handleAnnounceChange((e.target as HTMLInputElement).checked)}
-      className="announce-option"
-    />
-  );
-
   return (
     <div className="main-layout">
       <HeaderBar
@@ -422,16 +396,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                     ))}
                   </div>
                 </aside>
-                {announceCheckbox}
               </div>
             )}
           </div>
 
           {isCarousel && (
-            <>
-              <MobileGroupPager groupCards={groupCards} />
-              {announceCheckbox}
-            </>
+            <MobileGroupPager groupCards={groupCards} />
           )}
 
           {nextBtnVisible && (

@@ -1,6 +1,4 @@
-import { WoWGroup } from '@mythicplus/shared';
 import { FirebaseService, ARRAY_UNION, ARRAY_REMOVE } from '../core/firebaseService.js';
-import { buildGroupEmbed } from '../core/groupUi.js';
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
 
@@ -36,7 +34,6 @@ export class SessionService {
   activeChannels = new Map<string, ActiveChannel>();
   channelListeners = new Map<string, { unsubscribe(): void }>();
   guildListeners = new Map<string, { unsubscribe(): void } | null>();
-  announcedChannels = new Set<string>();
 
   constructor(bot: Bot, firebase?: FirebaseService) {
     this.bot = bot;
@@ -56,8 +53,6 @@ export class SessionService {
 
     this.activeChannels.clear();
     this.activeGuilds.clear();
-    this.announcedChannels.clear();
-
     logger.info('SessionService shutdown complete — all listeners unsubscribed.');
   }
 
@@ -143,34 +138,11 @@ export class SessionService {
     });
   }
 
-  async announceCompletion(
-    channel: VoiceChannel,
-    data: Record<string, unknown>,
-  ): Promise<void> {
-    const groupsData = (data.groups ?? []) as Record<string, unknown>[];
-    const groups = groupsData.map((g) => WoWGroup.fromDict(g));
-
-    if (groups.length === 0) {
-      await channel.send('No groups were formed this round.');
-      return;
-    }
-
-    try {
-      for (let i = 0; i < groups.length; i++) {
-        const embed = buildGroupEmbed(groups[i], i + 1);
-        await channel.send({ embed });
-      }
-    } catch (e) {
-      logger.warn(`Could not send completion embed to channel ${channel.id}: ${e}`);
-    }
-  }
-
   async cleanupChannel(channelId: string): Promise<void> {
     const active = this.activeChannels.get(channelId);
     if (!active) return;
 
     this.activeChannels.delete(channelId);
-    this.announcedChannels.delete(channelId);
 
     if (this.channelListeners.has(active.docId)) {
       const watch = this.channelListeners.get(active.docId);
@@ -205,7 +177,6 @@ export class SessionService {
     const active = this.activeChannels.get(channelId);
     if (active) {
       this.activeChannels.delete(channelId);
-      this.announcedChannels.delete(channelId);
       if (this.channelListeners.has(channelId)) {
         const watch = this.channelListeners.get(channelId);
         watch?.unsubscribe();

@@ -160,7 +160,6 @@ export const mockChannelData: ChannelData = {
   groups: [],
   revealedGroups: 0,
   isDebug: false,
-  announceResults: false,
   createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 },
   lastActive: { seconds: Date.now() / 1000, nanoseconds: 0 },
 };

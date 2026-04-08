@@ -182,13 +182,6 @@ class FirestoreSessionService implements SessionService {
     await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
-  async updateAnnounce(value: boolean): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { announceResults: value });
-  }
-
   async saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void> {
     const prefRef = doc(db, 'preferences', playerId);
     await setDoc(prefRef, {
@@ -313,7 +306,6 @@ class FirestoreSessionService implements SessionService {
         players: [],
         groups: [],
         isDebug: false,
-        announceResults: false,
         refreshPlayers: true,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),

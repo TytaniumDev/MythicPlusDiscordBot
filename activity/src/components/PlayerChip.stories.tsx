@@ -19,7 +19,6 @@ const meta = {
         claimedPlayers: ['100000000000000005'],
         sittingOut: [],
         isDebug: false,
-        announceResults: false,
         createdAt: null,
         lastActive: null,
       },

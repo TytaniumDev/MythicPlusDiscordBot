@@ -65,10 +65,6 @@ class DemoSessionService implements SessionService {
     }
   }
 
-  async updateAnnounce(_value: boolean): Promise<void> {
-    // No-op in demo
-  }
-
   async saveRoles(playerId: string, _playerName: string, _roles: string[], inGameName?: string): Promise<void> {
     if (inGameName !== undefined) {
       useAppStore.getState().updatePlayer(playerId, { inGameName });
