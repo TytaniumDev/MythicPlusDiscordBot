@@ -1,15 +1,8 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
+import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay, type AffixDocument } from './affixMetadata.js';
 import { enforceRateLimit } from './rateLimit.js';
-
-export interface AffixDocument {
-  period: number;
-  region: string;
-  lastUpdated: FieldValue | Date;
-  affixes: AffixDisplay[];
-}
 
 // Pure logic — testable without Firebase
 export function buildAffixDocument(

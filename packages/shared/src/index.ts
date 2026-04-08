@@ -37,6 +37,7 @@ export type {
   Role,
   Utility,
   AffixDisplay,
+  AffixDocument,
   WoWPlayerDict,
   WoWGroupDict,
 } from './types.js';

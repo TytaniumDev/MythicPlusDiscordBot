@@ -21,6 +21,8 @@ vi.mock('os', () => ({
 
 import { GeneralHandler, type GeneralContext, type VoiceClient } from '../src/commands/general.js';
 import * as config from '../src/core/config.js';
+import { FirebaseService } from '../src/core/firebaseService.js';
+import { STATIC_AFFIXES } from '@mythicplus/shared';
 
 function makeCtx(overrides: Partial<GeneralContext> = {}): GeneralContext {
   return {
@@ -70,6 +72,49 @@ describe('GeneralHandler.version', () => {
 
     // Restore
     Object.defineProperty(config, 'GIT_SHA', { value: original, writable: true, configurable: true });
+  });
+});
+
+describe('GeneralHandler.affixes', () => {
+  it('shows affixes from firebase if available', async () => {
+    const mockAffixes = [
+      { id: 160, name: "Xal'atath's Bargain: Devour", nickname: 'Dispel Allies', keystoneLevel: '+4–11', wowheadUrl: 'url', color: 'color' },
+    ];
+    vi.spyOn(FirebaseService.getInstance(), 'getAffixes').mockResolvedValue({
+      period: 0,
+      region: 'us',
+      lastUpdated: new Date(),
+      affixes: mockAffixes,
+    });
+
+    const handler = new GeneralHandler();
+    const ctx = makeCtx();
+
+    await handler.affixes(ctx);
+
+    expect(ctx.send).toHaveBeenCalledOnce();
+    const [, options] = vi.mocked(ctx.send).mock.calls[0];
+    const embed = (options as Record<string, any>).embed;
+
+    expect(embed.title).toBe("This Week's Affixes");
+    expect(embed.fields).toHaveLength(1);
+    expect(embed.fields[0].name).toBe("Xal'atath's Bargain: Devour");
+    expect(embed.fields[0].value).toContain('**Summary:** Dispel Allies');
+  });
+
+  it('falls back to static affixes if firebase is empty', async () => {
+    vi.spyOn(FirebaseService.getInstance(), 'getAffixes').mockResolvedValue(null);
+
+    const handler = new GeneralHandler();
+    const ctx = makeCtx();
+
+    await handler.affixes(ctx);
+
+    const [, options] = vi.mocked(ctx.send).mock.calls[0];
+    const embed = (options as Record<string, any>).embed;
+
+    expect(embed.fields).toHaveLength(STATIC_AFFIXES.length);
+    expect(embed.fields[0].name).toBe(STATIC_AFFIXES[0].name);
   });
 });
 

@@ -212,6 +212,7 @@ const commands = [
   new SlashCommandBuilder().setName('version').setDescription('Show the bot version'),
   new SlashCommandBuilder().setName('status').setDescription('Show bot status and uptime'),
   new SlashCommandBuilder().setName('invite').setDescription('Get the bot invite link'),
+  new SlashCommandBuilder().setName('affixes').setDescription('Show this week\'s Mythic+ affixes'),
   new SlashCommandBuilder().setName('wheel').setDescription('Create Mythic+ groups from voice channel members'),
   new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity'),
   new SlashCommandBuilder()
@@ -655,6 +656,10 @@ async function main() {
 
       case 'invite':
         await generalHandler.invite({ guild: guildObj, send: sender.send });
+        break;
+
+      case 'affixes':
+        await generalHandler.affixes({ guild: guildObj, send: sender.send });
         break;
 
       case 'wheel': {

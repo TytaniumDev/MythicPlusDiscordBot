@@ -1,5 +1,7 @@
 import * as os from 'os';
+import { STATIC_AFFIXES } from '@mythicplus/shared';
 import * as config from '../core/config.js';
+import { FirebaseService } from '../core/firebaseService.js';
 
 export interface GeneralContext {
   guild: { id: string } | null;
@@ -99,6 +101,39 @@ export class GeneralHandler {
 
     const serverId = ctx.guild?.id ?? 'DM';
     embed.footer = { text: `Server ID: ${serverId}` };
+
+    await ctx.send('', { embed });
+  }
+
+  async affixes(ctx: GeneralContext): Promise<void> {
+    const firebase = FirebaseService.getInstance();
+    let affixes = STATIC_AFFIXES;
+
+    try {
+      const doc = await firebase.getAffixes();
+      if (doc && doc.affixes && doc.affixes.length > 0) {
+        affixes = doc.affixes;
+      }
+    } catch {
+      // Fallback to static affixes
+    }
+
+    const embed: EmbedData = {
+      title: "This Week's Affixes",
+      color: 0x9b59b6,
+      fields: affixes.map((a) => {
+        let value = `**Level:** ${a.keystoneLevel}`;
+        if (a.nickname) {
+          value += `\n**Summary:** ${a.nickname}`;
+        }
+        value += `\n[View on Wowhead](${a.wowheadUrl})`;
+        return {
+          name: a.name,
+          value,
+          inline: affixes.length > 3,
+        };
+      }),
+    };
 
     await ctx.send('', { embed });
   }

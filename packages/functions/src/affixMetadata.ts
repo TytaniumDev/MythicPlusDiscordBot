@@ -6,4 +6,4 @@ export {
   resolveAffixDisplay,
 } from '@mythicplus/shared';
 
-export type { AffixDisplay } from '@mythicplus/shared';
+export type { AffixDisplay, AffixDocument } from '@mythicplus/shared';

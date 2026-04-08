@@ -23,6 +23,13 @@ export interface AffixDisplay {
   color: string;
 }
 
+export interface AffixDocument {
+  period: number;
+  region: string;
+  lastUpdated: unknown;
+  affixes: AffixDisplay[];
+}
+
 export interface WoWGroupDict {
   [key: string]: unknown;
   tank: WoWPlayerDict | null;

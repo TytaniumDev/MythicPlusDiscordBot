@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import type { AffixDocument } from '@mythicplus/shared';
 import logger from './logger.js';
 import * as config from './config.js';
 
@@ -90,6 +91,7 @@ export interface IFirebaseService {
   listenForChannelRemovedDocs(
     callback: (docId: string) => void,
   ): { unsubscribe(): void } | null;
+  getAffixes(): Promise<AffixDocument | null>;
 }
 
 let instance: FirebaseService | null = null;
@@ -388,6 +390,13 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection(collectionName).doc(docId);
     await docRef.delete();
+  }
+
+  async getAffixes(): Promise<AffixDocument | null> {
+    if (!this.db) return null;
+    const doc = await this.db.collection('config').doc('affixes').get();
+    if (!doc.exists) return null;
+    return doc.data() as AffixDocument | null;
   }
 
   listenForChannelRemovedDocs(
