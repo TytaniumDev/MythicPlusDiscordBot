@@ -62,8 +62,8 @@ export interface IFirebaseService {
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
-  getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]>;
-  savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void>;
+  getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null>;
+  saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void>;
   getOrCreateChannelDoc(
     channelId: string,
     guildId: string,
@@ -369,19 +369,20 @@ export class FirebaseService implements IFirebaseService {
     return { unsubscribe: unsubscribe as () => void };
   }
 
-  async getPreviousGroups(guildId: string): Promise<Record<string, unknown>[]> {
-    if (!this.db) return [];
+  async getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null> {
+    if (!this.db) return null;
     const docRef = this.db.collection('guilds').doc(guildId);
     const doc = await docRef.get();
-    if (!doc.exists) return [];
+    if (!doc.exists) return null;
     const data = doc.data();
-    return (data?.previousGroups as Record<string, unknown>[] | undefined) ?? [];
+    const history = data?.groupHistory as { date: string; rounds: Record<string, unknown>[][] } | undefined;
+    return history ?? null;
   }
 
-  async savePreviousGroups(guildId: string, groups: Record<string, unknown>[]): Promise<void> {
+  async saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
-    await docRef.set({ previousGroups: groups }, { merge: true });
+    await docRef.set({ groupHistory: history }, { merge: true });
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {
