@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, type WoWGroupDict } from '@mythicplus/shared';
 import { FirebaseService } from '../src/core/firebaseService.js';
 
 // Helper to create mock docs
@@ -198,7 +198,7 @@ describe('FirebaseService.deleteAllInCollection', () => {
   });
 });
 
-describe('FirebaseService.getPreviousGroups', () => {
+describe('FirebaseService.getGroupHistory', () => {
   let service: FirebaseService;
 
   function createMockDbWithDocRef() {
@@ -226,54 +226,52 @@ describe('FirebaseService.getPreviousGroups', () => {
     service = Object.create(FirebaseService.prototype);
   });
 
-  it('returns empty array when db is null', async () => {
+  it('returns null when db is null', async () => {
     service.db = null;
-    const result = await service.getPreviousGroups('123');
-    expect(result).toEqual([]);
+    const result = await service.getGroupHistory('123');
+    expect(result).toBeNull();
   });
 
-  it('returns empty array when guild doc does not exist', async () => {
+  it('returns null when guild doc does not exist', async () => {
     const { db, mockDocRef } = createMockDbWithDocRef();
     service.db = db as unknown as FirebaseService['db'];
     mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
 
-    const result = await service.getPreviousGroups('123');
-    expect(result).toEqual([]);
+    const result = await service.getGroupHistory('123');
+    expect(result).toBeNull();
     expect(db.collection).toHaveBeenCalledWith('guilds');
   });
 
-  it('returns empty array when guild doc has no previousGroups field', async () => {
+  it('returns null when guild doc has no groupHistory field', async () => {
     const { db, mockDocRef } = createMockDbWithDocRef();
     service.db = db as unknown as FirebaseService['db'];
     mockDocRef.get.mockResolvedValue({
       exists: true,
-      data: () => ({ guildId: '123', voiceChannels: [] }),
+      data: () => ({ guildId: '123' }),
     });
 
-    const result = await service.getPreviousGroups('123');
-    expect(result).toEqual([]);
+    const result = await service.getGroupHistory('123');
+    expect(result).toBeNull();
   });
 
-  it('returns previousGroups from guild doc', async () => {
+  it('returns groupHistory from guild doc', async () => {
     const tank = WoWPlayer.create('Tank1', ['Tank']);
-    const healer = WoWPlayer.create('Healer1', ['Healer']);
-    const group = new WoWGroup(tank, healer, []);
-    const groupDicts = [group.toDict()];
+    const group = new WoWGroup(tank, null, []);
+    const rounds: WoWGroupDict[][] = [[group.toDict()]];
 
     const { db, mockDocRef } = createMockDbWithDocRef();
     service.db = db as unknown as FirebaseService['db'];
     mockDocRef.get.mockResolvedValue({
       exists: true,
-      data: () => ({ guildId: '123', previousGroups: groupDicts }),
+      data: () => ({ guildId: '123', groupHistory: { date: '2026-04-07', rounds } }),
     });
 
-    const result = await service.getPreviousGroups('123');
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual(group.toDict());
+    const result = await service.getGroupHistory('123');
+    expect(result).toEqual({ date: '2026-04-07', rounds });
   });
 });
 
-describe('FirebaseService.savePreviousGroups', () => {
+describe('FirebaseService.saveGroupHistory', () => {
   let service: FirebaseService;
 
   function createMockDbWithDocRef() {
@@ -303,24 +301,24 @@ describe('FirebaseService.savePreviousGroups', () => {
 
   it('does nothing when db is null', async () => {
     service.db = null;
-    await service.savePreviousGroups('123', []);
-    // No error thrown
+    await service.saveGroupHistory('123', { date: '2026-04-07', rounds: [] });
   });
 
-  it('upserts guild doc with previousGroups using set with merge', async () => {
+  it('upserts guild doc with groupHistory using set with merge', async () => {
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const group = new WoWGroup(tank, null, []);
-    const groupDicts = [group.toDict() as Record<string, unknown>];
+    const rounds: WoWGroupDict[][] = [[group.toDict()]];
+    const history = { date: '2026-04-07', rounds };
 
     const { db, mockDocRef } = createMockDbWithDocRef();
     mockDocRef.set.mockResolvedValue(undefined);
     service.db = db as unknown as FirebaseService['db'];
 
-    await service.savePreviousGroups('456', groupDicts);
+    await service.saveGroupHistory('456', history);
 
     expect(db.collection).toHaveBeenCalledWith('guilds');
     expect(mockDocRef.set).toHaveBeenCalledWith(
-      { previousGroups: groupDicts },
+      { groupHistory: history },
       { merge: true },
     );
   });

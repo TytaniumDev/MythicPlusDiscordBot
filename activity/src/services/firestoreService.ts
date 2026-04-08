@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
-import { WoWPlayer, WoWGroup, createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
 
 const MAX_LISTENER_RETRIES = 5;
 
@@ -119,12 +119,17 @@ class FirestoreSessionService implements SessionService {
 
     const guildId = channelData.guildId || null;
 
-    // Restore previous groups from Firestore so the algorithm avoids repeat groupings
-    if (guildData?.previousGroups?.length) {
-      const previousGroups = guildData.previousGroups.map(
-        g => WoWGroup.fromDict(g),
+    // Restore group history from Firestore so the algorithm avoids repeat groupings
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    let existingRounds: Record<string, unknown>[][] = [];
+    if (guildData?.groupHistory && guildData.groupHistory.date === today) {
+      existingRounds = guildData.groupHistory.rounds;
+      const rounds = existingRounds.map(round =>
+        round.map(g => WoWGroup.fromDict(g)),
       );
-      setLastGroups(previousGroups, guildId);
+      setGroupHistory(rounds, guildId);
+    } else {
+      setGroupHistory([], guildId);
     }
 
     const sittingOut = channelData.sittingOut ?? [];
@@ -135,13 +140,14 @@ class FirestoreSessionService implements SessionService {
 
     const groups = createMythicPlusGroups(players, true, guildId);
 
-    // Persist computed groups to guild doc for cross-session history.
+    // Persist group history to guild doc for cross-session diversity.
     // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
+      const newRound = groups.map(g => g.toDict());
       setDoc(guildDocRef, {
-        previousGroups: groups.map(g => g.toDict()),
-      }, { merge: true }).catch(err => console.error('[Wheelson] Failed to save previousGroups:', err));
+        groupHistory: { date: today, rounds: [...existingRounds, newRound] },
+      }, { merge: true }).catch(err => console.error('[Wheelson] Failed to save groupHistory:', err));
     }
 
     const channelRef = doc(db, 'channels', currentChannelId);

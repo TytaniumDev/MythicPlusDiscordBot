@@ -17,7 +17,7 @@ export { WoWPlayer, WoWGroup } from './models.js';
 
 export {
   clear,
-  setLastGroups,
+  setGroupHistory,
   createMythicPlusGroups,
 } from './parallelGroupCreator.js';
 
