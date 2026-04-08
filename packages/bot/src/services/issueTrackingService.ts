@@ -8,11 +8,16 @@ export interface TrackIssueData {
 }
 
 export class IssueTrackingService {
-  async trackIssue(data: TrackIssueData): Promise<void> {
-    const firebase = FirebaseService.getInstance();
-    if (!firebase.db) return;
+  private firebase: FirebaseService;
 
-    const docRef = firebase.db.collection('issueTracking').doc(String(data.issueNumber));
+  constructor(firebase?: FirebaseService) {
+    this.firebase = firebase ?? FirebaseService.getInstance();
+  }
+
+  async trackIssue(data: TrackIssueData): Promise<void> {
+    if (!this.firebase.db) return;
+
+    const docRef = this.firebase.db.collection('issueTracking').doc(String(data.issueNumber));
     await docRef.set({
       discordUserId: data.discordUserId,
       issueUrl: data.issueUrl,
@@ -22,10 +27,9 @@ export class IssueTrackingService {
   }
 
   async deleteTracking(issueNumber: number): Promise<void> {
-    const firebase = FirebaseService.getInstance();
-    if (!firebase.db) return;
+    if (!this.firebase.db) return;
 
-    const docRef = firebase.db.collection('issueTracking').doc(String(issueNumber));
+    const docRef = this.firebase.db.collection('issueTracking').doc(String(issueNumber));
     await docRef.delete();
   }
 }
