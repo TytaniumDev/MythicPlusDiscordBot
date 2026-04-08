@@ -45,7 +45,6 @@ export function buildCharacterResult(
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const lookupCharacter = onCall(
-  { enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');
