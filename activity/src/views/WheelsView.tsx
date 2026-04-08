@@ -373,7 +373,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       <main className="content-area">
         <section id="view-wheels">
           <div className="wheels-content">
-            <div className="wheels-content-area" style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <div className={`wheels-area-fade${wheelsHidden ? ' wheels-hidden' : ''}`}>
                 <WheelsGridComponent ref={gridRef} pools={pools} />
               </div>
