@@ -1,5 +1,6 @@
 import * as os from 'os';
 import * as config from '../core/config.js';
+import type { AffixDisplay } from '@mythicplus/shared';
 
 export interface GeneralContext {
   guild: { id: string } | null;
@@ -101,6 +102,28 @@ export class GeneralHandler {
     embed.footer = { text: `Server ID: ${serverId}` };
 
     await ctx.send('', { embed });
+  }
+
+  async affixes(ctx: GeneralContext, affixes: AffixDisplay[]): Promise<void> {
+    const colorDot: Record<string, string> = {
+      '#22c55e': '🟢',
+      '#a855f7': '🟣',
+      '#ef4444': '🔴',
+      '#f59e0b': '🟡',
+    };
+
+    const lines = affixes.map((a) => {
+      const dot = colorDot[a.color?.toLowerCase()] ?? '⚪';
+      const nick = a.nickname ? ` — *${a.nickname}*` : '';
+      return `${dot} [**${a.name}**](${a.wowheadUrl}) (${a.keystoneLevel})${nick}`;
+    });
+
+    const embed: EmbedData = {
+      title: "This Week's Affixes",
+      color: 0x9146ff,
+      fields: [{ name: '\u200b', value: lines.join('\n') || 'No affixes available.', inline: false }],
+    };
+    await ctx.send('', { embed, ephemeral: true });
   }
 
   async onVoiceStateUpdate(voiceClient: VoiceClient | null): Promise<void> {
