@@ -369,7 +369,6 @@ async function main() {
   let badGroupReportListener: { unsubscribe(): void } | null = null;
   let guildRefreshListener: { unsubscribe(): void } | null = null;
   let channelRefreshListener: { unsubscribe(): void } | null = null;
-  let channelStatusListener: { unsubscribe(): void } | null = null;
   let channelRemovedListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
@@ -583,51 +582,6 @@ async function main() {
 
     if (channelRefreshListener) {
       logger.info('Listening for channel player refresh requests from activity frontend');
-    }
-
-    // Listen for channel status changes to announce completion to Discord.
-    // Also handles lobby resets to clear the dedup guard for subsequent rounds.
-    channelStatusListener = firebase.listenForChannelStatusChanges(async (channelId, data) => {
-      try {
-        // New round resets dedup guard so the next completion can be announced
-        if (data.status === 'lobby') {
-          sessionService.announcedChannels.delete(channelId);
-          return;
-        }
-
-        // Only announce once per completion (prevents duplicates if doc is modified again)
-        if (sessionService.announcedChannels.has(channelId)) return;
-        sessionService.announcedChannels.add(channelId);
-
-        const announceResults = data.announceResults === true;
-        if (!announceResults) {
-          logger.debug(`Channel ${channelId} completed but announceResults is false, skipping`);
-          return;
-        }
-
-        // Resolve guild/channel using string-based Discord.js cache lookups
-        const guildId = String(data.guildId ?? '');
-        const discordGuild = readyClient.guilds.cache.get(guildId);
-        if (!discordGuild) {
-          logger.warn(`Guild ${guildId} not in cache for completion announcement`);
-          return;
-        }
-        const discordChannel = discordGuild.channels.cache.get(channelId);
-        if (!discordChannel || !discordChannel.isVoiceBased()) {
-          logger.warn(`Voice channel ${channelId} not found in guild ${guildId}`);
-          return;
-        }
-
-        const vc = adaptVoiceChannel(discordChannel as import('discord.js').VoiceChannel);
-        await sessionService.announceCompletion(vc, data);
-        logger.info(`Announced completion for channel ${channelId}`);
-      } catch (e) {
-        logger.error(`Failed to announce completion for channel ${channelId}: ${e}`);
-      }
-    });
-
-    if (channelStatusListener) {
-      logger.info('Listening for channel status changes from activity frontend');
     }
 
     // Listen for channel docs being removed (e.g. frontend cleanup or TTL expiry)
@@ -1295,7 +1249,6 @@ async function main() {
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
     channelRefreshListener?.unsubscribe();
-    channelStatusListener?.unsubscribe();
     channelRemovedListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();

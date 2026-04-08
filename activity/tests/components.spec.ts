@@ -201,16 +201,4 @@ test.describe('Component: SecondaryButton', () => {
   });
 });
 
-// ── Component: Checkbox ──────────────────────────────────────
-test.describe('Component: Checkbox', () => {
-  test('Announce checkbox in wheels view', async ({ page }) => {
-    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    const wheelsData = { ...mockChannelData, status: 'spinning', staticWheel: true, players: mockPlayers };
-    await page.goto(`/?data=${encodeData(wheelsData)}`);
-    await expect(page.locator('#view-wheels')).toBeVisible();
 
-    const checkbox = page.locator('.announce-option');
-    await expect(checkbox).toBeVisible();
-    await expect(checkbox).toHaveScreenshot('checkbox-announce.png');
-  });
-});

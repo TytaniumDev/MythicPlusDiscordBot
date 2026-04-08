@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WoWGroup } from '@mythicplus/shared';
-
 vi.mock('@mythicplus/shared', async () => {
   const actual = await vi.importActual('@mythicplus/shared');
   return {
@@ -23,11 +21,6 @@ vi.mock('../src/core/utils.js', () => ({
   getMaskedName: vi.fn((n: string) => '?'.repeat(n.length)),
   showLongTyping: vi.fn().mockResolvedValue(undefined),
   showShortTyping: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock('../src/core/groupUi.js', () => ({
-  buildGroupEmbed: vi.fn(),
-  announceGroup: vi.fn(),
 }));
 
 vi.mock('../src/core/logger.js', () => ({
@@ -53,13 +46,8 @@ import {
   type VoiceChannel,
 } from '../src/services/sessionService.js';
 import { getPlayerList } from '../src/core/utils.js';
-import { buildGroupEmbed } from '../src/core/groupUi.js';
-// createMythicPlusGroups is mocked above but no longer directly referenced in tests
 import {
   TankPaladin,
-  HealerPriest,
-  Warrior,
-  Mage,
 } from './prebuiltClasses.js';
 
 // ---------- helpers ----------
@@ -345,73 +333,6 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
 
     const channels = firebase.updateGuildDoc.mock.calls[0][1].voiceChannels;
     expect(channels[0].userCount).toBe(1);
-  });
-});
-
-// ---------- announceCompletion ----------
-
-describe('SessionService.announceCompletion', () => {
-  it('deserializes groups from Firestore data', async () => {
-    const firebase = createMockFirebase();
-
-    const tank = TankPaladin('Tank1');
-    const healer = HealerPriest('Healer1');
-    const group = new WoWGroup(tank, healer, [Warrior('D1')]);
-    const groupDict = group.toDict();
-
-    const vc = makeVoiceChannel('42', 'Raid');
-    const bot = makeBot();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    const mockEmbed = { title: 'Group 1', color: 0, fields: [] };
-    vi.mocked(buildGroupEmbed).mockReturnValue(mockEmbed);
-
-    await service.announceCompletion(vc, { groups: [groupDict] });
-
-    expect(buildGroupEmbed).toHaveBeenCalledOnce();
-    const reconstructed = vi.mocked(buildGroupEmbed).mock.calls[0][0];
-    expect(reconstructed.tank).not.toBeNull();
-    expect(reconstructed.tank!.name).toBe('Tank1');
-    expect(vc.send).toHaveBeenCalledOnce();
-  });
-
-  it('sends fallback message when no groups', async () => {
-    const firebase = createMockFirebase();
-
-    const vc = makeVoiceChannel('42', 'Raid');
-    const bot = makeBot();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    await service.announceCompletion(vc, { groups: [] });
-
-    expect(vc.send).toHaveBeenCalledWith('No groups were formed this round.');
-  });
-
-  it('sends one embed per group', async () => {
-    const firebase = createMockFirebase();
-
-    const group1 = new WoWGroup(TankPaladin('T1'), HealerPriest('H1'), [Warrior('D1')]);
-    const group2 = new WoWGroup(TankPaladin('T2'), HealerPriest('H2'), [Mage('D2')]);
-
-    const vc = makeVoiceChannel('42', 'Raid');
-    const bot = makeBot();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    const mockEmbed = { title: '', color: 0, fields: [] };
-    vi.mocked(buildGroupEmbed).mockReturnValue(mockEmbed);
-
-    await service.announceCompletion(vc, {
-      groups: [group1.toDict(), group2.toDict()],
-    });
-
-    expect(buildGroupEmbed).toHaveBeenCalledTimes(2);
-    expect(vc.send).toHaveBeenCalledTimes(2);
   });
 });
 

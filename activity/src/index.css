@@ -1230,7 +1230,7 @@ body {
 }
 
 /* ============================================
-   Side Column — Groups panel + announce toggle
+   Side Column — Groups panel
    ============================================ */
 .side-column {
   width: var(--groups-panel-width);
@@ -1263,23 +1263,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.announce-option {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  cursor: pointer;
-  user-select: none;
-  flex-shrink: 0;
-}
-
-.announce-option input[type="checkbox"] {
-  accent-color: var(--color-gold);
-  cursor: pointer;
 }
 
 /* ============================================

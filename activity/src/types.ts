@@ -41,7 +41,6 @@ export interface ChannelData {
   claimedPlayers?: string[];
   sittingOut?: string[];
   isDebug: boolean;
-  announceResults: boolean;
   createdAt: unknown;
   lastActive: unknown;
 }
