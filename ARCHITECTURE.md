@@ -132,7 +132,7 @@ erDiagram
     }
 ```
 
-- **Bot**: creates the document (status `lobby`), updates `players` on voice changes, and on `request_spin` writes `status: spinning` and `groups`. Listens for `completed` to announce in Discord.
+- **Bot**: creates the document (status `lobby`), updates `players` on voice changes, and on `request_spin` writes `status: spinning` and `groups`.
 - **Frontend**: subscribes with `onSnapshot` to the document (using `sessionId` from the URL), updates `status` to `request_spin` when the user clicks Spin, then to `completed` when the wheel animation finishes.
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
@@ -168,7 +168,7 @@ The Activity frontend (`activity/src/main.ts`) operates in three distinct modes 
 
 ## How an Activity Run Works (End-to-End)
 
-This is the sequence from “someone runs `/activity`” to “everyone sees groups and the bot posts in Discord.”
+This is the sequence from “someone runs `/activity`” to “everyone sees groups.”
 
 ```mermaid
 sequenceDiagram
@@ -202,14 +202,12 @@ sequenceDiagram
     Firestore-->>Frontend: snapshot → run wheel animation
     Frontend->>Frontend: animate wheels, then updateDoc(status: completed)
     Frontend->>Firestore: updateDoc(status: completed)
-    Firestore-->>Bot: listener: MODIFIED
-    Bot->>Discord: send embed "Groups Formed!" with group list
     Firestore-->>Frontend: snapshot → show results screen
 ```
 
 - **Creation**: Bot creates the session and returns links; frontend only needs the URL with `sessionId`.
 - **Lobby**: Bot keeps `players` in sync with voice; frontend only reads and renders.
-- **Spin**: Frontend writes `request_spin`; bot computes and writes `spinning` + `groups`; frontend animates then writes `completed`; bot announces to Discord.
+- **Spin**: Frontend writes `request_spin`; bot computes and writes `spinning` + `groups`; frontend animates then writes `completed`.
 
 ---
 
