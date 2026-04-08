@@ -2747,7 +2747,7 @@ button.role-section-header--collapsible {
 .spin-progress {
   text-align: center;
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
   padding: 12px 0;
   min-height: 48px;
   display: flex;
@@ -2761,16 +2761,6 @@ button.role-section-header--collapsible {
 
 .spin-progress-text.fade-out {
   opacity: 0;
-}
-
-/* ── Results Crossfade ──────────────────────────────────── */
-.results-crossfade {
-  animation: fadeIn 500ms ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* ============================================

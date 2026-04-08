@@ -307,7 +307,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     await delay(300);
     onNavigate('results', { replace: true });
-    await service.finishSequence();
+    try {
+      await service.finishSequence();
+    } catch (err) {
+      console.error('[Wheelson] Failed to finish sequence:', err);
+    }
   }, [spinOneGroupGrid, spinOneGroupCarousel, updateProgress, onNavigate, service]);
 
   const handleSpinClick = useCallback(async () => {
@@ -318,7 +322,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setShowSpinBtn(false);
 
     if (store.isDemoMode) {
-      runAutoAdvanceLoop();
+      runAutoAdvanceLoop().catch((err) => {
+        console.error('[Wheelson] Demo advance failed:', err);
+        setShowSpinBtn(true);
+        setSpinBtnDisabled(false);
+      });
       return;
     }
 
