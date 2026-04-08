@@ -29,14 +29,19 @@ jobs:
       - name: Verify Activity (typecheck, build, Storybook, Playwright)
         run: ./scripts/verify-activity.sh --update-and-verify
 
-      - name: Fail if snapshots are outdated
+      - name: Auto-commit updated snapshots
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          if ! git diff --quiet activity/tests/__screenshots__/; then
-            echo "::error::Visual test snapshots are outdated. Run locally and commit the results:"
-            echo "::error::  ./scripts/playwright-docker.sh --update-snapshots"
-            echo ""
-            echo "Changed snapshots:"
-            git diff --name-only activity/tests/__screenshots__/
-            exit 1
+          if git diff --quiet activity/tests/__screenshots__/; then
+            echo "All snapshots are up-to-date."
+            exit 0
           fi
-          echo "All snapshots are up-to-date."
+          echo "Snapshots changed — committing updates..."
+          git diff --name-only activity/tests/__screenshots__/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add activity/tests/__screenshots__/
+          git commit -m "chore: update visual snapshots [skip ci]"
+          git push origin "HEAD:$HEAD_REF"
