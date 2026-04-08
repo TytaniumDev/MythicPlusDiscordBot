@@ -63,14 +63,9 @@ export class GroupService {
 
     try {
       const history = await firebase.getGroupHistory(guildId);
-      if (!history) {
+      if (!history || history.date !== new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })) {
         this.loadedRounds.set(guildId, []);
-        return;
-      }
-
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-      if (history.date !== today) {
-        this.loadedRounds.set(guildId, []);
+        setGroupHistory([], guildId);
         return;
       }
 
@@ -101,6 +96,8 @@ export class GroupService {
       });
     } catch (err) {
       logger.warn(`Failed to save group history for guild ${guildId}: ${err}`);
+    } finally {
+      this.loadedRounds.delete(guildId);
     }
   }
 

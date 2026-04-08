@@ -40,7 +40,8 @@ export function createMythicPlusGroups(
       const members = group.players;
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
-          const key = [members[i].name, members[j].name].sort().join('|');
+          const [n1, n2] = [members[i].name, members[j].name];
+          const key = n1 < n2 ? n1 + '|' + n2 : n2 + '|' + n1;
           pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
         }
       }
@@ -134,7 +135,7 @@ export function createMythicPlusGroups(
       // Score = total times this player has been grouped with current teammates
       let score = 0;
       for (const teammate of teammates) {
-        const key = [player.name, teammate.name].sort().join('|');
+        const key = player.name < teammate.name ? player.name + '|' + teammate.name : teammate.name + '|' + player.name;
         score += pairCounts.get(key) ?? 0;
       }
 

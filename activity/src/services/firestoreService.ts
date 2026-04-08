@@ -128,6 +128,8 @@ class FirestoreSessionService implements SessionService {
         round.map(g => WoWGroup.fromDict(g)),
       );
       setGroupHistory(rounds, guildId);
+    } else {
+      setGroupHistory([], guildId);
     }
 
     const sittingOut = channelData.sittingOut ?? [];

@@ -279,7 +279,7 @@ describe('GroupService Firebase groupHistory integration', () => {
 
     await service.getGroupsData(ctx, true);
 
-    expect(setGroupHistory).not.toHaveBeenCalled();
+    expect(setGroupHistory).toHaveBeenCalledWith([], '42');
   });
 
   it('saves group history with today date and appended round', async () => {
@@ -362,7 +362,7 @@ describe('GroupService Firebase groupHistory integration', () => {
     expect(mockFirebaseInstance.saveGroupHistory).not.toHaveBeenCalled();
   });
 
-  it('does not call setGroupHistory when no history exists', async () => {
+  it('clears in-memory history when no history exists in Firebase', async () => {
     const service = new GroupService();
     const ctx = makeCtx({ guild: { id: '42' } });
     mockFirebaseInstance.getGroupHistory.mockResolvedValue(null);
@@ -374,7 +374,7 @@ describe('GroupService Firebase groupHistory integration', () => {
     await service.getGroupsData(ctx, true);
 
     expect(mockFirebaseInstance.getGroupHistory).toHaveBeenCalled();
-    expect(setGroupHistory).not.toHaveBeenCalled();
+    expect(setGroupHistory).toHaveBeenCalledWith([], '42');
   });
 
   it('gracefully handles Firebase load errors', async () => {
