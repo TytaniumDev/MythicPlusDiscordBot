@@ -50,7 +50,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [progressText, setProgressText] = useState('');
   const [progressFading, setProgressFading] = useState(false);
   const [wheelsHidden, setWheelsHidden] = useState(false);
-  const [spotlightGroup, setSpotlightGroup] = useState<{ group: import('../types').WoWGroup; index: number } | null>(null);
+  const [spotlightGroup, setSpotlightGroup] = useState<{ group: import('../types').WoWGroup; index: number; label?: string } | null>(null);
   const [spotlightVisible, setSpotlightVisible] = useState(false);
   const [spotlightExit, setSpotlightExit] = useState(false);
   const [announceChecked, setAnnounceChecked] = useState(channelData?.announceResults === true);
@@ -272,12 +272,31 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       setSpotlightGroup(null);
       setSpotlightExit(false);
 
-      // Add remainder groups after last full group
-      if (i === totalFull - 1 && store.remainderGroups.length > 0) {
-        store.remainderGroups.forEach((rg, ri) => {
-          store.addGroupCard({ group: rg, index: totalFull + ri, label: 'Remainder', hideEmpty: true });
-        });
-      }
+    }
+
+    // Show remainder groups with spotlight cards (no wheel spin)
+    for (let ri = 0; ri < store.remainderGroups.length; ri++) {
+      if (!autoAdvanceRef.current) break;
+
+      const rg = store.remainderGroups[ri];
+      const rgIndex = totalFull + ri;
+      await updateProgress(`Remainder ${ri + 1} of ${store.remainderGroups.length}`);
+
+      setSpotlightGroup({ group: rg, index: rgIndex, label: 'Remainder' });
+      setSpotlightExit(false);
+      setSpotlightVisible(true);
+      audio.victory();
+      await delay(SPOTLIGHT_ENTER_DURATION);
+
+      await delay(SPOTLIGHT_HOLD_DURATION);
+
+      setSpotlightVisible(false);
+      setSpotlightExit(true);
+      await delay(SPOTLIGHT_EXIT_DURATION);
+
+      store.addGroupCard({ group: rg, index: rgIndex, label: 'Remainder', hideEmpty: true });
+      setSpotlightGroup(null);
+      setSpotlightExit(false);
     }
 
     // Sequence complete — transition to results
@@ -385,6 +404,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                     index={spotlightGroup.index}
                     visible={spotlightVisible}
                     exit={spotlightExit}
+                    label={spotlightGroup.label}
                   />
                 </div>
               )}
