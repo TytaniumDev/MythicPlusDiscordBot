@@ -6,6 +6,7 @@ interface SpotlightCardProps {
   group: WoWGroup;
   index: number;
   visible: boolean;
+  exit?: boolean;
 }
 
 function SpotlightRoleRow({ color, roleLabel, name, player, isOffspec }: {
@@ -30,13 +31,13 @@ function SpotlightRoleRow({ color, roleLabel, name, player, isOffspec }: {
   );
 }
 
-export function SpotlightCard({ group, index, visible }: SpotlightCardProps) {
+export function SpotlightCard({ group, index, visible, exit = false }: SpotlightCardProps) {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const allPlayers = [group.tank, group.healer, ...group.dps];
   const isMyGroup = currentPlayerId != null && allPlayers.some((p) => p?.discordId === currentPlayerId);
 
   return (
-    <div className={`spotlight-card${visible ? ' spotlight-visible' : ''}${isMyGroup ? ' is-my-group' : ''}`}>
+    <div className={`spotlight-card${visible ? ' spotlight-visible' : ''}${exit ? ' spotlight-exit' : ''}${isMyGroup ? ' is-my-group' : ''}`}>
       <h3 className="spotlight-heading">
         {isMyGroup ? `Group ${index + 1} — Your Group!` : `Group ${index + 1}`}
       </h3>
