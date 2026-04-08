@@ -9,8 +9,8 @@ const mockBatchSet = vi.fn();
 
 vi.mock('firebase-admin/firestore', () => ({
   getFirestore: () => ({
-    collection: (name: string) => ({
-      doc: (id: string) => ({
+    collection: (_name: string) => ({
+      doc: (_id: string) => ({
         get: mockGet,
         doc: () => ({ set: mockSet }), // for nested collections
       }),
@@ -36,10 +36,10 @@ describe('githubWebhook', () => {
   });
 
   it('ignores non-POST requests', async () => {
-    const req = { method: 'GET' } as any;
-    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as any;
+    const req = { method: 'GET' } as unknown as Parameters<typeof githubWebhook>[0];
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as unknown as Parameters<typeof githubWebhook>[1];
 
-    await (githubWebhook as any)(req, res);
+    await githubWebhook(req, res);
 
     expect(res.status).toHaveBeenCalledWith(405);
   });
@@ -53,15 +53,15 @@ describe('githubWebhook', () => {
         issue: { number: 123, html_url: 'http://github.com/issue/123' },
         sender: { login: 'tester' },
       },
-    } as any;
-    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as any;
+    } as unknown as Parameters<typeof githubWebhook>[0];
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as unknown as Parameters<typeof githubWebhook>[1];
 
     mockGet.mockResolvedValue({
       exists: true,
       data: () => ({ userIds: ['user_1', 'user_2'] }),
     });
 
-    await (githubWebhook as any)(req, res);
+    await githubWebhook(req, res);
 
     expect(mockBatchSet).toHaveBeenCalledTimes(2);
     expect(mockBatchCommit).toHaveBeenCalled();
@@ -78,15 +78,15 @@ describe('githubWebhook', () => {
         comment: { html_url: 'http://github.com/issue/123#comment' },
         sender: { login: 'tester' },
       },
-    } as any;
-    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as any;
+    } as unknown as Parameters<typeof githubWebhook>[0];
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as unknown as Parameters<typeof githubWebhook>[1];
 
     mockGet.mockResolvedValue({
       exists: true,
       data: () => ({ userIds: ['user_1'] }),
     });
 
-    await (githubWebhook as any)(req, res);
+    await githubWebhook(req, res);
 
     expect(mockBatchSet).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       userId: 'user_1',
@@ -105,10 +105,10 @@ describe('githubWebhook', () => {
         action: 'edited',
         issue: { number: 123 },
       },
-    } as any;
-    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as any;
+    } as unknown as Parameters<typeof githubWebhook>[0];
+    const res = { status: vi.fn().mockReturnThis(), send: vi.fn() } as unknown as Parameters<typeof githubWebhook>[1];
 
-    await (githubWebhook as any)(req, res);
+    await githubWebhook(req, res);
 
     expect(mockBatchCommit).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);

@@ -345,6 +345,7 @@ async function main() {
   });
 
   // -- Initialize handlers --
+  const firebase = FirebaseService.getInstance();
   const groupService = new GroupService();
   const botAdapter = createBotAdapter(client);
   const sessionService = new SessionService(botAdapter);
@@ -401,7 +402,6 @@ async function main() {
     await onReady();
 
     // Listen for bad group reports from the activity frontend
-    const firebase = FirebaseService.getInstance();
     const reportTimestamps = new Map<string, number>(); // per-guild rate limit
     let lastGlobalReportTimestamp = 0; // global hard cap (defense-in-depth)
     const REPORT_COOLDOWN_MS = 60_000; // 1 minute between reports per guild
