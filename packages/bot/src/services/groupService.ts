@@ -1,4 +1,4 @@
-import { WoWGroup, WoWPlayer, createMythicPlusGroups, setLastGroups } from '@mythicplus/shared';
+import { WoWGroup, WoWPlayer, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getDebugPlayers, getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { FirebaseService } from '../core/firebaseService.js';
@@ -52,37 +52,34 @@ export class GroupService {
     return players;
   }
 
-  /**
-   * Loads the previous groups from Firestore for a given guild ID.
-   *
-   * @param firebase - The Firebase service instance.
-   * @param guildId - The Discord guild ID.
-   */
-  private async _loadPreviousGroups(
+  /** Loaded history rounds for use in _saveGroupHistory. */
+  private loadedRounds: Map<string, Record<string, unknown>[][]> = new Map();
+
+  private async _loadGroupHistory(
     firebase: FirebaseService,
     guildId: string,
   ): Promise<void> {
     if (!firebase.isAvailable()) return;
 
     try {
-      const prevGroupDicts = await firebase.getPreviousGroups(guildId);
-      if (prevGroupDicts.length > 0) {
-        const previousGroups = prevGroupDicts.map((g) => WoWGroup.fromDict(g));
-        setLastGroups(previousGroups, guildId);
+      const history = await firebase.getGroupHistory(guildId);
+      if (!history || history.date !== new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })) {
+        this.loadedRounds.set(guildId, []);
+        setGroupHistory([], guildId);
+        return;
       }
+
+      this.loadedRounds.set(guildId, history.rounds);
+      const rounds = history.rounds.map((round) =>
+        round.map((g) => WoWGroup.fromDict(g)),
+      );
+      setGroupHistory(rounds, guildId);
     } catch (err) {
-      logger.warn(`Failed to load previous groups for guild ${guildId}: ${err}`);
+      logger.warn(`Failed to load group history for guild ${guildId}: ${err}`);
     }
   }
 
-  /**
-   * Saves the newly generated groups to Firestore.
-   *
-   * @param firebase - The Firebase service instance.
-   * @param guildId - The Discord guild ID.
-   * @param groups - The array of created WoW groups.
-   */
-  private async _savePreviousGroups(
+  private async _saveGroupHistory(
     firebase: FirebaseService,
     guildId: string,
     groups: WoWGroup[],
@@ -90,12 +87,17 @@ export class GroupService {
     if (!firebase.isAvailable()) return;
 
     try {
-      await firebase.savePreviousGroups(
-        guildId,
-        groups.map((g) => g.toDict() as Record<string, unknown>),
-      );
+      const existingRounds = this.loadedRounds.get(guildId) ?? [];
+      const newRound = groups.map((g) => g.toDict() as Record<string, unknown>);
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+      await firebase.saveGroupHistory(guildId, {
+        date: today,
+        rounds: [...existingRounds, newRound],
+      });
     } catch (err) {
-      logger.warn(`Failed to save previous groups for guild ${guildId}: ${err}`);
+      logger.warn(`Failed to save group history for guild ${guildId}: ${err}`);
+    } finally {
+      this.loadedRounds.delete(guildId);
     }
   }
 
@@ -112,13 +114,13 @@ export class GroupService {
     const firebase = guildId ? FirebaseService.getInstance() : null;
 
     if (guildId && firebase) {
-      await this._loadPreviousGroups(firebase, guildId);
+      await this._loadGroupHistory(firebase, guildId);
     }
 
     const groups = createMythicPlusGroups(players, debug, guildId);
 
     if (guildId && firebase) {
-      await this._savePreviousGroups(firebase, guildId, groups);
+      await this._saveGroupHistory(firebase, guildId, groups);
     }
 
     return { players: [...players], groups: [...groups] };

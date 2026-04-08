@@ -3,7 +3,7 @@ import {
   WoWPlayer,
   WoWGroup,
   clear,
-  setLastGroups,
+  setGroupHistory,
   createMythicPlusGroups,
 } from '@mythicplus/shared';
 import {
@@ -348,7 +348,7 @@ describe('GroupCreator', () => {
     const g1 = new WoWGroup();
     g1.tank = tank;
     g1.dps = [dps1, dps2, dps3];
-    setLastGroups([g1]);
+    setGroupHistory([[g1]]);
 
     const allPlayers = [tank, healer, dps1, dps2, dps3, dps4, dps5, dps6];
     const groups = createMythicPlusGroups(allPlayers);
@@ -363,5 +363,44 @@ describe('GroupCreator', () => {
     const expectedFreshDps = new Set(['DPS4', 'DPS5', 'DPS6']);
     const intersection = new Set([...dpsNames].filter((n) => expectedFreshDps.has(n)));
     expect(intersection.size).toBe(3);
+  });
+
+  it('uses multi-round history to maximize diversity', () => {
+    const tank = TankWarrior('Tank');
+    const healer = HealerPriest('Healer');
+    const dps1 = Warrior('DPS1');
+    const dps2 = Warrior('DPS2');
+    const dps3 = Warrior('DPS3');
+    const dps4 = Warrior('DPS4');
+    const dps5 = Warrior('DPS5');
+    const dps6 = Warrior('DPS6');
+
+    // Round 1: Tank played with DPS1, DPS2, DPS3
+    const r1g1 = new WoWGroup();
+    r1g1.tank = tank;
+    r1g1.dps = [dps1, dps2, dps3];
+
+    // Round 2: Tank played with DPS1 again (so DPS1 has count=2 with Tank)
+    const r2g1 = new WoWGroup();
+    r2g1.tank = tank;
+    r2g1.dps = [dps1, dps4, dps5];
+
+    setGroupHistory([
+      [r1g1],
+      [r2g1],
+    ]);
+
+    const allPlayers = [tank, healer, dps1, dps2, dps3, dps4, dps5, dps6];
+    const groups = createMythicPlusGroups(allPlayers);
+
+    expect(groups.length).toBeGreaterThanOrEqual(1);
+    const group = groups[0];
+    expect(group.tank!.equals(tank)).toBe(true);
+
+    // DPS6 has count=0 with tank, DPS3 has count=1, DPS2 has count=1.
+    // DPS1 has count=2. Algorithm should prefer DPS6 and the count=1 players.
+    const dpsNames = group.dps.map((p) => p.name);
+    expect(dpsNames).not.toContain('DPS1');
+    expect(dpsNames).toContain('DPS6');
   });
 });
