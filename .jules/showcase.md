@@ -3,6 +3,7 @@
 ## Critical Learnings
 - **[2024-05-22]** Initial audit revealed `README.md` was functional but lacked "Curb Appeal". It missed critical link arrays, visual hooks, and a clear documentation map. Refactoring to follow the "Golden Template".
 - **[2024-05-24]** Standardized "Quick Start" on `npm ci` rather than `npm install` for the TS monorepo. This prevents unintended local `package-lock.json` mutations, reducing onboarding friction and unexpected local state issues.
+- **[2026-04-09]** Added `DISCORD_APPLICATION_ID` to Quick Start instructions. Users were encountering a startup crash when trying to run the bot with just `BOT_TOKEN` due to missing required application ID context, causing immediate abandonment.
 
 ## Showcase's Philosophy
 - The README is not documentation; it is a Landing Page.
