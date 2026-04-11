@@ -45,6 +45,7 @@ export function buildCharacterResult(
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 export const lookupCharacter = onCall(
+  { enforceAppCheck: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');
@@ -58,6 +59,10 @@ export const lookupCharacter = onCall(
 
     if (!name || !realm || !region) {
       throw new HttpsError('invalid-argument', 'name, realm, and region are required');
+    }
+
+    if (typeof name !== 'string' || typeof realm !== 'string' || typeof region !== 'string') {
+      throw new HttpsError('invalid-argument', 'name, realm, and region must be strings');
     }
 
     // Validate inputs contain only valid WoW name/realm slug characters (letters, digits, hyphens, spaces, apostrophes)
