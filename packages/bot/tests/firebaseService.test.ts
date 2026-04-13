@@ -10,6 +10,121 @@ function createMockDoc(id: string) {
   };
 }
 
+
+describe('FirebaseService.getOrCreateGuildDoc', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn().mockResolvedValue(undefined),
+      update: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('throws error when db is not initialized', async () => {
+    service.db = null;
+    await expect(service.getOrCreateGuildDoc('123')).rejects.toThrow('Firebase is not initialized.');
+  });
+
+  it('creates new document when it does not exist', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const result = await service.getOrCreateGuildDoc('123', 'My Guild', 'http://icon.url');
+
+    expect(result).toBe('123');
+    expect(db.collection).toHaveBeenCalledWith('guilds');
+    expect(db.collection('guilds').doc).toHaveBeenCalledWith('123');
+    expect(mockDocRef.set).toHaveBeenCalledWith({
+      guildId: '123',
+      voiceChannels: [],
+      createdAt: expect.anything(),
+      lastActive: expect.anything(),
+      guildName: 'My Guild',
+      guildIconUrl: 'http://icon.url',
+    });
+  });
+
+  it('updates existing document when it exists', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({ guildId: '123' }) });
+
+    const result = await service.getOrCreateGuildDoc('123', 'Updated Guild');
+
+    expect(result).toBe('123');
+    expect(mockDocRef.update).toHaveBeenCalledWith({
+      lastActive: expect.anything(),
+      guildName: 'Updated Guild',
+    });
+  });
+});
+
+describe('FirebaseService.updateGuildDoc', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('returns early when db is null', async () => {
+    service.db = null;
+    await service.updateGuildDoc('123', { field: 'value' });
+    // No error thrown
+  });
+
+  it('calls docRef.update with correct arguments', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+
+    await service.updateGuildDoc('123', { someField: 'newValue' });
+
+    expect(db.collection).toHaveBeenCalledWith('guilds');
+    expect(db.collection('guilds').doc).toHaveBeenCalledWith('123');
+    expect(mockDocRef.update).toHaveBeenCalledWith({ someField: 'newValue' });
+  });
+});
+
 describe('FirebaseService.deleteOldDocs', () => {
   let service: FirebaseService;
   let mockDb: ReturnType<typeof createMockDb>;
