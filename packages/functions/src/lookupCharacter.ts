@@ -54,6 +54,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 // do not "fix" it. Re-enable only alongside frontend App Check init.
 // Anonymous auth + per-user rate limiting below provides abuse protection.
 export const lookupCharacter = onCall(
+  { enforceAppCheck: false },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');
