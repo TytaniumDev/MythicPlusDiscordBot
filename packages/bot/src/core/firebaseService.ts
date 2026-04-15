@@ -344,14 +344,28 @@ export class FirebaseService implements IFirebaseService {
     const doc = await docRef.get();
     if (!doc.exists) return null;
     const data = doc.data();
-    const history = data?.groupHistory as { date: string; rounds: Record<string, unknown>[][] } | undefined;
-    return history ?? null;
+    const raw = data?.groupHistory as { date: string; rounds: unknown[] } | undefined;
+    if (!raw) return null;
+    // Wire format wraps each round as { groups: [...] } because Firestore rejects
+    // nested arrays. Tolerate the legacy flat shape in case older data exists.
+    const rounds = (raw.rounds ?? []).map((r) => {
+      if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
+        return (r as { groups: Record<string, unknown>[] }).groups;
+      }
+      return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
+    });
+    return { date: raw.date, rounds };
   }
 
   async saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
-    await docRef.set({ groupHistory: history }, { merge: true });
+    // Wrap each round as { groups: [...] } — Firestore rejects nested arrays.
+    const wireRounds = history.rounds.map((round) => ({ groups: round }));
+    await docRef.set(
+      { groupHistory: { date: history.date, rounds: wireRounds } },
+      { merge: true },
+    );
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {

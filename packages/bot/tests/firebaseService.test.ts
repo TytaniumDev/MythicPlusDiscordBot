@@ -317,9 +317,38 @@ describe('FirebaseService.saveGroupHistory', () => {
     await service.saveGroupHistory('456', history);
 
     expect(db.collection).toHaveBeenCalledWith('guilds');
+    // Wire format wraps each round as { groups: [...] } to avoid Firestore's
+    // nested-array restriction.
     expect(mockDocRef.set).toHaveBeenCalledWith(
-      { groupHistory: history },
+      {
+        groupHistory: {
+          date: history.date,
+          rounds: history.rounds.map((round) => ({ groups: round })),
+        },
+      },
       { merge: true },
     );
+  });
+
+  it('reads wire-format groupHistory (rounds wrapped as { groups: [...] })', async () => {
+    const tank = WoWPlayer.create('Tank1', ['Tank']);
+    const group = new WoWGroup(tank, null, []);
+    const groupDict = group.toDict();
+
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        guildId: '123',
+        groupHistory: {
+          date: '2026-04-07',
+          rounds: [{ groups: [groupDict] }],
+        },
+      }),
+    });
+
+    const result = await service.getGroupHistory('123');
+    expect(result).toEqual({ date: '2026-04-07', rounds: [[groupDict]] });
   });
 });

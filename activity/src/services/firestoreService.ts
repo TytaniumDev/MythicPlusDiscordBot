@@ -120,6 +120,8 @@ class FirestoreSessionService implements SessionService {
     const guildId = channelData.guildId || null;
 
     // Restore group history from Firestore so the algorithm avoids repeat groupings.
+    // Wire format wraps each round as { groups: [...] } because Firestore rejects nested
+    // arrays. Tolerate the legacy flat shape in case older data ever lands in the doc.
     // Malformed history should never block a spin — fall back to empty history.
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
     let existingRounds: Record<string, unknown>[][] = [];
@@ -129,7 +131,12 @@ class FirestoreSessionService implements SessionService {
         guildData.groupHistory.date === today &&
         Array.isArray(guildData.groupHistory.rounds)
       ) {
-        existingRounds = guildData.groupHistory.rounds;
+        existingRounds = (guildData.groupHistory.rounds as unknown[]).map((r) => {
+          if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
+            return (r as { groups: Record<string, unknown>[] }).groups;
+          }
+          return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
+        });
         const rounds = existingRounds.map(round =>
           round.map(g => WoWGroup.fromDict(g)),
         );
@@ -156,8 +163,10 @@ class FirestoreSessionService implements SessionService {
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
       const newRound = groups.map(g => g.toDict());
+      // Wrap each round as { groups: [...] } — Firestore rejects nested arrays.
+      const wireRounds = [...existingRounds, newRound].map(round => ({ groups: round }));
       setDoc(guildDocRef, {
-        groupHistory: { date: today, rounds: [...existingRounds, newRound] },
+        groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => console.error('[Wheelson] Failed to save groupHistory:', err));
     }
 
