@@ -623,7 +623,9 @@ async function main() {
           }
         }
       } catch (replyErr) {
-        logger.debug(`Failed to send error reply to interaction: ${replyErr}`);
+        // warn (not debug) — user saw no error feedback at all, worth
+        // surfacing in prod logs so we notice interaction failures.
+        logger.warn(`Failed to send error reply to interaction: ${replyErr}`);
       }
     }
   });
@@ -1101,7 +1103,9 @@ async function main() {
           }
         }
       } catch (syncErr) {
-        logger.debug(`Failed to sync role changes to active channels: ${syncErr}`);
+        // warn (not debug) — role desync is user-visible and worth surfacing
+        // in prod logs even though local role state was already saved.
+        logger.warn(`Failed to sync role changes to active channels: ${syncErr}`);
       }
       return;
     }

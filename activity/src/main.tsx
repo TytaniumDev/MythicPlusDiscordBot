@@ -145,4 +145,9 @@ function render() {
   );
 }
 
-init().catch((err) => reportError(err, { tag: 'init.fatal' }));
+init().catch((err) => {
+  reportError(err, { tag: 'init.fatal' });
+  // Render anyway so the Sentry.ErrorBoundary fallback has a chance to
+  // show instead of leaving the user with a blank screen.
+  render();
+});

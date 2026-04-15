@@ -27,6 +27,14 @@ describe.skipIf(!shouldRun)('FirebaseService against real Firestore emulator', (
       admin.initializeApp({ projectId: 'demo-wheelson-emulator' });
     }
     db = admin.firestore();
+    // Bypass the real constructor because it requires a production-shape
+    // FIREBASE_CREDENTIALS_JSON (service account PEM) that the emulator
+    // doesn't need. Limitation: the module-level FieldValue sentinels
+    // (SERVER_TIMESTAMP, DELETE_FIELD, ARRAY_UNION, ARRAY_REMOVE) stay at
+    // their default dummy values. Tests here only exercise saveGroupHistory
+    // and getGroupHistory which don't use those sentinels. If tests are
+    // added for methods that do, refactor the constructor to accept an
+    // injected admin module (or an emulator-aware bypass) first.
     service = Object.create(FirebaseService.prototype);
     (service as unknown as { db: admin.firestore.Firestore }).db = db;
   });
