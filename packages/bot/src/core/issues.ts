@@ -185,8 +185,7 @@ export async function submitGithubIssueModal(
     }
   }
 
-  const labels =
-    data.issueType === 'bug' ? ['bug', 'jules'] : ['enhancement', 'jules'];
+  const labels = data.issueType === 'bug' ? ['bug'] : ['enhancement'];
   return createGithubIssue(safeTitle, body, labels);
 }
 
