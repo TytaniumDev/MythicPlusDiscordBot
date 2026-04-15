@@ -511,8 +511,8 @@ async function main() {
       } finally {
         try {
           await firebase.updateGuildDoc(guildId, { refreshRequest: DELETE_FIELD });
-        } catch {
-          // best effort
+        } catch (e) {
+          logger.debug(`Failed to clear refreshRequest for guild ${guildId}: ${e}`);
         }
       }
     });
@@ -622,8 +622,10 @@ async function main() {
             await interaction.reply({ content: errorMsg, ephemeral: true });
           }
         }
-      } catch {
-        // best effort
+      } catch (replyErr) {
+        // warn (not debug) — user saw no error feedback at all, worth
+        // surfacing in prod logs so we notice interaction failures.
+        logger.warn(`Failed to send error reply to interaction: ${replyErr}`);
       }
     }
   });
@@ -1100,8 +1102,10 @@ async function main() {
             }
           }
         }
-      } catch {
-        // best effort — role was already saved locally
+      } catch (syncErr) {
+        // warn (not debug) — role desync is user-visible and worth surfacing
+        // in prod logs even though local role state was already saved.
+        logger.warn(`Failed to sync role changes to active channels: ${syncErr}`);
       }
       return;
     }

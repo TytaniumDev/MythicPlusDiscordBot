@@ -135,7 +135,10 @@ export class FirebaseService implements IFirebaseService {
       try {
         admin.initializeApp({ credential: cert });
       } catch {
-        // App already initialized
+        // intentional: initializeApp throws if called twice (e.g. in tests
+        // that import this module multiple times). Reusing the existing
+        // default app is the desired behavior.
+        void 0;
       }
       this.db = admin.firestore() as FirebaseDb;
       SERVER_TIMESTAMP = admin.firestore.FieldValue.serverTimestamp();

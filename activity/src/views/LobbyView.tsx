@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { reportError } from '../lib/sentry';
 import { PlayerChip } from '../components/PlayerChip';
 import { PlayerCard } from '../components/PlayerCard';
 import { EditPlayerModal } from '../components/EditPlayerModal';
@@ -63,7 +64,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       }
       await service.requestSpin();
     } catch (err) {
-      console.error('[Wheelson] Spin failed:', err);
+      reportError(err, { tag: 'LobbyView.requestSpin' });
       useAppStore.getState().setStatusMessage('Spin request failed. Please try again.');
     } finally {
       setIsCalculating(false);

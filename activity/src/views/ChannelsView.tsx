@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { reportError } from '../lib/sentry';
 import { ChannelCard } from '../components/ChannelCard';
 import { HeaderBar } from '../components/HeaderBar';
 import { SecondaryButton } from '../components/ui';
@@ -34,8 +35,8 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
     if (!currentGuildId) return;
     try {
       await service.refreshChannels(currentGuildId);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      reportError(err, { tag: 'ChannelsView.refresh' });
     }
   }, [currentGuildId, service]);
 
