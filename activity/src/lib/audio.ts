@@ -39,6 +39,7 @@ class AudioManager {
 
   /** Ascending chord when a group is fully formed */
   victory() {
+    this.dong();
     try {
       const ctx = this.getContext();
       const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
@@ -80,6 +81,35 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.2);
+    } catch {
+      // Silently ignore audio errors
+    }
+  }
+
+  /** Resonant bell sound (the "dong") */
+  dong() {
+    try {
+      const ctx = this.getContext();
+      const fundamental = 110; // Low A
+      const durations = [1.5, 1.2, 0.8];
+      const overtones = [1, 2.01, 3.015]; // Slightly inharmonic for bell-like quality
+
+      overtones.forEach((ratio, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.frequency.value = fundamental * ratio;
+        osc.type = i === 0 ? 'triangle' : 'sine';
+
+        const duration = durations[i] || 1.0;
+        gain.gain.setValueAtTime(i === 0 ? 0.15 : 0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+      });
     } catch {
       // Silently ignore audio errors
     }

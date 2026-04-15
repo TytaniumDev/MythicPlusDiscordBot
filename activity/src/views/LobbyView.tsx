@@ -11,6 +11,7 @@ import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers } from '../lib/roles';
 import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
+import { audio } from '../lib/audio';
 
 const SpinIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -46,6 +47,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   };
 
   const doSpin = async () => {
+    audio.dong();
     setShowSpinWarning(false);
     try {
       setIsCalculating(true);

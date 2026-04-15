@@ -301,6 +301,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setAutoAdvanceRunning(false);
 
     await delay(300);
+    audio.dong();
     onNavigate('results', { replace: true });
     try {
       await service.finishSequence();
@@ -310,6 +311,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   }, [spinOneGroupGrid, spinOneGroupCarousel, updateProgress, onNavigate, service]);
 
   const handleSpinClick = useCallback(async () => {
+    audio.dong();
     const store = useAppStore.getState();
     if (store.isSpinAnimating || autoAdvanceRunning) return;
 
