@@ -8,6 +8,7 @@ import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { SecondaryButton } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
+import { reportError } from '../lib/sentry';
 
 const RotateIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -45,7 +46,8 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     try {
       await service.newRound();
       onNavigate('lobby');
-    } catch {
+    } catch (err) {
+      reportError(err, { tag: 'ResultsView.newRound' });
       onNavigate('home');
     }
   }, [service, onNavigate]);

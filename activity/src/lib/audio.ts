@@ -33,7 +33,9 @@ class AudioManager {
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.04);
     } catch {
-      // Silently ignore audio errors
+      // intentional: audio failures are ignorable — user can't act on them
+      // and the wheel should keep working without sound. Not worth surfacing.
+      void 0;
     }
   }
 
@@ -60,7 +62,9 @@ class AudioManager {
         osc.stop(startTime + 0.6);
       });
     } catch {
-      // Silently ignore audio errors
+      // intentional: audio failures are ignorable — user can't act on them
+      // and the wheel should keep working without sound. Not worth surfacing.
+      void 0;
     }
   }
 
@@ -81,7 +85,9 @@ class AudioManager {
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.2);
     } catch {
-      // Silently ignore audio errors
+      // intentional: audio failures are ignorable — user can't act on them
+      // and the wheel should keep working without sound. Not worth surfacing.
+      void 0;
     }
   }
 }

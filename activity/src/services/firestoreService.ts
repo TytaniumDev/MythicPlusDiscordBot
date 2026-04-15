@@ -4,6 +4,7 @@ import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
+import { reportError } from '../lib/sentry';
 
 const MAX_LISTENER_RETRIES = 5;
 
@@ -44,7 +45,7 @@ class FirestoreSessionService implements SessionService {
             s.setStatusMessage('Setting up session...');
             this.createGuildEntry(guildId, s.discordChannelId)
               .catch((err) => {
-                console.error('[Wheelson] Failed to auto-create guild doc:', err);
+                reportError(err, { tag: 'firestoreService.createGuildEntry' });
                 useAppStore.getState().setStatusMessage('Failed to set up session. Please try again.');
               })
               .finally(() => {
@@ -54,7 +55,7 @@ class FirestoreSessionService implements SessionService {
         }
       },
       (error) => {
-        console.error('[Wheelson] Guild Firestore error:', error);
+        reportError(error, { tag: 'firestoreService.guildListener', extra: { retryCount } });
         if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
           const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
           console.info(`[Wheelson] Retrying guild listener in ${delayMs}ms (attempt ${retryCount + 1})`);
@@ -93,7 +94,7 @@ class FirestoreSessionService implements SessionService {
         }
       },
       (error) => {
-        console.error('[Wheelson] Channel Firestore error:', error);
+        reportError(error, { tag: 'firestoreService.channelListener', extra: { retryCount } });
         if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
           const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
           console.info(`[Wheelson] Retrying channel listener in ${delayMs}ms (attempt ${retryCount + 1})`);
@@ -145,7 +146,7 @@ class FirestoreSessionService implements SessionService {
         setGroupHistory([], guildId);
       }
     } catch (err) {
-      console.error('[Wheelson] Failed to restore groupHistory, continuing with empty history:', err);
+      reportError(err, { tag: 'firestoreService.restoreGroupHistory' });
       existingRounds = [];
       setGroupHistory([], guildId);
     }
@@ -167,7 +168,7 @@ class FirestoreSessionService implements SessionService {
       const wireRounds = [...existingRounds, newRound].map(round => ({ groups: round }));
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
-      }, { merge: true }).catch(err => console.error('[Wheelson] Failed to save groupHistory:', err));
+      }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
     }
 
     const channelRef = doc(db, 'channels', currentChannelId);

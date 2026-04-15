@@ -36,7 +36,7 @@ jobs:
           # Mask each secret value so it cannot appear in workflow logs
           echo "$SECRETS" | jq -r '
             to_entries[]
-            | select(.key == "DISCORD_APPLICATION_ID" or (.key | startswith("VITE_FIREBASE_")))
+            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or (.key | startswith("VITE_FIREBASE_")))
             | .value
           ' | while IFS= read -r val; do
             [ -n "$val" ] && echo "::add-mask::$val"
@@ -44,7 +44,7 @@ jobs:
           # Export filtered secrets
           echo "$SECRETS" | jq -r --arg d "$DELIM" '
             to_entries[]
-            | select(.key == "DISCORD_APPLICATION_ID" or (.key | startswith("VITE_FIREBASE_")))
+            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or (.key | startswith("VITE_FIREBASE_")))
             | "\(.key)<<\($d)\n\(.value)\n\($d)"
           ' >> "$GITHUB_ENV"
 
@@ -59,6 +59,7 @@ jobs:
       - name: Build Activity
         env:
           VITE_DISCORD_CLIENT_ID: ${{ env.DISCORD_APPLICATION_ID }}
+          VITE_SENTRY_DSN: ${{ env.VITE_SENTRY_DSN }}
         run: |
           cd activity
           npm run build

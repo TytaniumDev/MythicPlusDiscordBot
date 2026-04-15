@@ -17,7 +17,11 @@ export default defineConfig({
   // Important for GitHub Pages relative paths
   build: {
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    // Ship source maps so Sentry can symbolicate minified stack traces.
+    // GitHub Pages serves the .map files alongside assets and Sentry fetches
+    // them on demand — no upload step required.
+    sourcemap: true,
   },
   plugins: [react(), tailwindcss()],
   define: {

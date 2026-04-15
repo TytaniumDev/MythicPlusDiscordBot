@@ -511,8 +511,8 @@ async function main() {
       } finally {
         try {
           await firebase.updateGuildDoc(guildId, { refreshRequest: DELETE_FIELD });
-        } catch {
-          // best effort
+        } catch (e) {
+          logger.debug(`Failed to clear refreshRequest for guild ${guildId}: ${e}`);
         }
       }
     });
@@ -622,8 +622,8 @@ async function main() {
             await interaction.reply({ content: errorMsg, ephemeral: true });
           }
         }
-      } catch {
-        // best effort
+      } catch (replyErr) {
+        logger.debug(`Failed to send error reply to interaction: ${replyErr}`);
       }
     }
   });
@@ -1100,8 +1100,8 @@ async function main() {
             }
           }
         }
-      } catch {
-        // best effort — role was already saved locally
+      } catch (syncErr) {
+        logger.debug(`Failed to sync role changes to active channels: ${syncErr}`);
       }
       return;
     }

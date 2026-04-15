@@ -1,3 +1,8 @@
+// Sentry init must run before any other module so uncaught module-level
+// errors during bootstrap are captured.
+import { initSentry, Sentry, reportError } from './lib/sentry';
+initSentry();
+
 // Discord SDK must be imported first — it patches fetch/WebSocket for the
 // embedded activity proxy before Firebase opens any connections.
 import './discordSdk';
@@ -71,7 +76,7 @@ async function init() {
       render();
       return;
     } catch (e) {
-      console.error('Invalid data param', e);
+      reportError(e, { tag: 'init.dataParam' });
     }
   }
 
@@ -126,7 +131,18 @@ async function init() {
 function render() {
   const root = document.getElementById('root');
   if (!root) return;
-  createRoot(root).render(<App />);
+  createRoot(root).render(
+    <Sentry.ErrorBoundary
+      fallback={
+        <div style={{ padding: '2rem', color: '#fff', background: '#1a1a1a', minHeight: '100vh' }}>
+          <h1>Something went wrong.</h1>
+          <p>The error has been reported. Please refresh to try again.</p>
+        </div>
+      }
+    >
+      <App />
+    </Sentry.ErrorBoundary>,
+  );
 }
 
-init();
+init().catch((err) => reportError(err, { tag: 'init.fatal' }));

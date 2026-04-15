@@ -95,7 +95,9 @@ export class GeneralHandler {
         inline: false,
       });
     } catch {
-      // loadavg not available on some platforms
+      // intentional: os.loadavg() is unsupported on Windows.
+      // Omit the System Load field rather than failing the whole command.
+      void 0;
     }
 
     const serverId = ctx.guild?.id ?? 'DM';
