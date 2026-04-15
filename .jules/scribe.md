@@ -78,3 +78,13 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2024-05-27] Documentation of Firebase Cloud Functions Layer
+**Context:** Audited the `packages/functions` directory containing Firebase Cloud Functions and noticed it lacked dedicated technical documentation, representing "Documentation Drift".
+**Learning:**
+1.  **Cloud Functions Scope:** The system extends beyond a simple Discord bot and frontend to include a serverless functions layer. This layer handles critical tasks:
+    - Periodic background syncing (e.g., Mythic+ affixes from Raider.IO).
+    - Rate-limited and secure integration with external third-party APIs (e.g., Battle.net for character lookups) to prevent leaking API keys to the client.
+    - Webhook processing (e.g., GitHub issues).
+2.  **Explicit API Reference:** To combat this drift, an explicit `API.md` was created to document each function, its invocation type (`onSchedule`, `onCall`, `onRequest`), and its security model (e.g., rate limits, App Check exclusions).
+3.  **Architecture Update:** Modified `ARCHITECTURE.md` to visually include the Cloud Functions layer within the Firebase environment in the Mermaid diagram and described its purpose, reinforcing that Firebase is not just a datastore (`Firestore`) but an active compute component.

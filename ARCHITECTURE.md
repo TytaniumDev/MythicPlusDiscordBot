@@ -38,8 +38,10 @@ flowchart TB
         SessionService --> GroupService
     end
 
-    subgraph Firebase["Firebase Firestore"]
+    subgraph Firebase["Firebase (Firestore & Cloud Functions)"]
         Sessions[Collection: sessions]
+        Config[Collection: config]
+        CloudFuncs[Firebase Cloud Functions]
     end
 
     subgraph LocalStorage["Local Storage"]
@@ -57,6 +59,8 @@ flowchart TB
     Bot -->|read/write| Preferences
     FirestoreClient -->|read/write, onSnapshot| Sessions
     User -->|open link with sessionId| UI
+    CloudFuncs -->|read/write| Config
+    UI -->|call functions| CloudFuncs
 ```
 
 - **Discord**: users run commands and join voice; the bot reacts to commands and voice state.
@@ -89,7 +93,17 @@ flowchart TB
 
 The bot does **not** serve the Activity UI; it only creates sessions, reacts to Firestore updates, and posts messages/embeds in Discord.
 
-### 2. Data Persistence (Hybrid Model)
+### 2. Firebase Cloud Functions (`packages/functions`)
+
+The system utilizes Firebase Cloud Functions to handle periodic tasks, external API integrations, and webhook processing:
+
+- **Periodic Data Syncing**: The `fetchWeeklyAffixes` scheduled function runs weekly to fetch current Mythic+ affixes from Raider.IO and sync them to the `config/affixes` document in Firestore.
+- **External API Access**: The `lookupCharacter` callable function securely queries the Battle.net API, avoiding exposing API keys to the frontend, and handles rate limiting.
+- **Webhook Bridging**: The `onGithubIssueWebhook` function listens to GitHub events and bridges them to the internal Discord notification system via Firestore.
+
+For more details on the Cloud Functions, see the [API Reference](API.md).
+
+### 3. Data Persistence (Hybrid Model)
 
 The system uses a **Hybrid Persistence** model:
 
@@ -103,7 +117,7 @@ The system uses a **Hybrid Persistence** model:
     *   **Scope**: Persistent across restarts (volume mounted in Docker).
     *   **File**: `player_preferences.json` (managed by `core/storage.ts`).
 
-### 3. Firebase (Firestore)
+### 4. Firebase (Firestore)
 
 - **Role**: Real-time sync between the bot and the Activity frontend. No direct HTTP API between frontend and bot.
 - **Data**: One collection, `sessions`. Each document is one Activity instance.
@@ -137,7 +151,7 @@ erDiagram
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
 
-### 4. Activity Frontend (TypeScript / Vite)
+### 5. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
 - **Entry**: `activity/src/main.ts`. On load it reads `sessionId` from the query string (`?sessionId=...`). If missing, it shows a message like “Use /activity in Discord.”
