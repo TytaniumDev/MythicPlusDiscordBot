@@ -56,6 +56,7 @@ export function useCharacterLookup() {
       return result.data;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Character lookup failed';
+      console.warn('[Wheelson] lookupCharacter callable failed:', err);
       setError(message);
       return null;
     } finally {
