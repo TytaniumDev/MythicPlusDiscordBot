@@ -1125,7 +1125,7 @@ body {
   width: 100%;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .wheel-label {
@@ -1513,6 +1513,40 @@ body {
 
 .spinning .wheel-frame canvas {
   animation: pulseGlow 1s ease-in-out infinite;
+}
+
+.wheel-dog {
+  position: absolute;
+  font-size: 1.5rem;
+  opacity: 0;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+}
+
+.dog-tl { top: -10px; left: -10px; }
+.dog-tr { top: -10px; right: -10px; }
+.dog-bl { bottom: -10px; left: -10px; }
+.dog-br { bottom: -10px; right: -10px; }
+
+@keyframes dog-dance {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-10px) rotate(-15deg); }
+  50% { transform: translateY(0) rotate(0); }
+  75% { transform: translateY(-10px) rotate(15deg); }
+}
+
+.spinning .wheel-dog {
+  opacity: 1;
+  animation: dog-dance 0.6s ease-in-out infinite;
+}
+
+.spinning .dog-tr, .spinning .dog-bl {
+  animation-delay: 0.1s;
+}
+
+.spinning .dog-br {
+  animation-delay: 0.2s;
 }
 
 /* ============================================

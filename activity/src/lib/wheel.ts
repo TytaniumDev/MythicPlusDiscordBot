@@ -84,6 +84,22 @@ export class Wheel {
     pointer.className = 'wheel-pointer';
     frame.appendChild(pointer);
 
+    // Dancing dogs for extra flavor when spinning
+    const dogConfigs = [
+      { emoji: '🐕', pos: 'tl' },
+      { emoji: '🐩', pos: 'tr' },
+      { emoji: '🐶', pos: 'bl' },
+      { emoji: '🐕‍🦺', pos: 'br' },
+    ];
+
+    dogConfigs.forEach(cfg => {
+      const dog = document.createElement('div');
+      dog.className = `wheel-dog dog-${cfg.pos}`;
+      dog.textContent = cfg.emoji;
+      dog.setAttribute('aria-hidden', 'true');
+      frame.appendChild(dog);
+    });
+
     this.canvas = document.createElement('canvas');
     this.canvas.id = `wheel-${config.role}`;
     this.canvas.setAttribute('role', 'img');
