@@ -62,7 +62,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         onNavigate('wheels');
       }
       await service.requestSpin();
-    } catch {
+    } catch (err) {
+      console.error('[Wheelson] Spin failed:', err);
       useAppStore.getState().setStatusMessage('Spin request failed. Please try again.');
     } finally {
       setIsCalculating(false);

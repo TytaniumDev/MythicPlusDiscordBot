@@ -119,16 +119,27 @@ class FirestoreSessionService implements SessionService {
 
     const guildId = channelData.guildId || null;
 
-    // Restore group history from Firestore so the algorithm avoids repeat groupings
+    // Restore group history from Firestore so the algorithm avoids repeat groupings.
+    // Malformed history should never block a spin — fall back to empty history.
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
     let existingRounds: Record<string, unknown>[][] = [];
-    if (guildData?.groupHistory && guildData.groupHistory.date === today) {
-      existingRounds = guildData.groupHistory.rounds;
-      const rounds = existingRounds.map(round =>
-        round.map(g => WoWGroup.fromDict(g)),
-      );
-      setGroupHistory(rounds, guildId);
-    } else {
+    try {
+      if (
+        guildData?.groupHistory &&
+        guildData.groupHistory.date === today &&
+        Array.isArray(guildData.groupHistory.rounds)
+      ) {
+        existingRounds = guildData.groupHistory.rounds;
+        const rounds = existingRounds.map(round =>
+          round.map(g => WoWGroup.fromDict(g)),
+        );
+        setGroupHistory(rounds, guildId);
+      } else {
+        setGroupHistory([], guildId);
+      }
+    } catch (err) {
+      console.error('[Wheelson] Failed to restore groupHistory, continuing with empty history:', err);
+      existingRounds = [];
       setGroupHistory([], guildId);
     }
 
