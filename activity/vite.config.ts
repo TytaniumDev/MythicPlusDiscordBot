@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
@@ -23,7 +24,27 @@ export default defineConfig({
     // them on demand — no upload step required.
     sourcemap: true,
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Upload source maps to Sentry at build time and then strip them from the
+    // deployed bundle — Sentry keeps a private copy for stack-trace
+    // symbolication. No-ops when SENTRY_AUTH_TOKEN is absent (local dev,
+    // Storybook, CI without the secret), so builds still work without it.
+    sentryVitePlugin({
+      org: 'tytaniumdev',
+      project: 'mythic-plus-discord-bot',
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      telemetry: false,
+      release: { name: commitHash },
+      sourcemaps: {
+        // Path is relative to Vite's `root` ('src'), which resolves outside
+        // the root to the actual emitted `activity/dist` dir.
+        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+      },
+    }),
+  ],
   define: {
     __COMMIT_HASH__: JSON.stringify(commitHash)
   },
