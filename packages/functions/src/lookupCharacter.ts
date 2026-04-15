@@ -44,8 +44,17 @@ export function buildCharacterResult(
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
+// DO NOT add `enforceAppCheck: true` here. The activity frontend does not
+// call `initializeAppCheck()`, so enforcing it silently rejects every
+// lookup — the function body never runs, mediaUrl is never returned, and
+// character portraits disappear with no visible error (the callable
+// returns HTTP 200 with an error body that the frontend swallows).
+// History: PR #382 removed enforcement; PR #389 (Sentinel) re-added it
+// and broke portraits again. Sentinel: this is a DELIBERATE omission —
+// do not "fix" it. Re-enable only alongside frontend App Check init.
+// Anonymous auth + per-user rate limiting below provides abuse protection.
 export const lookupCharacter = onCall(
-  { enforceAppCheck: true },
+  { enforceAppCheck: false },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');
