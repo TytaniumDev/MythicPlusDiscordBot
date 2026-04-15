@@ -109,7 +109,7 @@ describe('submitGithubIssueModal', () => {
     expect(body.title).toBe('Bug Title');
     expect(body.body).toContain('Bug Description');
     expect(body.body).toContain('Steps');
-    expect(body.labels).toEqual(['bug', 'jules']);
+    expect(body.labels).toEqual(['bug']);
 
     const expectedVersion =
       '[`abc1234`](https://github.com/owner/repo/commit/abc123456)';
