@@ -654,19 +654,12 @@ async function main() {
         break;
 
       case 'affixes': {
-        let affixes: AffixDisplay[] = STATIC_AFFIXES;
         const firebase = FirebaseService.getInstance();
-        if (firebase.isAvailable() && firebase.db) {
-          try {
-            const snap = await firebase.db.collection('config').doc('affixes').get();
-            if (snap.exists) {
-              const data = snap.data();
-              if (data && Array.isArray(data.affixes)) {
-                affixes = data.affixes as AffixDisplay[];
-              }
-            }
-          } catch (e) {
-            logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
+        let affixes: AffixDisplay[] = STATIC_AFFIXES;
+        if (firebase.isAvailable()) {
+          const dbAffixes = await firebase.getAffixes();
+          if (dbAffixes) {
+            affixes = dbAffixes;
           }
         }
         await generalHandler.affixes({ guild: guildObj, send: sender.send }, affixes);

@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import logger from './logger.js';
 import * as config from './config.js';
+import type { AffixDisplay } from '@mythicplus/shared';
 
 // Sentinel for Firestore server timestamps.
 // Replaced with FieldValue.serverTimestamp() at initialization time.
@@ -62,6 +63,7 @@ export interface IFirebaseService {
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
+  getAffixes(): Promise<AffixDisplay[] | null>;
   getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null>;
   saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void>;
   getOrCreateChannelDoc(
@@ -339,6 +341,29 @@ export class FirebaseService implements IFirebaseService {
     );
 
     return { unsubscribe: unsubscribe as () => void };
+  }
+
+  /**
+   * Fetches the current Mythic+ affix data from Firestore.
+   *
+   * @returns An array of AffixDisplay objects if successful, or null if the
+   * database is unavailable or the document does not exist/is invalid.
+   */
+  async getAffixes(): Promise<AffixDisplay[] | null> {
+    if (!this.db) return null;
+    try {
+      const snap = await this.db.collection('config').doc('affixes').get();
+      if (snap.exists) {
+        const data = snap.data();
+        if (data && Array.isArray(data.affixes)) {
+          return data.affixes as AffixDisplay[];
+        }
+      }
+      return null;
+    } catch (e) {
+      logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
+      return null;
+    }
   }
 
   async getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null> {
