@@ -16,7 +16,14 @@ export function verifyGithubSignature(
   if (!signature) return false;
   const expected = 'sha256=' + createHmac('sha256', secret).update(body).digest('hex');
   try {
-    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    const sigBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expected);
+    if (sigBuffer.length !== expectedBuffer.length) {
+      // Avoid timing leak by comparing expected with itself when lengths mismatch
+      timingSafeEqual(expectedBuffer, expectedBuffer);
+      return false;
+    }
+    return timingSafeEqual(sigBuffer, expectedBuffer);
   } catch {
     return false;
   }
