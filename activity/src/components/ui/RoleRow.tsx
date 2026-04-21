@@ -5,6 +5,8 @@ interface RoleRowProps {
   name: string;
   /** CSS variable or color string for the role indicator. */
   color: string;
+  /** CSS class suffix for the role indicator ("tank", "healer", "dps"). Defaults to lowercased `roleLabel`. */
+  roleClass?: string;
   /** Whether the player is filling this slot as an offspec. */
   isOffspec?: boolean;
   /** Compact variant hides the role label text. */
@@ -19,6 +21,7 @@ export function RoleRow({
   roleLabel,
   name,
   color,
+  roleClass,
   isOffspec = false,
   compact = false,
   variant = 'card',
@@ -30,12 +33,13 @@ export function RoleRow({
       : compact
         ? 'compact-role'
         : 'group-role';
+  const indicatorClass = roleClass ?? roleLabel.toLowerCase();
   const ariaLabel = `${roleLabel}${isOffspec ? ' (offspec)' : ''}`;
 
   return (
     <div className={rowClass}>
       <span
-        className={`role-indicator ${roleLabel.toLowerCase()}${isOffspec ? ' offspec' : ''}`}
+        className={`role-indicator ${indicatorClass}${isOffspec ? ' offspec' : ''}`}
         style={isOffspec ? { borderColor: color } : { background: color }}
         role="img"
         aria-label={ariaLabel}

@@ -30,6 +30,8 @@ export interface PlayerChipProps {
   isReady?: boolean;
   /** Click handler — fired from click or Enter/Space. */
   onClick?: () => void;
+  /** Accessible label for the chip. Defaults to "Edit {name} roles". */
+  ariaLabel?: string;
 }
 
 export function PlayerChip({
@@ -41,6 +43,7 @@ export function PlayerChip({
   isSittingOut = false,
   isReady = false,
   onClick,
+  ariaLabel,
 }: PlayerChipProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -56,7 +59,7 @@ export function PlayerChip({
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`Edit ${name} roles`}
+      aria-label={ariaLabel ?? `Edit ${name} roles`}
     >
       {isReady && <ReadyIcon />}
       {!isReady && !isSittingOut && <NotReadyIcon />}

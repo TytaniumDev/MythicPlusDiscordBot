@@ -12,6 +12,7 @@ import {
   playerRolesToStringArray,
   roleStringsToPlayerFields,
   utilityIcons,
+  computeToggledRoles,
 } from './roles';
 import type { WoWPlayer } from '../types';
 
@@ -145,6 +146,42 @@ describe('playerRolesToStringArray / roleStringsToPlayerFields', () => {
     expect(fields.mainRole).toBeNull();
     expect(fields.offspecs).toEqual([]);
     expect(fields.utilities).toEqual([]);
+  });
+});
+
+describe('computeToggledRoles', () => {
+  it('removes a role that is already active', () => {
+    const next = computeToggledRoles(new Set(['Tank', 'Brez']), 'Tank', true);
+    expect(next.has('Tank')).toBe(false);
+    expect(next.has('Brez')).toBe(true);
+  });
+
+  it('switching main spec: swaps old main into offspec when new main was an offspec', () => {
+    // Current: main=Tank, offspec=Healer. Toggle Healer as main.
+    const next = computeToggledRoles(new Set(['Tank', 'Healer Offspec']), 'Healer', true);
+    expect(next.has('Healer')).toBe(true);
+    expect(next.has('Tank')).toBe(false);
+    expect(next.has('Healer Offspec')).toBe(false);
+    expect(next.has('Tank Offspec')).toBe(true);
+  });
+
+  it('switching main spec without matching offspec: just replaces', () => {
+    const next = computeToggledRoles(new Set(['Tank']), 'Healer', true);
+    expect(next.has('Healer')).toBe(true);
+    expect(next.has('Tank')).toBe(false);
+    expect(next.has('Tank Offspec')).toBe(false);
+  });
+
+  it('adding an offspec matching current main is a no-op', () => {
+    const prev = new Set(['Tank']);
+    const next = computeToggledRoles(prev, 'Tank Offspec', false);
+    expect(Array.from(next).sort()).toEqual(['Tank']);
+  });
+
+  it('adds offspec when it does not match current main', () => {
+    const next = computeToggledRoles(new Set(['Tank']), 'Healer Offspec', false);
+    expect(next.has('Tank')).toBe(true);
+    expect(next.has('Healer Offspec')).toBe(true);
   });
 });
 

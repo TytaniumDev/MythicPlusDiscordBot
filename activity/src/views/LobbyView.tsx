@@ -89,6 +89,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const allReady = ready === total && total > 0;
   const readyText = `${ready}/${total} Ready`;
 
+  const unreadyBreakdown = useMemo(
+    () => categorizeUnreadyPlayers(players, sittingOut),
+    [players, sittingOut],
+  );
+
   const activePlayer = useAppStore((s) => s.activePlayer);
 
   const handleChipClick = (player: typeof players[number]) => {
@@ -104,6 +109,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     const roleKey = getPrimaryRole(p);
     const isSelected = activePlayer != null && p.discordId === activePlayer.discordId;
     const isSittingOut = p.discordId != null && sittingOut.includes(p.discordId);
+    const isSelf = p.discordId === currentPlayerId;
     return (
       <PlayerChip
         key={p.discordId || p.name}
@@ -115,6 +121,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         isSittingOut={isSittingOut}
         isReady={isPlayerReady(p)}
         onClick={() => handleChipClick(p)}
+        ariaLabel={isSelf ? `View ${p.name} details` : `Edit ${p.name} roles`}
       />
     );
   };
@@ -267,17 +274,14 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           onClose={() => setEditingPlayer(null)}
         />
       )}
-      {showSpinWarning && (() => {
-        const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
-        return (
-          <SpinWarningDialog
-            missingRole={missingRole}
-            missingNameOnly={missingNameOnly}
-            onGoBack={() => setShowSpinWarning(false)}
-            onSpinAnyway={doSpin}
-          />
-        );
-      })()}
+      {showSpinWarning && (
+        <SpinWarningDialog
+          missingRole={unreadyBreakdown.missingRole}
+          missingNameOnly={unreadyBreakdown.missingNameOnly}
+          onGoBack={() => setShowSpinWarning(false)}
+          onSpinAnyway={doSpin}
+        />
+      )}
     </div>
   );
 }
