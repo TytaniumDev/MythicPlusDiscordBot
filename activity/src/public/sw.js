@@ -72,7 +72,10 @@ self.addEventListener('fetch', (event) => {
       try {
         const response = await fetch(event.request);
         if (response.ok) {
-          await cache.put(event.request, response.clone());
+          // Fire-and-forget so a quota failure doesn't discard the fresh response.
+          cache.put(event.request, response.clone()).catch((err) => {
+            console.warn('[SW] Cache put failed:', err);
+          });
         }
         return response;
       } catch (err) {
