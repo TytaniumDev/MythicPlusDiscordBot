@@ -1,6 +1,4 @@
-import { WoWPlayer } from '../types';
-import { getPrimaryRole, formatRoleName, getRoleTags, isPlayerReady } from '../lib/roles';
-import { useAppStore } from '../store/store';
+import type { RoleTag } from '../lib/roles';
 
 const ReadyIcon = () => (
   <svg className="ready-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -15,51 +13,61 @@ const NotReadyIcon = () => (
   </svg>
 );
 
-interface PlayerChipProps {
-  player: WoWPlayer;
+export interface PlayerChipProps {
+  /** Player display name. */
+  name: string;
+  /** Role key: 'tank' | 'healer' | 'ranged' | 'melee' | 'unassigned'. */
+  roleKey: string;
+  /** Human label for the role (used as aria/title). */
+  roleLabel: string;
+  /** Tags shown under the name (offspecs, utilities). */
+  tags?: RoleTag[];
+  /** Player is currently selected in the UI. */
+  isSelected?: boolean;
+  /** Player is sitting out this round. */
+  isSittingOut?: boolean;
+  /** Player is ready to spin (has role + WoW name). */
+  isReady?: boolean;
+  /** Click handler — fired from click or Enter/Space. */
+  onClick?: () => void;
 }
 
-export function PlayerChip({ player }: PlayerChipProps) {
-  const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
-  const roleKey = getPrimaryRole(player);
-  const roleName = formatRoleName(roleKey);
-  const tags = getRoleTags(player);
-
-  const activePlayer = useAppStore((s) => s.activePlayer);
-  const isSelected = activePlayer != null && player.discordId === activePlayer.discordId;
-  const isSittingOut = player.discordId != null && sittingOut.includes(player.discordId);
-  const ready = isPlayerReady(player);
-
-  const handleClick = () => {
-    useAppStore.getState().setActivePlayer(player);
-  };
-
+export function PlayerChip({
+  name,
+  roleKey,
+  roleLabel,
+  tags = [],
+  isSelected = false,
+  isSittingOut = false,
+  isReady = false,
+  onClick,
+}: PlayerChipProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      handleClick();
+      onClick?.();
     }
   };
 
   return (
     <div
-      className={`player-chip${isSelected ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!ready && !isSittingOut ? ' not-ready' : ''}`}
-      onClick={handleClick}
+      className={`player-chip${isSelected ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!isReady && !isSittingOut ? ' not-ready' : ''}`}
+      onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`Edit ${player.name} roles`}
+      aria-label={`Edit ${name} roles`}
     >
-      {ready && <ReadyIcon />}
-      {!ready && !isSittingOut && <NotReadyIcon />}
+      {isReady && <ReadyIcon />}
+      {!isReady && !isSittingOut && <NotReadyIcon />}
       <div className="chip-header">
         <span
           className={`role-dot ${roleKey}`}
           role="img"
-          aria-label={roleName}
-          title={roleName}
+          aria-label={roleLabel}
+          title={roleLabel}
         />
-        <span>{player.name}</span>
+        <span>{name}</span>
       </div>
       {tags.length > 0 && (
         <div className="chip-tags">

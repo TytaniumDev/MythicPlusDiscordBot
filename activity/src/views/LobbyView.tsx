@@ -9,7 +9,7 @@ import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
-import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers } from '../lib/roles';
+import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers, formatRoleName, getRoleTags, isPlayerReady } from '../lib/roles';
 import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
 
@@ -89,22 +89,35 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const allReady = ready === total && total > 0;
   const readyText = `${ready}/${total} Ready`;
 
-  const handleChipClick = (e: React.MouseEvent, player: typeof players[number]) => {
+  const activePlayer = useAppStore((s) => s.activePlayer);
+
+  const handleChipClick = (player: typeof players[number]) => {
     if (player.discordId === currentPlayerId) {
       useAppStore.getState().setActivePlayer(player);
     } else {
-      // Prevent PlayerChip's internal handleClick from setting activePlayer
-      e.stopPropagation();
       useAppStore.getState().setActivePlayer(null);
       setEditingPlayer(player);
     }
   };
 
-  const renderChip = (p: typeof players[number]) => (
-    <div key={p.discordId || p.name} onClickCapture={(e) => handleChipClick(e, p)}>
-      <PlayerChip player={p} />
-    </div>
-  );
+  const renderChip = (p: typeof players[number]) => {
+    const roleKey = getPrimaryRole(p);
+    const isSelected = activePlayer != null && p.discordId === activePlayer.discordId;
+    const isSittingOut = p.discordId != null && sittingOut.includes(p.discordId);
+    return (
+      <PlayerChip
+        key={p.discordId || p.name}
+        name={p.name}
+        roleKey={roleKey}
+        roleLabel={formatRoleName(roleKey)}
+        tags={getRoleTags(p)}
+        isSelected={isSelected}
+        isSittingOut={isSittingOut}
+        isReady={isPlayerReady(p)}
+        onClick={() => handleChipClick(p)}
+      />
+    );
+  };
 
   const playerCountText = players.length === 0
     ? '0 players'

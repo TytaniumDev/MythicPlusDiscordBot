@@ -14,6 +14,7 @@ import {
   type RoleButtonDef,
 } from '../lib/roles';
 import type { RaiderioCharacterResult } from '../services/raiderioService';
+import { reportError } from '../lib/sentry';
 
 interface RoleEditorProps {
   player: WoWPlayer;
@@ -70,7 +71,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
           localStorage.setItem(`wheelson-player-${guildId ?? 'unknown'}`, player.discordId!);
         }
       } catch (err) {
-        console.error('[Wheelson] Auto-save failed:', err);
+        reportError(err, { tag: 'RoleEditor.autoSave' });
       }
     }, 500);
   }, [player.discordId, player.name, service]);

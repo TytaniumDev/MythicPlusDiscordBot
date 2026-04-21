@@ -10,3 +10,4 @@ export { MultiPicker } from './MultiPicker';
 export type { PickerOption } from './MultiPicker';
 export { RoleSectionHeader } from './RoleSectionHeader';
 export { CharacterSearchInput } from './CharacterSearchInput';
+export { RoleRow } from './RoleRow';

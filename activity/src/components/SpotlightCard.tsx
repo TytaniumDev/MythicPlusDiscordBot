@@ -1,6 +1,7 @@
 import { WoWGroup, WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
 import { utilityIcons } from '../lib/roles';
+import { RoleRow } from './ui';
 import { SpotlightPortraits } from './SpotlightPortraits';
 
 interface SpotlightCardProps {
@@ -9,28 +10,6 @@ interface SpotlightCardProps {
   visible: boolean;
   exit?: boolean;
   label?: string;
-}
-
-function SpotlightRoleRow({ color, roleLabel, name, player, isOffspec }: {
-  color: string;
-  roleLabel: string;
-  name: string;
-  player?: WoWPlayer | null;
-  isOffspec?: boolean;
-}) {
-  return (
-    <div className="spotlight-role">
-      <span
-        className={`role-indicator ${roleLabel.toLowerCase()}${isOffspec ? ' offspec' : ''}`}
-        style={isOffspec ? { borderColor: color } : { background: color }}
-        role="img"
-        aria-label={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
-        title={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
-      />
-      <span className="role-label">{roleLabel}</span>
-      <span className="role-name">{name}{utilityIcons(player)}</span>
-    </div>
-  );
 }
 
 export function SpotlightCard({ group, index, visible, exit = false, label }: SpotlightCardProps) {
@@ -47,13 +26,35 @@ export function SpotlightCard({ group, index, visible, exit = false, label }: Sp
           {label ?? (group.tank ? `${group.tank.name}'s Group` : `Group ${index + 1}`)}
         </h3>
         {group.tank && (
-          <SpotlightRoleRow color="var(--color-tank)" roleLabel="Tank" name={group.tank.name} player={group.tank} isOffspec={group.tank.mainRole !== 'tank'} />
+          <RoleRow
+            variant="spotlight"
+            color="var(--color-tank)"
+            roleLabel="Tank"
+            name={group.tank.name}
+            suffix={utilityIcons(group.tank)}
+            isOffspec={group.tank.mainRole !== 'tank'}
+          />
         )}
         {group.healer && (
-          <SpotlightRoleRow color="var(--color-healer)" roleLabel="Healer" name={group.healer.name} player={group.healer} isOffspec={group.healer.mainRole !== 'healer'} />
+          <RoleRow
+            variant="spotlight"
+            color="var(--color-healer)"
+            roleLabel="Healer"
+            name={group.healer.name}
+            suffix={utilityIcons(group.healer)}
+            isOffspec={group.healer.mainRole !== 'healer'}
+          />
         )}
         {group.dps.map((d) => (
-          <SpotlightRoleRow key={d.discordId || d.name} color="var(--color-dps)" roleLabel="DPS" name={d.name} player={d} isOffspec={d.mainRole !== null && d.mainRole !== 'ranged' && d.mainRole !== 'melee'} />
+          <RoleRow
+            key={d.discordId || d.name}
+            variant="spotlight"
+            color="var(--color-dps)"
+            roleLabel="DPS"
+            name={d.name}
+            suffix={utilityIcons(d)}
+            isOffspec={d.mainRole !== null && d.mainRole !== 'ranged' && d.mainRole !== 'melee'}
+          />
         ))}
       </div>
       <SpotlightPortraits players={rosterPlayers} />

@@ -1,58 +1,103 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { withStore } from '../../.storybook/decorators';
 import { PlayerChip } from './PlayerChip';
-import { mockPlayers } from '../lib/mockData';
 
 const meta = {
   title: 'Molecules/PlayerChip',
   component: PlayerChip,
-  decorators: [
-    withStore({
-      currentPlayerId: '100000000000000007',
-      channelData: {
-        channelId: 'vc-1',
-        channelName: 'Mythic+ Lobby',
-        guildId: 'demo-guild',
-        status: 'lobby',
-        players: mockPlayers,
-        groups: [],
-        claimedPlayers: ['100000000000000005'],
-        sittingOut: [],
-        isDebug: false,
-        createdAt: null,
-        lastActive: null,
-      },
-    }),
-  ],
+  args: {
+    onClick: () => {},
+  },
 } satisfies Meta<typeof PlayerChip>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Tank with brez - claimed
-export const Tank: Story = { args: { player: mockPlayers[4] } };
+export const Tank: Story = {
+  args: {
+    name: 'Valeria',
+    roleKey: 'tank',
+    roleLabel: 'Tank',
+    tags: [
+      { label: 'Tank', cssClass: 'tag-tank' },
+      { label: 'Brez', cssClass: 'tag-brez' },
+    ],
+    isReady: true,
+  },
+};
 
-// Healer with offspecs
-export const Healer: Story = { args: { player: mockPlayers[0] } };
+export const Healer: Story = {
+  args: {
+    name: 'Lumina',
+    roleKey: 'healer',
+    roleLabel: 'Healer',
+    tags: [
+      { label: 'Healer', cssClass: 'tag-healer' },
+      { label: 'Off Ranged', cssClass: 'tag-dps tag-offspec' },
+    ],
+    isReady: true,
+  },
+};
 
-// Ranged DPS with lust
-export const RangedDPS: Story = { args: { player: mockPlayers[1] } };
+export const RangedDPS: Story = {
+  args: {
+    name: 'Pyro',
+    roleKey: 'ranged',
+    roleLabel: 'Ranged',
+    tags: [
+      { label: 'Ranged', cssClass: 'tag-dps' },
+      { label: 'Lust', cssClass: 'tag-lust' },
+    ],
+    isReady: true,
+  },
+};
 
-// Melee DPS (plain)
-export const MeleeDPS: Story = { args: { player: mockPlayers[5] } };
+export const MeleeDPS: Story = {
+  args: {
+    name: 'Slasher',
+    roleKey: 'melee',
+    roleLabel: 'Melee',
+    tags: [{ label: 'Melee', cssClass: 'tag-dps' }],
+    isReady: true,
+  },
+};
 
-// Current user (highlighted)
-export const CurrentUser: Story = { args: { player: mockPlayers[6] } };
+export const Selected: Story = {
+  args: {
+    name: 'You',
+    roleKey: 'tank',
+    roleLabel: 'Tank',
+    tags: [{ label: 'Tank', cssClass: 'tag-tank' }],
+    isReady: true,
+    isSelected: true,
+  },
+};
 
-// Unassigned player
+export const SittingOut: Story = {
+  args: {
+    name: 'Afker',
+    roleKey: 'healer',
+    roleLabel: 'Healer',
+    tags: [{ label: 'Healer', cssClass: 'tag-healer' }],
+    isSittingOut: true,
+  },
+};
+
+export const NotReady: Story = {
+  args: {
+    name: 'HasRoleNoName',
+    roleKey: 'tank',
+    roleLabel: 'Tank',
+    tags: [{ label: 'Tank', cssClass: 'tag-tank' }],
+    isReady: false,
+  },
+};
+
 export const Unassigned: Story = {
   args: {
-    player: {
-      name: 'NewPlayer',
-      discordId: '100000000000000099',
-      mainRole: null,
-      offspecs: [],
-      utilities: [],
-    },
+    name: 'NewPlayer',
+    roleKey: 'unassigned',
+    roleLabel: 'Unassigned',
+    tags: [{ label: 'No roles', cssClass: 'tag-unassigned' }],
+    isReady: false,
   },
 };
