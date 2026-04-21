@@ -42,7 +42,6 @@ export function SpotlightPortrait({ name, characterClass, mediaUrl }: SpotlightP
           <img
             src={proxiedUrl}
             alt={`${name} character portrait`}
-            title={name}
             className="spotlight-portrait__img"
             onError={() => setFailed(true)}
           />

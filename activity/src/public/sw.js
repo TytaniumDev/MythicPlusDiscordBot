@@ -32,7 +32,9 @@ function isFresh(response) {
   return Number.isFinite(at) && Date.now() - at < MAX_AGE_MS;
 }
 
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
