@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { SpotlightPortraits } from './SpotlightPortraits';
 import type { WoWPlayer } from '../types';
+import type { CharacterClass } from '@mythicplus/shared';
 
 const meta = {
   title: 'Molecules/SpotlightPortraits',
@@ -11,7 +12,7 @@ const meta = {
         style={{
           display: 'flex',
           justifyContent: 'center',
-          background: 'var(--bg-primary)',
+          background: 'transparent',
           padding: '2rem',
         }}
       >
@@ -28,6 +29,7 @@ const makePlayer = (
   name: string,
   mainRole: WoWPlayer['mainRole'],
   mediaUrl: string | null = null,
+  characterClass: CharacterClass | null = null,
 ): WoWPlayer => ({
   name,
   discordId: name,
@@ -35,17 +37,52 @@ const makePlayer = (
   offspecs: [],
   utilities: [],
   mediaUrl,
+  characterClass,
 });
 
 export const CompleteGroup: Story = {
   args: {
-    players: [
-      makePlayer('Pandemonium', 'tank', 'https://render.worldofwarcraft.com/us/character/sargeras/123/184140522-inset.jpg'),
-      makePlayer('Martz', 'healer', 'https://render.worldofwarcraft.com/us/character/illidan/456/184140522-inset.jpg'),
-      makePlayer('Tytanium', 'melee', 'https://render.worldofwarcraft.com/us/character/proudmoore/789/184140522-inset.jpg'),
-      makePlayer('Jules', 'ranged'),
-      makePlayer('Dpser', 'melee'),
-    ],
+    players: [{
+      "name": "Gazzi",
+      "discordId": "Gazzi",
+      "mainRole": "tank",
+      "offspecs": [],
+      "utilities": [],
+      "mediaUrl": "https://render.worldofwarcraft.com/us/character/uldum/0/172476416-inset.jpg",
+      "characterClass": "Druid"
+    }, {
+      "name": "Sorovar",
+      "discordId": "Sorovar",
+      "mainRole": "healer",
+      "offspecs": [],
+      "utilities": [],
+      "mediaUrl": "https://render.worldofwarcraft.com/us/character/uldum/23/175701015-inset.jpg",
+      "characterClass": "Priest"
+    }, {
+      "name": "Tytaniormu",
+      "discordId": "Tytaniormu",
+      "mainRole": "ranged",
+      "offspecs": [],
+      "utilities": [],
+      "mediaUrl": "https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg",
+      "characterClass": "Hunter"
+    }, {
+      "name": "Quill",
+      "discordId": "Quill",
+      "mainRole": "ranged",
+      "offspecs": [],
+      "utilities": [],
+      "mediaUrl": "https://render.worldofwarcraft.com/us/character/uldum/32/173283360-inset.jpg",
+      "characterClass": "Druid"
+    }, {
+      "name": "Blueshift",
+      "discordId": "Blueshift",
+      "mainRole": "melee",
+      "offspecs": [],
+      "utilities": [],
+      "mediaUrl": "https://render.worldofwarcraft.com/us/character/uldum/228/184072932-inset.jpg",
+      "characterClass": "Demon Hunter"
+    }],
   },
 };
 

@@ -36,7 +36,10 @@ export type {
   SessionStatus,
   Role,
   Utility,
+  CharacterClass,
   AffixDisplay,
   WoWPlayerDict,
   WoWGroupDict,
 } from './types.js';
+
+export { CHARACTER_CLASSES, toCharacterClass } from './types.js';

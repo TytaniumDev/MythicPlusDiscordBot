@@ -1,14 +1,14 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getBattleNetClient } from './battlenet.js';
-import { getUtilitiesForClass, getRoleForSpec } from '@mythicplus/shared';
+import { getUtilitiesForClass, getRoleForSpec, toCharacterClass } from '@mythicplus/shared';
 import { enforceRateLimit } from './rateLimit.js';
-import type { Role, Utility } from '@mythicplus/shared';
+import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
 export interface CharacterResult {
   name: string;
   realm: string;
-  class: string;
+  class: CharacterClass | null;
   role: Role;
   utilities: Utility[];
   mediaUrl: string | null;
@@ -35,7 +35,7 @@ export function buildCharacterResult(
   return {
     name: profile.name,
     realm: profile.realm.name,
-    class: className,
+    class: toCharacterClass(className),
     role: getRoleForSpec(specName, className),
     utilities: getUtilitiesForClass(className),
     mediaUrl,

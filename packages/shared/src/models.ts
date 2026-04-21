@@ -10,7 +10,8 @@ import {
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
 } from './config.js';
-import type { Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
+import { toCharacterClass } from './types.js';
+import type { CharacterClass, Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
 
 export class WoWPlayer {
   readonly name: string;
@@ -20,6 +21,7 @@ export class WoWPlayer {
   readonly offspecs: readonly Role[];
   readonly utilities: readonly Utility[];
   readonly mediaUrl: string | null;
+  readonly characterClass: CharacterClass | null;
 
   private constructor(
     name: string,
@@ -29,6 +31,7 @@ export class WoWPlayer {
     utilities: readonly Utility[],
     inGameName = '',
     mediaUrl: string | null = null,
+    characterClass: CharacterClass | null = null,
   ) {
     this.name = name;
     this.discordId = discordId;
@@ -37,6 +40,7 @@ export class WoWPlayer {
     this.offspecs = offspecs;
     this.utilities = utilities;
     this.mediaUrl = mediaUrl;
+    this.characterClass = characterClass;
   }
 
   // Computed boolean getters — algorithm uses these, no algorithm changes needed
@@ -80,7 +84,14 @@ export class WoWPlayer {
     return this.inGameName || this.name;
   }
 
-  static create(name: string, roles: string[], discordId = '', inGameName = '', mediaUrl: string | null = null): WoWPlayer {
+  static create(
+    name: string,
+    roles: string[],
+    discordId = '',
+    inGameName = '',
+    mediaUrl: string | null = null,
+    characterClass: CharacterClass | null = null,
+  ): WoWPlayer {
     const isTank = roles.includes(ROLE_TANK);
     const isHealer = roles.includes(ROLE_HEALER);
     const isRanged = roles.includes(ROLE_RANGED);
@@ -106,7 +117,7 @@ export class WoWPlayer {
     if (roles.includes(ROLE_BREZ)) utilities.push('brez');
     if (roles.includes(ROLE_LUST)) utilities.push('lust');
 
-    return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl);
+    return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl, characterClass);
   }
 
   /**
@@ -219,6 +230,7 @@ export class WoWPlayer {
       utilities: [...this.utilities],
     };
     if (this.mediaUrl) dict.mediaUrl = this.mediaUrl;
+    if (this.characterClass) dict.characterClass = this.characterClass;
     return dict;
   }
 
@@ -227,13 +239,14 @@ export class WoWPlayer {
     const discordId = (data.discordId as string) ?? '';
     const inGameName = (data.inGameName as string) ?? '';
     const mediaUrl = (data.mediaUrl as string | null | undefined) ?? null;
+    const characterClass = toCharacterClass(data.characterClass);
 
     // New compact format: mainRole/offspecs/utilities
     if ('mainRole' in data || 'offspecs' in data || 'utilities' in data) {
       const mainRole = (data.mainRole as Role | null) ?? null;
       const offspecs = (data.offspecs as Role[]) ?? [];
       const utilities = (data.utilities as Utility[]) ?? [];
-      return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl);
+      return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl, characterClass);
     }
 
     // Legacy format: nested roles object with boolean flags

@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { withStore } from '../../.storybook/decorators';
-import { mockPlayers, mockGroups, mockChannelData } from '../lib/mockData';
+import { mockChannelData } from '../lib/mockData';
+import {
+  showcasePlayers,
+  showcaseGroups,
+  SHOWCASE_CURRENT_PLAYER_ID,
+} from '../lib/showcaseFixtures';
 import { ResultsView } from './ResultsView';
 
 const meta = {
@@ -17,14 +22,14 @@ const meta = {
       isDemoMode: true,
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
-      currentPlayerId: '100000000000000007',
-      currentPlayerName: 'Tytanium',
+      currentPlayerId: SHOWCASE_CURRENT_PLAYER_ID,
+      currentPlayerName: 'Kaelith',
       identityResolved: true,
       channelData: {
         ...mockChannelData,
         status: 'completed',
-        groups: mockGroups,
-        players: mockPlayers,
+        groups: showcaseGroups,
+        players: showcasePlayers,
       },
     }),
   ],

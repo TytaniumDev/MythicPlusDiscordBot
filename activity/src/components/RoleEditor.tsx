@@ -112,7 +112,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
         name: result.name,
         realm: result.realmSlug,
         region: result.region,
-      }, character.mediaUrl);
+      }, character.mediaUrl, character.class);
 
       const currentRoles = playerRolesToStringArray(player);
       if (currentRoles.length === 0) {

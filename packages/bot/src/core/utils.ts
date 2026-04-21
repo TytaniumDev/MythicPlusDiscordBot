@@ -62,8 +62,9 @@ export function getPlayerFromMember(member: DiscordMember): WoWPlayer {
   }
   const inGameName = prefSvc.getInGameNameSync(discordId);
   const mediaUrl = prefSvc.getMediaUrlSync(discordId);
+  const characterClass = prefSvc.getCharacterClassSync(discordId);
   if (savedRoles) {
-    return WoWPlayer.create(name, savedRoles, discordId, inGameName, mediaUrl);
+    return WoWPlayer.create(name, savedRoles, discordId, inGameName, mediaUrl, characterClass);
   }
   return WoWPlayer.fromFlags({ name, discordId, inGameName });
 }

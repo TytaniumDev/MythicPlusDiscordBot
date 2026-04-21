@@ -4,6 +4,7 @@ import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
+import type { CharacterClass } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 
 const MAX_LISTENER_RETRIES = 5;
@@ -229,10 +230,12 @@ class FirestoreSessionService implements SessionService {
     playerId: string,
     linkedCharacter: { name: string; realm: string; region: string },
     mediaUrl?: string | null,
+    characterClass?: CharacterClass | null,
   ): Promise<void> {
     const prefRef = doc(db, 'preferences', playerId);
     const payload: Record<string, unknown> = { linkedCharacter, updatedAt: serverTimestamp() };
     if (mediaUrl !== undefined) payload.mediaUrl = mediaUrl;
+    if (characterClass !== undefined) payload.characterClass = characterClass;
     await setDoc(prefRef, payload, { merge: true });
   }
 

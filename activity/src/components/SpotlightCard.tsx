@@ -44,7 +44,7 @@ export function SpotlightCard({ group, index, visible, exit = false, label }: Sp
     <div className={`spotlight-wrapper${visible ? ' spotlight-visible' : ''}${exit ? ' spotlight-exit' : ''}`}>
       <div className={`spotlight-card${isMyGroup ? ' is-my-group' : ''}`}>
         <h3 className="spotlight-heading">
-          {label ?? (isMyGroup ? `Group ${index + 1} — Your Group!` : `Group ${index + 1}`)}
+          {label ?? (group.tank ? `${group.tank.name}'s Group` : `Group ${index + 1}`)}
         </h3>
         {group.tank && (
           <SpotlightRoleRow color="var(--color-tank)" roleLabel="Tank" name={group.tank.name} player={group.tank} isOffspec={group.tank.mainRole !== 'tank'} />
