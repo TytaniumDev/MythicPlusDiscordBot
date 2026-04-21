@@ -10,6 +10,7 @@ export function IconButton({ icon, label, className = '', ...props }: IconButton
     <button
       className={`icon-button ${className}`}
       aria-label={label}
+      title={label}
       {...props}
     >
       {icon}
