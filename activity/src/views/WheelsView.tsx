@@ -14,6 +14,7 @@ import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
+import { reportError } from '../lib/sentry';
 import {
   delay,
   CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION,
@@ -305,7 +306,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     try {
       await service.finishSequence();
     } catch (err) {
-      console.error('[Wheelson] Failed to finish sequence:', err);
+      reportError(err, { tag: 'WheelsView.finishSequence' });
     }
   }, [spinOneGroupGrid, spinOneGroupCarousel, updateProgress, onNavigate, service]);
 
@@ -318,7 +319,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     if (store.isDemoMode) {
       runAutoAdvanceLoop().catch((err) => {
-        console.error('[Wheelson] Demo advance failed:', err);
+        reportError(err, { tag: 'WheelsView.demoAdvance' });
         setShowSpinBtn(true);
         setSpinBtnDisabled(false);
       });
@@ -328,7 +329,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     try {
       await service.revealAllGroups();
     } catch (err) {
-      console.error('[Wheelson] Failed to reveal groups:', err);
+      reportError(err, { tag: 'WheelsView.revealAllGroups' });
       setWheelStatus('Failed to spin. Please try again.');
       setShowSpinBtn(true);
       setSpinBtnDisabled(false);

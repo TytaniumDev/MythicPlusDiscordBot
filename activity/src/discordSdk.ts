@@ -1,4 +1,5 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
+import { reportError } from './lib/sentry';
 
 export interface DiscordContext {
   guildId: string;
@@ -98,7 +99,7 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
       channelId: discordSdk.channelId,
     };
   } catch (e) {
-    console.error('Discord SDK init failed', e);
+    reportError(e, { tag: 'discordSdk.init' });
     return null;
   }
 }

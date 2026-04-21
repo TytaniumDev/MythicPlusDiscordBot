@@ -46,6 +46,28 @@ export function formatRoleName(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }
 
+/** CSS variable color for a role key (including 'unassigned'). */
+export const ROLE_COLOR_MAP: Record<string, string> = {
+  tank: 'var(--color-tank)',
+  healer: 'var(--color-healer)',
+  ranged: 'var(--color-dps)',
+  melee: 'var(--color-dps)',
+  unassigned: 'var(--text-secondary)',
+};
+
+export function getRoleColor(role: string): string {
+  return ROLE_COLOR_MAP[role] ?? ROLE_COLOR_MAP.unassigned;
+}
+
+/** Display labels keyed by role. */
+export const ROLE_LABELS: Record<string, string> = {
+  tank: 'Tank',
+  healer: 'Healer',
+  ranged: 'Ranged',
+  melee: 'Melee',
+  unassigned: 'Unassigned',
+};
+
 export function utilityIcons(player?: WoWPlayer | null): string {
   if (!player) return '';
   let icons = '';

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { WoWGroup, WoWPlayer } from '../types';
+import { WoWGroup } from '../types';
 import { useAppStore } from '../store/store';
 import { utilityIcons } from '../lib/roles';
+import { RoleRow } from './ui';
 import { generateInviteCommand } from '@mythicplus/shared';
 
 interface GroupCardProps {
@@ -10,29 +11,6 @@ interface GroupCardProps {
   label?: string;
   hideEmpty?: boolean;
   compact?: boolean;
-}
-
-function RoleRow({ color, roleLabel, name, player, isOffspec, compact }: {
-  color: string;
-  roleLabel: string;
-  name: string;
-  player?: WoWPlayer | null;
-  isOffspec?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <div className={compact ? 'compact-role' : 'group-role'}>
-      <span
-        className={`role-indicator ${roleLabel.toLowerCase()}${isOffspec ? ' offspec' : ''}`}
-        style={isOffspec ? { borderColor: color } : { background: color }}
-        role="img"
-        aria-label={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
-        title={`${roleLabel}${isOffspec ? ' (offspec)' : ''}`}
-      />
-      {!compact && <span className="role-label">{roleLabel}</span>}
-      <span className="role-name">{name}{utilityIcons(player)}</span>
-    </div>
-  );
 }
 
 async function copyToClipboard(text: string): Promise<void> {
@@ -82,7 +60,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           color="var(--color-tank)"
           roleLabel="Tank"
           name={group.tank?.name || 'None'}
-          player={group.tank}
+          suffix={utilityIcons(group.tank)}
           isOffspec={group.tank ? group.tank.mainRole !== 'tank' : false}
           compact={compact}
         />
@@ -92,7 +70,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           color="var(--color-healer)"
           roleLabel="Healer"
           name={group.healer?.name || 'None'}
-          player={group.healer}
+          suffix={utilityIcons(group.healer)}
           isOffspec={group.healer ? group.healer.mainRole !== 'healer' : false}
           compact={compact}
         />
@@ -103,7 +81,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
           color="var(--color-dps)"
           roleLabel="DPS"
           name={d.name}
-          player={d}
+          suffix={utilityIcons(d)}
           isOffspec={d.mainRole !== null && d.mainRole !== 'ranged' && d.mainRole !== 'melee'}
           compact={compact}
         />

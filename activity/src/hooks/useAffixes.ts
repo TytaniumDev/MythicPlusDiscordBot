@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useAppStore } from '../store/store';
 import { STATIC_AFFIXES, resolveAffixDisplay } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
+import { reportError } from '../lib/sentry';
 
 interface AffixData {
   period: number;
@@ -37,7 +38,7 @@ export function useAffixes(): AffixData | null {
           setData({ period: 0, region: 'us', affixes: STATIC_AFFIXES });
         }
       },
-      (error) => console.error('[Wheelson] Failed to load affixes:', error),
+      (error) => reportError(error, { tag: 'useAffixes.onSnapshot' }),
     );
     return unsub;
   }, [isDemoMode]);

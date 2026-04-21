@@ -27,7 +27,7 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
   useEffect(() => {
     if (!hasAutoRefreshed.current && guildData && channels.length === 0 && currentGuildId) {
       hasAutoRefreshed.current = true;
-      service.refreshChannels(currentGuildId).catch((err) => console.error('[Wheelson] Auto-refresh failed:', err));
+      service.refreshChannels(currentGuildId).catch((err) => reportError(err, { tag: 'ChannelsView.autoRefresh' }));
     }
   }, [guildData, channels.length, currentGuildId, service]);
 
@@ -55,7 +55,7 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
     try {
       await service.selectChannel(channelId, channelName, currentGuildId || '');
     } catch (err) {
-      console.error('[Wheelson] Failed to create channel doc:', err);
+      reportError(err, { tag: 'ChannelsView.selectChannel' });
       store.setStatusMessage('Failed to start session. Please try again.');
       return;
     }

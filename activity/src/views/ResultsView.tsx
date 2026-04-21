@@ -90,7 +90,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       await service.newRound();
       onNavigate('lobby');
     } catch (err) {
-      console.error('[Wheelson] Failed to start new round:', err);
+      reportError(err, { tag: 'ResultsView.newRound' });
       useAppStore.getState().setStatusMessage('Failed to start new round. Please refresh.');
     }
   };
@@ -106,7 +106,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       setReportTitle('');
       setReportDescription('');
     } catch (err) {
-      console.error('[Wheelson] Failed to report bad group:', err);
+      reportError(err, { tag: 'ResultsView.reportBadGroup' });
       useAppStore.getState().setStatusMessage('Failed to submit report. Please try again.');
     } finally {
       setReportSubmitting(false);

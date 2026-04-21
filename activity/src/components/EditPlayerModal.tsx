@@ -1,17 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WoWPlayer } from '../types';
-import { getPrimaryRole } from '../lib/roles';
+import { getPrimaryRole, getRoleColor } from '../lib/roles';
 import { CharacterHeader } from './CharacterHeader';
 import { Divider } from './ui';
 import { RoleEditor } from './RoleEditor';
-
-const ROLE_COLOR_MAP: Record<string, string> = {
-  tank: 'var(--color-tank)',
-  healer: 'var(--color-healer)',
-  ranged: 'var(--color-dps)',
-  melee: 'var(--color-dps)',
-  unassigned: 'var(--text-secondary)',
-};
 
 interface EditPlayerModalProps {
   player: WoWPlayer;
@@ -38,8 +30,7 @@ export function EditPlayerModal({ player, onClose }: EditPlayerModalProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const primaryRole = getPrimaryRole(player);
-  const color = ROLE_COLOR_MAP[primaryRole] ?? ROLE_COLOR_MAP.unassigned;
+  const color = getRoleColor(getPrimaryRole(player));
 
   return (
     <div className="edit-modal-backdrop" ref={backdropRef} onClick={handleBackdropClick}>

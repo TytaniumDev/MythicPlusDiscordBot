@@ -1,18 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { PlayerCard } from './PlayerCard';
-import { getPrimaryRole } from '../lib/roles';
+import { getPrimaryRole, ROLE_LABELS } from '../lib/roles';
 import type { WoWPlayer } from '../types';
 
 interface MobilePlayerDrawerProps {
   player: WoWPlayer;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  tank: 'Tank',
-  healer: 'Healer',
-  ranged: 'Ranged',
-  melee: 'Melee',
-};
 
 export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
   const [expanded, setExpanded] = useState(false);

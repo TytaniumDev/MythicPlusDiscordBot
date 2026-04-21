@@ -3,15 +3,7 @@ import { WoWPlayer } from '../types';
 import { CharacterHeader } from './CharacterHeader';
 import { Divider } from './ui';
 import { RoleEditor } from './RoleEditor';
-import { getPrimaryRole } from '../lib/roles';
-
-const ROLE_COLOR_MAP: Record<string, string> = {
-  tank: 'var(--color-tank)',
-  healer: 'var(--color-healer)',
-  ranged: 'var(--color-dps)',
-  melee: 'var(--color-dps)',
-  unassigned: 'var(--text-secondary)',
-};
+import { getPrimaryRole, getRoleColor } from '../lib/roles';
 
 interface PlayerCardProps {
   player: WoWPlayer;
@@ -29,8 +21,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
     setMediaUrl(player.mediaUrl ?? null);
   }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const primaryRole = getPrimaryRole(player);
-  const color = ROLE_COLOR_MAP[primaryRole] ?? ROLE_COLOR_MAP.unassigned;
+  const color = getRoleColor(getPrimaryRole(player));
 
   // Compute class name from in-game name or character lookup
   const classSubtitle = player.inGameName || undefined;
