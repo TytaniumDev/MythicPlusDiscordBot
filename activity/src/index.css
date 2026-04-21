@@ -1330,7 +1330,7 @@ body {
 .btn-copy-invite {
   display: block;
   width: calc(100% + 10px);
-  margin: 8px -5px -5px;
+  margin: auto -5px -5px;
   padding: 4px 0;
   background: transparent;
   border: 1px solid var(--border-subtle);
@@ -1410,7 +1410,7 @@ body {
 
 #final-groups .btn-copy-invite {
   width: calc(100% + 16px);
-  margin: 8px -8px -8px;
+  margin: auto -8px -8px;
 }
 
 #final-groups .group-card h4 {
