@@ -101,10 +101,15 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
   const handleCharacterSelect = useCallback(async (result: RaiderioCharacterResult) => {
     if (lookupLoading || !player.discordId) return;
 
+    // onChange already set nameRef to "Name-Realm"; cancel debounce to avoid racing the explicit save below.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const nameToSave = nameRef.current;
+
     const character = await lookup(result.name, result.realmSlug, result.region);
     if (character) {
-      setInGameName(character.name);
-      nameRef.current = character.name;
       if (character.mediaUrl) onMediaUrlChange?.(character.mediaUrl);
 
       // Save linkedCharacter + mediaUrl BEFORE saveRoles so the bot's
@@ -129,12 +134,12 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
         const roleSet = new Set(roles);
         setSelectedRoles(roleSet);
         rolesRef.current = roleSet;
-        await service.saveRoles(player.discordId, player.name, roles, character.name);
+        await service.saveRoles(player.discordId, player.name, roles, nameToSave);
       } else {
-        await service.saveRoles(player.discordId, player.name, Array.from(selectedRoles), character.name);
+        await service.saveRoles(player.discordId, player.name, Array.from(rolesRef.current), nameToSave);
       }
     }
-  }, [lookupLoading, player, lookup, selectedRoles, service, onMediaUrlChange]);
+  }, [lookupLoading, player, lookup, service, onMediaUrlChange]);
 
   const isSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
 
