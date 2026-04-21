@@ -1,4 +1,6 @@
 import logger from './logger.js';
+import { toCharacterClass } from '@mythicplus/shared';
+import type { CharacterClass } from '@mythicplus/shared';
 import { FirebaseService, SERVER_TIMESTAMP } from './firebaseService.js';
 import {
   clearPlayerPreference,
@@ -17,6 +19,7 @@ export interface IPreferenceService {
   getPreferenceByNameSync(name: string): string[] | null;
   getInGameNameSync(discordId: string): string;
   getMediaUrlSync(discordId: string): string | null;
+  getCharacterClassSync(discordId: string): CharacterClass | null;
   resolveDiscordId(name: string): string | null;
 }
 
@@ -40,6 +43,7 @@ export class PreferenceService implements IPreferenceService {
   private _nameToId: Record<string, string> = {};
   private _inGameNameCache: Record<string, string> = {};
   private _mediaUrlCache: Record<string, string> = {};
+  private _characterClassCache: Record<string, CharacterClass> = {};
 
   constructor(firebase?: FirebaseService) {
     this.firebase = firebase ?? FirebaseService.getInstance();
@@ -64,10 +68,12 @@ export class PreferenceService implements IPreferenceService {
         const name = (data.wowName as string) ?? '';
         const inGameName = (data.inGameName as string) ?? '';
         const mediaUrl = (data.mediaUrl as string) ?? '';
+        const characterClass = toCharacterClass(data.characterClass);
         this._cache[discordId] = roles;
         if (name) this._nameToId[name] = discordId;
         if (inGameName) this._inGameNameCache[discordId] = inGameName;
         if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
+        if (characterClass) this._characterClassCache[discordId] = characterClass;
       }
       logger.info(`Loaded ${Object.keys(docs).length} preferences from Firestore`);
     } catch {
@@ -114,10 +120,12 @@ export class PreferenceService implements IPreferenceService {
           const name = (data.wowName as string) ?? '';
           const inGameName = (data.inGameName as string) ?? '';
           const mediaUrl = (data.mediaUrl as string) ?? '';
+          const characterClass = toCharacterClass(data.characterClass);
           this._cache[discordId] = roles;
           if (name) this._nameToId[name] = discordId;
           if (inGameName) this._inGameNameCache[discordId] = inGameName;
           if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
+          if (characterClass) this._characterClassCache[discordId] = characterClass;
           return roles;
         }
       } catch {
@@ -159,6 +167,7 @@ export class PreferenceService implements IPreferenceService {
     Reflect.deleteProperty(this._cache, discordId);
     Reflect.deleteProperty(this._inGameNameCache, discordId);
     Reflect.deleteProperty(this._mediaUrlCache, discordId);
+    Reflect.deleteProperty(this._characterClassCache, discordId);
     this._clearNameMapping(discordId);
     if (name) clearPlayerPreference(name);
 
@@ -191,6 +200,7 @@ export class PreferenceService implements IPreferenceService {
         const name = (data.wowName as string) ?? '';
         const inGameName = (data.inGameName as string) ?? '';
         const mediaUrl = (data.mediaUrl as string) ?? '';
+        const characterClass = toCharacterClass(data.characterClass);
         this._cache[discordId] = roles;
         this._clearNameMapping(discordId);
         if (name) this._nameToId[name] = discordId;
@@ -198,10 +208,13 @@ export class PreferenceService implements IPreferenceService {
         else Reflect.deleteProperty(this._inGameNameCache, discordId);
         if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
         else Reflect.deleteProperty(this._mediaUrlCache, discordId);
+        if (characterClass) this._characterClassCache[discordId] = characterClass;
+        else Reflect.deleteProperty(this._characterClassCache, discordId);
       } else {
         Reflect.deleteProperty(this._cache, discordId);
         Reflect.deleteProperty(this._inGameNameCache, discordId);
         Reflect.deleteProperty(this._mediaUrlCache, discordId);
+        Reflect.deleteProperty(this._characterClassCache, discordId);
         this._clearNameMapping(discordId);
       }
     } catch {
@@ -219,6 +232,10 @@ export class PreferenceService implements IPreferenceService {
 
   getMediaUrlSync(discordId: string): string | null {
     return this._mediaUrlCache[discordId] ?? null;
+  }
+
+  getCharacterClassSync(discordId: string): CharacterClass | null {
+    return this._characterClassCache[discordId] ?? null;
   }
 
   getPreferenceByNameSync(name: string): string[] | null {

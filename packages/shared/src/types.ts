@@ -3,6 +3,30 @@ export type SessionStatus = 'lobby' | 'request_spin' | 'spinning' | 'completed';
 export type Role = 'tank' | 'healer' | 'ranged' | 'melee';
 export type Utility = 'brez' | 'lust';
 
+export const CHARACTER_CLASSES = [
+  'Death Knight',
+  'Demon Hunter',
+  'Druid',
+  'Evoker',
+  'Hunter',
+  'Mage',
+  'Monk',
+  'Paladin',
+  'Priest',
+  'Rogue',
+  'Shaman',
+  'Warlock',
+  'Warrior',
+] as const;
+
+export type CharacterClass = (typeof CHARACTER_CLASSES)[number];
+
+/** Safely narrow an arbitrary value to CharacterClass, or null if it isn't a known class. */
+export function toCharacterClass(raw: unknown): CharacterClass | null {
+  if (typeof raw !== 'string') return null;
+  return (CHARACTER_CLASSES as readonly string[]).includes(raw) ? (raw as CharacterClass) : null;
+}
+
 export interface WoWPlayerDict {
   [key: string]: unknown;
   name: string;
@@ -12,6 +36,7 @@ export interface WoWPlayerDict {
   offspecs: Role[];
   utilities: Utility[];
   mediaUrl?: string | null;
+  characterClass?: CharacterClass | null;
 }
 
 export interface AffixDisplay {

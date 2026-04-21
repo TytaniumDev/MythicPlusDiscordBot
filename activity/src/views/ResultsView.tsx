@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { GroupCard } from '../components/GroupCard';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
+import { SpotlightPortraits } from '../components/SpotlightPortraits';
 import { SecondaryButton } from '../components/ui';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
@@ -28,10 +29,31 @@ interface ResultsViewProps {
 
 export function ResultsView({ onNavigate }: ResultsViewProps) {
   const channelData = useAppStore((s) => s.channelData);
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const service = useSessionService();
   const groups = channelData?.groups || [];
   const players = channelData?.players || [];
   useIdentityResolver(players);
+
+  const yourGroup = useMemo(() => {
+    if (!currentPlayerId) return null;
+    return (
+      groups.find((g) => {
+        if (g.tank?.discordId === currentPlayerId) return true;
+        if (g.healer?.discordId === currentPlayerId) return true;
+        return g.dps.some((p) => p?.discordId === currentPlayerId);
+      }) ?? null
+    );
+  }, [groups, currentPlayerId]);
+
+  const yourGroupPlayers = useMemo(() => {
+    if (!yourGroup) return [];
+    return [yourGroup.tank, yourGroup.healer, ...yourGroup.dps].filter(
+      (p): p is NonNullable<typeof p> => p != null,
+    );
+  }, [yourGroup]);
+
+  const yourGroupHeading = yourGroup?.tank ? `${yourGroup.tank.name}'s Group` : 'Your Group';
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
@@ -101,6 +123,12 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       />
       <main className="content-area">
         <section id="view-results">
+          {yourGroupPlayers.length > 0 && (
+            <div className="results-your-group">
+              <h3 className="results-your-group__heading">{yourGroupHeading}</h3>
+              <SpotlightPortraits players={yourGroupPlayers} />
+            </div>
+          )}
           <div id="final-groups">
             {groups.map((g, i) => {
               const remainder = !isCompleteGroup(g);

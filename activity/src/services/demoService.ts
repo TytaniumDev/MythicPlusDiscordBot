@@ -3,6 +3,7 @@ import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import type { ChannelData } from '../types';
 import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
+import type { CharacterClass } from '@mythicplus/shared';
 
 class DemoSessionService implements SessionService {
   subscribeToGuild(_guildId: string): () => void {
@@ -71,9 +72,17 @@ class DemoSessionService implements SessionService {
     }
   }
 
-  async saveLinkedCharacter(playerId: string, _linkedCharacter: { name: string; realm: string; region: string }, mediaUrl?: string | null): Promise<void> {
-    if (mediaUrl) {
-      useAppStore.getState().updatePlayer(playerId, { mediaUrl });
+  async saveLinkedCharacter(
+    playerId: string,
+    _linkedCharacter: { name: string; realm: string; region: string },
+    mediaUrl?: string | null,
+    characterClass?: CharacterClass | null,
+  ): Promise<void> {
+    const patch: Partial<{ mediaUrl: string | null; characterClass: CharacterClass | null }> = {};
+    if (mediaUrl !== undefined) patch.mediaUrl = mediaUrl;
+    if (characterClass !== undefined) patch.characterClass = characterClass;
+    if (Object.keys(patch).length > 0) {
+      useAppStore.getState().updatePlayer(playerId, patch);
     }
   }
 

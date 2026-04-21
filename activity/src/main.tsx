@@ -3,6 +3,16 @@
 import { initSentry, Sentry, reportError } from './lib/sentry';
 initSentry();
 
+// Register the Blizzard render cache service worker. Fire-and-forget; we
+// don't block bootstrap on it and cache misses just fall through to network.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
+      reportError(err, { tag: 'sw.register' });
+    });
+  });
+}
+
 // Discord SDK must be imported first — it patches fetch/WebSocket for the
 // embedded activity proxy before Firebase opens any connections.
 import './discordSdk';

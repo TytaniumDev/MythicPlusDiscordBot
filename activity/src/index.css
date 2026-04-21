@@ -39,8 +39,8 @@
   --color-brez: var(--color-gold);
   --color-lust: #e85d26;
 
-  --class-death-knight: #E04050;
-  --class-demon-hunter: #B84FDE;
+  --class-death-knight: #C41E3A;
+  --class-demon-hunter: #A330C9;
   --class-druid: #FF7C0A;
   --class-evoker: #33937F;
   --class-hunter: #AAD372;
@@ -49,7 +49,7 @@
   --class-paladin: #F48CBA;
   --class-priest: #FFFFFF;
   --class-rogue: #FFF468;
-  --class-shaman: #1E90FF;
+  --class-shaman: #0070DD;
   --class-warlock: #8788EE;
   --class-warrior: #C69B6D;
 
@@ -1424,6 +1424,23 @@ body {
   gap: 12px;
 }
 
+.results-your-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.results-your-group__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary, var(--text-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .report-success {
   font-size: 0.85rem;
   color: var(--color-healer);
@@ -2668,6 +2685,27 @@ button.role-section-header--collapsible {
   pointer-events: none;
 }
 
+.spotlight-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+  pointer-events: none;
+}
+
+.spotlight-wrapper.spotlight-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spotlight-wrapper.spotlight-exit {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.85);
+  transition: opacity 400ms ease-in, transform 400ms ease-in;
+}
+
 .spotlight-card {
   background: var(--bg-secondary);
   border: 2px solid var(--border-subtle);
@@ -2675,26 +2713,135 @@ button.role-section-header--collapsible {
   padding: 24px 32px;
   min-width: 260px;
   max-width: 340px;
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 400ms ease-out, transform 400ms ease-out;
-  pointer-events: none;
-}
-
-.spotlight-card.spotlight-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.spotlight-card.spotlight-exit {
-  opacity: 0;
-  transform: translateY(-20px) scale(0.85);
-  transition: opacity 400ms ease-in, transform 400ms ease-in;
 }
 
 .spotlight-card.is-my-group {
   border-color: var(--color-gold);
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+.spotlight-portraits {
+  display: grid;
+  grid-template-columns: repeat(5, min-content);
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.spotlight-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 88px;
+}
+
+.spotlight-portrait__stage {
+  /* Aspect ratio matches the visible character crop of Blizzard's main-raw.png
+   * (the source canvas is 1:2 but has horizontal padding; cropping sides with
+   * `object-fit: cover` on this slimmer ratio fills the frame with the
+   * character while showing the full height from head to feet). */
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 2 / 5;
+}
+
+/* Class-colored pedestal under the character's feet. Blizzard's main-raw.png
+ * lands feet at the bottom of the canvas for every character, so a single
+ * fixed position works for all of them. The disc sits behind the image with
+ * a softer top than bottom — character feet cover the back half, giving the
+ * "standing on a disc" illusion. */
+.spotlight-portrait__stage::after {
+  /* Blizzard's main-raw.png has transparent padding below the character's
+   * feet, so the disc must sit well above the container's bottom to actually
+   * touch the feet. The percentage keeps it aligned across responsive sizes. */
+  content: '';
+  position: absolute;
+  bottom: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center 35%,
+    color-mix(in srgb, var(--ch-color, var(--color-tank)) 85%, white) 0%,
+    var(--ch-color, var(--color-tank)) 40%,
+    color-mix(in srgb, var(--ch-color, var(--color-tank)) 30%, transparent) 100%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--ch-color, var(--color-tank)) 55%, transparent);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.spotlight-portrait__img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.spotlight-portrait__fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 16%;
+  font-size: 100px;
+  font-weight: 900;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.spotlight-portrait__name {
+  /* Stage height is responsive (aspect-ratio 2/5 of width). The disc sits at
+   * `bottom: 16%`, so its bottom edge is at `top: 84%` within the stage.
+   * Offset 8px further down to place the label just under the pedestal. */
+  position: absolute;
+  top: calc(84% + 8px);
+  left: 0;
+  right: 0;
+  color: var(--ch-color, var(--text-primary));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 500px) {
+  .spotlight-portrait {
+    width: 68px;
+  }
+}
+
+@media (max-width: 400px) {
+  .spotlight-portraits {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: 300px;
+    margin: 16px auto 0;
+  }
+
+  .spotlight-portrait {
+    width: 100%;
+  }
+
+  .spotlight-portrait:nth-child(1) { grid-column: 2 / span 2; }
+  .spotlight-portrait:nth-child(2) { grid-column: 4 / span 2; }
+  .spotlight-portrait:nth-child(3) { grid-column: 1 / span 2; }
+  .spotlight-portrait:nth-child(4) { grid-column: 3 / span 2; }
+  .spotlight-portrait:nth-child(5) { grid-column: 5 / span 2; }
 }
 
 .spotlight-heading {

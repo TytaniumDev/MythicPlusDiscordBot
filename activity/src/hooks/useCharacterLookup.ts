@@ -3,12 +3,13 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
 import { useAppStore } from '../store/store';
 import { lookupCharacterProfile } from '../services/raiderioService';
-import type { Role, Utility } from '@mythicplus/shared';
+import { toCharacterClass } from '@mythicplus/shared';
+import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
 export interface CharacterData {
   name: string;
   realm: string;
-  class: string;
+  class: CharacterClass | null;
   role: Role;
   utilities: Utility[];
   mediaUrl: string | null;
@@ -40,7 +41,7 @@ export function useCharacterLookup() {
         return {
           name: profile.name,
           realm: profile.realm,
-          class: profile.className,
+          class: toCharacterClass(profile.className),
           role: RAIDERIO_ROLE_MAP[profile.role] ?? 'melee',
           utilities: [],
           mediaUrl: profile.thumbnailUrl || null,
