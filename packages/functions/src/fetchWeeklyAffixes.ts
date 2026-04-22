@@ -69,10 +69,10 @@ export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastU
 // Scheduled: fires weekly on Tuesdays
 export const fetchWeeklyAffixes = onSchedule(
   {
-    // Fires 2 hours after NA weekly reset (15:00 UTC). EU resets Wednesday 04:00 UTC,
-    // but affixes are the same globally so NA timing is fine for all regions.
-    schedule: 'every tuesday 17:00',
-    timeZone: 'UTC',
+    // Tuesday 16:00 Pacific (~8h after NA weekly reset). Earlier runs caught
+    // Raider.IO before it had rolled its affixes endpoint to the new week.
+    schedule: 'every tuesday 16:00',
+    timeZone: 'America/Los_Angeles',
   },
   async () => {
     await fetchAndWriteAffixes();
