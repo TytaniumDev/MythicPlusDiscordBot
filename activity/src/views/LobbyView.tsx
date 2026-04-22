@@ -120,6 +120,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         isSelected={isSelected}
         isSittingOut={isSittingOut}
         isReady={isPlayerReady(p)}
+        mediaUrl={p.mediaUrl}
+        characterClass={p.characterClass}
         onClick={() => handleChipClick(p)}
         ariaLabel={isSelf ? `View ${p.name} details` : `Edit ${p.name} roles`}
       />

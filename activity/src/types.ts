@@ -1,9 +1,11 @@
-import type { WoWPlayerDict, WoWGroupDict, SessionStatus } from '@mythicplus/shared';
+import type { WoWPlayerDict, WoWGroupDict, SessionStatus, CharacterClass } from '@mythicplus/shared';
 
 export interface WheelEntry {
   name: string;
   isOffspec: boolean;
   isChosen?: boolean;
+  mediaUrl: string | null;
+  characterClass: CharacterClass | null;
 }
 
 export type WoWPlayer = WoWPlayerDict;

@@ -648,12 +648,12 @@ button:focus-visible,
 .player-chip {
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   font-size: 0.8rem;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
@@ -669,17 +669,52 @@ button:focus-visible,
   outline-offset: 2px;
 }
 
-.chip-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.player-chip .role-dot {
-  width: 8px;
-  height: 8px;
+.player-chip__portrait {
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--pc-ring, var(--color-gold));
+  background: color-mix(in srgb, var(--pc-ring, var(--color-gold)) 18%, #0d0d1a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-chip__portrait-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+
+.player-chip__portrait-letter {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.player-chip__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.player-chip__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .role-dot.tank { background: var(--color-tank); }
@@ -1169,6 +1204,58 @@ button:focus-visible,
   max-height: 100%;
   border-radius: 50%;
   display: block;
+}
+
+/* ============================================
+   Wheel portrait reveal (post-land animation)
+   ============================================ */
+.wheel-portrait {
+  /* transform duration must match PORTRAIT_EXPAND_DURATION in timing.ts (450ms) */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: scale(0);
+  opacity: 0;
+  transition:
+    transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 300ms ease-out;
+  z-index: 3;
+}
+
+.wheel-portrait.is-revealing {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.wheel-portrait__img,
+.wheel-portrait__fallback {
+  width: 80%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 4px solid var(--wp-color, var(--color-gold));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--wp-color, var(--color-gold)) 40%, transparent),
+    0 8px 24px rgba(0, 0, 0, 0.55);
+  background: #0d0d1a;
+}
+
+.wheel-portrait__img {
+  object-fit: cover;
+}
+
+.wheel-portrait__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: clamp(32px, 18%, 80px);
+  color: var(--wp-color, #fff);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  background: color-mix(in srgb, var(--wp-color, var(--color-gold)) 22%, #0d0d1a);
 }
 
 /* Pointer / arrow at top of wheel — scales with wheel via container query units */
@@ -2450,7 +2537,7 @@ button.role-section-header--collapsible {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
@@ -2471,16 +2558,34 @@ button.role-section-header--collapsible {
   opacity: 0.65;
 }
 .identity-card__avatar {
-  width: 28px;
-  height: 28px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: var(--color-gold);
+  border: 2px solid var(--ic-ring, var(--color-gold));
+  background: color-mix(in srgb, var(--ic-ring, var(--color-gold)) 22%, #0d0d1a);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  overflow: hidden;
   flex-shrink: 0;
+  position: relative;
+}
+
+.identity-card__avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+
+.identity-card__avatar-letter {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .identity-card__name {
   overflow: hidden;

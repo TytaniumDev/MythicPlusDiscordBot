@@ -17,3 +17,9 @@ export function toMainBodyUrl(mediaUrl: string | null | undefined): string | nul
   if (!VARIANT_PATTERN.test(mediaUrl)) return mediaUrl;
   return mediaUrl.replace(VARIANT_PATTERN, '-main-raw.png$2');
 }
+
+export function toAvatarUrl(mediaUrl: string | null | undefined): string | null {
+  if (!mediaUrl) return null;
+  if (!VARIANT_PATTERN.test(mediaUrl)) return mediaUrl;
+  return mediaUrl.replace(VARIANT_PATTERN, '-avatar.jpg$2');
+}

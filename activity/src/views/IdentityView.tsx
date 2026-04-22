@@ -4,6 +4,9 @@ import { useIdentity } from '../hooks/useIdentity';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA } from '../components/ui';
 import type { WoWPlayer } from '../types';
+import { toAvatarUrl } from '../lib/characterMedia';
+import { remapImageUrl } from '../discordSdk';
+import { getClassColor } from '../lib/classColors';
 
 interface IdentityViewProps {
   onNavigate: (view: 'channels' | 'setup' | 'home', opts?: { replace?: boolean }) => void;
@@ -66,6 +69,8 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                 const id = player.discordId ?? player.name;
                 const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
                 const isSelected = player.discordId === selectedId;
+                const avatarUrl = remapImageUrl(toAvatarUrl(player.mediaUrl) ?? undefined);
+                const ringColor = getClassColor(player.characterClass) ?? 'var(--color-gold)';
                 return (
                   <button
                     key={id}
@@ -73,18 +78,31 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                     onClick={() => handleSelect(player)}
                     aria-label={isClaimed ? `${player.name} (claimed)` : `Select ${player.name}`}
                   >
-                    <div className="identity-card__avatar">
-                      {player.name.charAt(0).toUpperCase()}
+                    <div
+                      className="identity-card__avatar"
+                      style={{ '--ic-ring': ringColor } as React.CSSProperties}
+                    >
+                      <span className="identity-card__avatar-letter">
+                        {player.name.charAt(0).toUpperCase()}
+                      </span>
+                      {avatarUrl && (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          className="identity-card__avatar-img"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
                     </div>
                     <span className="identity-card__name">{player.name}</span>
-                    {isSelected && <span className="identity-card__check">{'\u2713'}</span>}
+                    {isSelected && <span className="identity-card__check">{'✓'}</span>}
                     {isClaimed && <span className="identity-card__claimed">Claimed</span>}
                   </button>
                 );
               })}
             </div>
             <PrimaryCTA id="identity-continue-btn" disabled={!selectedId} onClick={handleContinue}>
-              {'Continue \u2192'}
+              {'Continue →'}
             </PrimaryCTA>
             <p className="identity-picker__help">Not in the list? Join the voice channel first.</p>
           </div>

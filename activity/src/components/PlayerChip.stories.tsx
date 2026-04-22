@@ -101,3 +101,51 @@ export const Unassigned: Story = {
     isReady: false,
   },
 };
+
+export const WithPortrait: Story = {
+  args: {
+    name: 'Tytanium',
+    roleKey: 'ranged',
+    roleLabel: 'Ranged DPS',
+    tags: [{ label: 'Lust', cssClass: 'tag-lust' }],
+    isReady: true,
+    mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg',
+    characterClass: 'Mage',
+  },
+};
+
+export const WithPortraitSittingOut: Story = {
+  args: {
+    name: 'Tytanium',
+    roleKey: 'ranged',
+    roleLabel: 'Ranged DPS',
+    tags: [],
+    isSittingOut: true,
+    mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg',
+    characterClass: 'Mage',
+  },
+};
+
+export const PortraitFallbackLetter: Story = {
+  args: {
+    name: 'NewPlayer',
+    roleKey: 'tank',
+    roleLabel: 'Tank',
+    tags: [],
+    isReady: false,
+    mediaUrl: null,
+    characterClass: null,
+  },
+};
+
+export const BrokenImageFallback: Story = {
+  args: {
+    name: 'BrokenTank',
+    roleKey: 'tank',
+    roleLabel: 'Tank',
+    tags: [{ label: 'Off Healer', cssClass: 'tag-healer tag-offspec' }],
+    isReady: true,
+    mediaUrl: 'https://example.invalid/broken-inset.jpg',
+    characterClass: 'Warrior',
+  },
+};

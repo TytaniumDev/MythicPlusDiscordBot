@@ -1,5 +1,9 @@
 import { WheelEntry } from '../types';
 import { audio } from './audio';
+import { toAvatarUrl } from './characterMedia';
+import { remapImageUrl } from '../discordSdk';
+import { getClassColor } from './classColors';
+import { PORTRAIT_EXPAND_DURATION } from './timing';
 
 const COLORS = [
   '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
@@ -65,6 +69,9 @@ export class Wheel {
   private rejectSpin: ((reason?: string) => void) | null = null;
   private cssWidth = 0;
   private cssHeight = 0;
+  private portraitEl: HTMLDivElement;
+  private portraitImg: HTMLImageElement;
+  private portraitFallback: HTMLDivElement;
 
   constructor(config: WheelConfig) {
     // Build DOM programmatically
@@ -89,6 +96,29 @@ export class Wheel {
     this.canvas.setAttribute('role', 'img');
     this.canvas.setAttribute('aria-label', config.ariaLabel);
     frame.appendChild(this.canvas);
+
+    this.portraitEl = document.createElement('div');
+    this.portraitEl.className = 'wheel-portrait';
+    this.portraitEl.setAttribute('aria-hidden', 'true');
+
+    this.portraitImg = document.createElement('img');
+    this.portraitImg.className = 'wheel-portrait__img';
+    this.portraitImg.alt = '';
+    this.portraitImg.style.display = 'none';
+    this.portraitEl.appendChild(this.portraitImg);
+
+    this.portraitFallback = document.createElement('div');
+    this.portraitFallback.className = 'wheel-portrait__fallback';
+    this.portraitFallback.style.display = 'none';
+    this.portraitEl.appendChild(this.portraitFallback);
+
+    // If <img> fails to load, swap to fallback
+    this.portraitImg.addEventListener('error', () => {
+      this.portraitImg.style.display = 'none';
+      this.portraitFallback.style.display = 'flex';
+    });
+
+    frame.appendChild(this.portraitEl);
 
     this.slotEl.appendChild(frame);
 
@@ -124,6 +154,7 @@ export class Wheel {
 
   /** Set up the wheel with a new list of candidates */
   init(entries: WheelEntry[]) {
+    this.clearPortrait();
     this.entries = entries;
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.highlightIndex = null;
@@ -373,6 +404,7 @@ export class Wheel {
     }
     this.highlightIndex = null;
     this.highlightProgress = 0;
+    this.clearPortrait();
     if (this.rejectSpin) {
       this.rejectSpin('cancelled');
       this.rejectSpin = null;
@@ -452,11 +484,14 @@ export class Wheel {
             } else {
               this.animationFrame = null;
               this.rejectSpin = null;
-              // Show result with animation class
               this.resultEl.textContent = winnerName;
               this.resultEl.classList.add('revealed');
               this.canvas.setAttribute('aria-label', `${this.baseLabel}. Result: ${winnerName}`);
-              resolve(winnerName);
+
+              const winnerEntry = this.entries[winnerIndex];
+              this.revealPortrait(winnerEntry, PORTRAIT_EXPAND_DURATION).then(() => {
+                resolve(winnerName);
+              });
             }
           };
           this.animationFrame = requestAnimationFrame(fadeIn);
@@ -470,5 +505,50 @@ export class Wheel {
   /** Draw static wheel without animation (for testing) */
   drawStatic() {
     this.draw();
+  }
+
+  /** Hide the portrait overlay and reset it for the next spin. */
+  clearPortrait() {
+    this.portraitEl.classList.remove('is-revealing');
+    this.portraitImg.style.display = 'none';
+    this.portraitImg.removeAttribute('src');
+    this.portraitFallback.style.display = 'none';
+    this.portraitFallback.textContent = '';
+    this.portraitEl.style.removeProperty('--wp-color');
+  }
+
+  /**
+   * Animate the winner's portrait in from the center of the wheel.
+   * Called from spinTo after the gold-glow highlight fade-in completes.
+   * Resolves after the expand animation duration.
+   */
+  revealPortrait(winnerEntry: WheelEntry, duration: number): Promise<void> {
+    const color = getClassColor(winnerEntry.characterClass) ?? '#f59e0b';
+    this.portraitEl.style.setProperty('--wp-color', color);
+
+    const avatarUrl = toAvatarUrl(winnerEntry.mediaUrl);
+    const proxied = remapImageUrl(avatarUrl ?? undefined);
+
+    // Always pre-populate the fallback text so the constructor's error listener
+    // can safely reveal it if the image fails to load at runtime.
+    this.portraitFallback.textContent = winnerEntry.name.charAt(0).toUpperCase() || '?';
+
+    if (proxied) {
+      this.portraitImg.src = proxied;
+      this.portraitImg.style.display = 'block';
+      this.portraitFallback.style.display = 'none';
+    } else {
+      this.portraitImg.style.display = 'none';
+      this.portraitFallback.style.display = 'flex';
+    }
+
+    // Force a reflow so the transition kicks in even if the class was
+    // removed and re-added in the same tick (next group's spin).
+    void this.portraitEl.offsetWidth;
+    this.portraitEl.classList.add('is-revealing');
+
+    return new Promise((resolve) => {
+      setTimeout(resolve, duration);
+    });
   }
 }
