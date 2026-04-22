@@ -13,7 +13,7 @@ import {
   UTILITY_BUTTONS,
   type RoleButtonDef,
 } from '../lib/roles';
-import type { RaiderioCharacterResult } from '../services/raiderioService';
+import { searchCharacters, type RaiderioCharacterResult } from '../services/raiderioService';
 import { reportError } from '../lib/sentry';
 
 interface RoleEditorProps {
@@ -35,6 +35,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rolesRef = useRef<Set<string>>(new Set());
   const nameRef = useRef<string>('');
+  const autoLookupAttemptedRef = useRef<string | null>(null);
 
   const playerId = player.discordId ?? null;
 
@@ -82,6 +83,60 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
+
+  // Auto-populate character image when a player already has an inGameName saved
+  // but no mediaUrl (e.g. name was entered in an older build or a previous session).
+  // Runs once per player identity; uses the initial snapshot to avoid firing while
+  // the user is typing. Failures are non-fatal.
+  useEffect(() => {
+    const discordId = player.discordId;
+    if (!discordId) return;
+    if (autoLookupAttemptedRef.current === discordId) return;
+    autoLookupAttemptedRef.current = discordId;
+
+    const name = player.inGameName?.trim();
+    if (!name || player.mediaUrl) return;
+
+    let cancelled = false;
+    const dashIdx = name.indexOf('-');
+    const namePart = dashIdx === -1 ? name : name.slice(0, dashIdx);
+    const realmPart = dashIdx === -1 ? '' : name.slice(dashIdx + 1);
+
+    (async () => {
+      try {
+        const matches = await searchCharacters(name);
+        if (cancelled || matches.length === 0) return;
+
+        const exact = matches.find(
+          (m) =>
+            m.name.toLowerCase() === namePart.toLowerCase() &&
+            (!realmPart ||
+              m.realm.toLowerCase() === realmPart.toLowerCase() ||
+              m.realmSlug.toLowerCase() === realmPart.toLowerCase()),
+        );
+        const match = exact ?? matches[0];
+
+        const character = await lookup(match.name, match.realmSlug, match.region);
+        if (cancelled || !character?.mediaUrl) return;
+
+        onMediaUrlChange?.(character.mediaUrl);
+        await service.saveLinkedCharacter(
+          discordId,
+          { name: match.name, realm: match.realmSlug, region: match.region },
+          character.mediaUrl,
+          character.class,
+        );
+      } catch (err) {
+        reportError(err, { tag: 'RoleEditor.autoLoadMedia' });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally depend only on playerId — we take a snapshot of the player's
+    // inGameName/mediaUrl at mount and don't want to re-fire on typing changes.
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleRole = useCallback((btnDef: RoleButtonDef, mutuallyExclusive: boolean) => {
     setSelectedRoles((prev) => {
