@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { extractRefreshTargets } from '../src/refreshCharacterMedia';
+import { extractRefreshTargets, extractClearTargets } from '../src/refreshCharacterMedia';
 
 describe('extractRefreshTargets', () => {
-  it('returns targets for docs with a valid linkedCharacter', () => {
+  it('returns linkedCharacter-sourced targets for docs with a valid linkedCharacter', () => {
     const docs = [
       {
         id: 'user-1',
@@ -18,6 +18,7 @@ describe('extractRefreshTargets', () => {
       {
         discordId: 'user-1',
         linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        source: 'linkedCharacter',
       },
     ]);
   });
@@ -29,8 +30,16 @@ describe('extractRefreshTargets', () => {
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([
-      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
-      { discordId: 'user-2', linkedCharacter: { name: 'Kel\'thuzad', realm: 'area-52', region: 'us' } },
+      {
+        discordId: 'user-1',
+        linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        source: 'inGameName',
+      },
+      {
+        discordId: 'user-2',
+        linkedCharacter: { name: "Kel'thuzad", realm: 'area-52', region: 'us' },
+        source: 'inGameName',
+      },
     ]);
   });
 
@@ -57,7 +66,11 @@ describe('extractRefreshTargets', () => {
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([
-      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+      {
+        discordId: 'user-1',
+        linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        source: 'linkedCharacter',
+      },
     ]);
   });
 
@@ -80,8 +93,16 @@ describe('extractRefreshTargets', () => {
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([
-      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
-      { discordId: 'user-2', linkedCharacter: { name: 'Firemage', realm: 'uldum', region: 'us' } },
+      {
+        discordId: 'user-1',
+        linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        source: 'inGameName',
+      },
+      {
+        discordId: 'user-2',
+        linkedCharacter: { name: 'Firemage', realm: 'uldum', region: 'us' },
+        source: 'inGameName',
+      },
     ]);
   });
 
@@ -105,7 +126,11 @@ describe('extractRefreshTargets', () => {
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([
-      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+      {
+        discordId: 'user-1',
+        linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        source: 'inGameName',
+      },
     ]);
   });
 
@@ -115,7 +140,59 @@ describe('extractRefreshTargets', () => {
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([
-      { discordId: 'user-1', linkedCharacter: { name: 'Char', realm: 'azjol-nerub', region: 'us' } },
+      {
+        discordId: 'user-1',
+        linkedCharacter: { name: 'Char', realm: 'azjol-nerub', region: 'us' },
+        source: 'inGameName',
+      },
     ]);
+  });
+});
+
+describe('extractClearTargets', () => {
+  it('flags docs with inGameName but no realm', () => {
+    const docs = [
+      { id: 'user-1', data: { inGameName: 'Kyle', roles: ['Melee'] } },
+      { id: 'user-2', data: { inGameName: 'Tytanium-', roles: ['Tank'] } },
+    ];
+
+    expect(extractClearTargets(docs)).toEqual(['user-1', 'user-2']);
+  });
+
+  it('flags docs with stale character fields but no valid identity', () => {
+    const docs = [
+      { id: 'user-1', data: { wowName: 'Legacy-Name', roles: ['Healer'] } },
+      { id: 'user-2', data: { mediaUrl: 'https://example/cached.jpg' } },
+    ];
+
+    expect(extractClearTargets(docs)).toEqual(['user-1', 'user-2']);
+  });
+
+  it('does not flag docs with a valid linkedCharacter', () => {
+    const docs = [
+      {
+        id: 'user-1',
+        data: { linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+      },
+    ];
+
+    expect(extractClearTargets(docs)).toEqual([]);
+  });
+
+  it('does not flag docs with a parseable inGameName', () => {
+    const docs = [
+      { id: 'user-1', data: { inGameName: 'Tytanium-Stormrage' } },
+    ];
+
+    expect(extractClearTargets(docs)).toEqual([]);
+  });
+
+  it('does not flag docs with roles but no character fields', () => {
+    const docs = [
+      { id: 'user-1', data: { roles: ['Tank'] } },
+      { id: 'user-2', data: {} },
+    ];
+
+    expect(extractClearTargets(docs)).toEqual([]);
   });
 });
