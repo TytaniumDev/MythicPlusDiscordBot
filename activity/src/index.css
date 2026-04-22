@@ -1771,50 +1771,17 @@ button:focus-visible,
 }
 
 /* ============================================
-   Character Search Dropdown
+   Character Name Input
    ============================================ */
-.character-search-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 100%;
-  width: max-content;
-  z-index: 50;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  max-height: 200px;
-  overflow-y: auto;
-  margin-top: 4px;
+.role-editor-name-input {
+  position: relative;
+  flex: 1;
 }
 
-.character-search-result {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-primary);
-  font-size: 13px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.character-search-result:hover {
-  background: var(--bg-card-hover);
-}
-
-.character-search-name {
-  font-weight: 600;
-}
-
-.character-search-detail {
-  color: var(--text-secondary);
+.role-editor-error {
+  margin-top: 6px;
   font-size: 12px;
+  color: var(--color-danger, #f06c6c);
 }
 
 @keyframes spin {

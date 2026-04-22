@@ -1,31 +1,5 @@
 // Note: This endpoint is not part of Raider.io's official public API and may change without notice.
-// If it breaks, fall back to manual character name entry (the search is a convenience, not a requirement).
-
-export interface RaiderioCharacterResult {
-  name: string;
-  realm: string;
-  realmSlug: string;
-  region: string;
-  className: string;
-}
-
-interface RaiderioSearchMatch {
-  type: string;
-  data: {
-    name: string;
-    class: { name: string };
-    realm: { name: string; slug: string };
-    region: { slug: string };
-  };
-}
-
-interface RaiderioSearchResponse {
-  matches: RaiderioSearchMatch[];
-}
-
-function isCharacterMatch(m: RaiderioSearchMatch): m is RaiderioSearchMatch & { type: 'character' } {
-  return m.type === 'character';
-}
+// Only used by demo mode — production lookups go through the `lookupCharacter` Cloud Function.
 
 interface RaiderioProfileResponse {
   name: string;
@@ -76,28 +50,4 @@ export async function lookupCharacterProfile(
     console.warn('[Wheelson] Raider.io profile lookup failed:', err);
     return null;
   }
-}
-
-export async function searchCharacters(
-  query: string,
-  signal?: AbortSignal,
-): Promise<RaiderioCharacterResult[]> {
-  const response = await fetch(
-    `https://raider.io/api/search?term=${encodeURIComponent(query)}`,
-    { signal },
-  );
-
-  if (!response.ok) return [];
-
-  const data: RaiderioSearchResponse = await response.json();
-
-  return (data.matches ?? [])
-    .filter(isCharacterMatch)
-    .map((m) => ({
-      name: m.data.name,
-      realm: m.data.realm.name,
-      realmSlug: m.data.realm.slug,
-      region: m.data.region.slug,
-      className: m.data.class.name,
-    }));
 }
