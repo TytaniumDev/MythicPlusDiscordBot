@@ -22,22 +22,67 @@ describe('extractRefreshTargets', () => {
     ]);
   });
 
-  it('skips docs without linkedCharacter', () => {
+  it('falls back to parsing inGameName when linkedCharacter is missing', () => {
     const docs = [
-      { id: 'user-1', data: { roles: ['Tank'], inGameName: 'Tytanium-Stormrage' } },
+      { id: 'user-1', data: { inGameName: 'Tytanium-Stormrage' } },
+      { id: 'user-2', data: { inGameName: "Kel'thuzad - Area 52" } },
+    ];
+
+    expect(extractRefreshTargets(docs)).toEqual([
+      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+      { discordId: 'user-2', linkedCharacter: { name: 'Kel\'thuzad', realm: 'area-52', region: 'us' } },
+    ]);
+  });
+
+  it('skips docs with an inGameName that has no realm', () => {
+    const docs = [
+      { id: 'user-1', data: { inGameName: 'Kyle' } },
+      { id: 'user-2', data: { inGameName: 'Tytanium-' } },
+      { id: 'user-3', data: { inGameName: '' } },
+      { id: 'user-4', data: {} },
     ];
 
     expect(extractRefreshTargets(docs)).toEqual([]);
   });
 
-  it('skips docs with incomplete linkedCharacter', () => {
+  it('prefers linkedCharacter over inGameName when both are present', () => {
     const docs = [
-      { id: 'user-1', data: { linkedCharacter: { name: 'Tytanium', realm: '', region: 'us' } } },
-      { id: 'user-2', data: { linkedCharacter: { name: 'Firemage' } } },
-      { id: 'user-3', data: { linkedCharacter: null } },
+      {
+        id: 'user-1',
+        data: {
+          inGameName: 'Oldname-OtherRealm',
+          linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+        },
+      },
     ];
 
-    expect(extractRefreshTargets(docs)).toEqual([]);
+    expect(extractRefreshTargets(docs)).toEqual([
+      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+    ]);
+  });
+
+  it('falls back to inGameName when linkedCharacter is incomplete', () => {
+    const docs = [
+      {
+        id: 'user-1',
+        data: {
+          inGameName: 'Tytanium-Stormrage',
+          linkedCharacter: { name: 'Tytanium', realm: '', region: 'us' },
+        },
+      },
+      {
+        id: 'user-2',
+        data: {
+          inGameName: 'Firemage-Uldum',
+          linkedCharacter: null,
+        },
+      },
+    ];
+
+    expect(extractRefreshTargets(docs)).toEqual([
+      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+      { discordId: 'user-2', linkedCharacter: { name: 'Firemage', realm: 'uldum', region: 'us' } },
+    ]);
   });
 
   it('skips docs where linkedCharacter fields have wrong types', () => {
