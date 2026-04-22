@@ -4,6 +4,7 @@ export const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
 export const GRID_SPIN_DURATION = 4000;       // ms per wheel in grid mode
 
 // Portrait reveal timing (plays after gold-glow fade-in, before wheel fades out)
+// Must match the `transition: transform ... ms` duration in .wheel-portrait CSS.
 export const PORTRAIT_EXPAND_DURATION = 450;  // ms for portrait scale-in animation
 
 // Auto-advance spotlight timing

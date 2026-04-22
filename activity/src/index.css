@@ -684,10 +684,13 @@ button:focus-visible,
 }
 
 .player-chip__portrait-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
 .player-chip__portrait-letter {
@@ -1207,6 +1210,7 @@ button:focus-visible,
    Wheel portrait reveal (post-land animation)
    ============================================ */
 .wheel-portrait {
+  /* transform duration must match PORTRAIT_EXPAND_DURATION in timing.ts (450ms) */
   position: absolute;
   inset: 0;
   display: flex;
@@ -2564,13 +2568,17 @@ button.role-section-header--collapsible {
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  position: relative;
 }
 
 .identity-card__avatar-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
 .identity-card__avatar-letter {

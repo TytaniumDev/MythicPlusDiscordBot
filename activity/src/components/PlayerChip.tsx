@@ -47,7 +47,8 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
       style={{ '--pc-ring': ringColor } as React.CSSProperties}
       aria-hidden="true"
     >
-      {proxied ? (
+      <span className="player-chip__portrait-letter">{name.charAt(0).toUpperCase() || '?'}</span>
+      {proxied && (
         <img
           src={proxied}
           alt=""
@@ -56,8 +57,6 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
             (e.currentTarget as HTMLImageElement).style.display = 'none';
           }}
         />
-      ) : (
-        <span className="player-chip__portrait-letter">{name.charAt(0).toUpperCase() || '?'}</span>
       )}
     </div>
   );

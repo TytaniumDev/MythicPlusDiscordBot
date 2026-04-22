@@ -529,13 +529,16 @@ export class Wheel {
     const avatarUrl = toAvatarUrl(winnerEntry.mediaUrl);
     const proxied = remapImageUrl(avatarUrl ?? undefined);
 
+    // Always pre-populate the fallback text so the constructor's error listener
+    // can safely reveal it if the image fails to load at runtime.
+    this.portraitFallback.textContent = winnerEntry.name.charAt(0).toUpperCase() || '?';
+
     if (proxied) {
       this.portraitImg.src = proxied;
       this.portraitImg.style.display = 'block';
       this.portraitFallback.style.display = 'none';
     } else {
       this.portraitImg.style.display = 'none';
-      this.portraitFallback.textContent = winnerEntry.name.charAt(0).toUpperCase() || '?';
       this.portraitFallback.style.display = 'flex';
     }
 

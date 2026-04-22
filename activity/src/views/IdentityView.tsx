@@ -82,17 +82,16 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                       className="identity-card__avatar"
                       style={{ '--ic-ring': ringColor } as React.CSSProperties}
                     >
-                      {avatarUrl ? (
+                      <span className="identity-card__avatar-letter">
+                        {player.name.charAt(0).toUpperCase()}
+                      </span>
+                      {avatarUrl && (
                         <img
                           src={avatarUrl}
                           alt=""
                           className="identity-card__avatar-img"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                         />
-                      ) : (
-                        <span className="identity-card__avatar-letter">
-                          {player.name.charAt(0).toUpperCase()}
-                        </span>
                       )}
                     </div>
                     <span className="identity-card__name">{player.name}</span>
