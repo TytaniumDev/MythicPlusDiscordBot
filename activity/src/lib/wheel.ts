@@ -3,6 +3,7 @@ import { audio } from './audio';
 import { toAvatarUrl } from './characterMedia';
 import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from './classColors';
+import { PORTRAIT_EXPAND_DURATION } from './timing';
 
 const COLORS = [
   '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
@@ -403,6 +404,7 @@ export class Wheel {
     }
     this.highlightIndex = null;
     this.highlightProgress = 0;
+    this.clearPortrait();
     if (this.rejectSpin) {
       this.rejectSpin('cancelled');
       this.rejectSpin = null;
@@ -482,11 +484,14 @@ export class Wheel {
             } else {
               this.animationFrame = null;
               this.rejectSpin = null;
-              // Show result with animation class
               this.resultEl.textContent = winnerName;
               this.resultEl.classList.add('revealed');
               this.canvas.setAttribute('aria-label', `${this.baseLabel}. Result: ${winnerName}`);
-              resolve(winnerName);
+
+              const winnerEntry = this.entries[winnerIndex];
+              this.revealPortrait(winnerEntry, PORTRAIT_EXPAND_DURATION).then(() => {
+                resolve(winnerName);
+              });
             }
           };
           this.animationFrame = requestAnimationFrame(fadeIn);
