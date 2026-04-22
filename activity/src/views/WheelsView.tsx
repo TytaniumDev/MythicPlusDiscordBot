@@ -88,13 +88,13 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   const channelStatus = channelData?.status;
   const groupsCount = channelData?.groups?.length ?? 0;
-  const isStaticWheel = (channelData as unknown as Record<string, unknown> | undefined)?.staticWheel === true;
+  const isStaticWheel = channelData?.staticWheel === true;
 
   useEffect(() => {
     const data = useAppStore.getState().channelData;
     if (!data || data.status !== 'spinning') return;
 
-    if ((data as unknown as Record<string, unknown>).staticWheel) {
+    if (data.staticWheel) {
       const p = initPools(data.players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
       setWheelStatus('Static preview');

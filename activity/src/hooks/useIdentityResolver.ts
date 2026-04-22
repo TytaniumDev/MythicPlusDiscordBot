@@ -15,7 +15,7 @@ export function useIdentityResolver(players: WoWPlayer[]) {
   const membershipKey = useMemo(
     () =>
       players
-        .map((p) => p.discordId ?? `name:${p.name}`)
+        .map((p) => p.discordId ?? `\0${p.name}`)
         .sort()
         .join(','),
     [players],

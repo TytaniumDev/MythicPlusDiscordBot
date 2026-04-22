@@ -40,6 +40,7 @@ export interface ChannelData {
   refreshPlayers?: boolean;
   claimedPlayers?: string[];
   sittingOut?: string[];
+  staticWheel?: boolean;
   isDebug: boolean;
   createdAt: unknown;
   lastActive: unknown;
