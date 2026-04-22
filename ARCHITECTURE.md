@@ -166,6 +166,37 @@ The Activity frontend (`activity/src/main.ts`) operates in three distinct modes 
 
 ---
 
+
+### 5. Firebase Cloud Functions (v2)
+
+- **Role**: Securely handles background synchronization, external integrations, and API rate limiting outside the bot's hot path.
+- **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
+- **Key Functions**:
+  - `fetchWeeklyAffixes`: Scheduled and callable function that pulls current Mythic+ affix data from the **Raider.IO API** and syncs it to the `config/affixes` Firestore document.
+  - `lookupCharacter` & `refreshCharacterMedia`: Callable and scheduled functions for securely bridging the client to the **Battle.net API** while strictly enforcing rate limits and caching profile data in Firestore (`characters/` collection).
+  - `githubWebhook`: An HTTP (`onRequest`) webhook that bridges external GitHub issue events to the internal bot notification system.
+
+#### Webhook Notification Flow
+
+The bot utilizes asynchronous notification delivery for GitHub updates, decoupling the HTTP webhook response from the Discord API rate limits.
+
+```mermaid
+sequenceDiagram
+    participant GitHub
+    participant Webhook as Cloud Function (githubWebhook)
+    participant Firestore as Firestore (notifications)
+    participant Bot as Discord Bot
+    participant User as Discord User
+
+    GitHub->>Webhook: HTTP POST (issue closed)
+    Webhook->>Firestore: Create notification document
+    Firestore-->>Webhook: success
+    Webhook-->>GitHub: 200 OK
+    Firestore-->>Bot: onSnapshot event
+    Bot->>User: DM "Issue Resolved!"
+    Bot->>Firestore: Delete notification document
+```
+
 ## How an Activity Run Works (End-to-End)
 
 This is the sequence from “someone runs `/activity`” to “everyone sees groups.”

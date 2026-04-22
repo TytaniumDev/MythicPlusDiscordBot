@@ -68,6 +68,7 @@ This project has strict requirements to prevent secret leaks and ensure CI relia
     -   `src/core/`: Core configuration, utilities, and integrations.
     -   `src/services/`: Services bridging commands and external systems (Firebase, state).
     -   `tests/`: Unit tests using Vitest.
+-   `packages/functions/`: Firebase Cloud Functions (TypeScript). Handles background syncing, external API integrations (Raider.IO, Battle.net), and webhooks.
 -   `packages/shared/`: Shared models and business logic (e.g., `parallelGroupCreator.ts`).
 -   `activity/`: Frontend code for the Discord Activity (React/TypeScript/Vite).
 -   `scripts/`: Utility scripts for verification and CI.
