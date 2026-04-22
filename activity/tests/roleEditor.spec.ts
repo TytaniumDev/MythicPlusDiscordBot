@@ -3,7 +3,7 @@ import { mockChannelData, mockPlayers } from '../src/lib/mockData';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
-// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+// Use Gazzi (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
 const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
 
 const lobbyData = {

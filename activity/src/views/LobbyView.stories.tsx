@@ -18,7 +18,7 @@ const meta = {
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
       currentPlayerId: '100000000000000007',
-      currentPlayerName: 'Tytanium',
+      currentPlayerName: 'Fourseven',
       identityResolved: true,
       channelData: mockChannelData,
     }),
@@ -37,7 +37,7 @@ export const FewPlayers: Story = {
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
       currentPlayerId: '100000000000000001',
-      currentPlayerName: 'Martz',
+      currentPlayerName: 'Quill',
       identityResolved: true,
       channelData: {
         ...mockChannelData,
@@ -68,7 +68,7 @@ export const WithSittingOut: Story = {
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
       currentPlayerId: '100000000000000007',
-      currentPlayerName: 'Tytanium',
+      currentPlayerName: 'Fourseven',
       identityResolved: true,
       channelData: {
         ...mockChannelData,
