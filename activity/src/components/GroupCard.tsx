@@ -35,7 +35,7 @@ export function GroupCard({ group, index, label, hideEmpty = false, compact = fa
   const isMyGroup = currentPlayerId != null && allPlayers.some((p) => p?.discordId === currentPlayerId);
 
   const cardClass = compact ? 'group-card-compact' : 'group-card';
-  const heading = label ?? (group.tank ? `${group.tank.name}'s Group` : `Group ${index + 1}`);
+  const heading = label ?? `Group ${index + 1}`;
 
   // Exclude the current user so anyone in the group can be the inviter
   const inviteCmd = generateInviteCommand(group, currentPlayerId ?? undefined);
