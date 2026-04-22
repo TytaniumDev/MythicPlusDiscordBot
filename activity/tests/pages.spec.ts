@@ -131,12 +131,15 @@ function designViewportTests(
 
     test('Setup View', async ({ page }) => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-      // Martz (index 0) has mainRole but no inGameName — lands on setup
+      // Strip inGameName from [0] so isPlayerReady fails and we land on setup.
+      const setupPlayers = mockPlayers.map((p, i) =>
+        i === 0 ? { ...p, inGameName: undefined } : p,
+      );
       const setupData = {
         ...mockChannelData,
         status: 'lobby',
-        players: mockPlayers,
-        identity: { id: mockPlayers[0].discordId, name: mockPlayers[0].name },
+        players: setupPlayers,
+        identity: { id: setupPlayers[0].discordId, name: setupPlayers[0].name },
       };
       await page.goto(`/?data=${encodeData(setupData)}`);
       await expect(page.locator('#view-setup')).toBeVisible();

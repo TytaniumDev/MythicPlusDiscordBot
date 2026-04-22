@@ -16,7 +16,7 @@ const DETERMINISTIC_RANDOM_SCRIPT = `
   })();
 `;
 
-// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+// Use Gazzi (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
 const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
 
 // Default viewport for component tests

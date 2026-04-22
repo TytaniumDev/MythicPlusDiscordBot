@@ -25,12 +25,12 @@ type Story = StoryObj<typeof meta>;
 
 /** Healer with tank offspec and brez utility */
 export const WithRoles: Story = {
-  args: { player: mockPlayers[0] }, // Martz: Healer, Tank+Melee Offspec, Brez
+  args: { player: mockPlayers[0] }, // Quill: Healer with Tank/Ranged/Melee offspec, Brez
 };
 
 /** Tank with in-game name set */
 export const WithInGameName: Story = {
-  args: { player: mockPlayers[4] }, // Pandemonium: Tank, inGameName set
+  args: { player: mockPlayers[4] }, // Gazzi: Tank, inGameName set
 };
 
 /** Player with no roles assigned */
@@ -63,7 +63,7 @@ export const WithCharacterImage: Story = {
 
 /** Player sitting out this round */
 export const SittingOut: Story = {
-  args: { player: mockPlayers[4] }, // Pandemonium
+  args: { player: mockPlayers[4] }, // Gazzi
   decorators: [
     withStore({
       ...storeDefaults,
