@@ -177,17 +177,24 @@ export function computeToggledRoles(
 }
 
 export function initPools(players: WoWPlayer[]): { tanks: WheelEntry[]; healers: WheelEntry[]; dps: WheelEntry[] } {
+  const entry = (p: WoWPlayer, isOffspec: boolean): WheelEntry => ({
+    name: p.name,
+    isOffspec,
+    mediaUrl: p.mediaUrl ?? null,
+    characterClass: p.characterClass ?? null,
+  });
+
   const tanks = players
     .filter((p) => p.mainRole === 'tank' || p.offspecs.includes('tank'))
-    .map((p) => ({ name: p.name, isOffspec: p.mainRole !== 'tank' }));
+    .map((p) => entry(p, p.mainRole !== 'tank'));
 
   const healers = players
     .filter((p) => p.mainRole === 'healer' || p.offspecs.includes('healer'))
-    .map((p) => ({ name: p.name, isOffspec: p.mainRole !== 'healer' }));
+    .map((p) => entry(p, p.mainRole !== 'healer'));
 
   const dps = players
     .filter((p) => p.mainRole === 'ranged' || p.mainRole === 'melee' || p.offspecs.includes('ranged') || p.offspecs.includes('melee'))
-    .map((p) => ({ name: p.name, isOffspec: p.mainRole !== 'ranged' && p.mainRole !== 'melee' }));
+    .map((p) => entry(p, p.mainRole !== 'ranged' && p.mainRole !== 'melee'));
 
   return { tanks, healers, dps };
 }

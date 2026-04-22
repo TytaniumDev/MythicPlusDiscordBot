@@ -96,3 +96,42 @@ describe('computeToggledRoles', () => {
     });
   });
 });
+
+import { initPools } from './roles';
+
+describe('initPools portrait fields', () => {
+  it('carries mediaUrl and characterClass through to WheelEntry', () => {
+    const players = [
+      {
+        name: 'Tank1',
+        discordId: '1',
+        mainRole: 'tank',
+        offspecs: [],
+        utilities: [],
+        mediaUrl: 'https://example.com/abc-inset.jpg',
+        characterClass: 'warrior',
+      },
+      {
+        name: 'Healer1',
+        discordId: '2',
+        mainRole: 'healer',
+        offspecs: [],
+        utilities: [],
+        mediaUrl: null,
+        characterClass: null,
+      },
+    ] as const;
+
+    const pools = initPools(players as never);
+    expect(pools.tanks[0]).toMatchObject({
+      name: 'Tank1',
+      mediaUrl: 'https://example.com/abc-inset.jpg',
+      characterClass: 'warrior',
+    });
+    expect(pools.healers[0]).toMatchObject({
+      name: 'Healer1',
+      mediaUrl: null,
+      characterClass: null,
+    });
+  });
+});
