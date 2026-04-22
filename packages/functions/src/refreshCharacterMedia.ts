@@ -2,7 +2,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getBattleNetClient, type BattleNetClient } from './battlenet.js';
-import { buildCharacterResult } from './lookupCharacter.js';
+import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
 import { enforceRateLimit } from './rateLimit.js';
 
 interface LinkedCharacter {
@@ -37,13 +37,12 @@ export function extractRefreshTargets(
   return targets;
 }
 
-async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promise<{ mediaUrl: string | null; characterClass: string | null } | null> {
+async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promise<CharacterResult | null> {
   const { name, realm, region } = target.linkedCharacter;
   const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
   if (!profile || !profile.character_class) return null;
   const media = await client.getCharacterMedia(region, realm.toLowerCase(), name);
-  const result = buildCharacterResult(profile, media);
-  return { mediaUrl: result.mediaUrl, characterClass: result.class };
+  return buildCharacterResult(profile, media);
 }
 
 export async function runRefresh(): Promise<RefreshSummary> {
@@ -63,14 +62,25 @@ export async function runRefresh(): Promise<RefreshSummary> {
         summary.skipped += 1;
         continue;
       }
-      await db.doc(`preferences/${target.discordId}`).set(
-        {
-          mediaUrl: result.mediaUrl,
-          characterClass: result.characterClass,
-          mediaUrlUpdatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
+
+      // Build payload without nulls — a transient Battle.net media failure
+      // returns mediaUrl: null, and { merge: true } would otherwise wipe
+      // the previously-stored URL. Only write fields we successfully resolved.
+      const payload: Record<string, unknown> = { mediaUrlUpdatedAt: FieldValue.serverTimestamp() };
+      if (result.mediaUrl != null) payload.mediaUrl = result.mediaUrl;
+      if (result.class != null) payload.characterClass = result.class;
+
+      const { name, realm, region } = target.linkedCharacter;
+      const batch = db.batch();
+      batch.set(db.doc(`preferences/${target.discordId}`), payload, { merge: true });
+      // Also refresh the lookupCharacter cache doc so subsequent UI lookups
+      // don't reintroduce stale mediaUrl within the 24h cache TTL.
+      batch.set(
+        db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`),
+        { result, cachedAt: FieldValue.serverTimestamp() },
       );
+      await batch.commit();
+
       summary.refreshed += 1;
     } catch (err) {
       summary.failed += 1;
@@ -96,8 +106,10 @@ export const refreshCharacterMedia = onSchedule(
 );
 
 // On-demand: callable for manual refresh (e.g. after deploy, or if scheduled run failed).
+// enforceAppCheck=false matches lookupCharacter — the activity does not initialize
+// App Check, so enforcing it would silently reject every call.
 export const refreshCharacterMediaNow = onCall(
-  { enforceAppCheck: true, timeoutSeconds: 540 },
+  { enforceAppCheck: false, timeoutSeconds: 540 },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');

@@ -142,8 +142,10 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
       );
 
       // Auto-assign roles only on the very first successful lookup for this player.
-      const currentRoles = playerRolesToStringArray(player);
-      if (currentRoles.length === 0) {
+      // Read from rolesRef (not the player prop) — the prop is captured at the
+      // time the debounce timer was set, so clicks during the 800ms window
+      // would look like "no roles" here and clobber the user's selection.
+      if (rolesRef.current.size === 0) {
         const roles: string[] = [];
         if (character.role === 'tank') roles.push('Tank');
         else if (character.role === 'healer') roles.push('Healer');
