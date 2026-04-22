@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
 import { enforceRateLimit } from './rateLimit.js';
@@ -11,9 +11,16 @@ interface LinkedCharacter {
   region: string;
 }
 
+// Tracks where a target came from so we can decide what to do when the
+// Battle.net lookup fails: previously-verified targets get a pass on transient
+// failures, while inGameName-derived targets indicate stale/invalid user input
+// and get their character fields cleared.
+export type TargetSource = 'linkedCharacter' | 'inGameName';
+
 export interface RefreshTarget {
   discordId: string;
   linkedCharacter: LinkedCharacter;
+  source: TargetSource;
 }
 
 export interface RefreshSummary {
@@ -21,7 +28,19 @@ export interface RefreshSummary {
   refreshed: number;
   skipped: number;
   failed: number;
+  cleared: number;
 }
+
+// Fields we clear when a doc's character data is unresolvable. Roles and
+// updatedAt stay — users keep their role selections across name re-entry.
+const CHARACTER_FIELDS_TO_CLEAR = [
+  'inGameName',
+  'linkedCharacter',
+  'mediaUrl',
+  'characterClass',
+  'mediaUrlUpdatedAt',
+  'wowName', // legacy, no readers remain
+] as const;
 
 const DEFAULT_REGION = 'us';
 
@@ -56,16 +75,32 @@ function readLinkedCharacter(data: Record<string, unknown>): LinkedCharacter | n
   return linked;
 }
 
-// Pure extraction — testable without Firestore. Prefers linkedCharacter (server-verified),
-// falls back to parsing inGameName for docs that predate the linkedCharacter field.
-export function extractRefreshTargets(
+function hasAnyCharacterField(data: Record<string, unknown>): boolean {
+  return CHARACTER_FIELDS_TO_CLEAR.some((f) => data[f] != null);
+}
+
+export interface ClassifiedDocs {
+  // BN-resolvable. Preferred source: linkedCharacter (server-verified),
+  // falling back to parsed inGameName for older docs.
+  targets: RefreshTarget[];
+  // Unresolvable without user input (inGameName has no realm, or stale
+  // character-ish fields with no valid identity). Character fields get
+  // cleared so the user is prompted to re-enter on next activity open.
+  // Roles are preserved.
+  clears: string[];
+}
+
+// Pure classification — testable without Firestore. Single pass: each doc
+// lands in exactly one of { targets, clears, neither (no character data) }.
+export function classifyDocs(
   docs: { id: string; data: Record<string, unknown> }[],
-): RefreshTarget[] {
+): ClassifiedDocs {
   const targets: RefreshTarget[] = [];
+  const clears: string[] = [];
   for (const doc of docs) {
     const linked = readLinkedCharacter(doc.data);
     if (linked) {
-      targets.push({ discordId: doc.id, linkedCharacter: linked });
+      targets.push({ discordId: doc.id, linkedCharacter: linked, source: 'linkedCharacter' });
       continue;
     }
     const inGameName = typeof doc.data.inGameName === 'string' ? doc.data.inGameName : '';
@@ -74,10 +109,19 @@ export function extractRefreshTargets(
       targets.push({
         discordId: doc.id,
         linkedCharacter: { name: parsed.name, realm: parsed.realm, region: DEFAULT_REGION },
+        source: 'inGameName',
       });
+      continue;
     }
+    if (hasAnyCharacterField(doc.data)) clears.push(doc.id);
   }
-  return targets;
+  return { targets, clears };
+}
+
+async function clearCharacterFields(db: Firestore, discordId: string): Promise<void> {
+  const updates: Record<string, FieldValue> = {};
+  for (const f of CHARACTER_FIELDS_TO_CLEAR) updates[f] = FieldValue.delete();
+  await db.doc(`preferences/${discordId}`).update(updates);
 }
 
 async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promise<CharacterResult | null> {
@@ -91,18 +135,48 @@ async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promi
 export async function runRefresh(): Promise<RefreshSummary> {
   const db = getFirestore();
   const snapshot = await db.collection('preferences').get();
-  const targets = extractRefreshTargets(
+  const { targets, clears } = classifyDocs(
     snapshot.docs.map(d => ({ id: d.id, data: d.data() })),
   );
 
   const client = getBattleNetClient();
-  const summary: RefreshSummary = { total: targets.length, refreshed: 0, skipped: 0, failed: 0 };
+  const summary: RefreshSummary = {
+    total: targets.length + clears.length,
+    refreshed: 0,
+    skipped: 0,
+    failed: 0,
+    cleared: 0,
+  };
+
+  // Proactive clears: docs with no parseable character identity. No BN call.
+  // Kept sequential rather than a single batch: a batch fails atomically, so
+  // one concurrently-deleted doc would mark all clears as failed. At current
+  // scale (<20 clears/week) the per-doc cost is negligible.
+  for (const discordId of clears) {
+    try {
+      await clearCharacterFields(db, discordId);
+      summary.cleared += 1;
+    } catch (err) {
+      summary.failed += 1;
+      console.warn(`[refreshCharacterMedia] ${discordId} clear failed:`, err);
+    }
+  }
 
   for (const target of targets) {
     try {
       const result = await refreshOne(client, target);
       if (!result) {
-        summary.skipped += 1;
+        // Source discriminates what "no profile returned" means:
+        // - linkedCharacter: previously verified; probably a transient BN/Blizzard
+        //   hiccup. Leave the doc alone.
+        // - inGameName: user's typed name didn't resolve (typo, deleted char,
+        //   non-US realm). Clear character fields so they're prompted to re-enter.
+        if (target.source === 'inGameName') {
+          await clearCharacterFields(db, target.discordId);
+          summary.cleared += 1;
+        } else {
+          summary.skipped += 1;
+        }
         continue;
       }
 
