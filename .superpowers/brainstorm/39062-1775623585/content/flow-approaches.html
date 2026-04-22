@@ -1,0 +1,77 @@
+<h2>Auto-Advance Spin Flow</h2>
+<p class="subtitle">How the spin sequence progresses from start to finish</p>
+
+<div class="section">
+  <h3>Proposed Timeline (per group)</h3>
+  <div style="background: #1a1a2e; border-radius: 12px; padding: 24px; margin: 16px 0;">
+    <div style="display: flex; align-items: center; gap: 8px; font-family: monospace; font-size: 13px;">
+      <!-- Phase 1: Spin -->
+      <div style="flex: 4; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 8px; padding: 12px 8px; text-align: center;">
+        <div style="font-weight: bold; color: #fff;">🎡 Wheels Spin</div>
+        <div style="color: #ccc; font-size: 11px; margin-top: 4px;">~4s (grid) / ~12s (carousel)</div>
+      </div>
+      <div style="color: #666;">→</div>
+      <!-- Phase 2: Spotlight -->
+      <div style="flex: 3; background: linear-gradient(135deg, #f6d365, #fda085); border-radius: 8px; padding: 12px 8px; text-align: center;">
+        <div style="font-weight: bold; color: #1a1a2e;">⭐ Group Card Spotlight</div>
+        <div style="color: #333; font-size: 11px; margin-top: 4px;">3 seconds</div>
+      </div>
+      <div style="color: #666;">→</div>
+      <!-- Phase 3: Transition -->
+      <div style="flex: 1.5; background: linear-gradient(135deg, #a8edea, #fed6e3); border-radius: 8px; padding: 12px 8px; text-align: center;">
+        <div style="font-weight: bold; color: #1a1a2e;">✨ Fade</div>
+        <div style="color: #333; font-size: 11px; margin-top: 4px;">~0.5s</div>
+      </div>
+    </div>
+    <div style="text-align: center; color: #888; font-size: 12px; margin-top: 12px;">
+      ↻ Repeats for each group, then auto-transitions to Results View
+    </div>
+  </div>
+</div>
+
+<h3>Two Approaches</h3>
+<p class="subtitle">How to orchestrate the server-driven auto-advance</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Server Reveals All at Once — Client Staggers</h3>
+      <p>When user clicks "Spin", the bot writes <strong>all groups</strong> to Firestore at once (revealedGroups = total). Each client independently animates through them with built-in delays (spin + 3s spotlight + fade), auto-advancing locally.</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>Single Firestore write — simple</li>
+          <li>No server-side timer needed</li>
+          <li>Works even if bot goes offline mid-sequence</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Clients may drift slightly out of sync</li>
+          <li>Late-joining clients need catch-up logic</li>
+        </ul></div>
+      </div>
+      <p style="margin-top: 8px; padding: 8px; background: rgba(102, 126, 234, 0.15); border-radius: 6px; font-size: 13px;">
+        <strong>⭐ Recommended</strong> — Simpler, more robust. Slight client drift is imperceptible in practice since users are on their own screens.
+      </p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Server Reveals One-by-One on Timer</h3>
+      <p>Bot increments <code>revealedGroups</code> in Firestore on a timer (every ~7.5s for grid, ~16s for carousel). Each client animates in response to the Firestore update.</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul>
+          <li>All clients perfectly in sync</li>
+          <li>Server controls pacing</li>
+        </ul></div>
+        <div class="cons"><h4>Cons</h4><ul>
+          <li>Requires bot-side timer coordination</li>
+          <li>Server must know client animation durations</li>
+          <li>If bot disconnects mid-sequence, spin stalls</li>
+          <li>Layout mode affects timing — server needs to pick one</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -79,12 +79,24 @@ function hasAnyCharacterField(data: Record<string, unknown>): boolean {
   return CHARACTER_FIELDS_TO_CLEAR.some((f) => data[f] != null);
 }
 
-// Pure extraction — testable without Firestore. Prefers linkedCharacter (server-verified),
-// falls back to parsing inGameName for docs that predate the linkedCharacter field.
-export function extractRefreshTargets(
+export interface ClassifiedDocs {
+  // BN-resolvable. Preferred source: linkedCharacter (server-verified),
+  // falling back to parsed inGameName for older docs.
+  targets: RefreshTarget[];
+  // Unresolvable without user input (inGameName has no realm, or stale
+  // character-ish fields with no valid identity). Character fields get
+  // cleared so the user is prompted to re-enter on next activity open.
+  // Roles are preserved.
+  clears: string[];
+}
+
+// Pure classification — testable without Firestore. Single pass: each doc
+// lands in exactly one of { targets, clears, neither (no character data) }.
+export function classifyDocs(
   docs: { id: string; data: Record<string, unknown> }[],
-): RefreshTarget[] {
+): ClassifiedDocs {
   const targets: RefreshTarget[] = [];
+  const clears: string[] = [];
   for (const doc of docs) {
     const linked = readLinkedCharacter(doc.data);
     if (linked) {
@@ -99,26 +111,11 @@ export function extractRefreshTargets(
         linkedCharacter: { name: parsed.name, realm: parsed.realm, region: DEFAULT_REGION },
         source: 'inGameName',
       });
+      continue;
     }
+    if (hasAnyCharacterField(doc.data)) clears.push(doc.id);
   }
-  return targets;
-}
-
-// Docs whose character data is unresolvable without user input: an inGameName
-// without a realm, or stale character-ish fields with no valid linkedCharacter
-// and no parseable inGameName. These get their character fields cleared so the
-// user is prompted to re-enter on next activity open. Roles are preserved.
-export function extractClearTargets(
-  docs: { id: string; data: Record<string, unknown> }[],
-): string[] {
-  const ids: string[] = [];
-  for (const doc of docs) {
-    if (readLinkedCharacter(doc.data)) continue;
-    const inGameName = typeof doc.data.inGameName === 'string' ? doc.data.inGameName : '';
-    if (inGameName && parseInGameName(inGameName)) continue;
-    if (hasAnyCharacterField(doc.data)) ids.push(doc.id);
-  }
-  return ids;
+  return { targets, clears };
 }
 
 async function clearCharacterFields(db: Firestore, discordId: string): Promise<void> {
@@ -138,13 +135,13 @@ async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promi
 export async function runRefresh(): Promise<RefreshSummary> {
   const db = getFirestore();
   const snapshot = await db.collection('preferences').get();
-  const docs = snapshot.docs.map(d => ({ id: d.id, data: d.data() }));
-  const targets = extractRefreshTargets(docs);
-  const proactiveClears = extractClearTargets(docs);
+  const { targets, clears } = classifyDocs(
+    snapshot.docs.map(d => ({ id: d.id, data: d.data() })),
+  );
 
   const client = getBattleNetClient();
   const summary: RefreshSummary = {
-    total: targets.length + proactiveClears.length,
+    total: targets.length + clears.length,
     refreshed: 0,
     skipped: 0,
     failed: 0,
@@ -152,7 +149,10 @@ export async function runRefresh(): Promise<RefreshSummary> {
   };
 
   // Proactive clears: docs with no parseable character identity. No BN call.
-  for (const discordId of proactiveClears) {
+  // Kept sequential rather than a single batch: a batch fails atomically, so
+  // one concurrently-deleted doc would mark all clears as failed. At current
+  // scale (<20 clears/week) the per-doc cost is negligible.
+  for (const discordId of clears) {
     try {
       await clearCharacterFields(db, discordId);
       summary.cleared += 1;
