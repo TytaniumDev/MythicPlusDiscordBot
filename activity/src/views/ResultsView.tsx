@@ -52,7 +52,9 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     );
   }, [yourGroup]);
 
-  const yourGroupHeading = yourGroupIndex >= 0 ? `Group ${yourGroupIndex + 1}` : 'Your Group';
+  const yourGroupHeading = yourGroup
+    ? (isCompleteGroup(yourGroup) ? `Group ${yourGroupIndex + 1}` : 'Remainder')
+    : 'Your Group';
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
