@@ -39,14 +39,23 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
 
   const playerId = player.discordId ?? null;
 
-  // Sync roles and name when player data changes from Firestore
+  // Sync roles when player data changes from Firestore (chips need to reflect
+  // external updates).
   useEffect(() => {
     const roles = new Set(playerRolesToStringArray(player));
     setSelectedRoles(roles);
     rolesRef.current = roles;
+  }, [player]);
+
+  // Seed the in-game name ONLY on player identity change. After mount, the
+  // textbox is user-controlled — we never let a Firestore roundtrip overwrite
+  // what the user has typed (e.g. replacing "Name-Realm" with a partial or
+  // name-only value from the bot's cache). Users always enter the full
+  // `Name-Realm` form; clicking a suggestion also produces `Name-Realm`.
+  useEffect(() => {
     setInGameName(player.inGameName ?? '');
     nameRef.current = player.inGameName ?? '';
-  }, [playerId, player]);
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save when roles or name change
   const autoSave = useCallback((roles: Set<string>, name: string) => {
