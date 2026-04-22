@@ -54,14 +54,17 @@ test('Wheel result container has aria-live', async ({ page }) => {
 test('Lobby player chips have accessible role indicators', async ({ page }) => {
   await page.goto(`/?data=${encodeData(lobbyData)}`);
 
-  const firstChipDot = page.locator('.player-chip .role-dot').first();
-  await expect(firstChipDot).toHaveAttribute('role', 'img');
+  const firstChip = page.locator('.player-chip').first();
+  await expect(firstChip).toBeVisible();
 
-  const label = await firstChipDot.getAttribute('aria-label');
-  expect(label).toBeTruthy();
-  expect(['Tank', 'Healer', 'DPS']).toContain(label);
+  // Role is conveyed via the chip's title attribute (tooltip + a11y fallback)
+  const title = await firstChip.getAttribute('title');
+  expect(title).toBeTruthy();
+  expect(['Tank', 'Healer', 'Ranged', 'Melee', 'Unassigned']).toContain(title);
 
-  await expect(firstChipDot).toHaveAttribute('title', label as string);
+  // Chip root has an aria-label for screen readers
+  const ariaLabel = await firstChip.getAttribute('aria-label');
+  expect(ariaLabel).toBeTruthy();
 });
 
 test('Clicking Wheelson header navigates back to home', async ({ page }) => {

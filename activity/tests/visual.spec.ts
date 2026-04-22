@@ -275,17 +275,15 @@ test.describe('Functional Tests', () => {
   test('Player chips show correct role colors', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
 
-    // Pandemonium is a tank main
+    // Role is conveyed via title attribute on the chip (visually via portrait ring color)
     const tankChip = page.locator('.player-chip', { hasText: 'Pandemonium' });
-    await expect(tankChip.locator('.role-dot')).toHaveClass(/tank/);
+    await expect(tankChip).toHaveAttribute('title', 'Tank');
 
-    // Martz is a healer main
     const healerChip = page.locator('.player-chip', { hasText: 'Martz' });
-    await expect(healerChip.locator('.role-dot')).toHaveClass(/healer/);
+    await expect(healerChip).toHaveAttribute('title', 'Healer');
 
-    // KingofSkillz is Ranged DPS
     const dpsChip = page.locator('.player-chip', { hasText: 'KingofSkillz' });
-    await expect(dpsChip.locator('.role-dot')).toHaveClass(/ranged/);
+    await expect(dpsChip).toHaveAttribute('title', 'Ranged');
   });
 
   test('Results show correct group composition', async ({ page }) => {
