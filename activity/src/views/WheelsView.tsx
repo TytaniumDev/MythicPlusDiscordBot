@@ -86,26 +86,31 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   const pools = markedPools;
 
-  useEffect(() => {
-    if (!channelData || channelData.status !== 'spinning') return;
+  const channelStatus = channelData?.status;
+  const groupsCount = channelData?.groups?.length ?? 0;
+  const isStaticWheel = (channelData as unknown as Record<string, unknown> | undefined)?.staticWheel === true;
 
-    if ((channelData as unknown as Record<string, unknown>).staticWheel) {
-      const p = initPools(channelData.players);
+  useEffect(() => {
+    const data = useAppStore.getState().channelData;
+    if (!data || data.status !== 'spinning') return;
+
+    if ((data as unknown as Record<string, unknown>).staticWheel) {
+      const p = initPools(data.players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
       setWheelStatus('Static preview');
       setShowSpinBtn(false);
       return;
     }
 
-    if (channelData.groups && channelData.groups.length > 0 && !spinSequenceStarted) {
-      const full = channelData.groups.filter(isCompleteGroup);
-      const remainder = channelData.groups.filter((g) => !isCompleteGroup(g));
+    if (data.groups && data.groups.length > 0 && !spinSequenceStarted) {
+      const full = data.groups.filter(isCompleteGroup);
+      const remainder = data.groups.filter((g) => !isCompleteGroup(g));
       useAppStore.getState().setSpinState(full, remainder);
       useAppStore.getState().setSpinSequenceStarted(true);
       useAppStore.getState().setCurrentGroupIndex(0);
       useAppStore.getState().clearGroupCards();
 
-      const p = initPools(channelData.players);
+      const p = initPools(data.players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
 
       gridRef.current?.grid?.resetCarouselDots();
@@ -114,7 +119,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       setShowSpinBtn(true);
       setWheelStatus('Ready to spin!');
     }
-  }, [channelData, spinSequenceStarted]);
+  }, [channelStatus, groupsCount, isStaticWheel, spinSequenceStarted]);
 
   useEffect(() => {
     if (!channelData || !spinSequenceStarted) return;
