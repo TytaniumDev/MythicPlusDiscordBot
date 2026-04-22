@@ -31,7 +31,7 @@ const VIEWPORTS = {
 // ── Shared Test Data (using new guild + channel model) ────────
 const channelPickerData = mockGuildData;
 
-// Use Pandemonium (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
+// Use Gazzi (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
 const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
 
 const lobbyData = {
@@ -66,7 +66,7 @@ const lobbySittingOutData = {
   ...mockChannelData,
   status: 'lobby',
   players: mockPlayers,
-  sittingOut: [mockPlayers[5].discordId, mockPlayers[7].discordId], // Will, hammer13
+  sittingOut: [mockPlayers[5].discordId, mockPlayers[7].discordId], // Mickey, Jonjee
   identity: lobbyIdentity,
 };
 
@@ -275,26 +275,26 @@ test.describe('Functional Tests', () => {
   test('Player chips show correct role colors', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
 
-    // Role is conveyed via title attribute on the chip (visually via portrait ring color)
-    const tankChip = page.locator('.player-chip', { hasText: 'Pandemonium' });
+    // Role is conveyed via the chip's title attribute (portrait ring color is visual only)
+    const tankChip = page.locator('.player-chip', { hasText: 'Gazzi' });
     await expect(tankChip).toHaveAttribute('title', 'Tank');
 
-    const healerChip = page.locator('.player-chip', { hasText: 'Martz' });
+    const healerChip = page.locator('.player-chip', { hasText: 'Quill' });
     await expect(healerChip).toHaveAttribute('title', 'Healer');
 
-    const dpsChip = page.locator('.player-chip', { hasText: 'KingofSkillz' });
+    const dpsChip = page.locator('.player-chip', { hasText: 'Schmeebs' });
     await expect(dpsChip).toHaveAttribute('title', 'Ranged');
   });
 
   test('Results show correct group composition', async ({ page }) => {
     await page.goto(`/?data=${encodeData(resultsData)}`);
 
-    // Group 1 tank is Pandemonium (has brez ⚰️)
+    // Group 1 tank is Gazzi (has brez ⚰️)
     const group1 = page.locator('#final-groups .group-card').first();
-    await expect(group1.locator('.role-name').first()).toHaveText('Pandemonium ⚰️');
+    await expect(group1.locator('.role-name').first()).toHaveText('Gazzi ⚰️');
 
-    // Group 1 healer is Martz (has brez ⚰️)
-    await expect(group1.locator('.role-name').nth(1)).toHaveText('Martz ⚰️');
+    // Group 1 healer is Quill (has brez ⚰️)
+    await expect(group1.locator('.role-name').nth(1)).toHaveText('Quill ⚰️');
   });
 
   test('Button always visible in wheels view', async ({ page }) => {
@@ -366,10 +366,10 @@ test.describe('Home View Tests', () => {
 });
 
 // ── My Group Highlight Tests ─────────────────────────────────
-// Tytanium (discordId 100000000000000007) is in Group 2
+// Fourseven (discordId 100000000000000007) is in Group 2
 const resultsWithIdentityData = {
   ...resultsData,
-  identity: { id: '100000000000000007', name: 'Tytanium' },
+  identity: { id: '100000000000000007', name: 'Fourseven' },
 };
 
 test.describe('My Group Highlight', () => {
@@ -407,7 +407,7 @@ const grayscaleWheelsData = {
   players: mockPlayers,
   groupCards: [
     {
-      group: mockGroups[0], // Group 1: Pandemonium (tank), Martz (healer), KingofSkillz, Upartyhardy, Ultra9 (dps)
+      group: mockGroups[0], // Group 1: Gazzi (tank), Quill (healer), Schmeebs, Kitchenstink, Volkareth (dps)
       index: 0,
     },
   ],

@@ -23,11 +23,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Collapsed: Story = {
-  args: { player: mockPlayers[0] }, // Martz: Healer, Tank+Melee offspec
+  args: { player: mockPlayers[0] }, // Quill: Healer with Tank/Ranged/Melee offspec
 };
 
 export const WithTankMain: Story = {
-  args: { player: mockPlayers[4] }, // Pandemonium: Tank main
+  args: { player: mockPlayers[4] }, // Gazzi: Tank main
 };
 
 export const Unassigned: Story = {
