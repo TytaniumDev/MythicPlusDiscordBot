@@ -25,8 +25,17 @@ export interface RefreshSummary {
 
 const DEFAULT_REGION = 'us';
 
+// Mirrors activity/src/components/RoleEditor.tsx. Apostrophes are stripped
+// entirely (Kel'Thuzad → kelthuzad); any other non-alphanumeric run collapses
+// to a single hyphen so inputs with stray spacing (e.g. "Azjol - Nerub") still
+// produce a valid slug.
 function realmToSlug(realm: string): string {
-  return realm.trim().toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
+  return realm
+    .trim()
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function parseInGameName(input: string): { name: string; realm: string } | null {

@@ -92,4 +92,30 @@ describe('extractRefreshTargets', () => {
 
     expect(extractRefreshTargets(docs)).toEqual([]);
   });
+
+  it('falls back to inGameName when linkedCharacter has wrong types', () => {
+    const docs = [
+      {
+        id: 'user-1',
+        data: {
+          inGameName: 'Tytanium-Stormrage',
+          linkedCharacter: { name: 123, realm: 'stormrage', region: 'us' },
+        },
+      },
+    ];
+
+    expect(extractRefreshTargets(docs)).toEqual([
+      { discordId: 'user-1', linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' } },
+    ]);
+  });
+
+  it('produces valid slugs even with stray whitespace around hyphens', () => {
+    const docs = [
+      { id: 'user-1', data: { inGameName: 'Char-Azjol - Nerub' } },
+    ];
+
+    expect(extractRefreshTargets(docs)).toEqual([
+      { discordId: 'user-1', linkedCharacter: { name: 'Char', realm: 'azjol-nerub', region: 'us' } },
+    ]);
+  });
 });

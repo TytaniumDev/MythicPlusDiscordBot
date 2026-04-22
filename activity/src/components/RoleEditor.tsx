@@ -29,7 +29,12 @@ const DEFAULT_REGION = 'us';
 // (`Area 52` → `area-52`, `Kel'Thuzad` → `kelthuzad`). Failures surface as
 // "Character not found", which doubles as a typo check.
 function realmToSlug(realm: string): string {
-  return realm.trim().toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
+  return realm
+    .trim()
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function parseInGameName(input: string): { name: string; realmSlug: string } | null {
