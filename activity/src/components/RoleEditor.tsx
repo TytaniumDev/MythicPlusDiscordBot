@@ -40,11 +40,16 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
   const playerId = player.discordId ?? null;
 
   // Sync roles when player data changes from Firestore (chips need to reflect
-  // external updates).
+  // external updates). Bail when the role set hasn't changed — `autoSave`
+  // optimistically updates the store on every keystroke, so this effect fires
+  // frequently during typing.
   useEffect(() => {
-    const roles = new Set(playerRolesToStringArray(player));
-    setSelectedRoles(roles);
-    rolesRef.current = roles;
+    const next = new Set(playerRolesToStringArray(player));
+    setSelectedRoles((prev) => {
+      if (prev.size === next.size && [...next].every((r) => prev.has(r))) return prev;
+      return next;
+    });
+    rolesRef.current = next;
   }, [player]);
 
   // Seed the in-game name ONLY on player identity change. After mount, the
