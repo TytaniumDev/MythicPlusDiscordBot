@@ -39,6 +39,8 @@ if (_isEmbedded) {
     { prefix: '/authtoken', target: 'securetoken.googleapis.com' },
     // Battle.net character renders (profile pictures)
     { prefix: IMAGE_PROXY_PREFIX, target: IMAGE_PROXY_TARGET },
+    // Raider.io character search + profile lookup
+    { prefix: '/raiderio', target: 'raider.io' },
   ];
 
   // Cloud Functions callable endpoint must also be proxied in embedded mode.
