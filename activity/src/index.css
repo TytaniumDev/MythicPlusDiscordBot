@@ -2533,7 +2533,7 @@ button.role-section-header--collapsible {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
@@ -2554,16 +2554,30 @@ button.role-section-header--collapsible {
   opacity: 0.65;
 }
 .identity-card__avatar {
-  width: 28px;
-  height: 28px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: var(--color-gold);
+  border: 2px solid var(--ic-ring, var(--color-gold));
+  background: color-mix(in srgb, var(--ic-ring, var(--color-gold)) 22%, #0d0d1a);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  overflow: hidden;
   flex-shrink: 0;
+}
+
+.identity-card__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.identity-card__avatar-letter {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .identity-card__name {
   overflow: hidden;
