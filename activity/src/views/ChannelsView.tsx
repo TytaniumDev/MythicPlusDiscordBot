@@ -24,12 +24,14 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
   const channels = guildData?.voiceChannels || [];
 
   const hasAutoRefreshed = useRef(false);
+  const hasGuildData = guildData != null;
+  const channelsCount = channels.length;
   useEffect(() => {
-    if (!hasAutoRefreshed.current && guildData && channels.length === 0 && currentGuildId) {
+    if (!hasAutoRefreshed.current && hasGuildData && channelsCount === 0 && currentGuildId) {
       hasAutoRefreshed.current = true;
       service.refreshChannels(currentGuildId).catch((err) => reportError(err, { tag: 'ChannelsView.autoRefresh' }));
     }
-  }, [guildData, channels.length, currentGuildId, service]);
+  }, [hasGuildData, channelsCount, currentGuildId, service]);
 
   const handleRefresh = useCallback(async () => {
     if (!currentGuildId) return;
