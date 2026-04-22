@@ -25,8 +25,14 @@ export function useCharacterLookup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function lookup(name: string, realm: string, region: string): Promise<CharacterData | null> {
-    setLoading(true);
+  async function lookup(
+    name: string,
+    realm: string,
+    region: string,
+    options?: { silent?: boolean },
+  ): Promise<CharacterData | null> {
+    const silent = options?.silent === true;
+    if (!silent) setLoading(true);
     setError(null);
 
     const isDemoMode = useAppStore.getState().isDemoMode;
@@ -61,7 +67,7 @@ export function useCharacterLookup() {
       setError(message);
       return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
