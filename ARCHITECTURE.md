@@ -166,6 +166,41 @@ The Activity frontend (`activity/src/main.ts`) operates in three distinct modes 
 
 ---
 
+
+### 5. Firebase Cloud Functions (v2)
+
+- **Role**: Securely handles background synchronization, external integrations, and API rate limiting outside the bot's hot path.
+- **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
+- **Key Functions**:
+  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts:70`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document.
+  - `refreshAffixes` (`fetchWeeklyAffixes.ts:83`): Callable counterpart (`onCall`) for on-demand manual refresh of affix data (e.g. after a deploy or if the scheduled run failed).
+  - `lookupCharacter` (`lookupCharacter.ts:56`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
+  - `refreshCharacterMedia` (`refreshCharacterMedia.ts:219`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
+  - `refreshCharacterMediaNow` (`refreshCharacterMedia.ts:233`): Callable counterpart (`onCall`) for on-demand manual refresh of character media.
+  - `onGithubIssueWebhook` (`githubWebhook.ts:101`): An HTTP (`onRequest`) webhook that receives GitHub issue closed events and notifies the reporting Discord user directly.
+
+#### Webhook Notification Flow
+
+When a user reports a bug via the bot, the bot writes a tracking document to Firestore. When GitHub closes the issue, the Cloud Function is called, looks up the tracking document, sends a Discord DM directly, and deletes the document — all synchronously within the HTTP request.
+
+```mermaid
+sequenceDiagram
+    participant User as Discord User
+    participant Bot as Discord Bot
+    participant Firestore as Firestore (issueTracking)
+    participant GitHub
+    participant Webhook as Cloud Function (onGithubIssueWebhook)
+
+    User->>Bot: /bug (reports issue)
+    Bot->>GitHub: Create issue via GitHub API
+    Bot->>Firestore: Write issueTracking/<issue_number> (discordUserId, issueUrl, issueTitle)
+    GitHub->>Webhook: HTTP POST (issue closed)
+    Webhook->>Firestore: Read issueTracking/<issue_number>
+    Webhook->>User: DM "Issue Resolved!" (Discord API direct call)
+    Webhook->>Firestore: Delete issueTracking/<issue_number>
+    Webhook-->>GitHub: 200 OK
+```
+
 ## How an Activity Run Works (End-to-End)
 
 This is the sequence from “someone runs `/activity`” to “everyone sees groups.”
