@@ -65,6 +65,9 @@ export class Wheel {
   private rejectSpin: ((reason?: string) => void) | null = null;
   private cssWidth = 0;
   private cssHeight = 0;
+  private portraitEl: HTMLDivElement;
+  private portraitImg: HTMLImageElement;
+  private portraitFallback: HTMLDivElement;
 
   constructor(config: WheelConfig) {
     // Build DOM programmatically
@@ -89,6 +92,29 @@ export class Wheel {
     this.canvas.setAttribute('role', 'img');
     this.canvas.setAttribute('aria-label', config.ariaLabel);
     frame.appendChild(this.canvas);
+
+    this.portraitEl = document.createElement('div');
+    this.portraitEl.className = 'wheel-portrait';
+    this.portraitEl.setAttribute('aria-hidden', 'true');
+
+    this.portraitImg = document.createElement('img');
+    this.portraitImg.className = 'wheel-portrait__img';
+    this.portraitImg.alt = '';
+    this.portraitImg.style.display = 'none';
+    this.portraitEl.appendChild(this.portraitImg);
+
+    this.portraitFallback = document.createElement('div');
+    this.portraitFallback.className = 'wheel-portrait__fallback';
+    this.portraitFallback.style.display = 'none';
+    this.portraitEl.appendChild(this.portraitFallback);
+
+    // If <img> fails to load, swap to fallback
+    this.portraitImg.addEventListener('error', () => {
+      this.portraitImg.style.display = 'none';
+      this.portraitFallback.style.display = 'flex';
+    });
+
+    frame.appendChild(this.portraitEl);
 
     this.slotEl.appendChild(frame);
 
@@ -124,6 +150,7 @@ export class Wheel {
 
   /** Set up the wheel with a new list of candidates */
   init(entries: WheelEntry[]) {
+    this.clearPortrait();
     this.entries = entries;
     this.rotation = Math.random() * Math.PI * 2; // Random start position
     this.highlightIndex = null;
@@ -470,5 +497,15 @@ export class Wheel {
   /** Draw static wheel without animation (for testing) */
   drawStatic() {
     this.draw();
+  }
+
+  /** Hide the portrait overlay and reset it for the next spin. */
+  clearPortrait() {
+    this.portraitEl.classList.remove('is-revealing');
+    this.portraitImg.style.display = 'none';
+    this.portraitImg.removeAttribute('src');
+    this.portraitFallback.style.display = 'none';
+    this.portraitFallback.textContent = '';
+    this.portraitEl.style.removeProperty('--wp-color');
   }
 }
