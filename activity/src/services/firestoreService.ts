@@ -234,7 +234,10 @@ class FirestoreSessionService implements SessionService {
   ): Promise<void> {
     const prefRef = doc(db, 'preferences', playerId);
     const payload: Record<string, unknown> = { linkedCharacter, updatedAt: serverTimestamp() };
-    if (mediaUrl !== undefined) payload.mediaUrl = mediaUrl;
+    if (mediaUrl !== undefined) {
+      payload.mediaUrl = mediaUrl;
+      payload.mediaUrlUpdatedAt = serverTimestamp();
+    }
     if (characterClass !== undefined) payload.characterClass = characterClass;
     await setDoc(prefRef, payload, { merge: true });
   }
