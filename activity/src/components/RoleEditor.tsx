@@ -92,20 +92,20 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
     const discordId = player.discordId;
     if (!discordId) return;
     if (autoLookupAttemptedRef.current === discordId) return;
-    autoLookupAttemptedRef.current = discordId;
 
     const name = player.inGameName?.trim();
     if (!name || player.mediaUrl) return;
+    autoLookupAttemptedRef.current = discordId;
 
-    let cancelled = false;
+    const controller = new AbortController();
     const dashIdx = name.indexOf('-');
     const namePart = dashIdx === -1 ? name : name.slice(0, dashIdx);
     const realmPart = dashIdx === -1 ? '' : name.slice(dashIdx + 1);
 
     (async () => {
       try {
-        const matches = await searchCharacters(name);
-        if (cancelled || matches.length === 0) return;
+        const matches = await searchCharacters(name, controller.signal);
+        if (controller.signal.aborted || matches.length === 0) return;
 
         const exact = matches.find(
           (m) =>
@@ -114,10 +114,13 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
               m.realm.toLowerCase() === realmPart.toLowerCase() ||
               m.realmSlug.toLowerCase() === realmPart.toLowerCase()),
         );
+        // If the saved name includes a realm but no match confirms it, skip —
+        // falling back to matches[0] could silently load the wrong character.
+        if (!exact && realmPart) return;
         const match = exact ?? matches[0];
 
-        const character = await lookup(match.name, match.realmSlug, match.region);
-        if (cancelled || !character?.mediaUrl) return;
+        const character = await lookup(match.name, match.realmSlug, match.region, { silent: true });
+        if (controller.signal.aborted || !character?.mediaUrl) return;
 
         onMediaUrlChange?.(character.mediaUrl);
         await service.saveLinkedCharacter(
@@ -127,12 +130,13 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
           character.class,
         );
       } catch (err) {
+        if (controller.signal.aborted) return;
         reportError(err, { tag: 'RoleEditor.autoLoadMedia' });
       }
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
     // Intentionally depend only on playerId — we take a snapshot of the player's
     // inGameName/mediaUrl at mount and don't want to re-fire on typing changes.
