@@ -35,16 +35,15 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const players = channelData?.players || [];
   useIdentityResolver(players);
 
-  const yourGroup = useMemo(() => {
-    if (!currentPlayerId) return null;
-    return (
-      groups.find((g) => {
-        if (g.tank?.discordId === currentPlayerId) return true;
-        if (g.healer?.discordId === currentPlayerId) return true;
-        return g.dps.some((p) => p?.discordId === currentPlayerId);
-      }) ?? null
-    );
+  const yourGroupIndex = useMemo(() => {
+    if (!currentPlayerId) return -1;
+    return groups.findIndex((g) => {
+      if (g.tank?.discordId === currentPlayerId) return true;
+      if (g.healer?.discordId === currentPlayerId) return true;
+      return g.dps.some((p) => p?.discordId === currentPlayerId);
+    });
   }, [groups, currentPlayerId]);
+  const yourGroup = yourGroupIndex >= 0 ? groups[yourGroupIndex] : null;
 
   const yourGroupPlayers = useMemo(() => {
     if (!yourGroup) return [];
@@ -53,7 +52,9 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     );
   }, [yourGroup]);
 
-  const yourGroupHeading = yourGroup?.tank ? `${yourGroup.tank.name}'s Group` : 'Your Group';
+  const yourGroupHeading = yourGroup
+    ? (isCompleteGroup(yourGroup) ? `Group ${yourGroupIndex + 1}` : 'Remainder')
+    : 'Your Group';
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);

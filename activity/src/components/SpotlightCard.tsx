@@ -23,7 +23,7 @@ export function SpotlightCard({ group, index, visible, exit = false, label }: Sp
     <div className={`spotlight-wrapper${visible ? ' spotlight-visible' : ''}${exit ? ' spotlight-exit' : ''}`}>
       <div className={`spotlight-card${isMyGroup ? ' is-my-group' : ''}`}>
         <h3 className="spotlight-heading">
-          {label ?? (group.tank ? `${group.tank.name}'s Group` : `Group ${index + 1}`)}
+          {label ?? `Group ${index + 1}`}
         </h3>
         {group.tank && (
           <RoleRow
