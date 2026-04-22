@@ -23,16 +23,59 @@ export interface RefreshSummary {
   failed: number;
 }
 
-// Pure extraction — testable without Firestore.
+const DEFAULT_REGION = 'us';
+
+// Mirrors activity/src/components/RoleEditor.tsx. Apostrophes are stripped
+// entirely (Kel'Thuzad → kelthuzad); any other non-alphanumeric run collapses
+// to a single hyphen so inputs with stray spacing (e.g. "Azjol - Nerub") still
+// produce a valid slug.
+function realmToSlug(realm: string): string {
+  return realm
+    .trim()
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function parseInGameName(input: string): { name: string; realm: string } | null {
+  const trimmed = input.trim();
+  const dashIdx = trimmed.indexOf('-');
+  if (dashIdx === -1) return null;
+  const name = trimmed.slice(0, dashIdx).trim();
+  const realm = trimmed.slice(dashIdx + 1).trim();
+  if (!name || !realm) return null;
+  return { name, realm: realmToSlug(realm) };
+}
+
+function readLinkedCharacter(data: Record<string, unknown>): LinkedCharacter | null {
+  const linked = data.linkedCharacter as LinkedCharacter | undefined;
+  if (!linked) return null;
+  if (typeof linked.name !== 'string' || typeof linked.realm !== 'string' || typeof linked.region !== 'string') return null;
+  if (!linked.name || !linked.realm || !linked.region) return null;
+  return linked;
+}
+
+// Pure extraction — testable without Firestore. Prefers linkedCharacter (server-verified),
+// falls back to parsing inGameName for docs that predate the linkedCharacter field.
 export function extractRefreshTargets(
   docs: { id: string; data: Record<string, unknown> }[],
 ): RefreshTarget[] {
   const targets: RefreshTarget[] = [];
   for (const doc of docs) {
-    const linked = doc.data.linkedCharacter as LinkedCharacter | undefined;
-    if (!linked || typeof linked.name !== 'string' || typeof linked.realm !== 'string' || typeof linked.region !== 'string') continue;
-    if (!linked.name || !linked.realm || !linked.region) continue;
-    targets.push({ discordId: doc.id, linkedCharacter: linked });
+    const linked = readLinkedCharacter(doc.data);
+    if (linked) {
+      targets.push({ discordId: doc.id, linkedCharacter: linked });
+      continue;
+    }
+    const inGameName = typeof doc.data.inGameName === 'string' ? doc.data.inGameName : '';
+    const parsed = inGameName ? parseInGameName(inGameName) : null;
+    if (parsed) {
+      targets.push({
+        discordId: doc.id,
+        linkedCharacter: { name: parsed.name, realm: parsed.realm, region: DEFAULT_REGION },
+      });
+    }
   }
   return targets;
 }
@@ -66,7 +109,12 @@ export async function runRefresh(): Promise<RefreshSummary> {
       // Build payload without nulls — a transient Battle.net media failure
       // returns mediaUrl: null, and { merge: true } would otherwise wipe
       // the previously-stored URL. Only write fields we successfully resolved.
-      const payload: Record<string, unknown> = { mediaUrlUpdatedAt: FieldValue.serverTimestamp() };
+      // Always write linkedCharacter: idempotent for docs that already had it,
+      // backfills for docs whose target was derived from inGameName.
+      const payload: Record<string, unknown> = {
+        linkedCharacter: target.linkedCharacter,
+        mediaUrlUpdatedAt: FieldValue.serverTimestamp(),
+      };
       if (result.mediaUrl != null) payload.mediaUrl = result.mediaUrl;
       if (result.class != null) payload.characterClass = result.class;
 
