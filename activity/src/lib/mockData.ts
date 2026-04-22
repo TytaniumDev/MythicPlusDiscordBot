@@ -110,7 +110,7 @@ export const mockPlayers: WoWPlayer[] = [
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/35/174078755-inset.jpg',
     characterClass: 'Evoker',
   },
-  // 10. Khurri: Melee Druid, Melee Offspec duplicate trims — Brez
+  // 10. Khurri: Melee Druid, Brez
   {
     name: 'Khurri',
     discordId: '100000000000000010',
