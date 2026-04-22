@@ -1,5 +1,8 @@
 import { WheelEntry } from '../types';
 import { audio } from './audio';
+import { toAvatarUrl } from './characterMedia';
+import { remapImageUrl } from '../discordSdk';
+import { getClassColor } from './classColors';
 
 const COLORS = [
   '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
@@ -507,5 +510,37 @@ export class Wheel {
     this.portraitFallback.style.display = 'none';
     this.portraitFallback.textContent = '';
     this.portraitEl.style.removeProperty('--wp-color');
+  }
+
+  /**
+   * Animate the winner's portrait in from the center of the wheel.
+   * Called from spinTo after the gold-glow highlight fade-in completes.
+   * Resolves after the expand animation duration.
+   */
+  revealPortrait(winnerEntry: WheelEntry, duration: number): Promise<void> {
+    const color = getClassColor(winnerEntry.characterClass) ?? '#f59e0b';
+    this.portraitEl.style.setProperty('--wp-color', color);
+
+    const avatarUrl = toAvatarUrl(winnerEntry.mediaUrl);
+    const proxied = remapImageUrl(avatarUrl ?? undefined);
+
+    if (proxied) {
+      this.portraitImg.src = proxied;
+      this.portraitImg.style.display = 'block';
+      this.portraitFallback.style.display = 'none';
+    } else {
+      this.portraitImg.style.display = 'none';
+      this.portraitFallback.textContent = winnerEntry.name.charAt(0).toUpperCase() || '?';
+      this.portraitFallback.style.display = 'flex';
+    }
+
+    // Force a reflow so the transition kicks in even if the class was
+    // removed and re-added in the same tick (next group's spin).
+    void this.portraitEl.offsetWidth;
+    this.portraitEl.classList.add('is-revealing');
+
+    return new Promise((resolve) => {
+      setTimeout(resolve, duration);
+    });
   }
 }
