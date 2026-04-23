@@ -32,3 +32,7 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+
+## 2026-04-23 - [Module-Level Initialization of Lookup Objects]
+**Learning:** Initializing hot-path lookup objects (like `SORT_ORDER` in `fetchWeeklyAffixes.ts`) inside function bodies causes them to be recreated on every invocation. Even worse, dynamically populating them inside the function body (e.g., using `Object.keys().forEach`) incurs unnecessary iteration costs on every execution.
+**Action:** Move hot-path lookup objects to the module level. To maintain a Single Source of Truth without manual synchronization, dynamically populate them from shared constants (e.g., `BARGAIN_AFFIXES`) during module load rather than execution time.
