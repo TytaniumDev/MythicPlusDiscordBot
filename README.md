@@ -2,11 +2,11 @@
 
 # MythicPlusDiscordBot 💎
 
-### [ 🚀 Launch App ](https://tytaniumdev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/tytaniumdev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
+### [ 🚀 Launch App ](https://TytaniumDev.github.io/MythicPlusDiscordBot/)  |  [ 📖 Documentation ](#documentation-map)  |  [ 🐞 Report Bug ](https://github.com/TytaniumDev/MythicPlusDiscordBot/issues/new?template=bug_report.md)
 
 <br/>
 
-[![Build Status](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/tytaniumdev/MythicPlusDiscordBot/actions)
+[![Build Status](https://github.com/TytaniumDev/MythicPlusDiscordBot/actions/workflows/deploy.yml/badge.svg)](https://github.com/TytaniumDev/MythicPlusDiscordBot/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 </div>
@@ -39,8 +39,8 @@ Get up and running in less than 5 minutes.
 3.  **Configure Environment**
     Create a `.env` file in the `packages/bot` directory (or the root directory):
     ```bash
-    echo "BOT_TOKEN=your_token_here" > .env
-    echo "DISCORD_APPLICATION_ID=your_app_id" >> .env
+    echo "BOT_TOKEN=your_token_here" > packages/bot/.env
+    echo "DISCORD_APPLICATION_ID=your_app_id" >> packages/bot/.env
     ```
 
 4.  **Run the Bot**
