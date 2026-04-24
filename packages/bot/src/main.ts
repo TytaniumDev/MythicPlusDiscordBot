@@ -18,8 +18,7 @@ import {
   InviteTargetType,
   type ChatInputCommandInteraction,
   type ButtonInteraction,
-  type ModalSubmitInteraction,
-  type Message as DjsMessage,
+    type Message as DjsMessage,
   type Interaction,
 } from 'discord.js';
 import * as config from './core/config.js';
@@ -34,10 +33,8 @@ import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup, STATIC_AFFIXES } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
-import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
-import type { GitHubIssueResponse } from './core/issues.js';
+import { reportBadGroup, submitGithubIssueModal, notifyReporterOfIssue, handleModalSubmit } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
-import { IssueTrackingService } from './services/issueTrackingService.js';
 import {
   createMainSpecView,
   createOffspecView,
@@ -148,41 +145,6 @@ function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel 
 }
 
 // ---------------------------------------------------------------------------
-// Issue tracking service + reporter notification helper
-// ---------------------------------------------------------------------------
-
-const issueTrackingService = new IssueTrackingService();
-
-async function notifyReporterOfIssue(
-  user: { id: string; send: (content: string) => Promise<unknown> },
-  issue: GitHubIssueResponse,
-): Promise<boolean> {
-  let tracked = false;
-  try {
-    await issueTrackingService.trackIssue({
-      issueNumber: issue.number,
-      discordUserId: user.id,
-      issueUrl: issue.html_url,
-      issueTitle: issue.title,
-    });
-    tracked = true;
-  } catch (e) {
-    logger.warn(`Failed to store issue tracking for #${issue.number}: ${e}`);
-  }
-
-  try {
-    const trackingNote = tracked
-      ? "\nI'll DM you when it's resolved."
-      : '';
-    await user.send(
-      `Your report has been submitted! You can track it here: ${issue.html_url}${trackingNote}`,
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Context factories: interaction → handler context objects
 // ---------------------------------------------------------------------------
@@ -602,7 +564,7 @@ async function main() {
       } else if (interaction.isButton()) {
         await handleButton(interaction);
       } else if (interaction.isModalSubmit()) {
-        await handleModalSubmit(interaction);
+        await handleModalSubmit(interaction, groupService);
       }
     } catch (e) {
       logger.error(`Interaction error: ${e}`);
@@ -1120,79 +1082,6 @@ async function main() {
   }
 
   // -- Modal submit handler --
-  async function handleModalSubmit(interaction: ModalSubmitInteraction) {
-    const customId = interaction.customId;
-    const member = interaction.member as import('discord.js').GuildMember | null;
-    const reporterName = member?.displayName ?? interaction.user.displayName;
-    const reporterId = interaction.user.id;
-
-    if (customId === 'bug_modal' || customId === 'feature_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        const title = interaction.fields.getTextInputValue('title');
-        const description = interaction.fields.getTextInputValue('description');
-        const extraInfo = customId === 'bug_modal'
-          ? interaction.fields.getTextInputValue('steps')
-          : interaction.fields.getTextInputValue('impact');
-        const includeLogs = customId === 'bug_modal'
-          ? interaction.fields.getTextInputValue('include_logs').toLowerCase().startsWith('y')
-          : false;
-
-        const issue = await submitGithubIssueModal({
-          issueType: customId === 'bug_modal' ? 'bug' : 'feature',
-          title,
-          description,
-          extraInfo,
-          includeLogs,
-          reporterName,
-          reporterId,
-        });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
-      } catch (e) {
-        logger.error(`Failed to submit ${customId}: ${e}`);
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
-      }
-      return;
-    }
-
-    if (customId === 'badgroup_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        const guildId = interaction.guild?.id ?? null;
-        const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
-        if (!lastResults) {
-          await interaction.editReply('❌ No group data found. Run /wheel first.');
-          return;
-        }
-
-        const title = interaction.fields.getTextInputValue('title');
-        const description = interaction.fields.getTextInputValue('description');
-
-        const issue = await reportBadGroup({
-          reporterName,
-          reporterId,
-          title,
-          description,
-          players: lastResults.players,
-          groups: lastResults.groups,
-        });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
-      } catch (e) {
-        logger.error(`Failed to submit badgroup modal: ${e}`);
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
-      }
-      return;
-    }
-
-    // Unknown modal — acknowledge to avoid Discord "did not respond" error
-    await interaction.reply({ content: '❌ Unknown modal.', ephemeral: true });
-  }
 
   // -- Voice state update --
   client.on(Events.VoiceStateUpdate, async (oldState, newState) => {

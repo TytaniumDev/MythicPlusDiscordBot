@@ -1,4 +1,7 @@
 import fs from 'node:fs';
+import type { ModalSubmitInteraction } from 'discord.js';
+import { IssueTrackingService } from '../services/issueTrackingService.js';
+
 import * as config from './config.js';
 import logger from './logger.js';
 import { sanitizeForGithub, sanitizeLogs } from './security.js';
@@ -225,4 +228,145 @@ export async function reportBadGroup(
   }
 
   return createGithubIssue(formattedTitle, body, ['bug', 'bad-group']);
+}
+
+
+
+const issueTrackingService = new IssueTrackingService();
+
+/**
+ * Notifies the user who reported an issue via direct message.
+ *
+ * This function attempts to track the issue in the database first.
+ * Then, it sends a direct message to the user containing a link to
+ * the newly created issue so they can follow its progress.
+ *
+ * @param user - The user object representing the reporter. Must have an `id` and a `send` function.
+ * @param issue - The GitHub issue response containing the issue URL and number.
+ * @returns A boolean indicating whether the direct message was sent successfully.
+ */
+export async function notifyReporterOfIssue(
+  user: { id: string; send: (content: string) => Promise<unknown> },
+  issue: GitHubIssueResponse,
+): Promise<boolean> {
+  let tracked = false;
+  try {
+    await issueTrackingService.trackIssue({
+      issueNumber: issue.number,
+      discordUserId: user.id,
+      issueUrl: issue.html_url,
+      issueTitle: issue.title,
+    });
+    tracked = true;
+  } catch (e) {
+    logger.warn(`Failed to store issue tracking for #${issue.number}: ${e}`);
+  }
+
+  try {
+    const trackingNote = tracked
+      ? "\nI'll DM you when it's resolved."
+      : '';
+    await user.send(
+      `Your report has been submitted! You can track it here: ${issue.html_url}${trackingNote}`,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+
+export interface GroupServiceMinimal {
+  lastResults: Map<string, {
+    players: WoWPlayer[];
+    groups: WoWGroup[];
+  }>;
+}
+
+/**
+ * Handles modal submit interactions from Discord.
+ *
+ * This function determines the type of modal submitted (e.g., bug report, feature request, or bad group report)
+ * and dispatches to the appropriate helper function to create a GitHub issue. It extracts user input,
+ * optional log attachments, and the current group generation state to build a detailed issue report.
+ *
+ * @param interaction - The modal submit interaction from discord.js.
+ * @param groupService - A minimal representation of the GroupService containing the latest group results.
+ */
+export async function handleModalSubmit(
+  interaction: ModalSubmitInteraction,
+  groupService: GroupServiceMinimal,
+) {
+  const customId = interaction.customId;
+  const member = interaction.member as import('discord.js').GuildMember | null;
+  const reporterName = member?.displayName ?? interaction.user.displayName;
+  const reporterId = interaction.user.id;
+
+  if (customId === 'bug_modal' || customId === 'feature_modal') {
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const title = interaction.fields.getTextInputValue('title');
+      const description = interaction.fields.getTextInputValue('description');
+      const extraInfo = customId === 'bug_modal'
+        ? interaction.fields.getTextInputValue('steps')
+        : interaction.fields.getTextInputValue('impact');
+      const includeLogs = customId === 'bug_modal'
+        ? interaction.fields.getTextInputValue('include_logs').toLowerCase().startsWith('y')
+        : false;
+
+      const issue = await submitGithubIssueModal({
+        issueType: customId === 'bug_modal' ? 'bug' : 'feature',
+        title,
+        description,
+        extraInfo,
+        includeLogs,
+        reporterName,
+        reporterId,
+      });
+      const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+      const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+      await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
+    } catch (e) {
+      logger.error(`Failed to submit ${customId}: ${e}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+    }
+    return;
+  }
+
+  if (customId === 'badgroup_modal') {
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const guildId = interaction.guild?.id ?? null;
+      const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
+      if (!lastResults) {
+        await interaction.editReply('❌ No group data found. Run /wheel first.');
+        return;
+      }
+
+      const title = interaction.fields.getTextInputValue('title');
+      const description = interaction.fields.getTextInputValue('description');
+
+      const issue = await reportBadGroup({
+        reporterName,
+        reporterId,
+        title,
+        description,
+        players: lastResults.players,
+        groups: lastResults.groups,
+      });
+      const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+      const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+      await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
+    } catch (e) {
+      logger.error(`Failed to submit badgroup modal: ${e}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+    }
+    return;
+  }
+
+  // Unknown modal — acknowledge to avoid Discord "did not respond" error
+  await interaction.reply({ content: '❌ Unknown modal.', ephemeral: true });
 }
