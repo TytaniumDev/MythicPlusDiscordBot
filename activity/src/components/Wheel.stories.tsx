@@ -238,11 +238,11 @@ export const InteractiveSpin: Story = {
 
 function InteractiveHarness({ args }: { args: WheelProps }) {
   const ref = useRef<WheelHandle>(null);
-  useEffect(() => {
-    ref.current?.init(args.initialEntries ?? []);
-  }, [args.initialEntries]);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Initial entries + rotation are passed declaratively; no imperative
+          init() on mount — that would reset the rotation and race with the
+          first render. */}
       <Wheel ref={ref} {...args} />
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
         {(args.initialEntries ?? []).slice(0, 3).map((e) => (
