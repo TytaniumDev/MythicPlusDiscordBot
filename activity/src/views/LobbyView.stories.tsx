@@ -79,13 +79,28 @@ export const WithSittingOut: Story = {
 };
 
 export const DiscordSmall: Story = {
-  parameters: { viewport: { defaultViewport: 'discordSmall' } },
+  globals: {
+    viewport: {
+      value: 'discordSmall',
+      isRotated: false
+    }
+  },
 };
 
 export const DiscordLarge: Story = {
-  parameters: { viewport: { defaultViewport: 'discordLarge' } },
+  globals: {
+    viewport: {
+      value: 'discordLarge',
+      isRotated: false
+    }
+  },
 };
 
 export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: {
+    viewport: {
+      value: 'mobile',
+      isRotated: false
+    }
+  },
 };

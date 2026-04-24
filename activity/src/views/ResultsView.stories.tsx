@@ -41,9 +41,19 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const DiscordSmall: Story = {
-  parameters: { viewport: { defaultViewport: 'discordSmall' } },
+  globals: {
+    viewport: {
+      value: 'discordSmall',
+      isRotated: false
+    }
+  },
 };
 
 export const DiscordLarge: Story = {
-  parameters: { viewport: { defaultViewport: 'discordLarge' } },
+  globals: {
+    viewport: {
+      value: 'discordLarge',
+      isRotated: false
+    }
+  },
 };

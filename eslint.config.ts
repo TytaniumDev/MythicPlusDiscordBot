@@ -1,3 +1,6 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
+
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 // @ts-expect-error no types
@@ -33,69 +36,60 @@ const noSilentCatch = {
   },
 };
 
-export default tseslint.config(
-  eslint.configs.recommended,
-  ...tseslint.configs.strict,
-  {
-    ignores: [
-      '**/dist/',
-      '**/node_modules/',
-      'activity/.storybook/',
-      'activity/**/*.stories.tsx',
-      'activity/tests/',
-      'activity/**/*.config.ts',
-      'activity/**/*.config.js',
-      'activity/tests-integration/',
+export default tseslint.config(eslint.configs.recommended, ...tseslint.configs.strict, {
+  ignores: [
+    '**/dist/',
+    '**/node_modules/',
+    'activity/.storybook/',
+    'activity/**/*.stories.tsx',
+    'activity/tests/',
+    'activity/**/*.config.ts',
+    'activity/**/*.config.js',
+    'activity/tests-integration/',
+  ],
+}, {
+  plugins: {
+    wheelson: { rules: { 'no-silent-catch': noSilentCatch } },
+  },
+  rules: {
+    'wheelson/no-silent-catch': 'error',
+  },
+}, {
+  files: ['packages/**/*.ts'],
+  rules: {
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
+    '@typescript-eslint/no-non-null-assertion': 'error',
   },
-  {
-    plugins: {
-      wheelson: { rules: { 'no-silent-catch': noSilentCatch } },
-    },
-    rules: {
-      'wheelson/no-silent-catch': 'error',
-    },
+}, {
+  files: ['packages/**/tests/**/*.ts'],
+  rules: {
+    '@typescript-eslint/no-non-null-assertion': 'off',
   },
-  {
-    files: ['packages/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/no-non-null-assertion': 'error',
+}, {
+  files: ['activity/src/public/sw.js'],
+  languageOptions: {
+    globals: {
+      self: 'readonly',
+      caches: 'readonly',
+      fetch: 'readonly',
+      URL: 'readonly',
     },
   },
-  {
-    files: ['packages/**/tests/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-non-null-assertion': 'off',
-    },
+}, {
+  files: ['activity/src/**/*.{ts,tsx}'],
+  plugins: { 'react-hooks': reactHooks },
+  rules: {
+    'react-hooks/rules-of-hooks': 'error',
+    'react-hooks/exhaustive-deps': 'warn',
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+    ],
+    // Existing activity code relies on some non-null assertions; fixing them
+    // is out of scope for the silent-failure prevention pass.
+    '@typescript-eslint/no-non-null-assertion': 'off',
   },
-  {
-    files: ['activity/src/public/sw.js'],
-    languageOptions: {
-      globals: {
-        self: 'readonly',
-        caches: 'readonly',
-        fetch: 'readonly',
-        URL: 'readonly',
-      },
-    },
-  },
-  {
-    files: ['activity/src/**/*.{ts,tsx}'],
-    plugins: { 'react-hooks': reactHooks },
-    rules: {
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      // Existing activity code relies on some non-null assertions; fixing them
-      // is out of scope for the silent-failure prevention pass.
-      '@typescript-eslint/no-non-null-assertion': 'off',
-    },
-  },
-);
+}, storybook.configs["flat/recommended"]);
