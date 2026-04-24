@@ -14,6 +14,15 @@ class AudioManager {
     return this.ctx;
   }
 
+  /**
+   * Warm the AudioContext from within a user-gesture call stack so that
+   * sounds scheduled later via setTimeout (which lose gesture activation)
+   * still play. Safe to call repeatedly.
+   */
+  prepare() {
+    this.getContext();
+  }
+
   /** Short click/pop when wheel crosses a segment boundary */
   tick() {
     const now = performance.now();

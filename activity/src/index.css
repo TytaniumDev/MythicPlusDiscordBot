@@ -1169,7 +1169,6 @@ button:focus-visible,
   width: 100%;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
 }
 
 .wheel-label {
@@ -1188,31 +1187,144 @@ button:focus-visible,
 .label-dps { color: var(--color-dps); border-color: color-mix(in srgb, var(--color-dps) 30%, transparent); }
 
 .wheel-frame {
+  /* The frame is the square. `aspect-ratio: 1 + max-*: 100%` makes it the
+     largest centered square fitting in whatever parent the caller provides.
+     SVG inside just fills 100%×100% — one clean sizing chain per element,
+     no width/height/aspect-ratio circular dependency. */
   position: relative;
   container-type: inline-size;
   margin-top: 2cqi;
+  aspect-ratio: 1;
   width: 100%;
+  height: auto;
+  max-width: 100%;
   max-height: 100%;
+  min-width: 0;
   min-height: 0;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.wheel-frame canvas {
-  aspect-ratio: 1;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 50%;
+.wheel-frame .wheel-svg {
+  width: 100%;
+  height: 100%;
   display: block;
+  overflow: visible;
+}
+
+/* Rotating group — its own local origin (0, 0) sits at the wheel center
+   because the parent <g> translates (CX, CY) first. So a plain
+   `transform: rotate(Xdeg)` rotates around the wheel center with no
+   transform-box / transform-origin arithmetic required. */
+
+/* Individual slice: fill + label + state-based opacity/brightness. */
+.wheel-slice__fill {
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 0.4;
+  transition: opacity 200ms ease-out, filter 200ms ease-out;
+}
+
+.wheel-slice__label {
+  fill: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.9);
+  stroke-width: 0.3;
+  filter: drop-shadow(0 0.4px 0.6px rgba(0, 0, 0, 0.75));
+  transition: opacity 200ms ease-out;
+  pointer-events: none;
+}
+
+/* "Chosen" slices (already placed into a group) render grayscale with
+   a dark muted label — readable against the grey fill but visually "done"
+   so active slices read as the focus. */
+.wheel-slice--chosen .wheel-slice__fill {
+  filter: grayscale(0.95);
+}
+
+.wheel-slice--chosen .wheel-slice__label {
+  fill: rgba(0, 0, 0, 0.6);
+  stroke: none;
+}
+
+/* Offspec slices are visibly dimmed + desaturated so they read as
+   "secondary option" next to the vibrant main-spec slices — but still
+   colorful enough to distinguish from the fully-grayscale "chosen" state. */
+.wheel-slice--offspec .wheel-slice__fill {
+  filter: saturate(0.35) brightness(0.75);
+}
+
+.wheel-slice--offspec .wheel-slice__label {
+  opacity: 0.8;
+}
+
+/* Loser slices dim when a winner is highlighted. */
+.wheel-slice--loser .wheel-slice__fill {
+  filter: brightness(0.55) saturate(0.75);
+}
+
+.wheel-slice--loser .wheel-slice__label {
+  opacity: 0.4;
+}
+
+.wheel-slice--winner .wheel-slice__fill {
+  filter: brightness(1.12);
+}
+
+/* Gold stroke overlay on the winning slice (fades in via CSS). */
+.wheel-winner-glow {
+  fill: rgba(255, 255, 255, 0.22);
+  stroke: #f59e0b;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 1.5px rgba(245, 158, 11, 0.9));
+  animation: wheel-winner-fade 200ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes wheel-winner-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.wheel-outer-ring {
+  /* Tight bright inner glow hugs the ring, softer outer pass adds falloff
+     without drifting away from the circle. Stacking two drop-shadows keeps
+     the peak brightness at the stroke edge instead of diffusing into a
+     disconnected halo. */
+  filter:
+    drop-shadow(0 0 0.5px rgba(245, 158, 11, 1))
+    drop-shadow(0 0 1.2px rgba(245, 158, 11, 0.5));
+}
+
+.wheel-empty-text {
+  fill: rgba(255, 255, 255, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 8px;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.9);
+  stroke-width: 0.3;
 }
 
 /* ============================================
    Wheel portrait reveal (post-land animation)
    ============================================ */
 .wheel-portrait {
-  /* transform duration must match PORTRAIT_EXPAND_DURATION in timing.ts (450ms) */
+  /* transform duration must match PORTRAIT_EXPAND_DURATION in timing.ts (200ms).
+     Sized to the canvas's rendered square so the portrait's outer edge can
+     align with the wheel's gold ring, rather than the frame's bounding box. */
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1220,8 +1332,8 @@ button:focus-visible,
   transform: scale(0);
   opacity: 0;
   transition:
-    transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 300ms ease-out;
+    transform 200ms ease-out,
+    opacity 150ms ease-out;
   z-index: 3;
 }
 
@@ -1232,8 +1344,10 @@ button:focus-visible,
 
 .wheel-portrait__img,
 .wheel-portrait__fallback {
-  width: 80%;
-  aspect-ratio: 1 / 1;
+  /* 94% matches the wheel's drawn radius (canvas radius = size/2 - size*0.03). */
+  width: 94%;
+  height: 94%;
+  box-sizing: border-box;
   border-radius: 50%;
   border: 4px solid var(--wp-color, var(--color-gold));
   box-shadow:
@@ -1617,14 +1731,22 @@ button:focus-visible,
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+    filter:
+      drop-shadow(0 0 0.5px rgba(245, 158, 11, 1))
+      drop-shadow(0 0 1.2px rgba(245, 158, 11, 0.5));
   }
   50% {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    filter:
+      drop-shadow(0 0 0.6px rgba(245, 158, 11, 1))
+      drop-shadow(0 0 2.5px rgba(245, 158, 11, 0.7));
   }
 }
 
-.spinning .wheel-frame canvas {
+/* During spin, pulse the ring's drop-shadow (follows the circle's alpha,
+   so the glow hugs the ring) instead of a box-shadow on the SVG rect
+   (which sits at the SVG element's edge — now past the viewBox padding —
+   and floats away from the wheel). */
+.spinning .wheel-outer-ring {
   animation: pulseGlow 1s ease-in-out infinite;
 }
 
@@ -1738,7 +1860,7 @@ button:focus-visible,
     scroll-snap-align: center;
   }
 
-  .wheel-frame {
+  .wheels-container .wheel-frame {
     width: 100%;
     flex: 0 0 auto;
     max-width: min(400px, 70dvh);
@@ -1809,11 +1931,11 @@ button:focus-visible,
     min-height: 1em;
   }
 
-  .wheel-label {
+  .wheels-container .wheel-label {
     display: none;
   }
 
-  .wheel-result {
+  .wheels-container .wheel-result {
     display: none;
   }
 
@@ -1826,7 +1948,7 @@ button:focus-visible,
     padding: 2px 8px;
   }
 
-  .wheel-frame {
+  .wheels-container .wheel-frame {
     max-width: calc((100dvh - 100px) / 2);
   }
 }
@@ -1839,7 +1961,7 @@ button:focus-visible,
     --groups-panel-width: 80px;
   }
 
-  .wheel-frame {
+  .wheels-container .wheel-frame {
     max-width: min(240px, calc(100vw - var(--groups-panel-width) - 24px), calc(100dvh - 120px));
   }
 

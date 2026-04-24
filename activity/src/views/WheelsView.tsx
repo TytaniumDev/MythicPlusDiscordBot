@@ -138,12 +138,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [channelData?.revealedGroups, spinSequenceStarted, autoAdvanceRunning]);
 
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      gridRef.current?.grid?.forceRedraw();
-    });
-  }, []);
-
   const autoAdvanceRef = useRef(false);
 
   const spinOneGroupGrid = useCallback(async (groupIndex: number) => {
@@ -153,7 +147,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     const group = store.fullGroups[groupIndex];
     if (!group || !markedPools) return;
 
-    grid.setAllSpinning();
+    grid.setAllSpinning(true);
     grid.clearAllResults();
     grid.initWheels(markedPools);
 
@@ -168,7 +162,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     });
 
     await Promise.all(spinPromises);
-    grid.clearSpinningState();
   }, [markedPools]);
 
   const spinOneGroupCarousel = useCallback(async (groupIndex: number) => {
@@ -192,13 +185,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       if (!winner) continue;
 
       grid.setCarouselSlide(slideIndex);
-      const slot = grid.getSlot(slideIndex);
-      slot?.classList.add('spinning');
+      wheel.setSpinning(true);
 
       await delay(350);
       await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
 
-      slot?.classList.remove('spinning');
       grid.markDotCompleted(slideIndex);
       await delay(CAROUSEL_ADVANCE_DELAY);
     }
