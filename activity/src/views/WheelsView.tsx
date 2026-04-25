@@ -17,7 +17,7 @@ import { audio } from '../lib/audio';
 import { reportError } from '../lib/sentry';
 import {
   delay,
-  CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATION,
+  CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATIONS,
   SPOTLIGHT_HOLD_DURATION, SPOTLIGHT_ENTER_DURATION, SPOTLIGHT_EXIT_DURATION,
   WHEELS_FADE_DURATION, POST_LAND_PAUSE,
   PROGRESS_FADE_DURATION,
@@ -152,13 +152,12 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     grid.initWheels(markedPools);
 
     const spinPromises: Promise<string>[] = [];
-    if (group.tank) spinPromises.push(grid.tank.spinTo(group.tank.name, GRID_SPIN_DURATION));
-    if (group.healer) spinPromises.push(grid.healer.spinTo(group.healer.name, GRID_SPIN_DURATION));
+    if (group.tank) spinPromises.push(grid.tank.spinTo(group.tank.name, GRID_SPIN_DURATIONS[0]));
+    if (group.healer) spinPromises.push(grid.healer.spinTo(group.healer.name, GRID_SPIN_DURATIONS[1]));
 
     const dpsWheels = [grid.dps1, grid.dps2, grid.dps3];
-    const dpsDurations = [GRID_SPIN_DURATION, GRID_SPIN_DURATION + 300, GRID_SPIN_DURATION + 600];
     group.dps.forEach((dpsPlayer, i) => {
-      if (dpsWheels[i]) spinPromises.push(dpsWheels[i].spinTo(dpsPlayer.name, dpsDurations[i]));
+      if (dpsWheels[i]) spinPromises.push(dpsWheels[i].spinTo(dpsPlayer.name, GRID_SPIN_DURATIONS[i + 2]));
     });
 
     await Promise.all(spinPromises);
