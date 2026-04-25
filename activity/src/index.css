@@ -1226,11 +1226,11 @@ button:focus-visible,
 }
 
 .wheel-slice__label {
-  fill: #fff;
+  fill: var(--slice-text, #fff);
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   paint-order: stroke fill;
-  stroke: rgba(0, 0, 0, 0.9);
+  stroke: var(--slice-text-stroke, rgba(0, 0, 0, 0.9));
   stroke-width: 0.3;
   filter: drop-shadow(0 0.4px 0.6px rgba(0, 0, 0, 0.75));
   transition: opacity 200ms ease-out;
@@ -1245,8 +1245,8 @@ button:focus-visible,
 }
 
 .wheel-slice--chosen .wheel-slice__label {
-  fill: rgba(0, 0, 0, 0.6);
-  stroke: none;
+  fill: var(--slice-text-chosen, rgba(0, 0, 0, 0.6));
+  stroke: var(--slice-text-stroke-chosen, none);
 }
 
 /* Offspec slices are visibly dimmed + desaturated so they read as
@@ -1257,6 +1257,8 @@ button:focus-visible,
 }
 
 .wheel-slice--offspec .wheel-slice__label {
+  fill: var(--slice-text-offspec, var(--slice-text, #fff));
+  stroke: var(--slice-text-stroke-offspec, var(--slice-text-stroke, rgba(0, 0, 0, 0.9)));
   opacity: 0.8;
 }
 
