@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockRaiderio } from './helpers/raiderio';
+
+test.beforeEach(async ({ page }) => {
+  await mockRaiderio(page);
+});
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 

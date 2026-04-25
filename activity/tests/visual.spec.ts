@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockRaiderio } from './helpers/raiderio';
+
+test.beforeEach(async ({ page }) => {
+  await mockRaiderio(page);
+});
 
 // Helper to encode data for URL
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
@@ -177,6 +182,10 @@ function viewportTests(
 
       const newRoundBtn = page.locator('#new-round-btn');
       await expect(newRoundBtn).toBeVisible();
+
+      // Wait for the dungeon suggestions panel to reach a stable post-fetch
+      // state so the screenshot doesn't race the loading skeleton.
+      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
 
       await expect(page).toHaveScreenshot(`results-${viewport.width}x${viewport.height}.png`);
     });
@@ -381,6 +390,7 @@ test.describe('My Group Highlight', () => {
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
       await expect(page).toHaveScreenshot('results-my-group-1280x720.png');
     });
   });
@@ -393,6 +403,7 @@ test.describe('My Group Highlight', () => {
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
       await expect(page).toHaveScreenshot('results-my-group-420x700.png');
     });
   });

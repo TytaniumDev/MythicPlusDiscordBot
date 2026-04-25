@@ -44,6 +44,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Browser back interception
   pendingBrowserBack: false,
 
+  // Dungeon suggestions refresh trigger
+  dungeonSuggestionsRefreshKey: 0,
+
   // Actions
   setView: (view: ViewName) => set({ currentView: view }),
   setGuildId: (id: string | null) => set({ currentGuildId: id }),
@@ -76,6 +79,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ groupCards: [...s.groupCards, card] })),
   clearGroupCards: () => set({ groupCards: [] }),
   setPendingBrowserBack: (val: boolean) => set({ pendingBrowserBack: val }),
+  bumpDungeonSuggestionsRefresh: () =>
+    set((s) => ({ dungeonSuggestionsRefreshKey: s.dungeonSuggestionsRefreshKey + 1 })),
   resetSpinState: () =>
     set({
       fullGroups: [],

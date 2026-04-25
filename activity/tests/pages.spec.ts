@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockRaiderio } from './helpers/raiderio';
+
+test.beforeEach(async ({ page }) => {
+  await mockRaiderio(page);
+});
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
@@ -189,6 +194,8 @@ function designViewportTests(
       await page.goto(`/?data=${encodeData(resultsData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('#final-groups .group-card')).toHaveCount(mockGroups.length);
+      // Wait for dungeon suggestions to settle into ready state.
+      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
       await expect(page).toHaveScreenshot(`results-${viewport.width}x${viewport.height}.png`);
     });
   });
