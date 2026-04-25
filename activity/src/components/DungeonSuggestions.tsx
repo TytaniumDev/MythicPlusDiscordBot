@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { DungeonSuggestion, DungeonSuggestionsStatus } from '../lib/dungeonSuggestions';
+import { KeyLevelSelect } from './KeyLevelSelect';
 
 interface DungeonSuggestionsProps {
   status: DungeonSuggestionsStatus;
@@ -15,6 +16,10 @@ interface DungeonSuggestionsProps {
    * variants and stays available for future placements.
    */
   layout?: 'vertical' | 'horizontal';
+  /** Currently selected key level (drives the projected-gain ranking). */
+  keyLevel: number;
+  /** Called when the user picks a different level from the select. */
+  onKeyLevelChange: (level: number) => void;
 }
 
 const DEFAULT_LIMIT = 5;
@@ -25,15 +30,17 @@ const DEFAULT_LIMIT = 5;
  * the tooltip and the implementation never drift.
  */
 const STRATEGY_EXPLANATION =
-  "Each dungeon's score is the sum of every group member's best Raider.io " +
-  "run for it (counted as 0 if they haven't run it). Lower totals rank " +
-  "higher — that's the dungeon where the group has the most points to " +
-  "gain by running it together. Ties break to whichever dungeon fewer " +
-  "players have a recorded run for.";
+  "Pick a key level you're considering running. For each dungeon, we " +
+  "estimate how much Raider.io score every group member would gain by " +
+  "timing it at that level (counted as 0 if they already have a higher " +
+  "score). Dungeons rank by total projected gain — the top one earns the " +
+  "group the most points. Ties break to whichever dungeon more players " +
+  "stand to gain on.";
 
 /**
- * Renders a ranked list of dungeons sorted by lowest combined Raider.io score
- * across the active group — i.e. dungeons where the group has the most upside.
+ * Renders a ranked list of dungeons sorted by greatest projected Raider.io
+ * score gain at the chosen key level — i.e. the dungeons where this group
+ * has the most upside.
  *
  * Pure presentational component: data fetching lives in `useDungeonSuggestions`.
  * That keeps it easy to swap in mocked rankings for stories and tests.
@@ -45,7 +52,10 @@ export function DungeonSuggestions({
   lookupTargetCount,
   limit = DEFAULT_LIMIT,
   layout = 'vertical',
+  keyLevel,
+  onKeyLevelChange,
 }: DungeonSuggestionsProps) {
+  const selectId = useId();
   return (
     <aside
       className={`dungeon-suggestions dungeon-suggestions--${layout}`}
@@ -56,7 +66,16 @@ export function DungeonSuggestions({
           <h3 className="dungeon-suggestions__heading">Suggested Keys</h3>
           <InfoTooltip />
         </div>
-        <p className="dungeon-suggestions__subtitle">Lowest combined Raider.io score</p>
+        <p className="dungeon-suggestions__subtitle">
+          <span>Most projected score gain at</span>
+          <KeyLevelSelect
+            id={selectId}
+            ariaLabel="Key level for projection"
+            value={keyLevel}
+            onChange={onKeyLevelChange}
+            compact
+          />
+        </p>
       </div>
 
       {status === 'idle' && <EmptyState message="No characters linked yet." />}
@@ -109,7 +128,7 @@ function DungeonRow({ suggestion, rank }: DungeonRowProps) {
       <div className="dungeon-suggestion-row__body">
         <span className="dungeon-suggestion-row__name">{suggestion.name || suggestion.shortName}</span>
         <span className="dungeon-suggestion-row__meta">
-          {suggestion.totalScore.toFixed(0)} pts
+          +{suggestion.projectedGain.toFixed(0)} projected
           {suggestion.avgLevel !== null && (
             <> · avg +{suggestion.avgLevel}</>
           )}

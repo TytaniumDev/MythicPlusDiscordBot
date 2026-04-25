@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 import { DungeonSuggestions } from './DungeonSuggestions';
 import type { DungeonSuggestion } from '../lib/dungeonSuggestions';
+import { KEY_LEVEL_DEFAULT } from '../lib/keyLevel';
 
 const ICONS = {
   flood: 'https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_waterworks.jpg',
@@ -13,21 +16,26 @@ const ICONS = {
   gmbt: 'https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_theotherside_dealergexa.jpg',
 } as const;
 
+// Stable ranking for stories — projected gain values pre-computed for +12.
 const sampleRanking: DungeonSuggestion[] = [
-  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', iconUrl: ICONS.flood, totalScore: 412, playersWithRuns: 3, avgLevel: 9.3 },
-  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', iconUrl: ICONS.eda, totalScore: 558, playersWithRuns: 4, avgLevel: 10.5 },
-  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', iconUrl: ICONS.arak, totalScore: 691, playersWithRuns: 5, avgLevel: 11.2 },
-  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', iconUrl: ICONS.dawn, totalScore: 740, playersWithRuns: 5, avgLevel: 11.6 },
-  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', iconUrl: ICONS.psf, totalScore: 802, playersWithRuns: 5, avgLevel: 12.0 },
-  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', iconUrl: ICONS.hoa, totalScore: 855, playersWithRuns: 5, avgLevel: 12.4 },
-  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', iconUrl: ICONS.strt, totalScore: 902, playersWithRuns: 5, avgLevel: 12.8 },
-  { challengeModeId: 392, name: "Tazavesh: So'leah's Gambit", shortName: 'GMBT', iconUrl: ICONS.gmbt, totalScore: 951, playersWithRuns: 5, avgLevel: 13.0 },
+  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', iconUrl: ICONS.flood, projectedGain: 720, playersBelowProjection: 5, playersWithRuns: 3, avgLevel: 9.3 },
+  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', iconUrl: ICONS.eda, projectedGain: 540, playersBelowProjection: 4, playersWithRuns: 4, avgLevel: 10.5 },
+  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', iconUrl: ICONS.arak, projectedGain: 410, playersBelowProjection: 4, playersWithRuns: 5, avgLevel: 11.2 },
+  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', iconUrl: ICONS.dawn, projectedGain: 290, playersBelowProjection: 3, playersWithRuns: 5, avgLevel: 11.6 },
+  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', iconUrl: ICONS.psf, projectedGain: 180, playersBelowProjection: 2, playersWithRuns: 5, avgLevel: 12.0 },
+  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', iconUrl: ICONS.hoa, projectedGain: 100, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.4 },
+  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', iconUrl: ICONS.strt, projectedGain: 60, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.8 },
+  { challengeModeId: 392, name: "Tazavesh: So'leah's Gambit", shortName: 'GMBT', iconUrl: ICONS.gmbt, projectedGain: 0, playersBelowProjection: 0, playersWithRuns: 5, avgLevel: 13.0 },
 ];
 
 const meta = {
   title: 'Molecules/DungeonSuggestions',
   component: DungeonSuggestions,
   parameters: { layout: 'centered' },
+  args: {
+    keyLevel: KEY_LEVEL_DEFAULT,
+    onKeyLevelChange: fn(),
+  },
 } satisfies Meta<typeof DungeonSuggestions>;
 
 export default meta;
@@ -44,6 +52,28 @@ export const Ready: Story = {
 
 export const ReadyHorizontal: Story = {
   parameters: { layout: 'padded' },
+  args: {
+    status: 'ready',
+    ranking: sampleRanking,
+    characterCount: 5,
+    lookupTargetCount: 5,
+    layout: 'horizontal',
+  },
+};
+
+/** Interactive variant: switching the dropdown swaps the projection live. */
+export const InteractiveHorizontal: Story = {
+  parameters: { layout: 'padded' },
+  render: (args) => {
+    const [level, setLevel] = useState(KEY_LEVEL_DEFAULT);
+    return (
+      <DungeonSuggestions
+        {...args}
+        keyLevel={level}
+        onKeyLevelChange={setLevel}
+      />
+    );
+  },
   args: {
     status: 'ready',
     ranking: sampleRanking,

@@ -10,6 +10,8 @@ import { SpotlightPortraits } from '../components/SpotlightPortraits';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
 import { IconButton, SecondaryButton } from '../components/ui';
 import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
+import { useDefaultKeyLevel } from '../hooks/useDefaultKeyLevel';
+import { clampKeyLevel } from '../lib/keyLevel';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
 import type { WoWPlayer } from '../types';
@@ -76,7 +78,14 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     }
     return grouped;
   }, [yourGroupPlayers, groups]);
-  const dungeonSuggestionsState = useDungeonSuggestions(suggestionsPlayers);
+  // Seed from the persistent default once on mount; per-session changes from
+  // the dropdown stay local — only the lobby writes the default back.
+  const [defaultKeyLevel] = useDefaultKeyLevel();
+  const [keyLevel, setKeyLevel] = useState<number>(defaultKeyLevel);
+  const handleKeyLevelChange = useCallback((next: number) => {
+    setKeyLevel(clampKeyLevel(next));
+  }, []);
+  const dungeonSuggestionsState = useDungeonSuggestions(suggestionsPlayers, keyLevel);
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
@@ -150,7 +159,12 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
               <SpotlightPortraits players={yourGroupPlayers} />
             </div>
           )}
-          <DungeonSuggestions {...dungeonSuggestionsState} layout="horizontal" />
+          <DungeonSuggestions
+            {...dungeonSuggestionsState}
+            layout="horizontal"
+            keyLevel={keyLevel}
+            onKeyLevelChange={handleKeyLevelChange}
+          />
           <div id="final-groups">
             {groups.map((g, i) => {
               const remainder = !isCompleteGroup(g);

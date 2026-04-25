@@ -8,10 +8,20 @@ import type { WoWPlayer } from '../types';
 
 const DEFAULT_REGION = 'us';
 
-const IDLE_STATE: DungeonSuggestionsState = {
-  status: 'idle',
-  ranking: [],
-  characterCount: 0,
+interface FetchState {
+  // The "fetch-side" status. The visible status that the consumer sees is
+  // derived below — it can promote to 'error' or stay 'empty' depending on
+  // whether the ranking is computable.
+  phase: 'idle' | 'loading' | 'fetched' | 'no-targets';
+  characters: (CharacterDungeonScores | null)[];
+  serviceErrors: number;
+  lookupTargetCount: number;
+}
+
+const IDLE_FETCH_STATE: FetchState = {
+  phase: 'idle',
+  characters: [],
+  serviceErrors: 0,
   lookupTargetCount: 0,
 };
 
@@ -58,21 +68,25 @@ function buildLookupTargets(players: readonly WoWPlayer[]): LookupTarget[] {
 
 /**
  * Fetch per-character M+ dungeon scores from Raider.io and compute a
- * group-level ranking of dungeons by lowest combined score.
+ * group-level ranking projected at `keyLevel`.
  *
- * Refetches whenever `dungeonSuggestionsRefreshKey` in the store bumps —
- * the wheel-spin trigger drives that refresh so scores stay current
- * between rounds.
+ * Refetches whenever:
+ *   - The roster changes (new players, new linked characters)
+ *   - `dungeonSuggestionsRefreshKey` in the store bumps (driven by spin start)
+ *
+ * Changes to `keyLevel` don't refetch — we re-aggregate the cached
+ * per-character data via useMemo so changing the dropdown is instant.
  *
  * Players without a parseable `inGameName` (e.g. "Tytanium-Stormrage")
  * are skipped — the result reflects whoever has linkable characters.
  */
-export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSuggestionsState {
+export function useDungeonSuggestions(
+  players: readonly WoWPlayer[],
+  keyLevel: number,
+): DungeonSuggestionsState {
   const refreshKey = useAppStore((s) => s.dungeonSuggestionsRefreshKey);
-  const [state, setState] = useState<DungeonSuggestionsState>(IDLE_STATE);
-  // Identify the player set by their lookup keys so we re-run when roster
-  // changes. Memoize so the effect's identity input is stable across renders
-  // — `players` is a fresh array reference on every store update.
+  const [fetchState, setFetchState] = useState<FetchState>(IDLE_FETCH_STATE);
+
   const targets = useMemo(() => buildLookupTargets(players), [players]);
   const playersKey = useMemo(() => targets.map(t => t.key).sort().join('|'), [targets]);
 
@@ -82,20 +96,15 @@ export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSug
     abortRef.current?.abort();
 
     if (targets.length === 0) {
-      setState({ ...IDLE_STATE, status: 'empty' });
+      setFetchState({ ...IDLE_FETCH_STATE, phase: 'no-targets' });
       return;
     }
 
     const controller = new AbortController();
     abortRef.current = controller;
-    setState((s) => ({ ...s, status: 'loading', lookupTargetCount: targets.length }));
+    setFetchState((s) => ({ ...s, phase: 'loading', lookupTargetCount: targets.length }));
 
     let cancelled = false;
-    // allSettled so a single failed lookup doesn't blank out partial data —
-    // we still want a ranking when 4 of 5 chars resolve. The fetcher reserves
-    // throws for service-level failures (network/5xx) and uses `null` for
-    // per-character "not found", so we can distinguish "everyone failed"
-    // (service down) from "no runs on file" (genuinely empty).
     Promise.allSettled(
       targets.map(t =>
         fetchCharacterDungeonScores(t.name, t.realm, t.region, controller.signal),
@@ -103,33 +112,22 @@ export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSug
     ).then((results) => {
       if (cancelled || controller.signal.aborted) return;
 
-      const valid: CharacterDungeonScores[] = [];
+      const characters: (CharacterDungeonScores | null)[] = [];
       let serviceErrors = 0;
       for (const r of results) {
         if (r.status === 'fulfilled') {
-          if (r.value !== null) valid.push(r.value);
+          characters.push(r.value);
         } else {
-          // AbortError gets ignored above by the cancelled/signal check; any
-          // other rejection means the service couldn't be reached.
+          characters.push(null);
           serviceErrors += 1;
           console.warn('[Wheelson] Dungeon suggestions fetch failed:', r.reason);
         }
       }
 
-      const ranking = computeDungeonRanking(valid);
-      // 'error' beats 'empty' when every lookup hit a service failure — the
-      // user gets "Couldn't reach Raider.io." instead of a misleading
-      // "no runs on file" message.
-      const status: DungeonSuggestionsState['status'] =
-        ranking.length > 0
-          ? 'ready'
-          : serviceErrors > 0 && valid.length === 0
-            ? 'error'
-            : 'empty';
-      setState({
-        status,
-        ranking,
-        characterCount: valid.length,
+      setFetchState({
+        phase: 'fetched',
+        characters,
+        serviceErrors,
         lookupTargetCount: targets.length,
       });
     });
@@ -142,5 +140,39 @@ export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSug
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playersKey, refreshKey]);
 
-  return state;
+  // Re-aggregate whenever fetch state OR key level changes. Changing the
+  // dropdown is a pure recomputation — no refetch.
+  return useMemo<DungeonSuggestionsState>(() => {
+    const { phase, characters, serviceErrors, lookupTargetCount } = fetchState;
+
+    if (phase === 'idle') {
+      return { status: 'idle', ranking: [], characterCount: 0, lookupTargetCount: 0 };
+    }
+    if (phase === 'no-targets') {
+      return { status: 'empty', ranking: [], characterCount: 0, lookupTargetCount: 0 };
+    }
+    if (phase === 'loading') {
+      return { status: 'loading', ranking: [], characterCount: 0, lookupTargetCount };
+    }
+
+    // phase === 'fetched'
+    const valid = characters.filter((c): c is CharacterDungeonScores => c !== null);
+    const ranking = computeDungeonRanking(characters, keyLevel);
+
+    let status: DungeonSuggestionsState['status'];
+    if (ranking.length > 0) {
+      status = 'ready';
+    } else if (serviceErrors > 0 && valid.length === 0) {
+      status = 'error';
+    } else {
+      status = 'empty';
+    }
+
+    return {
+      status,
+      ranking,
+      characterCount: valid.length,
+      lookupTargetCount,
+    };
+  }, [fetchState, keyLevel]);
 }

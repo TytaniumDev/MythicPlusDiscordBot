@@ -1,4 +1,5 @@
 import type { CharacterDungeonScores, DungeonRunSummary } from '../services/raiderioMythicPlus';
+import { estimateTimedScore } from './keyLevel';
 
 export type DungeonSuggestionsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -17,8 +18,15 @@ export interface DungeonSuggestion {
   shortName: string;
   /** Dungeon icon URL (from any character's run for this dungeon), or null. */
   iconUrl: string | null;
-  /** Sum of each player's best score for this dungeon (0 when a player has no run). */
-  totalScore: number;
+  /**
+   * Estimated total Raider.io score the group would gain if every member
+   * timed a key at the projection level. Higher is better — this is what
+   * the ranking sorts by. Players who already have a higher score for this
+   * dungeon contribute 0.
+   */
+  projectedGain: number;
+  /** Players whose current best for this dungeon is below the projection. */
+  playersBelowProjection: number;
   /** Players who have at least one timed/recorded run for this dungeon. */
   playersWithRuns: number;
   /** Average key level across players who have a run, rounded to 1 decimal. */
@@ -27,28 +35,28 @@ export interface DungeonSuggestion {
 
 /**
  * Aggregate per-character dungeon scores into a group-level ranking.
- * Lowest total score first — that's the dungeon where the group has
- * the most room to gain Raider.io score by running it.
+ *
+ * Strategy: for each dungeon, sum the score every player would *gain* by
+ * timing a key at `keyLevel` — `max(0, estimatedScore(keyLevel) − bestSoFar)`
+ * per player, summed across the group. The dungeon with the highest total
+ * gain is where running this key earns the most points for everyone.
  *
  * Dungeons are unioned across all characters' best/alternate runs, so the
- * ranking reflects whatever season(s) the players have data for. A player
- * with no run for a dungeon contributes 0 to its total (that's the signal
- * we want — untimed dungeons drag the group total down).
+ * ranking reflects whatever season(s) the players have data for.
  */
 export function computeDungeonRanking(
   characters: readonly (CharacterDungeonScores | null)[],
+  keyLevel: number,
 ): DungeonSuggestion[] {
   const valid = characters.filter((c): c is CharacterDungeonScores => c !== null);
   if (valid.length === 0) return [];
+
+  const projectedScore = estimateTimedScore(keyLevel);
 
   const dungeonMeta: Record<number, { name: string; shortName: string; iconUrl: string | null }> = {};
   for (const char of valid) {
     for (const run of Object.values(char.byDungeon)) {
       const existing = dungeonMeta[run.challengeModeId];
-      // Seed from the first non-empty name we see; backfill the icon if a
-      // later character has it and the seed didn't (Raider.io's run records
-      // include the icon, but defensively handling missing values keeps us
-      // forward-compatible if the API trims fields).
       if (!existing && run.name) {
         dungeonMeta[run.challengeModeId] = {
           name: run.name,
@@ -63,18 +71,20 @@ export function computeDungeonRanking(
 
   const suggestions: DungeonSuggestion[] = Object.entries(dungeonMeta).map(([idStr, meta]) => {
     const id = Number(idStr);
-    let totalScore = 0;
+    let projectedGain = 0;
     let playersWithRuns = 0;
+    let playersBelowProjection = 0;
     let levelSum = 0;
 
     for (const char of valid) {
       const run: DungeonRunSummary | undefined = char.byDungeon[id];
-      if (run) {
-        totalScore += run.score;
-        if (run.level > 0) {
-          playersWithRuns += 1;
-          levelSum += run.level;
-        }
+      const currentBest = run?.score ?? 0;
+      const gain = Math.max(0, projectedScore - currentBest);
+      projectedGain += gain;
+      if (gain > 0) playersBelowProjection += 1;
+      if (run && run.level > 0) {
+        playersWithRuns += 1;
+        levelSum += run.level;
       }
     }
 
@@ -87,18 +97,21 @@ export function computeDungeonRanking(
       name: meta.name,
       shortName: meta.shortName,
       iconUrl: meta.iconUrl,
-      totalScore: Math.round(totalScore * 10) / 10,
+      projectedGain: Math.round(projectedGain * 10) / 10,
+      playersBelowProjection,
       playersWithRuns,
       avgLevel,
     };
   });
 
-  // Lowest total score first — that's the "most opportunity" dungeon.
-  // Tiebreak by fewer players-with-runs (more upside), then by short name
-  // for a stable order across renders.
+  // Highest projected gain first — that's the dungeon with the most score
+  // to gain at the chosen key level. Tiebreak by more players who'd benefit
+  // (broader upside), then by name for a stable render order.
   suggestions.sort((a, b) => {
-    if (a.totalScore !== b.totalScore) return a.totalScore - b.totalScore;
-    if (a.playersWithRuns !== b.playersWithRuns) return a.playersWithRuns - b.playersWithRuns;
+    if (a.projectedGain !== b.projectedGain) return b.projectedGain - a.projectedGain;
+    if (a.playersBelowProjection !== b.playersBelowProjection) {
+      return b.playersBelowProjection - a.playersBelowProjection;
+    }
     return a.shortName.localeCompare(b.shortName);
   });
 
