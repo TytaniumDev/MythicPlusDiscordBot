@@ -7,6 +7,13 @@ interface DungeonSuggestionsProps {
   lookupTargetCount: number;
   /** How many dungeons to render (default 5). */
   limit?: number;
+  /**
+   * `'horizontal'` lays the keys out in a row (used on the Results page so the
+   * panel sits between the spotlight portraits and the group cards).
+   * `'vertical'` stacks them in a sidebar-style list — used by Storybook
+   * variants and stays available for future placements.
+   */
+  layout?: 'vertical' | 'horizontal';
 }
 
 const DEFAULT_LIMIT = 5;
@@ -24,16 +31,20 @@ export function DungeonSuggestions({
   characterCount,
   lookupTargetCount,
   limit = DEFAULT_LIMIT,
+  layout = 'vertical',
 }: DungeonSuggestionsProps) {
   return (
-    <aside className="dungeon-suggestions" aria-label="Dungeon suggestions">
-      <h3 className="dungeon-suggestions__heading">Suggested Keys</h3>
-      <p className="dungeon-suggestions__subtitle">
-        Lowest combined Raider.io score
-      </p>
+    <aside
+      className={`dungeon-suggestions dungeon-suggestions--${layout}`}
+      aria-label="Dungeon suggestions"
+    >
+      <div className="dungeon-suggestions__header">
+        <h3 className="dungeon-suggestions__heading">Suggested Keys</h3>
+        <p className="dungeon-suggestions__subtitle">Lowest combined Raider.io score</p>
+      </div>
 
       {status === 'idle' && <EmptyState message="No characters linked yet." />}
-      {status === 'loading' && <LoadingState />}
+      {status === 'loading' && <LoadingState layout={layout} />}
       {status === 'error' && <EmptyState message="Couldn't reach Raider.io." />}
       {status === 'empty' && (
         <EmptyState message={
@@ -83,10 +94,13 @@ function DungeonRow({ suggestion, rank }: DungeonRowProps) {
   );
 }
 
-function LoadingState() {
+function LoadingState({ layout }: { layout: 'vertical' | 'horizontal' }) {
   return (
-    <ul className="dungeon-suggestions__list dungeon-suggestions__list--skeleton" aria-hidden="true">
-      {[0, 1, 2, 3].map((i) => (
+    <ul
+      className={`dungeon-suggestions__list dungeon-suggestions__list--skeleton dungeon-suggestions__list--${layout}-skeleton`}
+      aria-hidden="true"
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
         <li key={i} className="dungeon-suggestion-row dungeon-suggestion-row--skeleton">
           <span className="dungeon-suggestion-row__rank" />
           <div className="dungeon-suggestion-row__body">

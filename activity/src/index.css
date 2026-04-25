@@ -1652,21 +1652,31 @@ button:focus-visible,
   color: var(--color-healer);
 }
 
-.report-form {
+.report-dialog {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px;
-  width: 100%;
-  max-width: 400px;
+  padding: 20px 22px;
+  width: min(420px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   text-align: left;
 }
 
-.report-form h3 {
-  font-size: 0.9rem;
+.report-dialog__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--text-heading);
-  margin-bottom: 10px;
-  text-align: center;
+}
+
+.report-dialog__subtitle {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 .report-input,
@@ -1679,7 +1689,7 @@ button:focus-visible,
   color: var(--text-primary);
   font-family: var(--font-family);
   font-size: 0.85rem;
-  margin-bottom: 8px;
+  box-sizing: border-box;
 }
 
 .report-textarea {
@@ -1692,32 +1702,50 @@ button:focus-visible,
   border-color: var(--color-gold);
 }
 
-.report-form-actions {
+.report-dialog__actions {
   display: flex;
   gap: 8px;
-  justify-content: center;
-}
-
-.report-form-actions .btn {
-  font-size: 0.8rem;
-  padding: 6px 16px;
+  justify-content: flex-end;
+  margin-top: 6px;
 }
 
 /* ============================================
-   Dungeon Suggestions (Results sidebar)
+   Dungeon Suggestions
    ============================================ */
 .dungeon-suggestions {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
-  width: 100%;
-  max-width: 240px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   text-align: left;
   box-sizing: border-box;
+}
+
+.dungeon-suggestions--vertical {
+  width: 100%;
+  max-width: 240px;
+}
+
+.dungeon-suggestions--horizontal {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 20px;
+}
+
+.dungeon-suggestions__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dungeon-suggestions--horizontal .dungeon-suggestions__header {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .dungeon-suggestions__heading {
@@ -1730,7 +1758,7 @@ button:focus-visible,
 }
 
 .dungeon-suggestions__subtitle {
-  margin: -6px 0 0;
+  margin: 0;
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
@@ -1744,6 +1772,12 @@ button:focus-visible,
   gap: 6px;
 }
 
+.dungeon-suggestions--horizontal .dungeon-suggestions__list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dungeon-suggestion-row {
   display: flex;
   align-items: center;
@@ -1752,6 +1786,12 @@ button:focus-visible,
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
+}
+
+.dungeon-suggestions--horizontal .dungeon-suggestion-row {
+  flex: 1 1 130px;
+  min-width: 130px;
+  padding: 8px 10px;
 }
 
 .dungeon-suggestion-row__rank {
@@ -1819,37 +1859,6 @@ button:focus-visible,
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__meta {
   width: 40%;
   height: 0.7rem;
-}
-
-/* Results layout: center groups, dock suggestions on the right when there's room. */
-.results-content-wrapper {
-  position: relative;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.results-content-wrapper__aside {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-/* Dock the suggestions panel to the right of the centered groups grid only
-   when there's enough horizontal room. Below ~1200px the centered cards span
-   too wide and the absolute panel would overlap them — so we let it stack
-   below as part of normal flow. The user can fine-tune this breakpoint. */
-@media (min-width: 1200px) {
-  .results-content-wrapper__aside {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: auto;
-    margin-top: 0;
-    justify-content: flex-end;
-  }
 }
 
 /* ============================================

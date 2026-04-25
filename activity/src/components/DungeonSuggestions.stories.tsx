@@ -31,6 +31,28 @@ export const Ready: Story = {
   },
 };
 
+export const ReadyHorizontal: Story = {
+  parameters: { layout: 'padded' },
+  args: {
+    status: 'ready',
+    ranking: sampleRanking,
+    characterCount: 5,
+    lookupTargetCount: 5,
+    layout: 'horizontal',
+  },
+};
+
+export const LoadingHorizontal: Story = {
+  parameters: { layout: 'padded' },
+  args: {
+    status: 'loading',
+    ranking: [],
+    characterCount: 0,
+    lookupTargetCount: 5,
+    layout: 'horizontal',
+  },
+};
+
 export const Loading: Story = {
   args: {
     status: 'loading',
