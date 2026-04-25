@@ -70,9 +70,10 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
 
     const firstPortrait = page.locator('.spotlight-portrait').first();
-    const tooltip = firstPortrait.locator('.spotlight-portrait__tooltip');
-    // Hidden by default, but DOM-present so it's visible to assistive tech.
-    await expect(tooltip).toBeAttached();
+    // Tooltip is rendered via FloatingPortal at the document root and only
+    // mounts while the trigger is hovered/focused.
+    const tooltip = page.locator('.spotlight-portrait__tooltip');
+    await expect(tooltip).toHaveCount(0);
 
     await firstPortrait.hover();
     await expect(tooltip).toBeVisible();

@@ -3280,14 +3280,9 @@ button.role-section-header--collapsible {
 }
 
 /* Score tooltip — shows on hover/focus of the portrait when scores are
-   provided. Positioned above the portrait and centered; falls back to
-   translating off-screen with `visibility: hidden` so it's still in the
-   DOM for screen readers but not blocking pointer events. */
+   provided. Positioning (placement, flip, viewport-shift) is handled by
+   Floating UI via inline styles; this rule only controls appearance. */
 .spotlight-portrait__tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
   width: max-content;
   max-width: 280px;
   padding: 10px 12px;
@@ -3300,15 +3295,6 @@ button.role-section-header--collapsible {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   z-index: 20;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-}
-
-.spotlight-portrait--has-tooltip:hover .spotlight-portrait__tooltip,
-.spotlight-portrait--has-tooltip:focus-within .spotlight-portrait__tooltip {
-  opacity: 1;
-  visibility: visible;
 }
 
 .spotlight-portrait__tooltip-header {

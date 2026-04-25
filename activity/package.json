@@ -19,6 +19,7 @@
   "type": "commonjs",
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.4.0",
+    "@floating-ui/react": "^0.27.19",
     "@mythicplus/shared": "*",
     "@sentry/react": "^10.48.0",
     "@tailwindcss/vite": "^4.2.1",
@@ -46,10 +47,10 @@
     "@vitest/browser-playwright": "^4.1.0",
     "@vitest/coverage-v8": "^4.1.0",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-storybook": "10.3.5",
     "playwright": "^1.58.2",
     "storybook": "^10.3.5",
-    "vitest": "^4.1.0",
-    "eslint-plugin-storybook": "10.3.5"
+    "vitest": "^4.1.0"
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.2.1",
