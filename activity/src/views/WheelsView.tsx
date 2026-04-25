@@ -151,13 +151,13 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     grid.clearAllResults();
     grid.initWheels(markedPools);
 
+    const wheels = grid.orderedWheels();
+    const winners = [group.tank, group.healer, ...group.dps];
     const spinPromises: Promise<string>[] = [];
-    if (group.tank) spinPromises.push(grid.tank.spinTo(group.tank.name, GRID_SPIN_DURATIONS[0]));
-    if (group.healer) spinPromises.push(grid.healer.spinTo(group.healer.name, GRID_SPIN_DURATIONS[1]));
-
-    const dpsWheels = [grid.dps1, grid.dps2, grid.dps3];
-    group.dps.forEach((dpsPlayer, i) => {
-      if (dpsWheels[i]) spinPromises.push(dpsWheels[i].spinTo(dpsPlayer.name, GRID_SPIN_DURATIONS[i + 2]));
+    winners.forEach((winner, i) => {
+      if (winner && wheels[i]) {
+        spinPromises.push(wheels[i].spinTo(winner.name, GRID_SPIN_DURATIONS[i]));
+      }
     });
 
     await Promise.all(spinPromises);
