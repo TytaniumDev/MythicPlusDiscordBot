@@ -355,10 +355,12 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                       <path
                         className="wheel-slice__fill"
                         d={sliceArcPath(0, 0, RADIUS, startAngle, endAngle)}
-                        fill={entry.isOffspec ? 'none' : sliceFill}
-                        stroke={entry.isOffspec ? sliceFill : undefined}
-                        strokeWidth={entry.isOffspec ? 1.2 : undefined}
-                        strokeLinejoin={entry.isOffspec ? 'round' : undefined}
+                        style={{
+                          fill: entry.isOffspec ? 'none' : sliceFill,
+                          stroke: entry.isOffspec ? sliceFill : undefined,
+                          strokeWidth: entry.isOffspec ? 1.2 : undefined,
+                          strokeLinejoin: entry.isOffspec ? 'round' : undefined,
+                        }}
                       />
                       <text
                         className="wheel-slice__label"
