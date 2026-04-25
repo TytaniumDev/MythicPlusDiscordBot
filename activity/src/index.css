@@ -1767,6 +1767,10 @@ button:focus-visible,
   margin: 0;
   font-size: 0.7rem;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .dungeon-suggestions__list {
@@ -1893,6 +1897,41 @@ button:focus-visible,
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__meta {
   width: 40%;
   height: 0.7rem;
+}
+
+/* Mythic+ key-level dropdown — used in the lobby (default setter) and on
+   the results panel (live re-rank). Native <select> for keyboard / mobile
+   parity; styled to fit alongside our typography without screaming. */
+.key-level-select {
+  appearance: none;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 26px 4px 10px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23b0b8c4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.key-level-select:hover {
+  border-color: var(--color-gold-dim);
+}
+
+.key-level-select:focus-visible {
+  outline: none;
+  border-color: var(--color-gold);
+}
+
+.key-level-select--compact {
+  font-size: 0.75rem;
+  padding: 2px 22px 2px 8px;
+  background-position: right 6px center;
 }
 
 /* Info tooltip — small "i" trigger that reveals an explanatory bubble on
@@ -2726,6 +2765,45 @@ button.role-section-header--collapsible {
 
 .mobile-spin-btn .btn {
   flex: 1;
+}
+
+.mobile-spin-btn .lobby-key-level {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Lobby spin row — keeps the SPIN button centered while the default key
+   level control sits to its left. The right-hand balancer mirrors the
+   control's width so the SPIN stays visually centered on the page. */
+.lobby-spin-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.lobby-spin-row__balancer {
+  /* Roughly matches the width of .lobby-key-level so the spin button stays
+     centered. Falls back gracefully if the label wraps on narrow viewports. */
+  flex: 0 0 auto;
+  min-width: 0;
+  width: clamp(0px, 9rem, 11rem);
+}
+
+.lobby-key-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.lobby-key-level__label {
+  white-space: nowrap;
 }
 
 /* ============================================
