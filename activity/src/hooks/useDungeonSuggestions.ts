@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { fetchCharacterDungeonScores } from '../services/raiderioMythicPlus';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
@@ -70,9 +70,11 @@ function buildLookupTargets(players: readonly WoWPlayer[]): LookupTarget[] {
 export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSuggestionsState {
   const refreshKey = useAppStore((s) => s.dungeonSuggestionsRefreshKey);
   const [state, setState] = useState<DungeonSuggestionsState>(IDLE_STATE);
-  // Identify the player set by their lookup keys so we re-run when roster changes.
-  const targets = buildLookupTargets(players);
-  const playersKey = targets.map(t => t.key).sort().join('|');
+  // Identify the player set by their lookup keys so we re-run when roster
+  // changes. Memoize so the effect's identity input is stable across renders
+  // — `players` is a fresh array reference on every store update.
+  const targets = useMemo(() => buildLookupTargets(players), [players]);
+  const playersKey = useMemo(() => targets.map(t => t.key).sort().join('|'), [targets]);
 
   const abortRef = useRef<AbortController | null>(null);
 
