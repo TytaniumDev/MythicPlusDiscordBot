@@ -6,7 +6,9 @@ import { GroupCard } from '../components/GroupCard';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { SpotlightPortraits } from '../components/SpotlightPortraits';
+import { DungeonSuggestions } from '../components/DungeonSuggestions';
 import { SecondaryButton } from '../components/ui';
+import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
 import { reportError } from '../lib/sentry';
@@ -55,6 +57,8 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const yourGroupHeading = yourGroup
     ? (isCompleteGroup(yourGroup) ? `Group ${yourGroupIndex + 1}` : 'Remainder')
     : 'Your Group';
+
+  const dungeonSuggestionsState = useDungeonSuggestions(players);
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
@@ -124,6 +128,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       />
       <main className="content-area">
         <section id="view-results">
+          <div className="results-content-wrapper">
           {yourGroupPlayers.length > 0 && (
             <div className="results-your-group">
               <h3 className="results-your-group__heading">{yourGroupHeading}</h3>
@@ -143,6 +148,10 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
                 />
               );
             })}
+          </div>
+          <div className="results-content-wrapper__aside">
+            <DungeonSuggestions {...dungeonSuggestionsState} />
+          </div>
           </div>
           <div className="results-actions">
             <SecondaryButton

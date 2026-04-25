@@ -58,6 +58,19 @@ export function App() {
   // so the wheel landing and results views render instantly.
   usePreloadPortraits(channelData?.players);
 
+  // Refresh dungeon-suggestion data each time a spin starts, so per-character
+  // Raider.io scores stay current between rounds. Watching status (rather
+  // than calling from `requestSpin`) means every client refreshes on its own,
+  // not just the spin initiator.
+  const lastSpinStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const status = channelData?.status ?? null;
+    if (status === 'spinning' && lastSpinStatusRef.current !== 'spinning') {
+      useAppStore.getState().bumpDungeonSuggestionsRefresh();
+    }
+    lastSpinStatusRef.current = status;
+  }, [channelData?.status]);
+
   // Save recent guilds when guild data arrives
   const savedGuildRef = useRef<string | null>(null);
   useEffect(() => {

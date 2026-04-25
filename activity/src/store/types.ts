@@ -49,6 +49,10 @@ export interface AppState {
   // Browser back interception for synchronized views
   pendingBrowserBack: boolean;
 
+  // Bumps each time we want consumers to refetch dungeon suggestion data
+  // (set when a wheel spin starts). Hooks watch this value to refresh.
+  dungeonSuggestionsRefreshKey: number;
+
   // Actions
   setView: (view: ViewName) => void;
   setGuildId: (id: string | null) => void;
@@ -71,6 +75,7 @@ export interface AppState {
   addGroupCard: (card: GroupCardData) => void;
   clearGroupCards: () => void;
   setPendingBrowserBack: (val: boolean) => void;
+  bumpDungeonSuggestionsRefresh: () => void;
   resetSpinState: () => void;
   resetIdentity: () => void;
   resetSession: () => void;

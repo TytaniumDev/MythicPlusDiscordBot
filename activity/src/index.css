@@ -1704,6 +1704,155 @@ button:focus-visible,
 }
 
 /* ============================================
+   Dungeon Suggestions (Results sidebar)
+   ============================================ */
+.dungeon-suggestions {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  width: 100%;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.dungeon-suggestions__heading {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dungeon-suggestions__subtitle {
+  margin: -6px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.dungeon-suggestions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dungeon-suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.dungeon-suggestion-row__rank {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 50%;
+}
+
+.dungeon-suggestion-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.dungeon-suggestion-row__name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dungeon-suggestion-row__meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.dungeon-suggestions__footnote {
+  margin: 0;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.dungeon-suggestions__empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Skeleton loading shimmer */
+.dungeon-suggestions__list--skeleton .dungeon-suggestion-row__rank,
+.dungeon-suggestions__list--skeleton .dungeon-suggestion-row__name,
+.dungeon-suggestions__list--skeleton .dungeon-suggestion-row__meta {
+  display: block;
+  background: var(--bg-card-hover);
+  border-radius: 4px;
+  color: transparent;
+}
+.dungeon-suggestions__list--skeleton .dungeon-suggestion-row__name {
+  width: 60%;
+  height: 0.85rem;
+  margin-bottom: 4px;
+}
+.dungeon-suggestions__list--skeleton .dungeon-suggestion-row__meta {
+  width: 40%;
+  height: 0.7rem;
+}
+
+/* Results layout: center groups, dock suggestions on the right when there's room. */
+.results-content-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.results-content-wrapper__aside {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* Dock the suggestions panel to the right of the centered groups grid only
+   when there's enough horizontal room. Below ~1200px the centered cards span
+   too wide and the absolute panel would overlap them — so we let it stack
+   below as part of normal flow. The user can fine-tune this breakpoint. */
+@media (min-width: 1200px) {
+  .results-content-wrapper__aside {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    margin-top: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================
    Demo Controls
    ============================================ */
 #demo-controls {
