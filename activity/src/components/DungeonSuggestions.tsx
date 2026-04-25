@@ -38,9 +38,9 @@ const STRATEGY_EXPLANATION =
   "dungeon more players stand to gain on.";
 
 /**
- * Renders a ranked list of dungeons sorted by greatest projected Raider.io
- * score gain at the chosen key level — i.e. the dungeons where this group
- * has the most upside.
+ * Renders a ranked list of dungeons sorted by greatest key-level upside at
+ * the chosen projection level — i.e. the dungeons where this group has
+ * the most levels left to gain across its members.
  *
  * Pure presentational component: data fetching lives in `useDungeonSuggestions`.
  * That keeps it easy to swap in mocked rankings for stories and tests.
@@ -67,7 +67,7 @@ export function DungeonSuggestions({
           <InfoTooltip />
         </div>
         <p className="dungeon-suggestions__subtitle">
-          <span>Most projected score gain at</span>
+          <span>Most key-level upside at</span>
           <KeyLevelSelect
             id={selectId}
             ariaLabel="Key level for projection"
