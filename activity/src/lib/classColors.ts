@@ -160,7 +160,11 @@ export function getSliceColors(
   // `grayscale()` is a BT.709-weighted sum applied directly to sRGB bytes
   // (no linearization). Modelling it as grayscale(1.0) here is a tight
   // approximation — the 5% color residue is too small to flip the
-  // black-vs-white text choice.
+  // black-vs-white text choice. Note: this gives chosen slices a visible
+  // text stroke where the original CSS used `stroke: none`. That tradeoff
+  // is deliberate: a stroke-less label was unreadable on darker greyscale
+  // fills (Death Knight, Demon Hunter, Warlock), so we trade some of the
+  // "muted/done" visual for guaranteed >=4.5:1 contrast.
   const chosen = pickTextPair(cssGrayscaleEquivalent(fill));
 
   return {

@@ -12,7 +12,7 @@ import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
 import { toAvatarUrl } from '../lib/characterMedia';
 import { remapImageUrl } from '../discordSdk';
-import { getClassColor } from '../lib/classColors';
+import { getClassColor, getSliceColors } from '../lib/classColors';
 import { PORTRAIT_EXPAND_DURATION } from '../lib/timing';
 import {
   EASE_OUT_CUBIC_CSS,
@@ -20,12 +20,6 @@ import {
   finalRotationFor,
   sliceArcPath,
 } from '../lib/wheelGeometry';
-
-const SLICE_COLORS = [
-  '#e74c3c', '#3498db', '#2ecc71', '#f39c12',
-  '#9b59b6', '#1abc9c', '#e67e22', '#34495e',
-  '#e91e63', '#00bcd4', '#8bc34a', '#ff9800',
-];
 
 // Internal wheel coords use a 100-unit square centered at (50, 50). The
 // viewBox is padded beyond that so the gold ring's drop-shadow glow has
@@ -104,6 +98,16 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
     const idx = entries.findIndex((e) => e.name === winnerName);
     return idx === -1 ? null : idx;
   }, [entries, winnerName]);
+
+  const variationIndices = useMemo(() => {
+    const counts = new Map<string, number>();
+    return entries.map((entry) => {
+      const key = entry.characterClass ?? '__null__';
+      const idx = counts.get(key) ?? 0;
+      counts.set(key, idx + 1);
+      return idx;
+    });
+  }, [entries]);
 
   const cancelInFlight = useCallback(() => {
     if (animationRef.current) {
@@ -319,7 +323,7 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const midDeg = (midAngle * 180) / Math.PI;
                   const isWinner = winnerIndex === i;
                   const isLoser = highlightActive && !isWinner;
-                  const baseColor = SLICE_COLORS[i % SLICE_COLORS.length];
+                  const sliceColors = getSliceColors(entry.characterClass, variationIndices[i]);
                   const sliceClass = [
                     'wheel-slice',
                     entry.isChosen ? 'wheel-slice--chosen' : '',
@@ -345,12 +349,19 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const flip = normDeg > 90 && normDeg < 270;
                   const textRotDeg = flip ? normDeg + 180 : normDeg;
                   const textAnchorX = flip ? -textX : textX;
+                  const sliceStyle = {
+                    '--slice-text': sliceColors.textFill,
+                    '--slice-text-stroke': sliceColors.textStroke,
+                    '--slice-text-chosen': sliceColors.chosenTextFill,
+                    '--slice-text-stroke-chosen': sliceColors.chosenTextStroke,
+                  } as CSSProperties;
+
                   return (
-                    <g key={`${role}-slice-${i}`} className={sliceClass}>
+                    <g key={`${role}-slice-${i}`} className={sliceClass} style={sliceStyle}>
                       <path
                         className="wheel-slice__fill"
                         d={sliceArcPath(0, 0, RADIUS, startAngle, endAngle)}
-                        fill={baseColor}
+                        fill={sliceColors.fill}
                       />
                       <text
                         className="wheel-slice__label"
