@@ -22,9 +22,15 @@ const PLACEHOLDER_ICON =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkqAcAAIUAgUW0RjgAAAAASUVORK5CYII=';
 
 function buildPayload(name: string) {
+  // Sum of best-run scores → seed the season "all" total. Real Raider.io
+  // weights best/alt with 1.5x/0.5x; we don't model that here because the
+  // tooltip just displays whatever the API returns.
+  const totalScore = FIXTURE_RUNS.reduce((acc, r) => acc + r.score, 0);
   return {
     name,
     realm: 'Test',
+    class: 'Mage',
+    active_spec_name: 'Frost',
     mythic_plus_best_runs: FIXTURE_RUNS.map(f => ({
       dungeon: f.name,
       short_name: f.short,
@@ -35,6 +41,11 @@ function buildPayload(name: string) {
       affixes: [],
     })),
     mythic_plus_alternate_runs: [],
+    mythic_plus_scores_by_season: [{
+      season: 'season-tww-3',
+      scores: { all: totalScore, dps: totalScore, healer: 0, tank: 0 },
+      segments: { all: { score: totalScore, color: '#ff8000' } },
+    }],
   };
 }
 

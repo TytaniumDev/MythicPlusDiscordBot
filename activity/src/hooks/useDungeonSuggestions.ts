@@ -9,11 +9,11 @@ import type { WoWPlayer } from '../types';
 const DEFAULT_REGION = 'us';
 
 interface FetchState {
-  // The "fetch-side" status. The visible status that the consumer sees is
-  // derived below — it can promote to 'error' or stay 'empty' depending on
-  // whether the ranking is computable.
   phase: 'idle' | 'loading' | 'fetched' | 'no-targets';
+  /** One entry per *unique* character (by region/realm/name), in target order. */
   characters: (CharacterDungeonScores | null)[];
+  /** Maps discordId → index into `characters` for the player's character. */
+  characterIndexByDiscordId: Record<string, number>;
   serviceErrors: number;
   lookupTargetCount: number;
 }
@@ -21,15 +21,35 @@ interface FetchState {
 const IDLE_FETCH_STATE: FetchState = {
   phase: 'idle',
   characters: [],
+  characterIndexByDiscordId: {},
   serviceErrors: 0,
   lookupTargetCount: 0,
 };
 
-interface LookupTarget {
+interface PlayerTarget {
+  discordId: string;
   key: string;
   name: string;
   realm: string;
   region: string;
+}
+
+interface UniqueLookup {
+  key: string;
+  name: string;
+  realm: string;
+  region: string;
+}
+
+export interface UseDungeonSuggestionsResult {
+  /** The aggregated ranking + status that drives the panel UI. */
+  state: DungeonSuggestionsState;
+  /**
+   * Per-player M+ score data keyed by Discord ID. Players without a parseable
+   * `inGameName` are absent from the map; players whose lookup is in flight
+   * are absent until the fetch settles. Lookup failures map to `null`.
+   */
+  scoresByDiscordId: ReadonlyMap<string, CharacterDungeonScores | null>;
 }
 
 function realmToSlug(realm: string): string {
@@ -52,61 +72,84 @@ function parseInGameName(input: string | undefined | null): { name: string; real
   return { name, realmSlug: realmToSlug(realm) };
 }
 
-function buildLookupTargets(players: readonly WoWPlayer[]): LookupTarget[] {
-  const seen = new Set<string>();
-  const targets: LookupTarget[] = [];
+function buildPlayerTargets(players: readonly WoWPlayer[]): PlayerTarget[] {
+  const out: PlayerTarget[] = [];
   for (const p of players) {
+    if (!p.discordId) continue;
     const parsed = parseInGameName(p.inGameName);
     if (!parsed) continue;
     const key = `${DEFAULT_REGION}/${parsed.realmSlug}/${parsed.name.toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    targets.push({ key, name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION });
+    out.push({
+      discordId: p.discordId,
+      key,
+      name: parsed.name,
+      realm: parsed.realmSlug,
+      region: DEFAULT_REGION,
+    });
   }
-  return targets;
+  return out;
 }
+
+function uniqueLookupsFor(playerTargets: readonly PlayerTarget[]): UniqueLookup[] {
+  const seen = new Set<string>();
+  const lookups: UniqueLookup[] = [];
+  for (const t of playerTargets) {
+    if (seen.has(t.key)) continue;
+    seen.add(t.key);
+    lookups.push({ key: t.key, name: t.name, realm: t.realm, region: t.region });
+  }
+  return lookups;
+}
+
+const EMPTY_SCORES_MAP: ReadonlyMap<string, CharacterDungeonScores | null> = new Map();
 
 /**
  * Fetch per-character M+ dungeon scores from Raider.io and compute a
  * group-level ranking projected at `keyLevel`.
  *
  * Refetches whenever:
- *   - The roster changes (new players, new linked characters)
+ *   - The roster of unique characters changes
  *   - `dungeonSuggestionsRefreshKey` in the store bumps (driven by spin start)
  *
  * Changes to `keyLevel` don't refetch — we re-aggregate the cached
- * per-character data via useMemo so changing the dropdown is instant.
+ * per-character data via useMemo so flipping the dropdown is instant.
  *
- * Players without a parseable `inGameName` (e.g. "Tytanium-Stormrage")
- * are skipped — the result reflects whoever has linkable characters.
+ * The hook returns both the aggregated `state` (consumed by the suggestions
+ * panel) and a `scoresByDiscordId` map (consumed by the spotlight portraits
+ * to show per-player score tooltips). Two consumers, one fetch.
  */
 export function useDungeonSuggestions(
   players: readonly WoWPlayer[],
   keyLevel: number,
-): DungeonSuggestionsState {
+): UseDungeonSuggestionsResult {
   const refreshKey = useAppStore((s) => s.dungeonSuggestionsRefreshKey);
   const [fetchState, setFetchState] = useState<FetchState>(IDLE_FETCH_STATE);
 
-  const targets = useMemo(() => buildLookupTargets(players), [players]);
-  const playersKey = useMemo(() => targets.map(t => t.key).sort().join('|'), [targets]);
+  const playerTargets = useMemo(() => buildPlayerTargets(players), [players]);
+  const uniqueLookups = useMemo(() => uniqueLookupsFor(playerTargets), [playerTargets]);
+  // Identity input for the fetch effect — the set of unique characters to fetch.
+  const lookupsKey = useMemo(
+    () => uniqueLookups.map(t => t.key).sort().join('|'),
+    [uniqueLookups],
+  );
 
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     abortRef.current?.abort();
 
-    if (targets.length === 0) {
+    if (uniqueLookups.length === 0) {
       setFetchState({ ...IDLE_FETCH_STATE, phase: 'no-targets' });
       return;
     }
 
     const controller = new AbortController();
     abortRef.current = controller;
-    setFetchState((s) => ({ ...s, phase: 'loading', lookupTargetCount: targets.length }));
+    setFetchState((s) => ({ ...s, phase: 'loading', lookupTargetCount: uniqueLookups.length }));
 
     let cancelled = false;
     Promise.allSettled(
-      targets.map(t =>
+      uniqueLookups.map(t =>
         fetchCharacterDungeonScores(t.name, t.realm, t.region, controller.signal),
       ),
     ).then((results) => {
@@ -124,11 +167,21 @@ export function useDungeonSuggestions(
         }
       }
 
+      const indexByKey: Record<string, number> = {};
+      uniqueLookups.forEach((l, i) => { indexByKey[l.key] = i; });
+
+      const characterIndexByDiscordId: Record<string, number> = {};
+      for (const t of playerTargets) {
+        const idx = indexByKey[t.key];
+        if (idx !== undefined) characterIndexByDiscordId[t.discordId] = idx;
+      }
+
       setFetchState({
         phase: 'fetched',
         characters,
+        characterIndexByDiscordId,
         serviceErrors,
-        lookupTargetCount: targets.length,
+        lookupTargetCount: uniqueLookups.length,
       });
     });
 
@@ -136,23 +189,32 @@ export function useDungeonSuggestions(
       cancelled = true;
       controller.abort();
     };
-    // playersKey + refreshKey are the identity inputs; re-run on either change.
+    // lookupsKey + refreshKey are the identity inputs; re-run on either change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playersKey, refreshKey]);
+  }, [lookupsKey, refreshKey]);
 
   // Re-aggregate whenever fetch state OR key level changes. Changing the
   // dropdown is a pure recomputation — no refetch.
-  return useMemo<DungeonSuggestionsState>(() => {
-    const { phase, characters, serviceErrors, lookupTargetCount } = fetchState;
+  return useMemo<UseDungeonSuggestionsResult>(() => {
+    const { phase, characters, characterIndexByDiscordId, serviceErrors, lookupTargetCount } = fetchState;
 
     if (phase === 'idle') {
-      return { status: 'idle', ranking: [], characterCount: 0, lookupTargetCount: 0 };
+      return {
+        state: { status: 'idle', ranking: [], characterCount: 0, lookupTargetCount: 0 },
+        scoresByDiscordId: EMPTY_SCORES_MAP,
+      };
     }
     if (phase === 'no-targets') {
-      return { status: 'empty', ranking: [], characterCount: 0, lookupTargetCount: 0 };
+      return {
+        state: { status: 'empty', ranking: [], characterCount: 0, lookupTargetCount: 0 },
+        scoresByDiscordId: EMPTY_SCORES_MAP,
+      };
     }
     if (phase === 'loading') {
-      return { status: 'loading', ranking: [], characterCount: 0, lookupTargetCount };
+      return {
+        state: { status: 'loading', ranking: [], characterCount: 0, lookupTargetCount },
+        scoresByDiscordId: EMPTY_SCORES_MAP,
+      };
     }
 
     // phase === 'fetched'
@@ -168,11 +230,19 @@ export function useDungeonSuggestions(
       status = 'empty';
     }
 
+    const scoresByDiscordId = new Map<string, CharacterDungeonScores | null>();
+    for (const [discordId, idx] of Object.entries(characterIndexByDiscordId)) {
+      scoresByDiscordId.set(discordId, characters[idx] ?? null);
+    }
+
     return {
-      status,
-      ranking,
-      characterCount: valid.length,
-      lookupTargetCount,
+      state: {
+        status,
+        ranking,
+        characterCount: valid.length,
+        lookupTargetCount,
+      },
+      scoresByDiscordId,
     };
   }, [fetchState, keyLevel]);
 }

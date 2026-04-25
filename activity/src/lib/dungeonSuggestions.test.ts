@@ -18,7 +18,16 @@ function makeChar(
       iconUrl: r.iconUrl ?? null,
     };
   }
-  return { name, realm: 'r', region: 'us', byDungeon };
+  return {
+    name,
+    realm: 'r',
+    region: 'us',
+    byDungeon,
+    overallScore: null,
+    scoreColor: null,
+    className: null,
+    specName: null,
+  };
 }
 
 describe('computeDungeonRanking', () => {

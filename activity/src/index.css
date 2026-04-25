@@ -3266,6 +3266,120 @@ button.role-section-header--collapsible {
   flex-direction: column;
   align-items: center;
   width: 88px;
+  position: relative;
+}
+
+.spotlight-portrait--has-tooltip {
+  cursor: help;
+}
+
+.spotlight-portrait--has-tooltip:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Score tooltip — shows on hover/focus of the portrait when scores are
+   provided. Positioned above the portrait and centered; falls back to
+   translating off-screen with `visibility: hidden` so it's still in the
+   DOM for screen readers but not blocking pointer events. */
+.spotlight-portrait__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 280px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  text-align: left;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.spotlight-portrait--has-tooltip:hover .spotlight-portrait__tooltip,
+.spotlight-portrait--has-tooltip:focus-within .spotlight-portrait__tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.spotlight-portrait__tooltip-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.spotlight-portrait__tooltip-name {
+  font-weight: 700;
+  color: var(--ch-color, var(--text-heading));
+  font-size: 0.85rem;
+}
+
+.spotlight-portrait__tooltip-overall {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.spotlight-portrait__tooltip-overall strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.spotlight-portrait__tooltip-overall-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.spotlight-portrait__tooltip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.spotlight-portrait__tooltip-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.spotlight-portrait__tooltip-dungeon {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-portrait__tooltip-key {
+  color: var(--color-gold);
+  font-weight: 600;
+}
+
+.spotlight-portrait__tooltip-score {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.spotlight-portrait__tooltip-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .spotlight-portrait__stage {
