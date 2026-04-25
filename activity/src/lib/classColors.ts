@@ -80,8 +80,8 @@ export function hslToHex(h: number, s: number, l: number): string {
 const NULL_CLASS_FALLBACK = '#7a7a8a';
 
 function lightnessOffsetForIndex(n: number): number {
-  // 0 → 0, 1 → -8, 2 → +8, 3 → -16, 4 → +16, …
-  const magnitude = ((n + 1) >> 1) * 8;
+  // 0 → 0, 1 → -4, 2 → +4, 3 → -8, 4 → +8, …
+  const magnitude = ((n + 1) >> 1) * 4;
   return n % 2 === 0 ? magnitude : -magnitude;
 }
 
@@ -95,6 +95,6 @@ export function getSliceColors(
 ): string {
   const baseHex = className ? CLASS_COLORS[className] : NULL_CLASS_FALLBACK;
   const { h, s, l } = hexToHsl(baseHex);
-  const shifted = clamp(l + lightnessOffsetForIndex(variationIndex), 18, 85);
+  const shifted = clamp(l + lightnessOffsetForIndex(variationIndex), 18, 100);
   return hslToHex(h, s, shifted);
 }

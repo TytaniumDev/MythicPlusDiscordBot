@@ -52,12 +52,12 @@ describe('getSliceColors', () => {
     expect(getSliceColors(null, 0).toLowerCase()).toBe('#7a7a8a');
   });
 
-  it('clamps lightness to [18, 85]', () => {
-    // Priest is white (L=100). With a clamp at 85, no variation may exceed L=85.
+  it('respects the [18, 100] lightness clamp', () => {
+    // Priest is white (L=100); positive shifts cap at 100.
     for (const i of [0, 1, 2, 3, 4]) {
-      expect(hexToHsl(getSliceColors('Priest', i)).l).toBeLessThanOrEqual(85 + 0.5);
+      expect(hexToHsl(getSliceColors('Priest', i)).l).toBeLessThanOrEqual(100 + 0.5);
     }
-    // Conversely a negative-shift on Death Knight (L≈44) shouldn't drop below 18.
+    // Negative shifts on Death Knight (L≈44) stay above the lower bound.
     for (const i of [0, 1, 2, 3, 4]) {
       expect(hexToHsl(getSliceColors('Death Knight', i)).l).toBeGreaterThanOrEqual(18 - 0.5);
     }
