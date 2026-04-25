@@ -56,11 +56,20 @@ test.describe('Dungeon Suggestions panel', () => {
 
   test('renders empty-state when no players have a parseable inGameName', async ({ page }) => {
     await mockRaiderio(page);
-    const noLinkedPlayers = mockPlayers.map(p => ({ ...p, inGameName: undefined }));
+    const stripInGameName = (p: typeof mockPlayers[number]) => ({ ...p, inGameName: undefined });
+    const noLinkedPlayers = mockPlayers.map(stripInGameName);
+    // Suggestions are scoped to the group's players (or all-grouped fallback),
+    // not the lobby pool — so groups must also reference name-less copies for
+    // this empty-state assertion to hold.
+    const noLinkedGroups = mockGroups.map(g => ({
+      tank: g.tank ? stripInGameName(g.tank) : null,
+      healer: g.healer ? stripInGameName(g.healer) : null,
+      dps: g.dps.map(stripInGameName),
+    }));
     const data = {
       ...resultsData,
       players: noLinkedPlayers,
-      groups: mockGroups,
+      groups: noLinkedGroups,
     };
     await page.goto(`/?data=${encodeData(data)}`);
     await expect(page.locator('#view-results')).toBeVisible();
