@@ -14,9 +14,11 @@ export function usePreloadPortraits(players: WoWPlayer[] | undefined | null) {
   useEffect(() => {
     if (!players) return;
     for (const player of players) {
-      const url = remapImageUrl(toMainBodyUrl(player.mediaUrl));
-      if (!url || preloaded.current.has(url)) continue;
-      preloaded.current.add(url);
+      const mediaUrl = player.mediaUrl;
+      if (!mediaUrl || preloaded.current.has(mediaUrl)) continue;
+      preloaded.current.add(mediaUrl);
+      const url = remapImageUrl(toMainBodyUrl(mediaUrl));
+      if (!url) continue;
       const img = new Image();
       img.src = url;
     }
