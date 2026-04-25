@@ -76,3 +76,25 @@ export function hslToHex(h: number, s: number, l: number): string {
   };
   return `#${toByte(r)}${toByte(g)}${toByte(b)}`;
 }
+
+function srgbToLinear(channel: number): number {
+  const c = channel / 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+/** WCAG 2.x relative luminance for a 6-digit hex color (with or without leading '#'). */
+export function relativeLuminance(hex: string): number {
+  const norm = hex.replace('#', '');
+  const r = srgbToLinear(parseInt(norm.slice(0, 2), 16));
+  const g = srgbToLinear(parseInt(norm.slice(2, 4), 16));
+  const b = srgbToLinear(parseInt(norm.slice(4, 6), 16));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG 2.x contrast ratio between two 6-digit hex colors. Symmetric; returns 1.0 for identical inputs and 21.0 for white-vs-black. */
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [light, dark] = la >= lb ? [la, lb] : [lb, la];
+  return (light + 0.05) / (dark + 0.05);
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hexToHsl, hslToHex } from './classColors';
+import { hexToHsl, hslToHex, relativeLuminance, contrastRatio } from './classColors';
 
 describe('hexToHsl', () => {
   it('parses a known mid-tone color', () => {
@@ -35,5 +35,32 @@ describe('hslToHex', () => {
   it('clamps lightness outside [0,100]', () => {
     expect(hslToHex(0, 0, 150).toLowerCase()).toBe('#ffffff');
     expect(hslToHex(0, 0, -10).toLowerCase()).toBe('#000000');
+  });
+});
+
+describe('relativeLuminance', () => {
+  it('returns 1 for white and 0 for black', () => {
+    expect(relativeLuminance('#FFFFFF')).toBeCloseTo(1, 4);
+    expect(relativeLuminance('#000000')).toBeCloseTo(0, 4);
+  });
+
+  it('returns ~0.2126 for pure red', () => {
+    // sRGB→Y coefficient for red
+    expect(relativeLuminance('#FF0000')).toBeCloseTo(0.2126, 3);
+  });
+});
+
+describe('contrastRatio', () => {
+  it('returns 21 for white-vs-black', () => {
+    expect(contrastRatio('#FFFFFF', '#000000')).toBeCloseTo(21, 1);
+  });
+
+  it('is symmetric', () => {
+    expect(contrastRatio('#3FC7EB', '#000000'))
+      .toBeCloseTo(contrastRatio('#000000', '#3FC7EB'), 6);
+  });
+
+  it('returns 1 for identical colors', () => {
+    expect(contrastRatio('#888888', '#888888')).toBeCloseTo(1, 6);
   });
 });
