@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
 import { useGuildSubscription, useChannelSubscription } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
+import { usePreloadPortraits } from './hooks/usePreloadPortraits';
 import { statusToView, routeToView, viewToRoute } from './lib/routing';
 import type { ViewName } from './store/types';
 import { isPlayerReady } from './lib/roles';
@@ -52,6 +53,10 @@ export function App() {
   // Subscribe to guild and channel Firestore docs
   useGuildSubscription();
   useChannelSubscription();
+
+  // Warm browser cache with spotlight portraits while user is in lobby/setup,
+  // so the wheel landing and results views render instantly.
+  usePreloadPortraits(channelData?.players);
 
   // Save recent guilds when guild data arrives
   const savedGuildRef = useRef<string | null>(null);
