@@ -1,7 +1,10 @@
 // ── Configurable Timing Constants ────────────────────────────
 export const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
 export const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
-export const GRID_SPIN_DURATION = 4000;       // ms per wheel in grid mode
+// Per-wheel spin durations in grid mode, ordered tank → healer → dps1/2/3.
+// Each wheel lands ~400ms after the previous so portrait reveals are
+// individually visible instead of clumping into a single pop.
+export const GRID_SPIN_DURATIONS = [2500, 2900, 3300, 3700, 4100];
 
 // Portrait reveal timing — runs in parallel with audio.land() so the portrait
 // finishes expanding as the "pop" sound plays. Matches the land() sound's ~200ms
