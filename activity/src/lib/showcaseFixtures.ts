@@ -2,26 +2,35 @@ import type { WoWGroup, WoWPlayer } from '../types';
 
 // Reuse the five real character renders from the SpotlightPortraits stories
 // so story screenshots show actual armory images during wheel/results flows.
+// `inGameName` ties each avatar to the real Raider.io character whose render
+// it shows — that lets `useDungeonSuggestions` pull live M+ scores for
+// showcase fixtures (e.g. the Storybook ResultsView story) instead of
+// rendering an empty panel.
 const AVATARS = {
   druidTank: {
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/0/172476416-inset.jpg',
     characterClass: 'Druid',
+    inGameName: 'Gazzi-Uldum',
   },
   priestHealer: {
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/23/175701015-inset.jpg',
     characterClass: 'Priest',
+    inGameName: 'Sorovar-Uldum',
   },
   hunterRanged: {
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/234/184140522-inset.jpg',
     characterClass: 'Hunter',
+    inGameName: 'Tytaniormu-Uldum',
   },
   druidRanged: {
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/32/173283360-inset.jpg',
     characterClass: 'Druid',
+    inGameName: 'Quill-Uldum',
   },
   dhMelee: {
     mediaUrl: 'https://render.worldofwarcraft.com/us/character/uldum/228/184072932-inset.jpg',
     characterClass: 'Demon Hunter',
+    inGameName: 'Vanyali-Hyjal',
   },
 } as const;
 
@@ -29,12 +38,13 @@ function player(
   name: string,
   discordId: string,
   mainRole: WoWPlayer['mainRole'],
-  avatar: { mediaUrl: string; characterClass: string },
+  avatar: { mediaUrl: string; characterClass: string; inGameName: string },
   extras: Partial<Pick<WoWPlayer, 'offspecs' | 'utilities'>> = {},
 ): WoWPlayer {
   return {
     name,
     discordId,
+    inGameName: avatar.inGameName,
     mainRole,
     offspecs: extras.offspecs ?? [],
     utilities: extras.utilities ?? [],
