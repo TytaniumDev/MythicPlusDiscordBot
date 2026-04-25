@@ -715,6 +715,7 @@ button:focus-visible,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 
 .role-dot.tank { background: var(--color-tank); }
