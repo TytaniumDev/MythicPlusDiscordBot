@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { computeDungeonRanking } from './dungeonSuggestions';
-import { estimateTimedScore } from './keyLevel';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 
 function makeChar(
@@ -32,16 +31,15 @@ function makeChar(
 
 describe('computeDungeonRanking', () => {
   const KEY_LEVEL = 12;
-  const projected = estimateTimedScore(KEY_LEVEL); // 225
 
   it('returns empty when no characters have data', () => {
     expect(computeDungeonRanking([], KEY_LEVEL)).toEqual([]);
     expect(computeDungeonRanking([null, null], KEY_LEVEL)).toEqual([]);
   });
 
-  it('ranks by descending projected gain at the chosen key level', () => {
-    // Both chars are below the +12 projection on dungeon 1 (gain each side).
-    // Both are above the projection on dungeon 2 (zero gain).
+  it('ranks by descending key-level gain at the chosen key level', () => {
+    // Both chars are below +12 on dungeon 1 (gains 4 and 3 → total 7).
+    // Both are above +12 on dungeon 2 (gain 0).
     const a = makeChar('A', [
       { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 8, score: 120 },
       { id: 2, name: 'Dawnbreaker', shortName: 'DAWN', level: 14, score: 260 },
@@ -52,43 +50,44 @@ describe('computeDungeonRanking', () => {
     ]);
     const ranked = computeDungeonRanking([a, b], KEY_LEVEL);
     expect(ranked.map(d => d.shortName)).toEqual(['FLOOD', 'DAWN']);
-    expect(ranked[0].projectedGain).toBe((projected - 120) + (projected - 140));
+    expect(ranked[0].projectedGain).toBe((KEY_LEVEL - 8) + (KEY_LEVEL - 9));
     expect(ranked[1].projectedGain).toBe(0);
   });
 
-  it('counts players with no run as a full-projected-score gain', () => {
+  it('counts players with no run as a full-keyLevel gain', () => {
     const a = makeChar('A', [
-      { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 12, score: 200 },
+      { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 9, score: 150 },
     ]);
-    // B has no run for dungeon 1 → currentBest = 0 → gain = full projection.
+    // B has no run for dungeon 1 → currentLevel = 0 → gain = full keyLevel.
     const b = makeChar('B', []);
     const ranked = computeDungeonRanking([a, b], KEY_LEVEL);
-    expect(ranked[0].projectedGain).toBe((projected - 200) + projected);
+    expect(ranked[0].projectedGain).toBe((KEY_LEVEL - 9) + KEY_LEVEL);
     expect(ranked[0].playersBelowProjection).toBe(2);
   });
 
   it('changes ranking when key level changes', () => {
-    // Dungeon 1: scores 220 (above +12 projection of 225? no, slightly below).
-    // Dungeon 2: scores 100 (way below).
+    // Dungeon 1: best level 12. Dungeon 2: best level 4.
     const c = makeChar('C', [
       { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 12, score: 220 },
       { id: 2, name: 'Dawnbreaker', shortName: 'DAWN', level: 4, score: 100 },
     ]);
     const at5 = computeDungeonRanking([c], 5);
-    // At +5 (estimated 120), DAWN (gap 20) outranks FLOOD (gap 0).
+    // At +5: DAWN (gap 1) outranks FLOOD (gap 0).
     expect(at5[0].shortName).toBe('DAWN');
+    expect(at5.find(d => d.shortName === 'FLOOD')?.projectedGain).toBe(0);
 
     const at15 = computeDungeonRanking([c], 15);
-    // At +15 (estimated 270), DAWN (gap 170) still wins, but FLOOD has nonzero gain.
+    // At +15: DAWN (gap 11) still wins, FLOOD now has gain 3.
     expect(at15[0].shortName).toBe('DAWN');
-    expect(at15.find(d => d.shortName === 'FLOOD')?.projectedGain).toBe(50);
+    expect(at15.find(d => d.shortName === 'FLOOD')?.projectedGain).toBe(3);
+    expect(at15.find(d => d.shortName === 'DAWN')?.projectedGain).toBe(11);
   });
 
   it('zero gain when nobody has data and projection is zero', () => {
     const a = makeChar('A', [
       { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 0, score: 0 },
     ]);
-    // KeyLevel 0 → estimateTimedScore(0) = 0 → gain = 0.
+    // KeyLevel 0 → gain = max(0, 0 - 0) = 0.
     const ranked = computeDungeonRanking([a], 0);
     expect(ranked[0].projectedGain).toBe(0);
   });
@@ -118,9 +117,9 @@ describe('computeDungeonRanking', () => {
   });
 
   it('ignores nulls in the input array', () => {
-    const a = makeChar('A', [{ id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 12, score: 200 }]);
+    const a = makeChar('A', [{ id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 9, score: 150 }]);
     const ranked = computeDungeonRanking([null, a, null], KEY_LEVEL);
     expect(ranked.length).toBe(1);
-    expect(ranked[0].projectedGain).toBe(projected - 200);
+    expect(ranked[0].projectedGain).toBe(KEY_LEVEL - 9);
   });
 });

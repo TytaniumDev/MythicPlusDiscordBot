@@ -1,26 +1,10 @@
 /**
  * Mythic+ key level configuration shared across the app.
- *
- * `estimateTimedScore` is a deliberately simple linear approximation of the
- * Raider.io timed-run score (~`45 + 15 × level`). The exact formula varies
- * subtly by season and bakes in time-remaining + affix-week multipliers; for
- * the dungeon-suggestion ranking we only care about *relative* projected
- * gain across dungeons, so the linear estimate is good enough and avoids
- * pretending we're predicting an exact RIO number.
  */
 
 export const KEY_LEVEL_MIN = 2;
 export const KEY_LEVEL_MAX = 20;
 export const KEY_LEVEL_DEFAULT = 12;
-
-/**
- * Approximate raw Raider.io score awarded for *timing* a key at the given
- * level. Linear: `45 + 15 × level`. Returns 0 for invalid input.
- */
-export function estimateTimedScore(level: number): number {
-  if (!Number.isFinite(level) || level < KEY_LEVEL_MIN) return 0;
-  return 45 + 15 * level;
-}
 
 /** Clamp a numeric input into the supported range. Unparseable input
  *  (null, undefined, empty string, NaN, non-numeric strings) falls back to
