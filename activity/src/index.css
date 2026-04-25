@@ -1245,17 +1245,6 @@ button:focus-visible,
   filter: grayscale(0.95);
 }
 
-/* Offspec slices are visibly dimmed + desaturated so they read as
-   "secondary option" next to the vibrant main-spec slices — but still
-   colorful enough to distinguish from the fully-grayscale "chosen" state. */
-.wheel-slice--offspec .wheel-slice__fill {
-  filter: saturate(0.35) brightness(0.75);
-}
-
-.wheel-slice--offspec .wheel-slice__label {
-  opacity: 0.8;
-}
-
 /* Loser slices dim when a winner is highlighted. */
 .wheel-slice--loser .wheel-slice__fill {
   filter: brightness(0.55) saturate(0.75);
