@@ -98,3 +98,76 @@ export function contrastRatio(a: string, b: string): number {
   const [light, dark] = la >= lb ? [la, lb] : [lb, la];
   return (light + 0.05) / (dark + 0.05);
 }
+
+export interface SliceColors {
+  /** Fill color for the slice path (HSL-shifted from the class color). */
+  fill: string;
+  /** Text fill for the active slice — WCAG-chosen against `fill`. */
+  textFill: string;
+  /** Text stroke (outline) for the active slice — opposite of textFill. */
+  textStroke: string;
+  /** Text fill for the chosen state — WCAG-chosen against the grey
+   *  equivalent of `fill` (the chosen state applies grayscale(0.95)). */
+  chosenTextFill: string;
+  /** Text stroke for the chosen state — opposite of chosenTextFill. */
+  chosenTextStroke: string;
+}
+
+const NULL_CLASS_FALLBACK = '#7a7a8a';
+
+const TEXT_LIGHT = '#ffffff';
+const TEXT_DARK = '#000000';
+const STROKE_DARK = 'rgba(0, 0, 0, 0.9)';
+const STROKE_LIGHT = 'rgba(255, 255, 255, 0.85)';
+
+function lightnessOffsetForIndex(n: number): number {
+  // 0 → 0, 1 → -8, 2 → +8, 3 → -16, 4 → +16, …
+  const magnitude = ((n + 1) >> 1) * 8;
+  return n % 2 === 0 ? magnitude : -magnitude;
+}
+
+function pickTextPair(fill: string): { fill: string; stroke: string } {
+  const ratioBlack = contrastRatio(fill, TEXT_DARK);
+  const ratioWhite = contrastRatio(fill, TEXT_LIGHT);
+  if (ratioBlack >= ratioWhite) {
+    return { fill: TEXT_DARK, stroke: STROKE_LIGHT };
+  }
+  return { fill: TEXT_LIGHT, stroke: STROKE_DARK };
+}
+
+function cssGrayscaleEquivalent(hex: string): string {
+  const norm = hex.replace('#', '');
+  const r = parseInt(norm.slice(0, 2), 16);
+  const g = parseInt(norm.slice(2, 4), 16);
+  const b = parseInt(norm.slice(4, 6), 16);
+  const grey = Math.round(clamp(0.2126 * r + 0.7152 * g + 0.0722 * b, 0, 255));
+  const byteHex = grey.toString(16).padStart(2, '0');
+  return `#${byteHex}${byteHex}${byteHex}`;
+}
+
+export function getSliceColors(
+  className: CharacterClass | null | undefined,
+  variationIndex: number,
+): SliceColors {
+  const baseHex = className ? CLASS_COLORS[className] : NULL_CLASS_FALLBACK;
+  const { h, s, l } = hexToHsl(baseHex);
+  const shifted = clamp(l + lightnessOffsetForIndex(variationIndex), 18, 85);
+  const fill = hslToHex(h, s, shifted);
+
+  const active = pickTextPair(fill);
+
+  // For the chosen state, the slice has CSS `filter: grayscale(0.95)`. CSS
+  // `grayscale()` is a BT.709-weighted sum applied directly to sRGB bytes
+  // (no linearization). Modelling it as grayscale(1.0) here is a tight
+  // approximation — the 5% color residue is too small to flip the
+  // black-vs-white text choice.
+  const chosen = pickTextPair(cssGrayscaleEquivalent(fill));
+
+  return {
+    fill,
+    textFill: active.fill,
+    textStroke: active.stroke,
+    chosenTextFill: chosen.fill,
+    chosenTextStroke: chosen.stroke,
+  };
+}

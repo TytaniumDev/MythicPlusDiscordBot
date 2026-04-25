@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { hexToHsl, hslToHex, relativeLuminance, contrastRatio } from './classColors';
+import { CHARACTER_CLASSES } from '@mythicplus/shared';
+import {
+  hexToHsl,
+  hslToHex,
+  relativeLuminance,
+  contrastRatio,
+  getSliceColors,
+} from './classColors';
 
 describe('hexToHsl', () => {
   it('parses a known mid-tone color', () => {
@@ -62,5 +69,74 @@ describe('contrastRatio', () => {
 
   it('returns 1 for identical colors', () => {
     expect(contrastRatio('#888888', '#888888')).toBeCloseTo(1, 6);
+  });
+});
+
+describe('getSliceColors', () => {
+  it('is deterministic', () => {
+    const a = getSliceColors('Mage', 0);
+    const b = getSliceColors('Mage', 0);
+    expect(a).toEqual(b);
+  });
+
+  it('produces different fills for different variation indices', () => {
+    const fills = [0, 1, 2, 3, 4].map((i) => getSliceColors('Mage', i).fill);
+    const unique = new Set(fills);
+    expect(unique.size).toBe(5);
+  });
+
+  it('falls back to a neutral grey for null class', () => {
+    const { fill } = getSliceColors(null, 0);
+    expect(fill.toLowerCase()).toBe('#7a7a8a');
+  });
+
+  it('clamps lightness to [18, 85]', () => {
+    // Priest is white (L=100). With a clamp at 85, no variation may exceed L=85.
+    for (const i of [0, 1, 2, 3, 4]) {
+      const { fill } = getSliceColors('Priest', i);
+      expect(hexToHsl(fill).l).toBeLessThanOrEqual(85 + 0.5);
+    }
+    // Conversely a negative-shift on Death Knight (L≈44) shouldn't drop below 18.
+    for (const i of [0, 1, 2, 3, 4]) {
+      const { fill } = getSliceColors('Death Knight', i);
+      expect(hexToHsl(fill).l).toBeGreaterThanOrEqual(18 - 0.5);
+    }
+  });
+
+  it('every (class, variationIndex) pair has >= 4.5:1 contrast on active state', () => {
+    const failures: string[] = [];
+    for (const cls of [...CHARACTER_CLASSES, null] as const) {
+      for (const i of [0, 1, 2, 3, 4]) {
+        const { fill, textFill } = getSliceColors(cls, i);
+        const ratio = contrastRatio(fill, textFill);
+        if (ratio < 4.5) {
+          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (fill=${fill}, text=${textFill})`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it('every (class, variationIndex) pair has >= 4.5:1 contrast on chosen state', () => {
+    const failures: string[] = [];
+    for (const cls of [...CHARACTER_CLASSES, null] as const) {
+      for (const i of [0, 1, 2, 3, 4]) {
+        const { fill, chosenTextFill } = getSliceColors(cls, i);
+        // CSS `grayscale(0.95)` ≈ BT.709-weighted sum on sRGB bytes. Compute
+        // independently from the implementation so this test isn't circular.
+        const norm = fill.replace('#', '');
+        const r = parseInt(norm.slice(0, 2), 16);
+        const g = parseInt(norm.slice(2, 4), 16);
+        const b = parseInt(norm.slice(4, 6), 16);
+        const greyByte = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+        const clamped = Math.min(255, Math.max(0, greyByte));
+        const greyHex = '#' + clamped.toString(16).padStart(2, '0').repeat(3);
+        const ratio = contrastRatio(greyHex, chosenTextFill);
+        if (ratio < 4.5) {
+          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (grey=${greyHex}, text=${chosenTextFill})`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });
