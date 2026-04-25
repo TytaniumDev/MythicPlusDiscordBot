@@ -327,7 +327,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const sliceClass = [
                     'wheel-slice',
                     entry.isChosen ? 'wheel-slice--chosen' : '',
-                    entry.isOffspec ? 'wheel-slice--offspec' : '',
                     isWinner ? 'wheel-slice--winner' : '',
                     isLoser ? 'wheel-slice--loser' : '',
                   ]
