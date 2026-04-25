@@ -22,6 +22,14 @@ export interface CharacterDungeonScores {
   region: string;
   /** Best run per dungeon, keyed by challenge_mode_id. */
   byDungeon: Record<number, DungeonRunSummary>;
+  /** Overall Raider.io M+ score for the current season ("all" segment), or null. */
+  overallScore: number | null;
+  /** Raider.io rarity color for the overall score (e.g. "#f06862"), or null. */
+  scoreColor: string | null;
+  /** Character's class name from Raider.io (e.g. "Mage"), or null. */
+  className: string | null;
+  /** Active spec name (e.g. "Frost"), or null. */
+  specName: string | null;
 }
 
 interface RaiderioRun {
@@ -33,14 +41,26 @@ interface RaiderioRun {
   icon_url?: string;
 }
 
+interface RaiderioSeasonScore {
+  season: string;
+  scores?: { all?: number };
+  segments?: { all?: { score?: number; color?: string } };
+}
+
 interface RaiderioMythicPlusResponse {
   name?: string;
   realm?: string;
+  class?: string;
+  active_spec_name?: string;
   mythic_plus_best_runs?: RaiderioRun[];
   mythic_plus_alternate_runs?: RaiderioRun[];
+  mythic_plus_scores_by_season?: RaiderioSeasonScore[];
 }
 
-const RAIDERIO_FIELDS = 'mythic_plus_best_runs,mythic_plus_alternate_runs';
+// `mythic_plus_scores_by_season:current` returns the current main season's
+// totals (overall + per-role + per-spec) plus their rarity color.
+const RAIDERIO_FIELDS =
+  'mythic_plus_best_runs,mythic_plus_alternate_runs,mythic_plus_scores_by_season:current';
 
 export class RaiderioFetchError extends Error {
   constructor(message: string, readonly cause?: unknown) {
@@ -124,10 +144,20 @@ export async function fetchCharacterDungeonScores(
     }
   }
 
+  // `:current` filter returns a single-element array (the current main season)
+  // when the character has any season activity. Defensive: treat missing as null.
+  const seasonEntry = data.mythic_plus_scores_by_season?.[0];
+  const overallScore = seasonEntry?.scores?.all ?? null;
+  const scoreColor = seasonEntry?.segments?.all?.color ?? null;
+
   return {
     name: data.name ?? name,
     realm: data.realm ?? realm,
     region,
     byDungeon,
+    overallScore: typeof overallScore === 'number' ? overallScore : null,
+    scoreColor: typeof scoreColor === 'string' ? scoreColor : null,
+    className: typeof data.class === 'string' ? data.class : null,
+    specName: typeof data.active_spec_name === 'string' ? data.active_spec_name : null,
   };
 }

@@ -56,6 +56,31 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(panel.locator('.dungeon-suggestions__empty')).toContainText(/Couldn't reach Raider\.io/i);
   });
 
+  test('hovering a spotlight portrait shows that character\'s M+ scores', async ({ page }) => {
+    await mockRaiderio(page);
+    const dataWithIdentity = {
+      ...resultsData,
+      identity: { id: mockPlayers[4].discordId, name: mockPlayers[4].name },
+    };
+    await page.goto(`/?data=${encodeData(dataWithIdentity)}`);
+    await expect(page.locator('#view-results')).toBeVisible();
+    await expect(page.locator('.spotlight-portrait')).toHaveCount(5);
+
+    // Wait for character data to settle so the tooltip has scores to show.
+    await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+
+    const firstPortrait = page.locator('.spotlight-portrait').first();
+    const tooltip = firstPortrait.locator('.spotlight-portrait__tooltip');
+    // Hidden by default, but DOM-present so it's visible to assistive tech.
+    await expect(tooltip).toBeAttached();
+
+    await firstPortrait.hover();
+    await expect(tooltip).toBeVisible();
+    // Includes overall RIO + per-dungeon list seeded from the fixture.
+    await expect(tooltip).toContainText(/RIO/);
+    await expect(tooltip.locator('.spotlight-portrait__tooltip-row')).toHaveCount(8);
+  });
+
   test('renders empty-state when no players have a parseable inGameName', async ({ page }) => {
     await mockRaiderio(page);
     const stripInGameName = (p: typeof mockPlayers[number]) => ({ ...p, inGameName: undefined });

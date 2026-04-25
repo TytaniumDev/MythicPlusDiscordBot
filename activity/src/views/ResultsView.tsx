@@ -85,7 +85,8 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const handleKeyLevelChange = useCallback((next: number) => {
     setKeyLevel(clampKeyLevel(next));
   }, []);
-  const dungeonSuggestionsState = useDungeonSuggestions(suggestionsPlayers, keyLevel);
+  const { state: dungeonSuggestionsState, scoresByDiscordId } =
+    useDungeonSuggestions(suggestionsPlayers, keyLevel);
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
@@ -156,7 +157,10 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
           {yourGroupPlayers.length > 0 && (
             <div className="results-your-group">
               <h3 className="results-your-group__heading">{yourGroupHeading}</h3>
-              <SpotlightPortraits players={yourGroupPlayers} />
+              <SpotlightPortraits
+                players={yourGroupPlayers}
+                scoresByDiscordId={scoresByDiscordId}
+              />
             </div>
           )}
           <DungeonSuggestions
