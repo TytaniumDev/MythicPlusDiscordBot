@@ -138,6 +138,61 @@ export const WithChosenAndOffspec: Story = {
   },
 };
 
+/**
+ * Offspec-only wheel covering pastel + saturated class colors so the
+ * inside-border treatment can be eyeballed across the full palette.
+ */
+export const OffspecBorderShowcase: Story = {
+  name: 'Offspec — inside-border across classes',
+  args: {
+    role: 'dps3',
+    label: 'DPS',
+    labelClass: 'dps',
+    ariaLabel: 'Offspec Border Showcase Wheel',
+    initialRotation: FIXED_ROTATION,
+    initialEntries: [
+      entry('Pally', 'Paladin', null, { isOffspec: true }),
+      entry('Priest', 'Priest', null, { isOffspec: true }),
+      entry('Mage', 'Mage', null, { isOffspec: true }),
+      entry('Druid', 'Druid', null, { isOffspec: true }),
+      entry('Hunter', 'Hunter', null, { isOffspec: true }),
+      entry('Warlock', 'Warlock', null, { isOffspec: true }),
+      entry('Shaman', 'Shaman', null, { isOffspec: true }),
+      entry('Warrior', 'Warrior', null, { isOffspec: true }),
+      entry('DK', 'Death Knight', null, { isOffspec: true }),
+      entry('Monk', 'Monk', null, { isOffspec: true }),
+      entry('Rogue', 'Rogue', null, { isOffspec: true }),
+      entry('Evoker', 'Evoker', null, { isOffspec: true }),
+      entry('DH', 'Demon Hunter', null, { isOffspec: true }),
+    ],
+  },
+};
+
+/**
+ * Mixed wheel: every-other slice is offspec so you can directly compare
+ * the filled mainspec slice next to its outlined-only offspec neighbor.
+ */
+export const OffspecVsMainspecComparison: Story = {
+  name: 'Offspec — alternating with mainspec',
+  args: {
+    role: 'dps2',
+    label: 'DPS',
+    labelClass: 'dps',
+    ariaLabel: 'Offspec vs Mainspec Wheel',
+    initialRotation: FIXED_ROTATION,
+    initialEntries: [
+      entry('Main Pally', 'Paladin'),
+      entry('Off Pally', 'Paladin', null, { isOffspec: true }),
+      entry('Main Priest', 'Priest'),
+      entry('Off Priest', 'Priest', null, { isOffspec: true }),
+      entry('Main Druid', 'Druid'),
+      entry('Off Druid', 'Druid', null, { isOffspec: true }),
+      entry('Main Mage', 'Mage'),
+      entry('Off Mage', 'Mage', null, { isOffspec: true }),
+    ],
+  },
+};
+
 export const LandedWithPortrait: Story = {
   name: 'Landed — winner with portrait',
   args: {

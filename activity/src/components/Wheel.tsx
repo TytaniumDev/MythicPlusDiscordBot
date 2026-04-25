@@ -13,11 +13,12 @@ import { audio } from '../lib/audio';
 import { toAvatarUrl } from '../lib/characterMedia';
 import { remapImageUrl } from '../discordSdk';
 import { getClassColor, getSliceColors } from '../lib/classColors';
-import { PORTRAIT_EXPAND_DURATION } from '../lib/timing';
+import { PORTRAIT_EXPAND_DURATION, PORTRAIT_REVEAL_DELAY } from '../lib/timing';
 import {
   EASE_OUT_CUBIC_CSS,
   computeTickTimes,
   finalRotationFor,
+  offspecBandPath,
   sliceArcPath,
 } from '../lib/wheelGeometry';
 
@@ -219,19 +220,31 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
               }
               anim.cancel();
               animationRef.current = null;
-              rejectSpinRef.current = null;
               tickTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
               tickTimeoutsRef.current = [];
 
               setRotation(adjusted);
               setWinnerName(name);
               setIsSpinning(false);
+              // Audio fires immediately so the "pop" lands on the visible stop;
+              // the portrait reveal is delayed for a more deliberate beat.
               audio.land();
 
-              // Trigger portrait CSS transition on the next frame so the
-              // transform: scale(0) → scale(1) actually fires.
-              requestAnimationFrame(() => setIsRevealed(true));
-              window.setTimeout(() => resolve(name), PORTRAIT_EXPAND_DURATION);
+              // Track these timeouts so a subsequent cancel/init clears them
+              // and they can't fire setIsRevealed/resolve after the wheel has
+              // already been reset. rejectSpinRef stays populated until the
+              // resolveTimeout fires so a cancel during the reveal delay still
+              // rejects the promise instead of leaking it.
+              const revealTimeout = window.setTimeout(() => {
+                // Trigger portrait CSS transition on the next frame so the
+                // transform: scale(0) → scale(1) actually fires.
+                requestAnimationFrame(() => setIsRevealed(true));
+              }, PORTRAIT_REVEAL_DELAY);
+              const resolveTimeout = window.setTimeout(() => {
+                rejectSpinRef.current = null;
+                resolve(name);
+              }, PORTRAIT_REVEAL_DELAY + PORTRAIT_EXPAND_DURATION);
+              tickTimeoutsRef.current.push(revealTimeout, resolveTimeout);
             })
             .catch(() => {
               // Animation was cancelled — rejection is handled by cancelInFlight.
@@ -349,16 +362,36 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const textRotDeg = flip ? normDeg + 180 : normDeg;
                   const textAnchorX = flip ? -textX : textX;
 
+                  // Offspec slices render as a class-colored band hugging the slice
+                  // perimeter (full opacity) over a translucent fill of the same
+                  // class color (so the interior reads as a faded version of the
+                  // band). Mainspec slices render as a fully filled wedge.
+                  const slicePath = entry.isOffspec
+                    ? // arcThickness > thickness compensates for the outer ring
+                      // (~1 unit) overlapping the slice's outer edge, which would
+                      // otherwise make the arc-side band read thinner than the
+                      // radial sides. tipRadius rounds the inner apex into a fillet.
+                      offspecBandPath(0, 0, RADIUS, startAngle, endAngle, 1.75, 0.75, 3, 0.75)
+                    : sliceArcPath(0, 0, RADIUS, startAngle, endAngle);
                   return (
                     <g key={`${role}-slice-${i}`} className={sliceClass}>
+                      {entry.isOffspec && (
+                        <path
+                          className="wheel-slice__fill"
+                          d={sliceArcPath(0, 0, RADIUS, startAngle, endAngle)}
+                          style={{ fill: sliceFill, fillOpacity: 0.85, stroke: 'none' }}
+                        />
+                      )}
                       <path
                         className="wheel-slice__fill"
-                        d={sliceArcPath(0, 0, RADIUS, startAngle, endAngle)}
+                        d={slicePath}
+                        fillRule={entry.isOffspec ? 'evenodd' : undefined}
                         style={{
-                          fill: entry.isOffspec ? 'none' : sliceFill,
-                          stroke: entry.isOffspec ? sliceFill : undefined,
-                          strokeWidth: entry.isOffspec ? 1.2 : undefined,
-                          strokeLinejoin: entry.isOffspec ? 'round' : undefined,
+                          fill: sliceFill,
+                          // Disable the inherited thin slice-divider stroke on
+                          // offspec bands — it would otherwise outline the
+                          // inner "hole" path as well.
+                          stroke: entry.isOffspec ? 'none' : undefined,
                         }}
                       />
                       <text

@@ -2,13 +2,18 @@
 export const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
 export const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
 // Per-wheel spin durations in grid mode, ordered tank → healer → dps1/2/3.
-// Each wheel lands 200ms after the previous so portrait reveals are
+// Each wheel lands 300ms after the previous so portrait reveals are
 // individually visible instead of clumping into a single pop.
-export const GRID_SPIN_DURATIONS = [3000, 3200, 3400, 3600, 3800];
+export const GRID_SPIN_DURATIONS = [3000, 3300, 3600, 3900, 4200];
 
-// Portrait reveal timing — runs in parallel with audio.land() so the portrait
-// finishes expanding as the "pop" sound plays. Matches the land() sound's ~200ms
-// duration. Must match the `transition: transform ... ms` duration in .wheel-portrait CSS.
+// Beat between the wheel stopping and the portrait beginning to expand.
+// audio.land() still fires the moment the wheel stops (synced with the
+// animation), so the "pop" sound and the visible stop happen together;
+// the portrait reveal trails by this much for a more deliberate feel.
+export const PORTRAIT_REVEAL_DELAY = 250;     // ms gap between wheel stop and portrait reveal
+
+// Portrait reveal timing — must match the `transition: transform ... ms`
+// duration in .wheel-portrait CSS.
 export const PORTRAIT_EXPAND_DURATION = 200;  // ms for portrait scale-in animation
 
 // Auto-advance spotlight timing

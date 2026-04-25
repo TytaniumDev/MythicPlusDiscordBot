@@ -45,6 +45,125 @@ export function sliceArcPath(
 }
 
 /**
+ * SVG path for an "offspec band" — a class-colored band hugging the inside
+ * of a slice's perimeter, leaving an empty rounded interior. Composes the
+ * full slice (outer subpath) with an inset slice with rounded outer-arc
+ * corners (inner subpath, treated as a hole via fill-rule:evenodd).
+ */
+export function offspecBandPath(
+  cx: number,
+  cy: number,
+  R: number,
+  startAngleRad: number,
+  endAngleRad: number,
+  thickness: number,
+  cornerRadius: number,
+  // Optional override: arc-side band thickness can differ from the radial
+  // thickness to compensate for the outer ring overlapping the slice's outer
+  // edge. Defaults to `thickness`.
+  arcThickness: number = thickness,
+  // Optional fillet radius for the inner apex (where the two inset radials
+  // would otherwise meet at a sharp V). 0 = sharp tip. Clamped so the fillet
+  // can't overlap the inner-arc corners.
+  tipRadius: number = 0,
+): string {
+  // Inner-hole boundary: the two radial sides are *parallel* to the outer
+  // radials (offset perpendicular by `thickness` toward the slice mid-line)
+  // so the band stays a constant width, instead of tapering toward the hub.
+  // The two inset radials meet on the bisector at distance thickness/sin(halfAngle)
+  // from origin — that's the inner tip of the hole.
+  const innerR = Math.max(R - arcThickness, 0.1);
+  const halfAngle = (endAngleRad - startAngleRad) / 2;
+  const mid = (startAngleRad + endAngleRad) / 2;
+
+  const outer = sliceArcPath(cx, cy, R, startAngleRad, endAngleRad);
+
+  // Where each inset radial meets the inner arc (radius innerR).
+  // From the perpendicular-offset geometry: t = sqrt(innerR² - thickness²),
+  // and the meet point is at radius innerR, angle α ± arctan(thickness / t).
+  const innerSq = innerR * innerR - thickness * thickness;
+  if (innerSq <= 0) {
+    // Band thickness is too large for the slice radius — fall back to a
+    // plain inset slice with no inner geometry (band fills almost everything).
+    return outer;
+  }
+  const t = Math.sqrt(innerSq);
+  const dArc = Math.atan2(thickness, t);
+  const arcStart = startAngleRad + dArc;
+  const arcEnd = endAngleRad - dArc;
+  if (arcEnd <= arcStart) {
+    // Slice is too narrow for the requested thickness — the inset radials
+    // cross before reaching the inner arc, so a band shape is degenerate.
+    // Fall back to a fully filled slice rather than emitting an invalid arc.
+    return outer;
+  }
+
+  // Sharp-tip distance: where the two inset radials would meet on the bisector.
+  const dTip = thickness / Math.sin(halfAngle);
+
+  // Clamp corner radius so the two rounded corners don't collide along the
+  // inner arc, and stay smaller than the band thickness.
+  const maxCorner = Math.min(thickness * 0.9, innerR * Math.max(arcEnd - arcStart, 0) * 0.45);
+  const cr = Math.max(0, Math.min(cornerRadius, maxCorner));
+  const aOff = cr > 0 ? Math.asin(Math.min(cr / innerR, 1)) : 0;
+
+  // Tip-fillet geometry: a circle of radius `tipR` tangent to both inset
+  // radials, centered on the bisector at d_center = (thickness + tipR)/sin(halfAngle).
+  // The tangent points sit at radial-parameter t_Q = d_center * cos(halfAngle)
+  // along each inset radial. Clamp so the fillet doesn't push past where the
+  // inner-arc corners are about to start.
+  const maxTip = Math.max(0, t * Math.tan(halfAngle) - thickness);
+  const tipR = Math.max(0, Math.min(tipRadius, maxTip));
+  const dCenter = tipR > 0 ? (thickness + tipR) / Math.sin(halfAngle) : dTip;
+  const tQ = tipR > 0 ? dCenter * Math.cos(halfAngle) : thickness / Math.tan(halfAngle);
+
+  // Points on the inset radials. `tFromFoot` is parameter along the radial from
+  // the foot of perpendicular; cr is for the outer corner (near inner arc),
+  // tQ is the tangent point near the inner tip.
+  const insetRadial = (angle: number, tFromFoot: number): [number, number] => {
+    // Foot of the perpendicular from origin to the inset radial.
+    const sign = angle === startAngleRad ? -1 : 1;
+    const fx = cx + sign * thickness * Math.sin(angle);
+    const fy = cy - sign * thickness * Math.cos(angle);
+    return [fx + tFromFoot * Math.cos(angle), fy + tFromFoot * Math.sin(angle)];
+  };
+  const [p1x, p1y] = insetRadial(startAngleRad, t - cr);
+  const [p2x, p2y] = polar(cx, cy, innerR, arcStart + aOff);
+  const [p3x, p3y] = polar(cx, cy, innerR, arcEnd - aOff);
+  const [p4x, p4y] = insetRadial(endAngleRad, t - cr);
+  const innerSweep = (arcEnd - aOff) - (arcStart + aOff);
+  const largeInner = Math.abs(innerSweep) > Math.PI ? 1 : 0;
+
+  let startX: number;
+  let startY: number;
+  let closingSegment: string;
+  if (tipR > 0) {
+    const [qLeftX, qLeftY] = insetRadial(startAngleRad, tQ);
+    const [qRightX, qRightY] = insetRadial(endAngleRad, tQ);
+    startX = qLeftX;
+    startY = qLeftY;
+    // Tip arc curves around the fillet center (further from origin than the
+    // apex would be), bulging back toward origin. Sweep flag is opposite the
+    // inner-arc sweep so the concavity faces outward.
+    closingSegment = ` L ${qRightX} ${qRightY} A ${tipR} ${tipR} 0 0 1 ${qLeftX} ${qLeftY} Z`;
+  } else {
+    const [tipX, tipY] = polar(cx, cy, dTip, mid);
+    startX = tipX;
+    startY = tipY;
+    closingSegment = ` L ${tipX} ${tipY} Z`;
+  }
+
+  const inner =
+    `M ${startX} ${startY} L ${p1x} ${p1y}` +
+    (cr > 0 ? ` A ${cr} ${cr} 0 0 1 ${p2x} ${p2y}` : '') +
+    ` A ${innerR} ${innerR} 0 ${largeInner} 1 ${p3x} ${p3y}` +
+    (cr > 0 ? ` A ${cr} ${cr} 0 0 1 ${p4x} ${p4y}` : '') +
+    closingSegment;
+
+  return `${outer} ${inner}`;
+}
+
+/**
  * Rotation (radians) that places a point inside slice `winnerIndex` under
  * the top pointer, guaranteed to be `startRotation` plus a forward
  * (positive/clockwise) delta of at least `extraFullRotations` full turns.
