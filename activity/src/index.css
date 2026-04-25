@@ -1226,27 +1226,22 @@ button:focus-visible,
 }
 
 .wheel-slice__label {
-  fill: var(--slice-text, #fff);
+  fill: #fff;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   paint-order: stroke fill;
-  stroke: var(--slice-text-stroke, rgba(0, 0, 0, 0.9));
-  stroke-width: 0.3;
+  stroke: rgba(0, 0, 0, 0.9);
+  stroke-width: 0.6;
   filter: drop-shadow(0 0.4px 0.6px rgba(0, 0, 0, 0.75));
   transition: opacity 200ms ease-out;
   pointer-events: none;
 }
 
-/* "Chosen" slices (already placed into a group) render grayscale with
-   a dark muted label — readable against the grey fill but visually "done"
-   so active slices read as the focus. */
+/* "Chosen" slices (already placed into a group) render grayscale so they
+   read as visually "done" — the white-with-outline label stays as-is,
+   readable on the greyed fill. */
 .wheel-slice--chosen .wheel-slice__fill {
   filter: grayscale(0.95);
-}
-
-.wheel-slice--chosen .wheel-slice__label {
-  fill: var(--slice-text-chosen, rgba(0, 0, 0, 0.6));
-  stroke: var(--slice-text-stroke-chosen, none);
 }
 
 /* Offspec slices are visibly dimmed + desaturated so they read as
@@ -1257,8 +1252,6 @@ button:focus-visible,
 }
 
 .wheel-slice--offspec .wheel-slice__label {
-  fill: var(--slice-text-offspec, var(--slice-text, #fff));
-  stroke: var(--slice-text-stroke-offspec, var(--slice-text-stroke, rgba(0, 0, 0, 0.9)));
   opacity: 0.8;
 }
 

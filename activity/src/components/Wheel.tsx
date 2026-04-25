@@ -323,7 +323,7 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const midDeg = (midAngle * 180) / Math.PI;
                   const isWinner = winnerIndex === i;
                   const isLoser = highlightActive && !isWinner;
-                  const sliceColors = getSliceColors(entry.characterClass, variationIndices[i]);
+                  const sliceFill = getSliceColors(entry.characterClass, variationIndices[i]);
                   const sliceClass = [
                     'wheel-slice',
                     entry.isChosen ? 'wheel-slice--chosen' : '',
@@ -349,21 +349,13 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                   const flip = normDeg > 90 && normDeg < 270;
                   const textRotDeg = flip ? normDeg + 180 : normDeg;
                   const textAnchorX = flip ? -textX : textX;
-                  const sliceStyle = {
-                    '--slice-text': sliceColors.textFill,
-                    '--slice-text-stroke': sliceColors.textStroke,
-                    '--slice-text-chosen': sliceColors.chosenTextFill,
-                    '--slice-text-stroke-chosen': sliceColors.chosenTextStroke,
-                    '--slice-text-offspec': sliceColors.offspecTextFill,
-                    '--slice-text-stroke-offspec': sliceColors.offspecTextStroke,
-                  } as CSSProperties;
 
                   return (
-                    <g key={`${role}-slice-${i}`} className={sliceClass} style={sliceStyle}>
+                    <g key={`${role}-slice-${i}`} className={sliceClass}>
                       <path
                         className="wheel-slice__fill"
                         d={sliceArcPath(0, 0, RADIUS, startAngle, endAngle)}
-                        fill={sliceColors.fill}
+                        fill={sliceFill}
                       />
                       <text
                         className="wheel-slice__label"

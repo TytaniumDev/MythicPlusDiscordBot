@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CHARACTER_CLASSES } from '@mythicplus/shared';
-import {
-  hexToHsl,
-  hslToHex,
-  relativeLuminance,
-  contrastRatio,
-  getSliceColors,
-} from './classColors';
+import { hexToHsl, hslToHex, getSliceColors } from './classColors';
 
 describe('hexToHsl', () => {
   it('parses a known mid-tone color', () => {
@@ -45,138 +38,28 @@ describe('hslToHex', () => {
   });
 });
 
-describe('relativeLuminance', () => {
-  it('returns 1 for white and 0 for black', () => {
-    expect(relativeLuminance('#FFFFFF')).toBeCloseTo(1, 4);
-    expect(relativeLuminance('#000000')).toBeCloseTo(0, 4);
-  });
-
-  it('returns ~0.2126 for pure red', () => {
-    // sRGB→Y coefficient for red
-    expect(relativeLuminance('#FF0000')).toBeCloseTo(0.2126, 3);
-  });
-});
-
-describe('contrastRatio', () => {
-  it('returns 21 for white-vs-black', () => {
-    expect(contrastRatio('#FFFFFF', '#000000')).toBeCloseTo(21, 1);
-  });
-
-  it('is symmetric', () => {
-    expect(contrastRatio('#3FC7EB', '#000000'))
-      .toBeCloseTo(contrastRatio('#000000', '#3FC7EB'), 6);
-  });
-
-  it('returns 1 for identical colors', () => {
-    expect(contrastRatio('#888888', '#888888')).toBeCloseTo(1, 6);
-  });
-});
-
 describe('getSliceColors', () => {
   it('is deterministic', () => {
-    const a = getSliceColors('Mage', 0);
-    const b = getSliceColors('Mage', 0);
-    expect(a).toEqual(b);
+    expect(getSliceColors('Mage', 0)).toBe(getSliceColors('Mage', 0));
   });
 
   it('produces different fills for different variation indices', () => {
-    const fills = [0, 1, 2, 3, 4].map((i) => getSliceColors('Mage', i).fill);
-    const unique = new Set(fills);
-    expect(unique.size).toBe(5);
+    const fills = [0, 1, 2, 3, 4].map((i) => getSliceColors('Mage', i));
+    expect(new Set(fills).size).toBe(5);
   });
 
   it('falls back to a neutral grey for null class', () => {
-    const { fill } = getSliceColors(null, 0);
-    expect(fill.toLowerCase()).toBe('#7a7a8a');
+    expect(getSliceColors(null, 0).toLowerCase()).toBe('#7a7a8a');
   });
 
   it('clamps lightness to [18, 85]', () => {
     // Priest is white (L=100). With a clamp at 85, no variation may exceed L=85.
     for (const i of [0, 1, 2, 3, 4]) {
-      const { fill } = getSliceColors('Priest', i);
-      expect(hexToHsl(fill).l).toBeLessThanOrEqual(85 + 0.5);
+      expect(hexToHsl(getSliceColors('Priest', i)).l).toBeLessThanOrEqual(85 + 0.5);
     }
     // Conversely a negative-shift on Death Knight (L≈44) shouldn't drop below 18.
     for (const i of [0, 1, 2, 3, 4]) {
-      const { fill } = getSliceColors('Death Knight', i);
-      expect(hexToHsl(fill).l).toBeGreaterThanOrEqual(18 - 0.5);
+      expect(hexToHsl(getSliceColors('Death Knight', i)).l).toBeGreaterThanOrEqual(18 - 0.5);
     }
-  });
-
-  it('every (class, variationIndex) pair has >= 4.5:1 contrast on active state', () => {
-    const failures: string[] = [];
-    for (const cls of [...CHARACTER_CLASSES, null] as const) {
-      for (const i of [0, 1, 2, 3, 4]) {
-        const { fill, textFill } = getSliceColors(cls, i);
-        const ratio = contrastRatio(fill, textFill);
-        if (ratio < 4.5) {
-          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (fill=${fill}, text=${textFill})`);
-        }
-      }
-    }
-    expect(failures).toEqual([]);
-  });
-
-  it('every (class, variationIndex) pair has >= 4.5:1 contrast on chosen state', () => {
-    const failures: string[] = [];
-    for (const cls of [...CHARACTER_CLASSES, null] as const) {
-      for (const i of [0, 1, 2, 3, 4]) {
-        const { fill, chosenTextFill } = getSliceColors(cls, i);
-        // CSS `grayscale(0.95)` ≈ BT.709-weighted sum on sRGB bytes. Compute
-        // independently from the implementation so this test isn't circular.
-        const norm = fill.replace('#', '');
-        const r = parseInt(norm.slice(0, 2), 16);
-        const g = parseInt(norm.slice(2, 4), 16);
-        const b = parseInt(norm.slice(4, 6), 16);
-        const greyByte = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
-        const clamped = Math.min(255, Math.max(0, greyByte));
-        const greyHex = '#' + clamped.toString(16).padStart(2, '0').repeat(3);
-        const ratio = contrastRatio(greyHex, chosenTextFill);
-        if (ratio < 4.5) {
-          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (grey=${greyHex}, text=${chosenTextFill})`);
-        }
-      }
-    }
-    expect(failures).toEqual([]);
-  });
-
-  it('every (class, variationIndex) pair has >= 4.5:1 contrast on offspec state', () => {
-    // Models CSS `filter: saturate(0.35) brightness(0.75)` per the
-    // W3C filter-effects spec, applied in declaration order on sRGB bytes.
-    function applyOffspecFilter(hex: string): string {
-      const norm = hex.replace('#', '');
-      const r = parseInt(norm.slice(0, 2), 16);
-      const g = parseInt(norm.slice(2, 4), 16);
-      const b = parseInt(norm.slice(4, 6), 16);
-
-      // saturate(s) — W3C-defined matrix interpolating between grayscale (s=0)
-      // and identity (s=1), using BT.709 luminance weights.
-      const s = 0.35;
-      const r1 = r * (0.213 + 0.787 * s) + g * (0.715 - 0.715 * s) + b * (0.072 - 0.072 * s);
-      const g1 = r * (0.213 - 0.213 * s) + g * (0.715 + 0.285 * s) + b * (0.072 - 0.072 * s);
-      const b1 = r * (0.213 - 0.213 * s) + g * (0.715 - 0.715 * s) + b * (0.072 + 0.928 * s);
-
-      // brightness(k) — multiply each sRGB channel by k (clamped to [0, 255]).
-      const k = 0.75;
-      const r2 = Math.min(255, Math.max(0, Math.round(r1 * k)));
-      const g2 = Math.min(255, Math.max(0, Math.round(g1 * k)));
-      const b2 = Math.min(255, Math.max(0, Math.round(b1 * k)));
-
-      const toHex = (n: number) => n.toString(16).padStart(2, '0');
-      return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
-    }
-
-    const failures: string[] = [];
-    for (const cls of [...CHARACTER_CLASSES, null] as const) {
-      for (const i of [0, 1, 2, 3, 4]) {
-        const { fill, offspecTextFill } = getSliceColors(cls, i);
-        const filtered = applyOffspecFilter(fill);
-        const ratio = contrastRatio(filtered, offspecTextFill);
-        if (ratio < 4.5) {
-          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (filtered=${filtered}, text=${offspecTextFill})`);
-        }
-      }
-    }
-    expect(failures).toEqual([]);
   });
 });

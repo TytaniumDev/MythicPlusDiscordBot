@@ -77,53 +77,7 @@ export function hslToHex(h: number, s: number, l: number): string {
   return `#${toByte(r)}${toByte(g)}${toByte(b)}`;
 }
 
-function srgbToLinear(channel: number): number {
-  const c = channel / 255;
-  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-
-/** WCAG 2.x relative luminance for a 6-digit hex color (with or without leading '#'). */
-export function relativeLuminance(hex: string): number {
-  const norm = hex.replace('#', '');
-  const r = srgbToLinear(parseInt(norm.slice(0, 2), 16));
-  const g = srgbToLinear(parseInt(norm.slice(2, 4), 16));
-  const b = srgbToLinear(parseInt(norm.slice(4, 6), 16));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** WCAG 2.x contrast ratio between two 6-digit hex colors. Symmetric; returns 1.0 for identical inputs and 21.0 for white-vs-black. */
-export function contrastRatio(a: string, b: string): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
-  const [light, dark] = la >= lb ? [la, lb] : [lb, la];
-  return (light + 0.05) / (dark + 0.05);
-}
-
-export interface SliceColors {
-  /** Fill color for the slice path (HSL-shifted from the class color). */
-  fill: string;
-  /** Text fill for the active slice — WCAG-chosen against `fill`. */
-  textFill: string;
-  /** Text stroke (outline) for the active slice — opposite of textFill. */
-  textStroke: string;
-  /** Text fill for the chosen state — WCAG-chosen against the grey
-   *  equivalent of `fill` (the chosen state applies grayscale(0.95)). */
-  chosenTextFill: string;
-  /** Text stroke for the chosen state — opposite of chosenTextFill. */
-  chosenTextStroke: string;
-  /** Text fill for the offspec state — WCAG-chosen against the
-   *  saturate(0.35) brightness(0.75)-filtered fill. */
-  offspecTextFill: string;
-  /** Text stroke for the offspec state — opposite of offspecTextFill. */
-  offspecTextStroke: string;
-}
-
 const NULL_CLASS_FALLBACK = '#7a7a8a';
-
-const TEXT_LIGHT = '#ffffff';
-const TEXT_DARK = '#000000';
-const STROKE_DARK = 'rgba(0, 0, 0, 0.9)';
-const STROKE_LIGHT = 'rgba(255, 255, 255, 0.85)';
 
 function lightnessOffsetForIndex(n: number): number {
   // 0 → 0, 1 → -8, 2 → +8, 3 → -16, 4 → +16, …
@@ -131,85 +85,16 @@ function lightnessOffsetForIndex(n: number): number {
   return n % 2 === 0 ? magnitude : -magnitude;
 }
 
-function pickTextPair(fill: string): { fill: string; stroke: string } {
-  const ratioBlack = contrastRatio(fill, TEXT_DARK);
-  const ratioWhite = contrastRatio(fill, TEXT_LIGHT);
-  if (ratioBlack >= ratioWhite) {
-    return { fill: TEXT_DARK, stroke: STROKE_LIGHT };
-  }
-  return { fill: TEXT_LIGHT, stroke: STROKE_DARK };
-}
-
-// Models CSS `filter: saturate(0.35) brightness(0.75)` per the W3C
-// filter-effects spec, applied in declaration order on sRGB bytes. Used to
-// pre-compute text contrast against the visually-darkened offspec fill.
-function applyOffspecFilter(hex: string): string {
-  const norm = hex.replace('#', '');
-  const r = parseInt(norm.slice(0, 2), 16);
-  const g = parseInt(norm.slice(2, 4), 16);
-  const b = parseInt(norm.slice(4, 6), 16);
-
-  // saturate(s) — interpolates between grayscale (s=0) and identity (s=1)
-  // using BT.709 luminance weights.
-  const s = 0.35;
-  const r1 = r * (0.213 + 0.787 * s) + g * (0.715 - 0.715 * s) + b * (0.072 - 0.072 * s);
-  const g1 = r * (0.213 - 0.213 * s) + g * (0.715 + 0.285 * s) + b * (0.072 - 0.072 * s);
-  const b1 = r * (0.213 - 0.213 * s) + g * (0.715 - 0.715 * s) + b * (0.072 + 0.928 * s);
-
-  // brightness(k) — multiply each sRGB channel by k (clamped to [0, 255]).
-  const k = 0.75;
-  const r2 = Math.min(255, Math.max(0, Math.round(r1 * k)));
-  const g2 = Math.min(255, Math.max(0, Math.round(g1 * k)));
-  const b2 = Math.min(255, Math.max(0, Math.round(b1 * k)));
-
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
-}
-
-function cssGrayscaleEquivalent(hex: string): string {
-  const norm = hex.replace('#', '');
-  const r = parseInt(norm.slice(0, 2), 16);
-  const g = parseInt(norm.slice(2, 4), 16);
-  const b = parseInt(norm.slice(4, 6), 16);
-  const grey = Math.round(clamp(0.2126 * r + 0.7152 * g + 0.0722 * b, 0, 255));
-  const byteHex = grey.toString(16).padStart(2, '0');
-  return `#${byteHex}${byteHex}${byteHex}`;
-}
-
+/** HSL-shifted class color for a wheel slice. Multiple players of the same class
+ *  get distinct shades by passing a different `variationIndex`. Labels are always
+ *  rendered as white-with-black-outline (handled in CSS), so this returns just
+ *  the fill — no separate text-color computation. */
 export function getSliceColors(
   className: CharacterClass | null | undefined,
   variationIndex: number,
-): SliceColors {
+): string {
   const baseHex = className ? CLASS_COLORS[className] : NULL_CLASS_FALLBACK;
   const { h, s, l } = hexToHsl(baseHex);
   const shifted = clamp(l + lightnessOffsetForIndex(variationIndex), 18, 85);
-  const fill = hslToHex(h, s, shifted);
-
-  const active = pickTextPair(fill);
-
-  // For the chosen state, the slice has CSS `filter: grayscale(0.95)`. CSS
-  // `grayscale()` is a BT.709-weighted sum applied directly to sRGB bytes
-  // (no linearization). Modelling it as grayscale(1.0) here is a tight
-  // approximation — the 5% color residue is too small to flip the
-  // black-vs-white text choice. Note: this gives chosen slices a visible
-  // text stroke where the original CSS used `stroke: none`. That tradeoff
-  // is deliberate: a stroke-less label was unreadable on darker greyscale
-  // fills (Death Knight, Demon Hunter, Warlock), so we trade some of the
-  // "muted/done" visual for guaranteed >=4.5:1 contrast.
-  const chosen = pickTextPair(cssGrayscaleEquivalent(fill));
-
-  // For the offspec state, the slice has CSS `filter: saturate(0.35)
-  // brightness(0.75)`. Pick text against the filtered fill so contrast
-  // holds even after the filter darkens mid-tone class colors.
-  const offspec = pickTextPair(applyOffspecFilter(fill));
-
-  return {
-    fill,
-    textFill: active.fill,
-    textStroke: active.stroke,
-    chosenTextFill: chosen.fill,
-    chosenTextStroke: chosen.stroke,
-    offspecTextFill: offspec.fill,
-    offspecTextStroke: offspec.stroke,
-  };
+  return hslToHex(h, s, shifted);
 }
