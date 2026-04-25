@@ -34,8 +34,10 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(panel.locator('.dungeon-suggestions__footnote')).toBeVisible();
 
     const rows = panel.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)');
-    // FLOOD should rank #1 — it's the lowest-scoring dungeon in the fixture.
-    await expect(rows.first().locator('.dungeon-suggestion-row__name')).toHaveText('FLOOD');
+    // Operation: Floodgate should rank #1 — it's the lowest-scoring dungeon
+    // in the fixture. We display the full name; the row text matches that.
+    await expect(rows.first().locator('.dungeon-suggestion-row__name'))
+      .toHaveText('Operation: Floodgate');
     // Default limit is 5 dungeons.
     await expect(rows).toHaveCount(5);
 

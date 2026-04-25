@@ -4,7 +4,7 @@ import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 
 function makeChar(
   name: string,
-  runs: Array<{ id: number; name: string; shortName: string; level: number; score: number }>,
+  runs: Array<{ id: number; name: string; shortName: string; level: number; score: number; iconUrl?: string | null }>,
 ): CharacterDungeonScores {
   const byDungeon: CharacterDungeonScores['byDungeon'] = {};
   for (const r of runs) {
@@ -14,6 +14,7 @@ function makeChar(
       shortName: r.shortName,
       level: r.level,
       score: r.score,
+      iconUrl: r.iconUrl ?? null,
     };
   }
   return { name, realm: 'r', region: 'us', byDungeon };
@@ -68,6 +69,17 @@ describe('computeDungeonRanking', () => {
     const a = makeChar('A', [{ id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 0, score: 0 }]);
     const ranked = computeDungeonRanking([a]);
     expect(ranked[0].avgLevel).toBeNull();
+  });
+
+  it('propagates iconUrl from the first character that has it', () => {
+    const a = makeChar('A', [
+      { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 12, score: 200, iconUrl: null },
+    ]);
+    const b = makeChar('B', [
+      { id: 1, name: 'Floodgate', shortName: 'FLOOD', level: 11, score: 180, iconUrl: 'https://cdn.example/floodgate.jpg' },
+    ]);
+    const ranked = computeDungeonRanking([a, b]);
+    expect(ranked[0].iconUrl).toBe('https://cdn.example/floodgate.jpg');
   });
 
   it('ignores nulls in the input array', () => {

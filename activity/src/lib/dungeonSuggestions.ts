@@ -15,6 +15,8 @@ export interface DungeonSuggestion {
   challengeModeId: number;
   name: string;
   shortName: string;
+  /** Dungeon icon URL (from any character's run for this dungeon), or null. */
+  iconUrl: string | null;
   /** Sum of each player's best score for this dungeon (0 when a player has no run). */
   totalScore: number;
   /** Players who have at least one timed/recorded run for this dungeon. */
@@ -39,16 +41,22 @@ export function computeDungeonRanking(
   const valid = characters.filter((c): c is CharacterDungeonScores => c !== null);
   if (valid.length === 0) return [];
 
-  const dungeonMeta: Record<number, { name: string; shortName: string }> = {};
+  const dungeonMeta: Record<number, { name: string; shortName: string; iconUrl: string | null }> = {};
   for (const char of valid) {
     for (const run of Object.values(char.byDungeon)) {
-      // Prefer the first non-empty name we see — character profiles all share
-      // the same dungeon list within a season, so values stay consistent.
-      if (!dungeonMeta[run.challengeModeId] && run.name) {
+      const existing = dungeonMeta[run.challengeModeId];
+      // Seed from the first non-empty name we see; backfill the icon if a
+      // later character has it and the seed didn't (Raider.io's run records
+      // include the icon, but defensively handling missing values keeps us
+      // forward-compatible if the API trims fields).
+      if (!existing && run.name) {
         dungeonMeta[run.challengeModeId] = {
           name: run.name,
           shortName: run.shortName,
+          iconUrl: run.iconUrl,
         };
+      } else if (existing && !existing.iconUrl && run.iconUrl) {
+        existing.iconUrl = run.iconUrl;
       }
     }
   }
@@ -78,6 +86,7 @@ export function computeDungeonRanking(
       challengeModeId: id,
       name: meta.name,
       shortName: meta.shortName,
+      iconUrl: meta.iconUrl,
       totalScore: Math.round(totalScore * 10) / 10,
       playersWithRuns,
       avgLevel,
