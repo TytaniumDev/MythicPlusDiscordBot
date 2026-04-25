@@ -42,13 +42,16 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(panel).toHaveScreenshot('dungeon-suggestions-ready.png');
   });
 
-  test('renders error state when raider.io is unreachable', async ({ page }) => {
+  test('renders error message when raider.io returns 5xx for every character', async ({ page }) => {
     await mockRaiderioFailure(page);
     await page.goto(`/?data=${encodeData(resultsData)}`);
     await expect(page.locator('#view-results')).toBeVisible();
 
     const panel = page.locator('.dungeon-suggestions');
-    await expect(panel.locator('.dungeon-suggestions__empty')).toBeVisible();
+    // 'error' state shows the connectivity-specific message, distinct from
+    // the "no runs" empty state. Asserting the text guards against the bug
+    // where service failures silently render as "no runs on file".
+    await expect(panel.locator('.dungeon-suggestions__empty')).toContainText(/Couldn't reach Raider\.io/i);
   });
 
   test('renders empty-state when no players have a parseable inGameName', async ({ page }) => {

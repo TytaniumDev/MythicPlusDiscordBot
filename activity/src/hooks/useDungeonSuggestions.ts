@@ -91,41 +91,48 @@ export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSug
     setState((s) => ({ ...s, status: 'loading', lookupTargetCount: targets.length }));
 
     let cancelled = false;
-    Promise.all(
+    // allSettled so a single failed lookup doesn't blank out partial data —
+    // we still want a ranking when 4 of 5 chars resolve. The fetcher reserves
+    // throws for service-level failures (network/5xx) and uses `null` for
+    // per-character "not found", so we can distinguish "everyone failed"
+    // (service down) from "no runs on file" (genuinely empty).
+    Promise.allSettled(
       targets.map(t =>
         fetchCharacterDungeonScores(t.name, t.realm, t.region, controller.signal),
       ),
-    )
-      .then((results) => {
-        if (cancelled || controller.signal.aborted) return;
-        const valid = results.filter((r): r is CharacterDungeonScores => r !== null);
-        const ranking = computeDungeonRanking(valid);
-        // Surface 'error' when every fetch failed (the underlying service
-        // swallows individual failures and returns null) so the UI can be
-        // honest about why we have no data, instead of showing "no runs".
-        const status: DungeonSuggestionsState['status'] =
-          ranking.length > 0
-            ? 'ready'
-            : valid.length === 0 && targets.length > 0
-              ? 'error'
-              : 'empty';
-        setState({
-          status,
-          ranking,
-          characterCount: valid.length,
-          lookupTargetCount: targets.length,
-        });
-      })
-      .catch((err) => {
-        if (cancelled || controller.signal.aborted) return;
-        console.warn('[Wheelson] Dungeon suggestions fetch failed:', err);
-        setState({
-          status: 'error',
-          ranking: [],
-          characterCount: 0,
-          lookupTargetCount: targets.length,
-        });
+    ).then((results) => {
+      if (cancelled || controller.signal.aborted) return;
+
+      const valid: CharacterDungeonScores[] = [];
+      let serviceErrors = 0;
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          if (r.value !== null) valid.push(r.value);
+        } else {
+          // AbortError gets ignored above by the cancelled/signal check; any
+          // other rejection means the service couldn't be reached.
+          serviceErrors += 1;
+          console.warn('[Wheelson] Dungeon suggestions fetch failed:', r.reason);
+        }
+      }
+
+      const ranking = computeDungeonRanking(valid);
+      // 'error' beats 'empty' when every lookup hit a service failure — the
+      // user gets "Couldn't reach Raider.io." instead of a misleading
+      // "no runs on file" message.
+      const status: DungeonSuggestionsState['status'] =
+        ranking.length > 0
+          ? 'ready'
+          : serviceErrors > 0 && valid.length === 0
+            ? 'error'
+            : 'empty';
+      setState({
+        status,
+        ranking,
+        characterCount: valid.length,
+        lookupTargetCount: targets.length,
       });
+    });
 
     return () => {
       cancelled = true;
