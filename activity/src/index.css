@@ -1257,6 +1257,8 @@ button:focus-visible,
 }
 
 .wheel-slice--offspec .wheel-slice__label {
+  fill: var(--slice-text-offspec, var(--slice-text, #fff));
+  stroke: var(--slice-text-stroke-offspec, var(--slice-text-stroke, rgba(0, 0, 0, 0.9)));
   opacity: 0.8;
 }
 

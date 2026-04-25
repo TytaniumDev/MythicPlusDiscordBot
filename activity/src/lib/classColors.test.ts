@@ -139,4 +139,44 @@ describe('getSliceColors', () => {
     }
     expect(failures).toEqual([]);
   });
+
+  it('every (class, variationIndex) pair has >= 4.5:1 contrast on offspec state', () => {
+    // Models CSS `filter: saturate(0.35) brightness(0.75)` per the
+    // W3C filter-effects spec, applied in declaration order on sRGB bytes.
+    function applyOffspecFilter(hex: string): string {
+      const norm = hex.replace('#', '');
+      const r = parseInt(norm.slice(0, 2), 16);
+      const g = parseInt(norm.slice(2, 4), 16);
+      const b = parseInt(norm.slice(4, 6), 16);
+
+      // saturate(s) — W3C-defined matrix interpolating between grayscale (s=0)
+      // and identity (s=1), using BT.709 luminance weights.
+      const s = 0.35;
+      const r1 = r * (0.213 + 0.787 * s) + g * (0.715 - 0.715 * s) + b * (0.072 - 0.072 * s);
+      const g1 = r * (0.213 - 0.213 * s) + g * (0.715 + 0.285 * s) + b * (0.072 - 0.072 * s);
+      const b1 = r * (0.213 - 0.213 * s) + g * (0.715 - 0.715 * s) + b * (0.072 + 0.928 * s);
+
+      // brightness(k) — multiply each sRGB channel by k (clamped to [0, 255]).
+      const k = 0.75;
+      const r2 = Math.min(255, Math.max(0, Math.round(r1 * k)));
+      const g2 = Math.min(255, Math.max(0, Math.round(g1 * k)));
+      const b2 = Math.min(255, Math.max(0, Math.round(b1 * k)));
+
+      const toHex = (n: number) => n.toString(16).padStart(2, '0');
+      return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
+    }
+
+    const failures: string[] = [];
+    for (const cls of [...CHARACTER_CLASSES, null] as const) {
+      for (const i of [0, 1, 2, 3, 4]) {
+        const { fill, offspecTextFill } = getSliceColors(cls, i);
+        const filtered = applyOffspecFilter(fill);
+        const ratio = contrastRatio(filtered, offspecTextFill);
+        if (ratio < 4.5) {
+          failures.push(`${cls ?? 'null'} idx=${i}: ${ratio.toFixed(2)}:1 (filtered=${filtered}, text=${offspecTextFill})`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
 });

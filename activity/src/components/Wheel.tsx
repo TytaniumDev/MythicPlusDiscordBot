@@ -354,6 +354,8 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
                     '--slice-text-stroke': sliceColors.textStroke,
                     '--slice-text-chosen': sliceColors.chosenTextFill,
                     '--slice-text-stroke-chosen': sliceColors.chosenTextStroke,
+                    '--slice-text-offspec': sliceColors.offspecTextFill,
+                    '--slice-text-stroke-offspec': sliceColors.offspecTextStroke,
                   } as CSSProperties;
 
                   return (

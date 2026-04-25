@@ -79,7 +79,7 @@ export function hslToHex(h: number, s: number, l: number): string {
 
 function srgbToLinear(channel: number): number {
   const c = channel / 255;
-  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
 /** WCAG 2.x relative luminance for a 6-digit hex color (with or without leading '#'). */
@@ -111,6 +111,11 @@ export interface SliceColors {
   chosenTextFill: string;
   /** Text stroke for the chosen state — opposite of chosenTextFill. */
   chosenTextStroke: string;
+  /** Text fill for the offspec state — WCAG-chosen against the
+   *  saturate(0.35) brightness(0.75)-filtered fill. */
+  offspecTextFill: string;
+  /** Text stroke for the offspec state — opposite of offspecTextFill. */
+  offspecTextStroke: string;
 }
 
 const NULL_CLASS_FALLBACK = '#7a7a8a';
@@ -133,6 +138,32 @@ function pickTextPair(fill: string): { fill: string; stroke: string } {
     return { fill: TEXT_DARK, stroke: STROKE_LIGHT };
   }
   return { fill: TEXT_LIGHT, stroke: STROKE_DARK };
+}
+
+// Models CSS `filter: saturate(0.35) brightness(0.75)` per the W3C
+// filter-effects spec, applied in declaration order on sRGB bytes. Used to
+// pre-compute text contrast against the visually-darkened offspec fill.
+function applyOffspecFilter(hex: string): string {
+  const norm = hex.replace('#', '');
+  const r = parseInt(norm.slice(0, 2), 16);
+  const g = parseInt(norm.slice(2, 4), 16);
+  const b = parseInt(norm.slice(4, 6), 16);
+
+  // saturate(s) — interpolates between grayscale (s=0) and identity (s=1)
+  // using BT.709 luminance weights.
+  const s = 0.35;
+  const r1 = r * (0.213 + 0.787 * s) + g * (0.715 - 0.715 * s) + b * (0.072 - 0.072 * s);
+  const g1 = r * (0.213 - 0.213 * s) + g * (0.715 + 0.285 * s) + b * (0.072 - 0.072 * s);
+  const b1 = r * (0.213 - 0.213 * s) + g * (0.715 - 0.715 * s) + b * (0.072 + 0.928 * s);
+
+  // brightness(k) — multiply each sRGB channel by k (clamped to [0, 255]).
+  const k = 0.75;
+  const r2 = Math.min(255, Math.max(0, Math.round(r1 * k)));
+  const g2 = Math.min(255, Math.max(0, Math.round(g1 * k)));
+  const b2 = Math.min(255, Math.max(0, Math.round(b1 * k)));
+
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
 }
 
 function cssGrayscaleEquivalent(hex: string): string {
@@ -167,11 +198,18 @@ export function getSliceColors(
   // "muted/done" visual for guaranteed >=4.5:1 contrast.
   const chosen = pickTextPair(cssGrayscaleEquivalent(fill));
 
+  // For the offspec state, the slice has CSS `filter: saturate(0.35)
+  // brightness(0.75)`. Pick text against the filtered fill so contrast
+  // holds even after the filter darkens mid-tone class colors.
+  const offspec = pickTextPair(applyOffspecFilter(fill));
+
   return {
     fill,
     textFill: active.fill,
     textStroke: active.stroke,
     chosenTextFill: chosen.fill,
     chosenTextStroke: chosen.stroke,
+    offspecTextFill: offspec.fill,
+    offspecTextStroke: offspec.stroke,
   };
 }
