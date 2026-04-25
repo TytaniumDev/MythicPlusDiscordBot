@@ -98,8 +98,17 @@ export function useDungeonSuggestions(players: readonly WoWPlayer[]): DungeonSug
         if (cancelled || controller.signal.aborted) return;
         const valid = results.filter((r): r is CharacterDungeonScores => r !== null);
         const ranking = computeDungeonRanking(valid);
+        // Surface 'error' when every fetch failed (the underlying service
+        // swallows individual failures and returns null) so the UI can be
+        // honest about why we have no data, instead of showing "no runs".
+        const status: DungeonSuggestionsState['status'] =
+          ranking.length > 0
+            ? 'ready'
+            : valid.length === 0 && targets.length > 0
+              ? 'error'
+              : 'empty';
         setState({
-          status: ranking.length > 0 ? 'ready' : 'empty',
+          status,
           ranking,
           characterCount: valid.length,
           lookupTargetCount: targets.length,
