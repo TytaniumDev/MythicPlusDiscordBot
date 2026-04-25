@@ -91,6 +91,12 @@ export function offspecBandPath(
   const dArc = Math.atan2(thickness, t);
   const arcStart = startAngleRad + dArc;
   const arcEnd = endAngleRad - dArc;
+  if (arcEnd <= arcStart) {
+    // Slice is too narrow for the requested thickness — the inset radials
+    // cross before reaching the inner arc, so a band shape is degenerate.
+    // Fall back to a fully filled slice rather than emitting an invalid arc.
+    return outer;
+  }
 
   // Sharp-tip distance: where the two inset radials would meet on the bisector.
   const dTip = thickness / Math.sin(halfAngle);

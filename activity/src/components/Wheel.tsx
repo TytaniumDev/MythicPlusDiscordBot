@@ -220,7 +220,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
               }
               anim.cancel();
               animationRef.current = null;
-              rejectSpinRef.current = null;
               tickTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
               tickTimeoutsRef.current = [];
 
@@ -231,15 +230,21 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
               // the portrait reveal is delayed for a more deliberate beat.
               audio.land();
 
-              window.setTimeout(() => {
+              // Track these timeouts so a subsequent cancel/init clears them
+              // and they can't fire setIsRevealed/resolve after the wheel has
+              // already been reset. rejectSpinRef stays populated until the
+              // resolveTimeout fires so a cancel during the reveal delay still
+              // rejects the promise instead of leaking it.
+              const revealTimeout = window.setTimeout(() => {
                 // Trigger portrait CSS transition on the next frame so the
                 // transform: scale(0) → scale(1) actually fires.
                 requestAnimationFrame(() => setIsRevealed(true));
               }, PORTRAIT_REVEAL_DELAY);
-              window.setTimeout(
-                () => resolve(name),
-                PORTRAIT_REVEAL_DELAY + PORTRAIT_EXPAND_DURATION,
-              );
+              const resolveTimeout = window.setTimeout(() => {
+                rejectSpinRef.current = null;
+                resolve(name);
+              }, PORTRAIT_REVEAL_DELAY + PORTRAIT_EXPAND_DURATION);
+              tickTimeoutsRef.current.push(revealTimeout, resolveTimeout);
             })
             .catch(() => {
               // Animation was cancelled — rejection is handled by cancelInFlight.
