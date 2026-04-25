@@ -15,6 +15,12 @@ const FIXTURE_RUNS = [
   { id: 392, short: 'GMBT', name: "Tazavesh: So'leah's Gambit", level: 13, score: 196 },
 ];
 
+// 1×1 grey PNG inlined as a data URL — keeps dungeon icons in test snapshots
+// rendered as identical placeholder squares without depending on cdn.raiderio.net
+// being reachable from the Docker test container.
+const PLACEHOLDER_ICON =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkqAcAAIUAgUW0RjgAAAAASUVORK5CYII=';
+
 function buildPayload(name: string) {
   return {
     name,
@@ -25,6 +31,7 @@ function buildPayload(name: string) {
       mythic_level: f.level,
       score: f.score,
       map_challenge_mode_id: f.id,
+      icon_url: PLACEHOLDER_ICON,
       affixes: [],
     })),
     mythic_plus_alternate_runs: [],

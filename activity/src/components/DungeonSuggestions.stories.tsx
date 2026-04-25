@@ -2,15 +2,26 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DungeonSuggestions } from './DungeonSuggestions';
 import type { DungeonSuggestion } from '../lib/dungeonSuggestions';
 
+const ICONS = {
+  flood: 'https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_waterworks.jpg',
+  eda: 'https://cdn.raiderio.net/images/wow/icons/large/inv_112_achievement_dungeon_ecodome.jpg',
+  arak: 'https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_arak-ara.jpg',
+  dawn: 'https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_dawnbreaker.jpg',
+  psf: 'https://cdn.raiderio.net/images/wow/icons/large/inv_achievement_dungeon_prioryofthesacredflame.jpg',
+  hoa: 'https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_hallsofattonement.jpg',
+  strt: 'https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_brokerdungeon.jpg',
+  gmbt: 'https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_theotherside_dealergexa.jpg',
+} as const;
+
 const sampleRanking: DungeonSuggestion[] = [
-  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', totalScore: 412, playersWithRuns: 3, avgLevel: 9.3 },
-  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', totalScore: 558, playersWithRuns: 4, avgLevel: 10.5 },
-  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', totalScore: 691, playersWithRuns: 5, avgLevel: 11.2 },
-  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', totalScore: 740, playersWithRuns: 5, avgLevel: 11.6 },
-  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', totalScore: 802, playersWithRuns: 5, avgLevel: 12.0 },
-  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', totalScore: 855, playersWithRuns: 5, avgLevel: 12.4 },
-  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', totalScore: 902, playersWithRuns: 5, avgLevel: 12.8 },
-  { challengeModeId: 392, name: "Tazavesh: So'leah's Gambit", shortName: 'GMBT', totalScore: 951, playersWithRuns: 5, avgLevel: 13.0 },
+  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', iconUrl: ICONS.flood, totalScore: 412, playersWithRuns: 3, avgLevel: 9.3 },
+  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', iconUrl: ICONS.eda, totalScore: 558, playersWithRuns: 4, avgLevel: 10.5 },
+  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', iconUrl: ICONS.arak, totalScore: 691, playersWithRuns: 5, avgLevel: 11.2 },
+  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', iconUrl: ICONS.dawn, totalScore: 740, playersWithRuns: 5, avgLevel: 11.6 },
+  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', iconUrl: ICONS.psf, totalScore: 802, playersWithRuns: 5, avgLevel: 12.0 },
+  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', iconUrl: ICONS.hoa, totalScore: 855, playersWithRuns: 5, avgLevel: 12.4 },
+  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', iconUrl: ICONS.strt, totalScore: 902, playersWithRuns: 5, avgLevel: 12.8 },
+  { challengeModeId: 392, name: "Tazavesh: So'leah's Gambit", shortName: 'GMBT', iconUrl: ICONS.gmbt, totalScore: 951, playersWithRuns: 5, avgLevel: 13.0 },
 ];
 
 const meta = {

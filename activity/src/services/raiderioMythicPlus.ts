@@ -12,6 +12,8 @@ export interface DungeonRunSummary {
   level: number;
   /** Raider.io score for the best run, or 0. */
   score: number;
+  /** Dungeon icon URL from Raider.io's CDN, or null when missing. */
+  iconUrl: string | null;
 }
 
 export interface CharacterDungeonScores {
@@ -28,6 +30,7 @@ interface RaiderioRun {
   mythic_level: number;
   score: number;
   map_challenge_mode_id: number;
+  icon_url?: string;
 }
 
 interface RaiderioMythicPlusResponse {
@@ -112,6 +115,7 @@ export async function fetchCharacterDungeonScores(
       shortName: run.short_name ?? '',
       level: run.mythic_level ?? 0,
       score: run.score ?? 0,
+      iconUrl: run.icon_url ?? null,
     };
     const existing = byDungeon[id];
     // Keep the highest scoring entry per dungeon (best vs. alternate-affix run).
