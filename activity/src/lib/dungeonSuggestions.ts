@@ -1,5 +1,4 @@
 import type { CharacterDungeonScores, DungeonRunSummary } from '../services/raiderioMythicPlus';
-import { estimateTimedScore } from './keyLevel';
 
 export type DungeonSuggestionsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -19,13 +18,13 @@ export interface DungeonSuggestion {
   /** Dungeon icon URL (from any character's run for this dungeon), or null. */
   iconUrl: string | null;
   /**
-   * Estimated total Raider.io score the group would gain if every member
-   * timed a key at the projection level. Higher is better — this is what
-   * the ranking sorts by. Players who already have a higher score for this
-   * dungeon contribute 0.
+   * Total key levels the group would gain by timing a key at the projection
+   * level — `max(0, keyLevel − playerBestLevel)` summed across all players.
+   * Higher is better; the ranking sorts by this. A player with no run for
+   * the dungeon contributes the full `keyLevel`.
    */
   projectedGain: number;
-  /** Players whose current best for this dungeon is below the projection. */
+  /** Players whose best timed level for this dungeon is below the projection. */
   playersBelowProjection: number;
   /** Players who have at least one timed/recorded run for this dungeon. */
   playersWithRuns: number;
@@ -34,12 +33,17 @@ export interface DungeonSuggestion {
 }
 
 /**
- * Aggregate per-character dungeon scores into a group-level ranking.
+ * Aggregate per-character dungeon runs into a group-level ranking.
  *
- * Strategy: for each dungeon, sum the score every player would *gain* by
- * timing a key at `keyLevel` — `max(0, estimatedScore(keyLevel) − bestSoFar)`
- * per player, summed across the group. The dungeon with the highest total
- * gain is where running this key earns the most points for everyone.
+ * Strategy: for each dungeon, sum the *key levels* every player would gain
+ * by timing a key at `keyLevel` — `max(0, keyLevel − playerBestLevel)` per
+ * player, summed across the group. The dungeon with the highest total is
+ * where the most members stand to push their best.
+ *
+ * We compare on level rather than Raider.io score because the per-dungeon
+ * `score` field bakes in cross-affix bonuses, so even modest groups hit
+ * scores well above any single-run linear estimate — which used to peg
+ * every gain at 0 and lock the ranking alphabetically.
  *
  * Dungeons are unioned across all characters' best/alternate runs, so the
  * ranking reflects whatever season(s) the players have data for.
@@ -50,8 +54,6 @@ export function computeDungeonRanking(
 ): DungeonSuggestion[] {
   const valid = characters.filter((c): c is CharacterDungeonScores => c !== null);
   if (valid.length === 0) return [];
-
-  const projectedScore = estimateTimedScore(keyLevel);
 
   const dungeonMeta: Record<number, { name: string; shortName: string; iconUrl: string | null }> = {};
   for (const char of valid) {
@@ -78,8 +80,8 @@ export function computeDungeonRanking(
 
     for (const char of valid) {
       const run: DungeonRunSummary | undefined = char.byDungeon[id];
-      const currentBest = run?.score ?? 0;
-      const gain = Math.max(0, projectedScore - currentBest);
+      const currentLevel = run?.level ?? 0;
+      const gain = Math.max(0, keyLevel - currentLevel);
       projectedGain += gain;
       if (gain > 0) playersBelowProjection += 1;
       if (run && run.level > 0) {
@@ -97,16 +99,16 @@ export function computeDungeonRanking(
       name: meta.name,
       shortName: meta.shortName,
       iconUrl: meta.iconUrl,
-      projectedGain: Math.round(projectedGain * 10) / 10,
+      projectedGain,
       playersBelowProjection,
       playersWithRuns,
       avgLevel,
     };
   });
 
-  // Highest projected gain first — that's the dungeon with the most score
-  // to gain at the chosen key level. Tiebreak by more players who'd benefit
-  // (broader upside), then by name for a stable render order.
+  // Highest projected gain first — that's the dungeon with the most key
+  // levels to gain at the chosen level. Tiebreak by more players who'd
+  // benefit (broader upside), then by name for a stable render order.
   suggestions.sort((a, b) => {
     if (a.projectedGain !== b.projectedGain) return b.projectedGain - a.projectedGain;
     if (a.playersBelowProjection !== b.playersBelowProjection) {

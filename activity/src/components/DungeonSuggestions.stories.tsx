@@ -16,15 +16,15 @@ const ICONS = {
   gmbt: 'https://cdn.raiderio.net/images/wow/icons/large/achievement_dungeon_theotherside_dealergexa.jpg',
 } as const;
 
-// Stable ranking for stories — projected gain values pre-computed for +12.
+// Stable ranking for stories — total key-level upside summed across 5 players, projected at +12.
 const sampleRanking: DungeonSuggestion[] = [
-  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', iconUrl: ICONS.flood, projectedGain: 720, playersBelowProjection: 5, playersWithRuns: 3, avgLevel: 9.3 },
-  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', iconUrl: ICONS.eda, projectedGain: 540, playersBelowProjection: 4, playersWithRuns: 4, avgLevel: 10.5 },
-  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', iconUrl: ICONS.arak, projectedGain: 410, playersBelowProjection: 4, playersWithRuns: 5, avgLevel: 11.2 },
-  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', iconUrl: ICONS.dawn, projectedGain: 290, playersBelowProjection: 3, playersWithRuns: 5, avgLevel: 11.6 },
-  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', iconUrl: ICONS.psf, projectedGain: 180, playersBelowProjection: 2, playersWithRuns: 5, avgLevel: 12.0 },
-  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', iconUrl: ICONS.hoa, projectedGain: 100, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.4 },
-  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', iconUrl: ICONS.strt, projectedGain: 60, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.8 },
+  { challengeModeId: 525, name: 'Operation: Floodgate', shortName: 'FLOOD', iconUrl: ICONS.flood, projectedGain: 14, playersBelowProjection: 5, playersWithRuns: 3, avgLevel: 9.3 },
+  { challengeModeId: 542, name: "Eco-Dome Al'dani", shortName: 'EDA', iconUrl: ICONS.eda, projectedGain: 9, playersBelowProjection: 4, playersWithRuns: 4, avgLevel: 10.5 },
+  { challengeModeId: 503, name: 'Ara-Kara, City of Echoes', shortName: 'ARAK', iconUrl: ICONS.arak, projectedGain: 6, playersBelowProjection: 4, playersWithRuns: 5, avgLevel: 11.2 },
+  { challengeModeId: 505, name: 'The Dawnbreaker', shortName: 'DAWN', iconUrl: ICONS.dawn, projectedGain: 4, playersBelowProjection: 3, playersWithRuns: 5, avgLevel: 11.6 },
+  { challengeModeId: 499, name: 'Priory of the Sacred Flame', shortName: 'PSF', iconUrl: ICONS.psf, projectedGain: 2, playersBelowProjection: 2, playersWithRuns: 5, avgLevel: 12.0 },
+  { challengeModeId: 378, name: 'Halls of Atonement', shortName: 'HOA', iconUrl: ICONS.hoa, projectedGain: 1, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.4 },
+  { challengeModeId: 391, name: 'Tazavesh: Streets of Wonder', shortName: 'STRT', iconUrl: ICONS.strt, projectedGain: 1, playersBelowProjection: 1, playersWithRuns: 5, avgLevel: 12.8 },
   { challengeModeId: 392, name: "Tazavesh: So'leah's Gambit", shortName: 'GMBT', iconUrl: ICONS.gmbt, projectedGain: 0, playersBelowProjection: 0, playersWithRuns: 5, avgLevel: 13.0 },
 ];
 

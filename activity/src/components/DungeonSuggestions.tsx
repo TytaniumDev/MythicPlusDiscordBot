@@ -31,11 +31,11 @@ const DEFAULT_LIMIT = 5;
  */
 const STRATEGY_EXPLANATION =
   "Pick a key level you're considering running. For each dungeon, we " +
-  "estimate how much Raider.io score every group member would gain by " +
-  "timing it at that level (counted as 0 if they already have a higher " +
-  "score). Dungeons rank by total projected gain — the top one earns the " +
-  "group the most points. Ties break to whichever dungeon more players " +
-  "stand to gain on.";
+  "count how many key levels every group member would gain by timing it " +
+  "at that level (counted as 0 if they've already timed a higher key). " +
+  "Dungeons rank by total levels of upside — the top one is where the " +
+  "most members stand to push their best. Ties break to whichever " +
+  "dungeon more players stand to gain on.";
 
 /**
  * Renders a ranked list of dungeons sorted by greatest projected Raider.io
@@ -128,7 +128,7 @@ function DungeonRow({ suggestion, rank }: DungeonRowProps) {
       <div className="dungeon-suggestion-row__body">
         <span className="dungeon-suggestion-row__name">{suggestion.name || suggestion.shortName}</span>
         <span className="dungeon-suggestion-row__meta">
-          +{suggestion.projectedGain.toFixed(0)} projected
+          +{suggestion.projectedGain} {suggestion.projectedGain === 1 ? 'level' : 'levels'} of upside
           {suggestion.avgLevel !== null && (
             <> · avg +{suggestion.avgLevel}</>
           )}
