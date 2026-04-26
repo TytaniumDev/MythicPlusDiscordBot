@@ -57,8 +57,8 @@ function RoleGlyph({ role }: { role: SlotRole }) {
         : 'var(--color-dps)';
   return (
     <svg
-      width="42"
-      height="42"
+      width="36"
+      height="36"
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
@@ -85,13 +85,13 @@ function RoleGlyph({ role }: { role: SlotRole }) {
       {role === 'dps' && (
         <g transform="rotate(45 12 12)">
           <path
-            d="M12 3.5 L12.85 5 L12.85 12.5 L14.7 12.5 L14.7 13.8 L12.7 13.8 L12.7 17 L11.3 17 L11.3 13.8 L9.3 13.8 L9.3 12.5 L11.15 12.5 L11.15 5 Z"
+            d="M12 3.5 L13.2 5 L13.2 12.5 L15.5 12.5 L15.5 13.9 L13 13.9 L13 17 L11 17 L11 13.9 L8.5 13.9 L8.5 12.5 L10.8 12.5 L10.8 5 Z"
             fill="#fff"
             stroke="#000"
             strokeWidth="0.6"
             strokeLinejoin="round"
           />
-          <circle cx="12" cy="17.9" r="0.95" fill="#fff" stroke="#000" strokeWidth="0.6" />
+          <circle cx="12" cy="18" r="1.3" fill="#fff" stroke="#000" strokeWidth="0.6" />
         </g>
       )}
     </svg>
