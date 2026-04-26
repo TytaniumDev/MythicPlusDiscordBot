@@ -3451,3 +3451,13 @@ button.role-section-header--collapsible {
   background: var(--border-subtle, #2a2a2a);
   opacity: 0.4;
 }
+
+.group-slide__utility-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.25rem;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}

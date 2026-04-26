@@ -1,5 +1,6 @@
 import type { WoWGroup, WoWPlayer } from '../types';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import { utilityIcons } from '../lib/roles';
 
 export interface GroupSlideProps {
   group: WoWGroup;
@@ -72,6 +73,12 @@ export function GroupSlide({ group, index, label }: GroupSlideProps) {
                 aria-label={ariaLabel}
                 title={ariaLabel}
               />
+              <span
+                className="group-slide__utility-row"
+                aria-label={slot.player ? utilityIcons(slot.player).trim() || 'No utilities' : 'No utilities'}
+              >
+                {slot.player ? utilityIcons(slot.player).trim() : ''}
+              </span>
             </div>
           );
         })}
