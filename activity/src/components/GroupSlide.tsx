@@ -46,7 +46,8 @@ const ROLE_LABEL: Record<SlotRole, string> = {
 
 // WoW-style role icons: shield (tank), plus (healer), sword (DPS). Inline SVG
 // so the bundle stays self-contained — the design-token colors give the
-// circular fill, with a gold ring matching the in-game iconography.
+// circular fill, with a gold ring outside and a black outline around the
+// glyph for contrast against the bright color.
 function RoleGlyph({ role }: { role: SlotRole }) {
   const fill =
     role === 'tank'
@@ -56,8 +57,8 @@ function RoleGlyph({ role }: { role: SlotRole }) {
         : 'var(--color-dps)';
   return (
     <svg
-      width="22"
-      height="22"
+      width="28"
+      height="28"
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
@@ -67,15 +68,27 @@ function RoleGlyph({ role }: { role: SlotRole }) {
         <path
           d="M12 5.5 L17 7.5 L17 12.5 C17 15.5 14.5 17.5 12 18.5 C9.5 17.5 7 15.5 7 12.5 L7 7.5 Z"
           fill="#fff"
+          stroke="#000"
+          strokeWidth="0.9"
+          strokeLinejoin="round"
         />
       )}
       {role === 'healer' && (
-        <path d="M10.5 6 H13.5 V10.5 H18 V13.5 H13.5 V18 H10.5 V13.5 H6 V10.5 H10.5 Z" fill="#fff" />
+        <path
+          d="M10.5 6 H13.5 V10.5 H18 V13.5 H13.5 V18 H10.5 V13.5 H6 V10.5 H10.5 Z"
+          fill="#fff"
+          stroke="#000"
+          strokeWidth="0.9"
+          strokeLinejoin="round"
+        />
       )}
       {role === 'dps' && (
         <path
           d="M11 5.5 L13 5.5 L13 13.5 L15.5 13.5 L15.5 14.5 L13 14.5 L13 15.5 L14.5 15.5 L14.5 16.5 L13 16.5 L13 18 L11 18 L11 16.5 L9.5 16.5 L9.5 15.5 L11 15.5 L11 14.5 L8.5 14.5 L8.5 13.5 L11 13.5 Z"
           fill="#fff"
+          stroke="#000"
+          strokeWidth="0.9"
+          strokeLinejoin="round"
         />
       )}
     </svg>
