@@ -146,7 +146,6 @@ export function GroupCarousel({
       {!single && (
         <div
           className="group-carousel__pager"
-          role="tablist"
           aria-label="Groups"
           data-testid="group-carousel-pager"
           onKeyDown={(e) => {
@@ -165,10 +164,8 @@ export function GroupCarousel({
               <button
                 key={item.index}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
                 aria-label={`Go to group ${i + 1}`}
-                tabIndex={isActive ? 0 : -1}
+                aria-current={isActive ? 'true' : undefined}
                 className={`group-carousel__pager-dot${isActive ? ' is-active' : ''}`}
                 onClick={() => onActiveIndexChange(i)}
               />
