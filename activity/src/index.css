@@ -114,21 +114,11 @@ body {
 }
 
 /* Match .header-bar's specificity (0,2,0) so this override sticks
-   regardless of stylesheet order. Keeps the bar at 32px tall by zeroing
-   vertical padding and shrinking the back button + center column to fit. */
+   regardless of stylesheet order. Bar lands at 48px tall:
+   8 top + 32 content (back button) + 7 bottom + 1 border. */
 .header-bar.app-header {
-  min-height: 32px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.header-bar.app-header .icon-button {
-  width: 28px;
-  height: 28px;
-}
-
-.header-bar.app-header .header-bar__center {
-  min-height: 28px;
+  padding-top: 8px;
+  padding-bottom: 7px;
 }
 
 .app-header h1 {
