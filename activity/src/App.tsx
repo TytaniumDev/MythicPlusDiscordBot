@@ -42,6 +42,22 @@ function resolveLobbyGate(): ViewName {
   return 'lobby';
 }
 
+/**
+ * Tear-down side effects when entering home or channels. Both navigateTo and
+ * the browser popstate handler need this — keep the teardown set in one place.
+ */
+function applyNavigationTearDown(view: ViewName): void {
+  const store = useAppStore.getState();
+  if (view === 'home') {
+    store.resetSession();
+  } else if (view === 'channels') {
+    store.setChannelId(null);
+    store.setChannelData(null);
+    store.resetSpinState();
+    store.setIdentityResolved(false);
+  }
+}
+
 export function App() {
   const currentView = useAppStore((s) => s.currentView);
   const currentGuildId = useAppStore((s) => s.currentGuildId);
@@ -83,27 +99,15 @@ export function App() {
   }, [currentGuildId, guildData?.guildName, guildData?.guildIconUrl, isDemoMode, saveRecentGuild]);
 
   const navigateTo = useCallback((view: ViewName, opts?: { replace?: boolean }) => {
+    applyNavigationTearDown(view);
+    if (view === 'lobby') view = resolveLobbyGate();
+
     const store = useAppStore.getState();
-
-    // Tear down
-    if (view === 'home') {
-      store.resetSession();
-    }
-    if (view === 'channels') {
-      store.setChannelId(null);
-      store.setChannelData(null);
-      store.resetSpinState();
-      store.setIdentityResolved(false);
-    }
-    if (view === 'lobby') {
-      view = resolveLobbyGate();
-    }
-
     store.setView(view);
     store.setStatusMessage('');
 
     // URL sync
-    const guildId = view === 'home' ? null : useAppStore.getState().currentGuildId;
+    const guildId = view === 'home' ? null : store.currentGuildId;
     const route = viewToRoute(view, guildId);
     if (opts?.replace) {
       history.replaceState({ view }, '', route);
@@ -159,20 +163,14 @@ export function App() {
       }
 
       // Don't push — browser already changed URL
-      const s = useAppStore.getState();
-      if (view === 'home') s.resetSession();
-      if (view === 'channels') {
-        s.setChannelId(null);
-        s.setChannelData(null);
-        s.resetSpinState();
-        s.setIdentityResolved(false);
-      }
+      applyNavigationTearDown(view);
       if (view === 'lobby') {
         view = resolveLobbyGate();
         if (view !== 'lobby') {
           history.replaceState({ view }, '', viewToRoute(view, useAppStore.getState().currentGuildId));
         }
       }
+      const s = useAppStore.getState();
       s.setView(view);
       s.setStatusMessage('');
     };
