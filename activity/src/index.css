@@ -3431,3 +3431,23 @@ button.role-section-header--collapsible {
 .group-slide__col {
   display: contents;
 }
+
+.group-slide__role-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+}
+
+.group-slide__role-icon.is-offspec {
+  background: transparent;
+  border-style: solid;
+  border-width: 2px;
+}
+
+.group-slide__role-icon.is-empty {
+  background: var(--border-subtle, #2a2a2a);
+  opacity: 0.4;
+}
