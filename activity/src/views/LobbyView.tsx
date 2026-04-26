@@ -9,8 +9,6 @@ import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { HeaderBar } from '../components/HeaderBar';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
-import { KeyLevelSelect } from '../components/KeyLevelSelect';
-import { useDefaultKeyLevel } from '../hooks/useDefaultKeyLevel';
 import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers, formatRoleName, getRoleTags, isPlayerReady } from '../lib/roles';
 import { useIsMobileLobby } from '../hooks/useMediaQuery';
 import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
@@ -34,7 +32,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<typeof players[number] | null>(null);
   const [showSpinWarning, setShowSpinWarning] = useState(false);
-  const [defaultKeyLevel, setDefaultKeyLevel] = useDefaultKeyLevel();
 
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
 
@@ -245,21 +242,14 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           </div>
 
           {!isMobile && (
-            <div className="lobby-spin-row">
-              <DefaultKeyLevelControl
-                value={defaultKeyLevel}
-                onChange={setDefaultKeyLevel}
-              />
-              <PrimaryCTA
-                id="spin-btn"
-                icon={<SpinIcon />}
-                disabled={isCalculating}
-                onClick={handleSpinClick}
-              >
-                {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
-              </PrimaryCTA>
-              <span className="lobby-spin-row__balancer" aria-hidden="true" />
-            </div>
+            <PrimaryCTA
+              id="spin-btn"
+              icon={<SpinIcon />}
+              disabled={isCalculating}
+              onClick={handleSpinClick}
+            >
+              {isCalculating ? 'Calculating...' : 'SPIN THE WHEEL!'}
+            </PrimaryCTA>
           )}
         </section>
       </main>
@@ -267,10 +257,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       {isMobile && myPlayer && <MobilePlayerDrawer player={myPlayer} />}
       {isMobile && (
         <div className="mobile-spin-btn">
-          <DefaultKeyLevelControl
-            value={defaultKeyLevel}
-            onChange={setDefaultKeyLevel}
-          />
           <PrimaryCTA
             id="spin-btn"
             icon={<SpinIcon />}
@@ -296,22 +282,5 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         />
       )}
     </div>
-  );
-}
-
-function DefaultKeyLevelControl({
-  value,
-  onChange,
-}: { value: number; onChange: (level: number) => void }) {
-  return (
-    <label className="lobby-key-level">
-      <span className="lobby-key-level__label">Default key</span>
-      <KeyLevelSelect
-        value={value}
-        onChange={onChange}
-        ariaLabel="Default key level for dungeon suggestions"
-        compact
-      />
-    </label>
   );
 }

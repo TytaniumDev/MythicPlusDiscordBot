@@ -10,8 +10,7 @@ import { SpotlightPortraits } from '../components/SpotlightPortraits';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
 import { IconButton, SecondaryButton } from '../components/ui';
 import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
-import { useDefaultKeyLevel } from '../hooks/useDefaultKeyLevel';
-import { clampKeyLevel } from '../lib/keyLevel';
+import { clampKeyLevel, computeSuggestedKeyLevel, KEY_LEVEL_DEFAULT } from '../lib/keyLevel';
 import { isCompleteGroup } from '../store/types';
 import type { ViewName } from '../store/types';
 import type { WoWPlayer } from '../types';
@@ -78,15 +77,36 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     }
     return grouped;
   }, [yourGroupPlayers, groups]);
-  // Seed from the persistent default once on mount; per-session changes from
-  // the dropdown stay local — only the lobby writes the default back.
-  const [defaultKeyLevel] = useDefaultKeyLevel();
-  const [keyLevel, setKeyLevel] = useState<number>(defaultKeyLevel);
+  const [keyLevel, setKeyLevel] = useState<number>(KEY_LEVEL_DEFAULT);
+  const [userOverrode, setUserOverrode] = useState(false);
   const handleKeyLevelChange = useCallback((next: number) => {
     setKeyLevel(clampKeyLevel(next));
+    setUserOverrode(true);
   }, []);
   const { state: dungeonSuggestionsState, scoresByDiscordId } =
     useDungeonSuggestions(suggestionsPlayers, keyLevel);
+
+  // Seed the dropdown from group median-of-medians + 1 once Raider.io data
+  // resolves. After the user picks a level explicitly, leave it alone.
+  const suggestedKeyLevel = useMemo(() => {
+    const perPlayerLevels: number[][] = [];
+    for (const p of suggestionsPlayers) {
+      if (!p.discordId) continue;
+      const scores = scoresByDiscordId.get(p.discordId);
+      if (!scores) continue;
+      const levels = Object.values(scores.byDungeon)
+        .map((r) => r.level)
+        .filter((l) => l > 0);
+      perPlayerLevels.push(levels);
+    }
+    return computeSuggestedKeyLevel(perPlayerLevels);
+  }, [suggestionsPlayers, scoresByDiscordId]);
+
+  useEffect(() => {
+    if (userOverrode) return;
+    if (suggestedKeyLevel == null) return;
+    setKeyLevel(suggestedKeyLevel);
+  }, [suggestedKeyLevel, userOverrode]);
 
   const [showConfirmBack, setShowConfirmBack] = useState(false);
   const pendingBrowserBack = useAppStore((s) => s.pendingBrowserBack);
