@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
-import { GroupCard } from '../components/GroupCard';
+import { GroupCarousel, type GroupCarouselItem } from '../components/GroupCarousel';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { ReportBadGroupDialog } from '../components/ReportBadGroupDialog';
-import { SpotlightPortraits } from '../components/SpotlightPortraits';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
 import { IconButton, SecondaryButton } from '../components/ui';
 import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
@@ -48,35 +47,36 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       return g.dps.some((p) => p?.discordId === currentPlayerId);
     });
   }, [groups, currentPlayerId]);
-  const yourGroup = yourGroupIndex >= 0 ? groups[yourGroupIndex] : null;
 
-  const yourGroupPlayers = useMemo(() => {
-    if (!yourGroup) return [];
-    return [yourGroup.tank, yourGroup.healer, ...yourGroup.dps].filter(
-      (p): p is NonNullable<typeof p> => p != null,
-    );
-  }, [yourGroup]);
+  const initialSlide = Math.max(0, yourGroupIndex);
+  const [activeSlideIndex, setActiveSlideIndex] = useState<number>(initialSlide);
+  useEffect(() => {
+    // Reseed when the viewer's group changes (e.g., late identity resolution).
+    if (yourGroupIndex >= 0) setActiveSlideIndex(yourGroupIndex);
+    // Intentionally omit activeSlideIndex from deps so manual nav isn't overridden.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yourGroupIndex]);
 
-  const yourGroupHeading = yourGroup
-    ? (isCompleteGroup(yourGroup) ? `Group ${yourGroupIndex + 1}` : 'Remainder')
-    : 'Your Group';
+  const carouselItems = useMemo<GroupCarouselItem[]>(() => {
+    return groups.map((g, i) => ({
+      group: g,
+      index: i,
+      label: isCompleteGroup(g) ? undefined : 'Remainder',
+    }));
+  }, [groups]);
 
-  // Scope dungeon suggestions to the players actually in this group, so the
-  // ranking reflects the people who are about to run a key — not unrelated
-  // lobby members. Falls back to everyone placed in a complete group when
-  // the viewer isn't in any group (spectator), so the panel still has
-  // something useful to say.
-  const suggestionsPlayers = useMemo<WoWPlayer[]>(() => {
-    if (yourGroupPlayers.length > 0) return yourGroupPlayers;
-    const grouped: WoWPlayer[] = [];
-    for (const g of groups) {
-      if (!isCompleteGroup(g)) continue;
-      if (g.tank) grouped.push(g.tank);
-      if (g.healer) grouped.push(g.healer);
-      grouped.push(...g.dps);
-    }
-    return grouped;
-  }, [yourGroupPlayers, groups]);
+  const activeGroup = groups[activeSlideIndex];
+  const activeSlideIsComplete = activeGroup ? isCompleteGroup(activeGroup) : false;
+
+  const activeGroupPlayers = useMemo<WoWPlayer[]>(() => {
+    if (!activeGroup) return [];
+    const out: WoWPlayer[] = [];
+    if (activeGroup.tank) out.push(activeGroup.tank);
+    if (activeGroup.healer) out.push(activeGroup.healer);
+    out.push(...activeGroup.dps);
+    return out;
+  }, [activeGroup]);
+
   const [keyLevel, setKeyLevel] = useState<number>(KEY_LEVEL_DEFAULT);
   const [userOverrode, setUserOverrode] = useState(false);
   const handleKeyLevelChange = useCallback((next: number) => {
@@ -84,13 +84,13 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     setUserOverrode(true);
   }, []);
   const { state: dungeonSuggestionsState, scoresByDiscordId } =
-    useDungeonSuggestions(suggestionsPlayers, keyLevel);
+    useDungeonSuggestions(activeGroupPlayers, keyLevel);
 
   // Seed the dropdown from group median-of-medians + 1 once Raider.io data
   // resolves. After the user picks a level explicitly, leave it alone.
   const suggestedKeyLevel = useMemo(() => {
     const perPlayerLevels: number[][] = [];
-    for (const p of suggestionsPlayers) {
+    for (const p of activeGroupPlayers) {
       if (!p.discordId) continue;
       const scores = scoresByDiscordId.get(p.discordId);
       if (!scores) continue;
@@ -100,7 +100,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       perPlayerLevels.push(levels);
     }
     return computeSuggestedKeyLevel(perPlayerLevels);
-  }, [suggestionsPlayers, scoresByDiscordId]);
+  }, [activeGroupPlayers, scoresByDiscordId]);
 
   useEffect(() => {
     if (userOverrode) return;
@@ -174,34 +174,30 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       />
       <main className="content-area">
         <section id="view-results">
-          {yourGroupPlayers.length > 0 && (
-            <div className="results-your-group">
-              <h3 className="results-your-group__heading">{yourGroupHeading}</h3>
-              <SpotlightPortraits
-                players={yourGroupPlayers}
-                scoresByDiscordId={scoresByDiscordId}
-              />
-            </div>
+          {carouselItems.length > 0 && (
+            <GroupCarousel
+              items={carouselItems}
+              activeIndex={activeSlideIndex}
+              onActiveIndexChange={setActiveSlideIndex}
+              scoresByDiscordId={scoresByDiscordId}
+            />
           )}
-          <DungeonSuggestions
-            {...dungeonSuggestionsState}
-            layout="horizontal"
-            keyLevel={keyLevel}
-            onKeyLevelChange={handleKeyLevelChange}
-          />
-          <div id="final-groups">
-            {groups.map((g, i) => {
-              const remainder = !isCompleteGroup(g);
-              return (
-                <GroupCard
-                  key={i}
-                  group={g}
-                  index={i}
-                  label={remainder ? 'Remainder' : undefined}
-                  hideEmpty={remainder}
-                />
-              );
-            })}
+          <div
+            key={activeSlideIndex}
+            className="results-suggestions-fade"
+          >
+            {activeSlideIsComplete ? (
+              <DungeonSuggestions
+                {...dungeonSuggestionsState}
+                layout="horizontal"
+                keyLevel={keyLevel}
+                onKeyLevelChange={handleKeyLevelChange}
+              />
+            ) : (
+              <div className="results-suggestions-empty" role="status">
+                Suggested Keys unavailable for incomplete groups.
+              </div>
+            )}
           </div>
           <div className="results-actions">
             <SecondaryButton

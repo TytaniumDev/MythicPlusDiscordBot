@@ -54,8 +54,8 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['**/*.test.ts'],
-          environment: 'node',
+          include: ['**/*.test.ts', '**/*.test.tsx'],
+          environment: 'jsdom',
         },
       },
       {

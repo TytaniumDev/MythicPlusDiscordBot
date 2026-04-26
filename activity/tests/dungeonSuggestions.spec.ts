@@ -63,14 +63,17 @@ test.describe('Dungeon Suggestions panel', () => {
     };
     await page.goto(`/?data=${encodeData(dataWithIdentity)}`);
     await expect(page.locator('#view-results')).toBeVisible();
-    await expect(page.locator('.spotlight-portrait')).toHaveCount(5);
+    // Scope to the active carousel slide — peek slides also render their own
+    // SpotlightPortraits in the DOM.
+    const activeSlide = page.locator('.group-carousel__slide--active');
+    await expect(activeSlide.locator('.spotlight-portrait')).toHaveCount(5);
 
     // Wait for character data to settle so the tooltip has scores to show.
     await expect(
       page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
     ).toBeVisible();
 
-    const firstPortrait = page.locator('.spotlight-portrait').first();
+    const firstPortrait = activeSlide.locator('.spotlight-portrait').first();
     // Tooltip is rendered via FloatingPortal at the document root and only
     // mounts while the trigger is hovered/focused.
     const tooltip = page.locator('.spotlight-portrait__tooltip');

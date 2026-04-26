@@ -147,23 +147,29 @@ test('Offspec tags do not use opacity', async ({ page }) => {
   }
 });
 
-test('Offspec indicators show donut shape', async ({ page }) => {
+test('Offspec role icons are visually de-emphasized', async ({ page }) => {
   await page.goto(`/?data=${encodeData(resultsData)}`);
   await expect(page.locator('#view-results')).toBeVisible();
 
-  const offspecDots = page.locator('.role-indicator.offspec');
-  const count = await offspecDots.count();
+  // Off-spec slots inside the active carousel slide get a dimmed/desaturated
+  // role glyph via the .is-offspec modifier.
+  const offspecIcons = page.locator('.group-carousel__slide--active .group-slide__role-icon.is-offspec');
+  const count = await offspecIcons.count();
   if (count > 0) {
-    const bg = await offspecDots.first().evaluate(el => getComputedStyle(el).backgroundColor);
-    expect(bg).toMatch(/transparent|rgba\(0,\s*0,\s*0,\s*0\)/);
+    const opacity = await offspecIcons.first().evaluate(el => {
+      const svg = el.querySelector('svg');
+      return svg ? getComputedStyle(svg).opacity : '1';
+    });
+    expect(parseFloat(opacity)).toBeLessThan(1);
   }
 });
 
-test('Group card indicators have a11y attributes', async ({ page }) => {
+test('Group slide role icons have a11y attributes', async ({ page }) => {
   await page.goto(`/?data=${encodeData(resultsData)}`);
   await expect(page.locator('#view-results')).toBeVisible();
 
-  const indicators = page.locator('.role-indicator');
+  // Scope to the active slide so we don't pick up duplicates from peek slides.
+  const indicators = page.locator('.group-carousel__slide--active .group-slide__role-icon');
   const count = await indicators.count();
   expect(count).toBeGreaterThan(0);
 
@@ -172,6 +178,8 @@ test('Group card indicators have a11y attributes', async ({ page }) => {
     await expect(el).toHaveAttribute('role', 'img');
     const ariaLabel = await el.getAttribute('aria-label');
     expect(ariaLabel).toBeTruthy();
-    expect(['Tank', 'Healer', 'DPS', 'Tank (offspec)', 'Healer (offspec)', 'DPS (offspec)']).toContain(ariaLabel);
+    // Filled slot: "Tank" / "Healer" / "DPS" (with optional " (offspec)").
+    // Empty slot (remainder): "Tank slot empty" / "Healer slot empty" / "DPS slot empty".
+    expect(ariaLabel).toMatch(/^(Tank|Healer|DPS)( \(offspec\)| slot empty)?$/);
   }
 });

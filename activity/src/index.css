@@ -106,12 +106,31 @@ body {
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
-  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 8px;
   flex-shrink: 0;
+}
+
+/* Match .header-bar's specificity (0,2,0) so this override sticks
+   regardless of stylesheet order. Bar lands at 48px tall:
+   8 top + 32 content (back button) + 7 bottom + 1 border. */
+.header-bar.app-header {
+  padding-top: 8px;
+  padding-bottom: 7px;
+  position: relative;
+}
+
+/* Absolutely-positioned title so it sits at the bar's true horizontal
+   center regardless of the left and right sides being different widths. */
+.header-bar.app-header .header-bar__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  flex: none;
+  pointer-events: none;
 }
 
 .app-header h1 {
@@ -516,10 +535,10 @@ button:focus-visible,
   justify-content: center;
   flex-wrap: wrap;
   gap: 0;
-  padding: 10px 24px;
+  padding: 6px 24px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
-  margin: 0 -12px 16px;
+  margin: 0 -12px 10px;
   column-gap: 20px;
   row-gap: 8px;
   flex-shrink: 0;
@@ -1797,6 +1816,26 @@ button:focus-visible,
   color: var(--text-secondary);
 }
 
+.group-slide__copy-invite {
+  margin-top: 4px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  min-width: 180px;
+}
+
+.group-slide__copy-invite:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+
 /* Skeleton loading shimmer */
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__rank,
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__icon,
@@ -2439,7 +2478,7 @@ button.role-section-header--collapsible {
   padding: 12px 20px;
   background: var(--bg-secondary);
   flex-shrink: 0;
-  margin: -8px -12px 0;
+  margin: 0 -12px 0;
 }
 
 .header-bar__back-spacer {
@@ -3394,4 +3433,237 @@ button.role-section-header--collapsible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================
+   GroupSlide
+   ============================================ */
+.group-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.group-slide__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary, var(--text-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.group-slide__grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.group-slide__row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: clamp(8px, 1.5vw, 20px);
+}
+
+.group-slide__row--portraits {
+  align-items: end;
+}
+
+.group-slide__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.group-slide__role-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+/* Off-spec: dim and desaturate the role glyph so the slot still reads as
+   "DPS column" but the player isn't presented as a main of that role. */
+.group-slide__role-icon.is-offspec svg {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+.group-slide__role-icon.is-empty {
+  opacity: 0.25;
+}
+
+.group-slide__utility-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.25rem;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.group-slide__portrait-placeholder {
+  width: clamp(72px, 9vw, 120px);
+  height: clamp(96px, 12vw, 160px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-card) 60%, transparent);
+  border: 1px dashed var(--border-subtle);
+  opacity: 0.4;
+}
+
+.group-slide__placeholder-glyph {
+  font-size: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* ============================================
+   GroupCarousel
+   ============================================ */
+.group-carousel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Cap to a fixed pixel width on wide screens so the slide container
+     hugs the GroupSlide content (max-width 720px) instead of stretching
+     across the viewport — arrows positioned relative to slide width then
+     stay close to the leftmost/rightmost portraits. */
+  --group-carousel-slide-width: min(76vw, 760px);
+}
+
+.group-carousel__viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 16px 0;
+}
+
+.group-carousel__track {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+}
+
+.group-carousel__slide {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--group-carousel-slide-width);
+  margin-left: calc(var(--group-carousel-slide-width) / -2);
+  display: flex;
+  justify-content: center;
+  transition: opacity 250ms ease-out, transform 250ms ease-out;
+  padding: 0 12px;
+  box-sizing: border-box;
+  will-change: transform, opacity;
+}
+
+.group-carousel__slide--peek {
+  cursor: pointer;
+}
+
+.group-carousel__slide--distant {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.group-carousel__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .group-carousel {
+    --group-carousel-slide-width: min(86vw, 760px);
+  }
+}
+
+.group-carousel__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.group-carousel__arrow--prev {
+  left: calc(50% - var(--group-carousel-slide-width) / 2 - 24px);
+}
+
+.group-carousel__arrow--next {
+  right: calc(50% - var(--group-carousel-slide-width) / 2 - 24px);
+}
+
+.group-carousel__arrow:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.group-carousel__arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.group-carousel__viewport:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+#view-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.5vh, 20px);
+  padding-bottom: 16px;
+}
+
+#view-results > .group-carousel {
+  width: 100%;
+}
+
+.results-suggestions-fade {
+  animation: resultsSuggestionsFade 200ms ease-out;
+  width: 100%;
+}
+
+@keyframes resultsSuggestionsFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.results-suggestions-empty {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 16px 0;
+  min-height: 56px;
 }

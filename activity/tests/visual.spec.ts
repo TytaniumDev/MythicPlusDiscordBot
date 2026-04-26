@@ -178,7 +178,7 @@ function viewportTests(
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto(`/?data=${encodeData(resultsData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
-      await expect(page.locator('#final-groups .group-card')).toHaveCount(mockGroups.length);
+      await expect(page.locator('.group-carousel .group-slide')).toHaveCount(mockGroups.length);
 
       const newRoundBtn = page.locator('#new-round-btn');
       await expect(newRoundBtn).toBeVisible();
@@ -300,12 +300,22 @@ test.describe('Functional Tests', () => {
   test('Results show correct group composition', async ({ page }) => {
     await page.goto(`/?data=${encodeData(resultsData)}`);
 
-    // Group 1 tank is Gazzi (has brez ⚰️)
-    const group1 = page.locator('#final-groups .group-card').first();
-    await expect(group1.locator('.role-name').first()).toHaveText('Gazzi ⚰️');
+    // The active carousel slide renders the 5 group members in role order:
+    // tank, healer, dps, dps, dps. Names live inside the SpotlightPortrait
+    // and utility icons (brez ⚰️, lust 🎺) live in their own row above.
+    const activeSlide = page.locator('.group-carousel__slide--active .group-slide').first();
 
-    // Group 1 healer is Quill (has brez ⚰️)
-    await expect(group1.locator('.role-name').nth(1)).toHaveText('Quill ⚰️');
+    // Group 1 tank is Gazzi
+    const portraits = activeSlide.locator('.spotlight-portrait__name');
+    await expect(portraits.nth(0)).toHaveText('Gazzi');
+    // Group 1 healer is Quill
+    await expect(portraits.nth(1)).toHaveText('Quill');
+
+    // Both Gazzi and Quill have brez (⚰️) — utility row above their portraits
+    // shows the emoji.
+    const utilityCells = activeSlide.locator('.group-slide__row--utils .group-slide__cell');
+    await expect(utilityCells.nth(0)).toContainText('⚰️');
+    await expect(utilityCells.nth(1)).toContainText('⚰️');
   });
 
   test('Button always visible in wheels view', async ({ page }) => {
@@ -391,7 +401,11 @@ test.describe('My Group Highlight', () => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
-      await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      // The viewer's group is auto-centered as the active carousel slide.
+      // Fourseven is in Group 2 → active slide should hold their portrait.
+      await expect(
+        page.locator('.group-carousel__slide--active .spotlight-portrait__name', { hasText: 'Fourseven' }),
+      ).toBeVisible();
       await expect(
         page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
       ).toBeVisible();
@@ -406,7 +420,9 @@ test.describe('My Group Highlight', () => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
-      await expect(page.locator('.group-card.is-my-group')).toBeVisible();
+      await expect(
+        page.locator('.group-carousel__slide--active .spotlight-portrait__name', { hasText: 'Fourseven' }),
+      ).toBeVisible();
       await expect(
         page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
       ).toBeVisible();
