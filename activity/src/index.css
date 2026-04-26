@@ -3464,23 +3464,22 @@ button.role-section-header--collapsible {
 }
 
 .group-slide__role-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  line-height: 0;
 }
 
-.group-slide__role-icon.is-offspec {
-  background: transparent;
-  border-style: solid;
-  border-width: 2px;
+/* Off-spec: dim and desaturate the role glyph so the slot still reads as
+   "DPS column" but the player isn't presented as a main of that role. */
+.group-slide__role-icon.is-offspec svg {
+  opacity: 0.55;
+  filter: saturate(0.6);
 }
 
 .group-slide__role-icon.is-empty {
-  background: var(--border-subtle, #2a2a2a);
-  opacity: 0.4;
+  opacity: 0.25;
 }
 
 .group-slide__utility-row {
@@ -3593,11 +3592,11 @@ button.role-section-header--collapsible {
 }
 
 .group-carousel__arrow--prev {
-  left: calc(50% - var(--group-carousel-slide-width) / 2 - 28px);
+  left: calc(50% - var(--group-carousel-slide-width) / 2 + 16px);
 }
 
 .group-carousel__arrow--next {
-  right: calc(50% - var(--group-carousel-slide-width) / 2 - 28px);
+  right: calc(50% - var(--group-carousel-slide-width) / 2 + 16px);
 }
 
 .group-carousel__arrow:hover:not(:disabled) {

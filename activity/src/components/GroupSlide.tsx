@@ -38,17 +38,49 @@ interface Slot {
   player: WoWGroup['tank'];
 }
 
-const ROLE_COLOR: Record<SlotRole, string> = {
-  tank: 'var(--color-tank)',
-  healer: 'var(--color-healer)',
-  dps: 'var(--color-dps)',
-};
-
 const ROLE_LABEL: Record<SlotRole, string> = {
   tank: 'Tank',
   healer: 'Healer',
   dps: 'DPS',
 };
+
+// WoW-style role icons: shield (tank), plus (healer), sword (DPS). Inline SVG
+// so the bundle stays self-contained — the design-token colors give the
+// circular fill, with a gold ring matching the in-game iconography.
+function RoleGlyph({ role }: { role: SlotRole }) {
+  const fill =
+    role === 'tank'
+      ? 'var(--color-tank)'
+      : role === 'healer'
+        ? 'var(--color-healer)'
+        : 'var(--color-dps)';
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="10.5" fill={fill} stroke="#a8842c" strokeWidth="1.5" />
+      {role === 'tank' && (
+        <path
+          d="M12 5.5 L17 7.5 L17 12.5 C17 15.5 14.5 17.5 12 18.5 C9.5 17.5 7 15.5 7 12.5 L7 7.5 Z"
+          fill="#fff"
+        />
+      )}
+      {role === 'healer' && (
+        <path d="M10.5 6 H13.5 V10.5 H18 V13.5 H13.5 V18 H10.5 V13.5 H6 V10.5 H10.5 Z" fill="#fff" />
+      )}
+      {role === 'dps' && (
+        <path
+          d="M11 5.5 L13 5.5 L13 13.5 L15.5 13.5 L15.5 14.5 L13 14.5 L13 15.5 L14.5 15.5 L14.5 16.5 L13 16.5 L13 18 L11 18 L11 16.5 L9.5 16.5 L9.5 15.5 L11 15.5 L11 14.5 L8.5 14.5 L8.5 13.5 L11 13.5 Z"
+          fill="#fff"
+        />
+      )}
+    </svg>
+  );
+}
 
 function isOffspecForSlot(slot: SlotRole, player: WoWPlayer | null): boolean {
   if (!player || player.mainRole == null) return false;
@@ -88,25 +120,6 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
     <div className="group-slide" data-testid={`group-slide-${index}`}>
       <h3 className="group-slide__heading">{heading}</h3>
       <div className="group-slide__grid" role="group" aria-label={heading}>
-        <div className="group-slide__row group-slide__row--roles">
-          {slots.map((slot, i) => {
-            const offspec = isOffspecForSlot(slot.role, slot.player);
-            const color = ROLE_COLOR[slot.role];
-            const label = ROLE_LABEL[slot.role];
-            const ariaLabel = slot.player ? `${label}${offspec ? ' (offspec)' : ''}` : `${label} slot empty`;
-            return (
-              <div className="group-slide__cell" key={i}>
-                <span
-                  className={`group-slide__role-icon${offspec ? ' is-offspec' : ''}${slot.player ? '' : ' is-empty'}`}
-                  style={offspec ? { borderColor: color } : { background: color }}
-                  role="img"
-                  aria-label={ariaLabel}
-                  title={ariaLabel}
-                />
-              </div>
-            );
-          })}
-        </div>
         <div className="group-slide__row group-slide__row--utils">
           {slots.map((slot, i) => (
             <div className="group-slide__cell" key={i}>
@@ -118,6 +131,25 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
               </span>
             </div>
           ))}
+        </div>
+        <div className="group-slide__row group-slide__row--roles">
+          {slots.map((slot, i) => {
+            const offspec = isOffspecForSlot(slot.role, slot.player);
+            const label = ROLE_LABEL[slot.role];
+            const ariaLabel = slot.player ? `${label}${offspec ? ' (offspec)' : ''}` : `${label} slot empty`;
+            return (
+              <div className="group-slide__cell" key={i}>
+                <span
+                  className={`group-slide__role-icon${offspec ? ' is-offspec' : ''}${slot.player ? '' : ' is-empty'}`}
+                  role="img"
+                  aria-label={ariaLabel}
+                  title={ariaLabel}
+                >
+                  <RoleGlyph role={slot.role} />
+                </span>
+              </div>
+            );
+          })}
         </div>
         <div className="group-slide__row group-slide__row--portraits">
           {slots.map((slot, i) => (
