@@ -14,6 +14,27 @@ class AudioManager {
     return this.ctx;
   }
 
+  // Audio failures are ignorable — the user can't act on them and the wheel
+  // should keep working without sound. Wrap each effect in this helper so the
+  // fail-silent contract stays in one place.
+  private play(fn: (ctx: AudioContext) => void): void {
+    try {
+      fn(this.getContext());
+    } catch {
+      // intentional: project's wheelson/no-silent-catch rule requires this exact form
+      void 0;
+    }
+  }
+
+  // Returns an OscillatorNode already wired through a GainNode to destination.
+  private newVoice(ctx: AudioContext): { osc: OscillatorNode; gain: GainNode } {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    return { osc, gain };
+  }
+
   /**
    * Warm the AudioContext from within a user-gesture call stack so that
    * sounds scheduled later via setTimeout (which lose gesture activation)
@@ -28,38 +49,23 @@ class AudioManager {
     const now = performance.now();
     if (now - this.lastTickTime < 30) return;
     this.lastTickTime = now;
-    try {
-      const ctx = this.getContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
+    this.play((ctx) => {
+      const { osc, gain } = this.newVoice(ctx);
       osc.frequency.value = 600 + Math.random() * 400;
       osc.type = 'triangle';
       gain.gain.setValueAtTime(0.08, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.04);
-    } catch {
-      // intentional: audio failures are ignorable — user can't act on them
-      // and the wheel should keep working without sound. Not worth surfacing.
-      void 0;
-    }
+    });
   }
 
   /** Ascending chord when a group is fully formed */
   victory() {
-    try {
-      const ctx = this.getContext();
+    this.play((ctx) => {
       const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-
       notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
+        const { osc, gain } = this.newVoice(ctx);
         osc.frequency.value = freq;
         osc.type = 'sine';
 
@@ -70,22 +76,13 @@ class AudioManager {
         osc.start(startTime);
         osc.stop(startTime + 0.6);
       });
-    } catch {
-      // intentional: audio failures are ignorable — user can't act on them
-      // and the wheel should keep working without sound. Not worth surfacing.
-      void 0;
-    }
+    });
   }
 
   /** Swoosh sound for individual wheel landing */
   land() {
-    try {
-      const ctx = this.getContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
+    this.play((ctx) => {
+      const { osc, gain } = this.newVoice(ctx);
       osc.frequency.value = 400;
       osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
       osc.type = 'sine';
@@ -93,11 +90,7 @@ class AudioManager {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.2);
-    } catch {
-      // intentional: audio failures are ignorable — user can't act on them
-      // and the wheel should keep working without sound. Not worth surfacing.
-      void 0;
-    }
+    });
   }
 }
 

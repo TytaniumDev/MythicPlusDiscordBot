@@ -5,6 +5,19 @@ import type { ChannelData } from '../types';
 import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
 import type { CharacterClass } from '@mythicplus/shared';
 
+/**
+ * Apply a partial update to the in-memory channelData. No-op when there is
+ * no active channel — mirrors the early-return pattern the Firestore service
+ * uses around currentChannelId, but for the demo's local-only state.
+ */
+function patchChannelData(patch: Partial<ChannelData> | ((data: ChannelData) => Partial<ChannelData>)): void {
+  const store = useAppStore.getState();
+  const data = store.channelData;
+  if (!data) return;
+  const update = typeof patch === 'function' ? patch(data) : patch;
+  store.setChannelData({ ...data, ...update });
+}
+
 class DemoSessionService implements SessionService {
   subscribeToGuild(_guildId: string): () => void {
     useAppStore.getState().setGuildData(mockGuildData);
@@ -16,26 +29,20 @@ class DemoSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const store = useAppStore.getState();
-    const currentData = store.channelData;
+    const currentData = useAppStore.getState().channelData;
     if (!currentData) return;
 
     const sittingOut = currentData.sittingOut ?? [];
     const players = currentData.players
-      .filter(p => p.mainRole !== null || p.offspecs.length > 0)
-      .filter(p => !p.discordId || !sittingOut.includes(p.discordId))
-      .map(p => WoWPlayer.fromDict(p));
+      .filter((p) => (p.mainRole !== null || p.offspecs.length > 0)
+        && (!p.discordId || !sittingOut.includes(p.discordId)))
+      .map((p) => WoWPlayer.fromDict(p));
 
-    const groups = createMythicPlusGroups(players, true, null);
+    const groupDicts = createMythicPlusGroups(players, true, null).map((g) => g.toDict());
 
-    // Simulate brief processing delay
+    // Simulated processing delay — preserves the demo's "computing..." beat.
     setTimeout(() => {
-      useAppStore.getState().setChannelData({
-        ...currentData,
-        status: 'spinning',
-        groups: groups.map(g => g.toDict()),
-        revealedGroups: 0,
-      } as ChannelData);
+      patchChannelData({ status: 'spinning', groups: groupDicts, revealedGroups: 0 });
     }, 500);
   }
 
@@ -44,26 +51,17 @@ class DemoSessionService implements SessionService {
   }
 
   async finishSequence(): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      store.setChannelData({ ...store.channelData, status: 'completed' });
-    }
+    patchChannelData({ status: 'completed' });
   }
 
   async newRound(): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] } as ChannelData);
-    }
+    patchChannelData({ status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async cancelToLobby(): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
-      // round that was cancelled, so players re-enter the pool for the next attempt.
-      store.setChannelData({ ...store.channelData, status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] } as ChannelData);
-    }
+    // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
+    // round that was cancelled, so players re-enter the pool for the next attempt.
+    patchChannelData({ status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
   async saveRoles(playerId: string, _playerName: string, _roles: string[], inGameName?: string): Promise<void> {
@@ -104,41 +102,27 @@ class DemoSessionService implements SessionService {
   }
 
   async claimPlayer(playerId: string): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      const claimed = store.channelData.claimedPlayers || [];
-      if (!claimed.includes(playerId)) {
-        store.setChannelData({
-          ...store.channelData,
-          claimedPlayers: [...claimed, playerId],
-        });
-      }
-    }
+    patchChannelData((data) => {
+      const claimed = data.claimedPlayers || [];
+      return claimed.includes(playerId) ? {} : { claimedPlayers: [...claimed, playerId] };
+    });
   }
 
   async unclaimPlayer(playerId: string): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      const claimed = store.channelData.claimedPlayers || [];
-      store.setChannelData({
-        ...store.channelData,
-        claimedPlayers: claimed.filter(id => id !== playerId),
-      });
-    }
+    patchChannelData((data) => ({
+      claimedPlayers: (data.claimedPlayers || []).filter((id) => id !== playerId),
+    }));
   }
 
   async toggleSitOut(discordId: string): Promise<void> {
-    const store = useAppStore.getState();
-    if (store.channelData) {
-      const current = store.channelData.sittingOut ?? [];
-      const isSittingOut = current.includes(discordId);
-      store.setChannelData({
-        ...store.channelData,
-        sittingOut: isSittingOut
-          ? current.filter(id => id !== discordId)
+    patchChannelData((data) => {
+      const current = data.sittingOut ?? [];
+      return {
+        sittingOut: current.includes(discordId)
+          ? current.filter((id) => id !== discordId)
           : [...current, discordId],
-      });
-    }
+      };
+    });
   }
 
   async createGuildEntry(_guildId: string): Promise<void> {

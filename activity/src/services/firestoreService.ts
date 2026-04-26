@@ -8,81 +8,130 @@ import type { CharacterClass } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 
 const MAX_LISTENER_RETRIES = 5;
+const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
 
 function isRecoverableError(error: unknown): boolean {
   if (error instanceof Error) {
     const code = (error as { code?: string }).code;
-    if (code === 'permission-denied' || code === 'not-found' || code === 'unauthenticated') {
-      return false;
-    }
+    if (code && NON_RECOVERABLE_CODES.has(code)) return false;
   }
   return true;
+}
+
+function backoffDelayMs(retryCount: number): number {
+  return Math.min(1000 * 2 ** retryCount, 30000);
+}
+
+/**
+ * Parse the persisted group history from a guild doc, tolerating the legacy
+ * flat shape and the current `{ groups: [...] }`-wrapped shape. Returns empty
+ * rounds when the date doesn't match today or the data is malformed — the
+ * spin should never be blocked by stale or bad history.
+ */
+function parseExistingRounds(
+  guildData: GuildData | null | undefined,
+  todayIso: string,
+): Record<string, unknown>[][] {
+  const history = guildData?.groupHistory;
+  if (!history || history.date !== todayIso || !Array.isArray(history.rounds)) {
+    return [];
+  }
+  return (history.rounds as unknown[]).map((r) => {
+    if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
+      return (r as { groups: Record<string, unknown>[] }).groups;
+    }
+    return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
+  });
 }
 
 class FirestoreSessionService implements SessionService {
   private guildUnsub: (() => void) | null = null;
   private channelUnsub: (() => void) | null = null;
+  private guildRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private channelRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Schedule a listener retry with exponential backoff, surfacing a status
+   * message to the user. Stores the timer handle on the instance so a fresh
+   * subscribe call (or unsubscribe) can clear a pending retry instead of
+   * letting it fire and re-establish a stale listener.
+   */
+  private scheduleRetry(
+    slot: 'guildRetryTimer' | 'channelRetryTimer',
+    label: string,
+    retryCount: number,
+    error: unknown,
+    retry: () => void,
+  ): void {
+    if (!isRecoverableError(error) || retryCount >= MAX_LISTENER_RETRIES) {
+      useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
+      return;
+    }
+    const delayMs = backoffDelayMs(retryCount);
+    console.info(`[Wheelson] Retrying ${label} listener in ${delayMs}ms (attempt ${retryCount + 1})`);
+    useAppStore.getState().setStatusMessage('Connection lost. Reconnecting...');
+    this[slot] = setTimeout(() => {
+      this[slot] = null;
+      retry();
+    }, delayMs);
+  }
+
+  private clearRetry(slot: 'guildRetryTimer' | 'channelRetryTimer'): void {
+    const timer = this[slot];
+    if (timer !== null) {
+      clearTimeout(timer);
+      this[slot] = null;
+    }
+  }
 
   subscribeToGuild(guildId: string, retryCount = 0): () => void {
-    if (this.guildUnsub) {
-      this.guildUnsub();
-      this.guildUnsub = null;
-    }
+    this.clearRetry('guildRetryTimer');
+    this.guildUnsub?.();
+    this.guildUnsub = null;
 
-    const store = useAppStore.getState();
     const docRef = doc(db, 'guilds', guildId);
 
     this.guildUnsub = onSnapshot(
       docRef,
       (docSnap) => {
+        const s = useAppStore.getState();
         if (docSnap.exists()) {
-          const s = useAppStore.getState();
           s.setGuildData(docSnap.data() as GuildData);
           s.setStatusMessage('');
-        } else {
-          const s = useAppStore.getState();
-          if (!s.guildDocCreationInFlight) {
-            s.setGuildDocCreationInFlight(true);
-            s.setStatusMessage('Setting up session...');
-            this.createGuildEntry(guildId, s.discordChannelId)
-              .catch((err) => {
-                reportError(err, { tag: 'firestoreService.createGuildEntry' });
-                useAppStore.getState().setStatusMessage('Failed to set up session. Please try again.');
-              })
-              .finally(() => {
-                useAppStore.getState().setGuildDocCreationInFlight(false);
-              });
-          }
+          return;
         }
+        if (s.guildDocCreationInFlight) return;
+        s.setGuildDocCreationInFlight(true);
+        s.setStatusMessage('Setting up session...');
+        this.createGuildEntry(guildId, s.discordChannelId)
+          .catch((err) => {
+            reportError(err, { tag: 'firestoreService.createGuildEntry' });
+            useAppStore.getState().setStatusMessage('Failed to set up session. Please try again.');
+          })
+          .finally(() => {
+            useAppStore.getState().setGuildDocCreationInFlight(false);
+          });
       },
       (error) => {
         reportError(error, { tag: 'firestoreService.guildListener', extra: { retryCount } });
-        if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
-          const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
-          console.info(`[Wheelson] Retrying guild listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-          store.setStatusMessage('Connection lost. Reconnecting...');
-          setTimeout(() => this.subscribeToGuild(guildId, retryCount + 1), delayMs);
-        } else {
-          useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
-        }
+        this.scheduleRetry('guildRetryTimer', 'guild', retryCount, error, () =>
+          this.subscribeToGuild(guildId, retryCount + 1),
+        );
       },
     );
 
     return () => {
-      if (this.guildUnsub) {
-        this.guildUnsub();
-        this.guildUnsub = null;
-      }
+      this.clearRetry('guildRetryTimer');
+      this.guildUnsub?.();
+      this.guildUnsub = null;
     };
   }
 
   subscribeToChannel(channelId: string, retryCount = 0): () => void {
-    if (this.channelUnsub) {
-      this.channelUnsub();
-      this.channelUnsub = null;
-    }
+    this.clearRetry('channelRetryTimer');
+    this.channelUnsub?.();
+    this.channelUnsub = null;
 
-    const store = useAppStore.getState();
     const docRef = doc(db, 'channels', channelId);
 
     this.channelUnsub = onSnapshot(
@@ -96,22 +145,16 @@ class FirestoreSessionService implements SessionService {
       },
       (error) => {
         reportError(error, { tag: 'firestoreService.channelListener', extra: { retryCount } });
-        if (isRecoverableError(error) && retryCount < MAX_LISTENER_RETRIES) {
-          const delayMs = Math.min(1000 * 2 ** retryCount, 30000);
-          console.info(`[Wheelson] Retrying channel listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-          store.setStatusMessage('Connection lost. Reconnecting...');
-          setTimeout(() => this.subscribeToChannel(channelId, retryCount + 1), delayMs);
-        } else {
-          useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
-        }
+        this.scheduleRetry('channelRetryTimer', 'channel', retryCount, error, () =>
+          this.subscribeToChannel(channelId, retryCount + 1),
+        );
       },
     );
 
     return () => {
-      if (this.channelUnsub) {
-        this.channelUnsub();
-        this.channelUnsub = null;
-      }
+      this.clearRetry('channelRetryTimer');
+      this.channelUnsub?.();
+      this.channelUnsub = null;
     };
   }
 
@@ -120,32 +163,16 @@ class FirestoreSessionService implements SessionService {
     if (!currentChannelId || !channelData) return;
 
     const guildId = channelData.guildId || null;
-
-    // Restore group history from Firestore so the algorithm avoids repeat groupings.
-    // Wire format wraps each round as { groups: [...] } because Firestore rejects nested
-    // arrays. Tolerate the legacy flat shape in case older data ever lands in the doc.
-    // Malformed history should never block a spin — fall back to empty history.
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+    // Restore group history from Firestore so the algorithm avoids repeat
+    // groupings. Malformed history should never block a spin — fall back to
+    // empty history.
     let existingRounds: Record<string, unknown>[][] = [];
     try {
-      if (
-        guildData?.groupHistory &&
-        guildData.groupHistory.date === today &&
-        Array.isArray(guildData.groupHistory.rounds)
-      ) {
-        existingRounds = (guildData.groupHistory.rounds as unknown[]).map((r) => {
-          if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
-            return (r as { groups: Record<string, unknown>[] }).groups;
-          }
-          return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
-        });
-        const rounds = existingRounds.map(round =>
-          round.map(g => WoWGroup.fromDict(g)),
-        );
-        setGroupHistory(rounds, guildId);
-      } else {
-        setGroupHistory([], guildId);
-      }
+      existingRounds = parseExistingRounds(guildData, today);
+      const rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
+      setGroupHistory(rounds, guildId);
     } catch (err) {
       reportError(err, { tag: 'firestoreService.restoreGroupHistory' });
       existingRounds = [];
@@ -154,19 +181,19 @@ class FirestoreSessionService implements SessionService {
 
     const sittingOut = channelData.sittingOut ?? [];
     const players = channelData.players
-      .filter(p => p.mainRole !== null || p.offspecs.length > 0)
-      .filter(p => !p.discordId || !sittingOut.includes(p.discordId))
+      .filter(p => (p.mainRole !== null || p.offspecs.length > 0)
+        && (!p.discordId || !sittingOut.includes(p.discordId)))
       .map(p => WoWPlayer.fromDict(p));
 
     const groups = createMythicPlusGroups(players, true, guildId);
+    const groupDicts = groups.map(g => g.toDict());
 
     // Persist group history to guild doc for cross-session diversity.
     // Intentionally not awaited — history save should not block the spin.
+    // Wire format wraps each round as { groups: [...] } because Firestore rejects nested arrays.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
-      const newRound = groups.map(g => g.toDict());
-      // Wrap each round as { groups: [...] } — Firestore rejects nested arrays.
-      const wireRounds = [...existingRounds, newRound].map(round => ({ groups: round }));
+      const wireRounds = [...existingRounds, groupDicts].map(round => ({ groups: round }));
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
@@ -175,7 +202,7 @@ class FirestoreSessionService implements SessionService {
     const channelRef = doc(db, 'channels', currentChannelId);
     await updateDoc(channelRef, {
       status: 'spinning',
-      groups: groups.map(g => g.toDict()),
+      groups: groupDicts,
       revealedGroups: 0,
     });
   }

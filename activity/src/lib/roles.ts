@@ -6,34 +6,57 @@ export interface RoleTag {
   cssClass: string;
 }
 
+interface RoleTagDef {
+  role: Role;
+  /** String id used by RoleEditor button toggles (e.g. 'Tank'). */
+  stringId: string;
+  mainLabel: string;
+  mainClass: string;
+  offspecLabel: string;
+  offspecClass: string;
+}
+
+const ROLE_TAG_DEFS: readonly RoleTagDef[] = [
+  { role: 'tank',   stringId: 'Tank',   mainLabel: 'Tank',   mainClass: 'tag-tank',   offspecLabel: 'Offtank',    offspecClass: 'tag-tank tag-offspec' },
+  { role: 'healer', stringId: 'Healer', mainLabel: 'Healer', mainClass: 'tag-healer', offspecLabel: 'Offheal',    offspecClass: 'tag-healer tag-offspec' },
+  { role: 'ranged', stringId: 'Ranged', mainLabel: 'Ranged', mainClass: 'tag-dps',    offspecLabel: 'Off Ranged', offspecClass: 'tag-dps tag-offspec' },
+  { role: 'melee',  stringId: 'Melee',  mainLabel: 'Melee',  mainClass: 'tag-dps',    offspecLabel: 'Off Melee',  offspecClass: 'tag-dps tag-offspec' },
+];
+
+interface UtilityTagDef {
+  utility: Utility;
+  stringId: string;
+  label: string;
+  cssClass: string;
+}
+
+const UTILITY_TAG_DEFS: readonly UtilityTagDef[] = [
+  { utility: 'brez', stringId: 'Brez', label: 'Brez', cssClass: 'tag-brez' },
+  { utility: 'lust', stringId: 'Lust', label: 'Lust', cssClass: 'tag-lust' },
+];
+
 export function hasAnyRole(p: WoWPlayer): boolean {
   return p.mainRole !== null || p.offspecs.length > 0;
 }
 
 export function getRoleTags(p: WoWPlayer): RoleTag[] {
-  const tags: RoleTag[] = [];
-
   if (!hasAnyRole(p)) {
-    tags.push({ label: 'No roles', cssClass: 'tag-unassigned' });
-    return tags;
+    return [{ label: 'No roles', cssClass: 'tag-unassigned' }];
   }
 
-  // Main roles
-  if (p.mainRole === 'tank') tags.push({ label: 'Tank', cssClass: 'tag-tank' });
-  if (p.mainRole === 'healer') tags.push({ label: 'Healer', cssClass: 'tag-healer' });
-  if (p.mainRole === 'ranged') tags.push({ label: 'Ranged', cssClass: 'tag-dps' });
-  if (p.mainRole === 'melee') tags.push({ label: 'Melee', cssClass: 'tag-dps' });
-
-  // Offspecs (only show if the corresponding main spec is not active)
-  if (p.offspecs.includes('tank') && p.mainRole !== 'tank') tags.push({ label: 'Offtank', cssClass: 'tag-tank tag-offspec' });
-  if (p.offspecs.includes('healer') && p.mainRole !== 'healer') tags.push({ label: 'Offheal', cssClass: 'tag-healer tag-offspec' });
-  if (p.offspecs.includes('ranged') && p.mainRole !== 'ranged') tags.push({ label: 'Off Ranged', cssClass: 'tag-dps tag-offspec' });
-  if (p.offspecs.includes('melee') && p.mainRole !== 'melee') tags.push({ label: 'Off Melee', cssClass: 'tag-dps tag-offspec' });
-
-  // Utilities
-  if (p.utilities.includes('brez')) tags.push({ label: 'Brez', cssClass: 'tag-brez' });
-  if (p.utilities.includes('lust')) tags.push({ label: 'Lust', cssClass: 'tag-lust' });
-
+  const tags: RoleTag[] = [];
+  for (const def of ROLE_TAG_DEFS) {
+    if (p.mainRole === def.role) tags.push({ label: def.mainLabel, cssClass: def.mainClass });
+  }
+  // Offspec tags are only shown when the corresponding main spec is not active.
+  for (const def of ROLE_TAG_DEFS) {
+    if (p.offspecs.includes(def.role) && p.mainRole !== def.role) {
+      tags.push({ label: def.offspecLabel, cssClass: def.offspecClass });
+    }
+  }
+  for (const def of UTILITY_TAG_DEFS) {
+    if (p.utilities.includes(def.utility)) tags.push({ label: def.label, cssClass: def.cssClass });
+  }
   return tags;
 }
 
@@ -76,9 +99,17 @@ export function utilityIcons(player?: WoWPlayer | null): string {
   return icons;
 }
 
-const MAIN_ROLE_MAP: Record<string, Role> = { Tank: 'tank', Healer: 'healer', Ranged: 'ranged', Melee: 'melee' };
-const OFFSPEC_MAP: Record<string, Role> = { 'Tank Offspec': 'tank', 'Healer Offspec': 'healer', 'Ranged Offspec': 'ranged', 'Melee Offspec': 'melee' };
-const UTILITY_MAP: Record<string, Utility> = { Brez: 'brez', Lust: 'lust' };
+const offspecStringId = (def: RoleTagDef): string => `${def.stringId} Offspec`;
+
+const MAIN_ROLE_MAP: Record<string, Role> = Object.fromEntries(
+  ROLE_TAG_DEFS.map((d) => [d.stringId, d.role]),
+);
+const OFFSPEC_MAP: Record<string, Role> = Object.fromEntries(
+  ROLE_TAG_DEFS.map((d) => [offspecStringId(d), d.role]),
+);
+const UTILITY_MAP: Record<string, Utility> = Object.fromEntries(
+  UTILITY_TAG_DEFS.map((d) => [d.stringId, d.utility]),
+);
 
 /** Convert a set of role button IDs back to WoWPlayer role fields. */
 export function roleStringsToPlayerFields(roles: Iterable<string>): { mainRole: Role | null; offspecs: Role[]; utilities: Utility[] } {
@@ -95,16 +126,15 @@ export function roleStringsToPlayerFields(roles: Iterable<string>): { mainRole: 
 
 export function playerRolesToStringArray(p: WoWPlayer): string[] {
   const roles: string[] = [];
-  if (p.mainRole === 'tank') roles.push('Tank');
-  if (p.mainRole === 'healer') roles.push('Healer');
-  if (p.mainRole === 'ranged') roles.push('Ranged');
-  if (p.mainRole === 'melee') roles.push('Melee');
-  if (p.offspecs.includes('tank')) roles.push('Tank Offspec');
-  if (p.offspecs.includes('healer')) roles.push('Healer Offspec');
-  if (p.offspecs.includes('ranged')) roles.push('Ranged Offspec');
-  if (p.offspecs.includes('melee')) roles.push('Melee Offspec');
-  if (p.utilities.includes('brez')) roles.push('Brez');
-  if (p.utilities.includes('lust')) roles.push('Lust');
+  for (const def of ROLE_TAG_DEFS) {
+    if (p.mainRole === def.role) roles.push(def.stringId);
+  }
+  for (const def of ROLE_TAG_DEFS) {
+    if (p.offspecs.includes(def.role)) roles.push(offspecStringId(def));
+  }
+  for (const def of UTILITY_TAG_DEFS) {
+    if (p.utilities.includes(def.utility)) roles.push(def.stringId);
+  }
   return roles;
 }
 
@@ -204,11 +234,15 @@ export function isPlayerReady(p: WoWPlayer): boolean {
   return !!p.inGameName && p.mainRole !== null;
 }
 
+/** Players not in the sitting-out set. Players without a discordId are always active. */
+function activePlayers(players: WoWPlayer[], sittingOut: string[]): WoWPlayer[] {
+  return players.filter((p) => !p.discordId || !sittingOut.includes(p.discordId));
+}
+
 /** Count ready players from a list, excluding sitting-out players. */
 export function getReadyCount(players: WoWPlayer[], sittingOut: string[]): { ready: number; total: number } {
-  const active = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
-  const ready = active.filter(isPlayerReady).length;
-  return { ready, total: active.length };
+  const active = activePlayers(players, sittingOut);
+  return { ready: active.filter(isPlayerReady).length, total: active.length };
 }
 
 /** Categorize unready players for the spin warning dialog. */
@@ -216,8 +250,9 @@ export function categorizeUnreadyPlayers(players: WoWPlayer[], sittingOut: strin
   missingRole: WoWPlayer[];
   missingNameOnly: WoWPlayer[];
 } {
-  const active = players.filter(p => !p.discordId || !sittingOut.includes(p.discordId));
-  const missingRole = active.filter(p => p.mainRole === null);
-  const missingNameOnly = active.filter(p => p.mainRole !== null && !p.inGameName);
-  return { missingRole, missingNameOnly };
+  const active = activePlayers(players, sittingOut);
+  return {
+    missingRole: active.filter((p) => p.mainRole === null),
+    missingNameOnly: active.filter((p) => p.mainRole !== null && !p.inGameName),
+  };
 }
