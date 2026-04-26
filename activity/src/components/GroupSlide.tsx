@@ -1,6 +1,7 @@
 import type { WoWGroup, WoWPlayer } from '../types';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 import { utilityIcons } from '../lib/roles';
+import { SpotlightPortrait } from './SpotlightPortrait';
 
 export interface GroupSlideProps {
   group: WoWGroup;
@@ -50,7 +51,7 @@ function buildSlots(group: WoWGroup): Slot[] {
   return slots.slice(0, SLOT_COUNT);
 }
 
-export function GroupSlide({ group, index, label }: GroupSlideProps) {
+export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlideProps) {
   const heading = label ?? `Group ${index + 1}`;
   const slots = buildSlots(group);
 
@@ -79,6 +80,22 @@ export function GroupSlide({ group, index, label }: GroupSlideProps) {
               >
                 {slot.player ? utilityIcons(slot.player).trim() : ''}
               </span>
+              {slot.player ? (
+                <SpotlightPortrait
+                  name={slot.player.name}
+                  characterClass={slot.player.characterClass}
+                  mediaUrl={slot.player.mediaUrl}
+                  scores={
+                    slot.player.discordId
+                      ? scoresByDiscordId?.get(slot.player.discordId) ?? null
+                      : null
+                  }
+                />
+              ) : (
+                <div className="group-slide__portrait-placeholder" aria-hidden="true">
+                  <span className="group-slide__placeholder-glyph">?</span>
+                </div>
+              )}
             </div>
           );
         })}

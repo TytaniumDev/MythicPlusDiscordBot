@@ -3461,3 +3461,21 @@ button.role-section-header--collapsible {
   letter-spacing: 0.1em;
   line-height: 1;
 }
+
+.group-slide__portrait-placeholder {
+  width: clamp(72px, 9vw, 120px);
+  height: clamp(96px, 12vw, 160px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-card) 60%, transparent);
+  border: 1px dashed var(--border-subtle);
+  opacity: 0.4;
+}
+
+.group-slide__placeholder-glyph {
+  font-size: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
