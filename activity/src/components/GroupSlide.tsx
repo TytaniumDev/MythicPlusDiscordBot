@@ -83,13 +83,16 @@ function RoleGlyph({ role }: { role: SlotRole }) {
         />
       )}
       {role === 'dps' && (
-        <path
-          d="M11 5.5 L13 5.5 L13 13.5 L15.5 13.5 L15.5 14.5 L13 14.5 L13 15.5 L14.5 15.5 L14.5 16.5 L13 16.5 L13 18 L11 18 L11 16.5 L9.5 16.5 L9.5 15.5 L11 15.5 L11 14.5 L8.5 14.5 L8.5 13.5 L11 13.5 Z"
-          fill="#fff"
-          stroke="#000"
-          strokeWidth="0.9"
-          strokeLinejoin="round"
-        />
+        <g transform="rotate(-45 12 12)">
+          <path
+            d="M12 5 L12.6 6 L12.6 13 L16 13 L16 14.5 L12.7 14.5 L12.7 18 L11.3 18 L11.3 14.5 L8 14.5 L8 13 L11.4 13 L11.4 6 Z"
+            fill="#fff"
+            stroke="#000"
+            strokeWidth="0.7"
+            strokeLinejoin="round"
+          />
+          <circle cx="12" cy="19" r="1.1" fill="#fff" stroke="#000" strokeWidth="0.7" />
+        </g>
       )}
     </svg>
   );
