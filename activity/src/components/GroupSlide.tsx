@@ -98,6 +98,13 @@ function RoleGlyph({ role }: { role: SlotRole }) {
   );
 }
 
+function utilityAriaLabel(player: WoWPlayer): string {
+  const parts: string[] = [];
+  if (player.utilities.includes('brez')) parts.push('Battle rez');
+  if (player.utilities.includes('lust')) parts.push('Bloodlust');
+  return parts.join(', ');
+}
+
 function isOffspecForSlot(slot: SlotRole, player: WoWPlayer | null): boolean {
   if (!player || player.mainRole == null) return false;
   if (slot === 'tank') return player.mainRole !== 'tank';
@@ -137,13 +144,25 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
       <h3 className="group-slide__heading">{heading}</h3>
       <div className="group-slide__grid" role="group" aria-label={heading}>
         <div className="group-slide__row group-slide__row--utils">
-          {slots.map((slot, i) => (
-            <div className="group-slide__cell" key={i}>
-              <span className="group-slide__utility-row" aria-hidden="true">
-                {slot.player ? utilityIcons(slot.player).trim() : ''}
-              </span>
-            </div>
-          ))}
+          {slots.map((slot, i) => {
+            const utils = slot.player ? utilityIcons(slot.player).trim() : '';
+            const utilLabel = slot.player ? utilityAriaLabel(slot.player) : '';
+            return (
+              <div className="group-slide__cell" key={i}>
+                {utils ? (
+                  <span
+                    className="group-slide__utility-row"
+                    role="img"
+                    aria-label={utilLabel}
+                  >
+                    {utils}
+                  </span>
+                ) : (
+                  <span className="group-slide__utility-row" aria-hidden="true" />
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="group-slide__row group-slide__row--roles">
           {slots.map((slot, i) => {

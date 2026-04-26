@@ -174,18 +174,21 @@ export function GroupCarousel({
                   opacity,
                   transition: wrapping ? 'none' : undefined,
                 }}
-                // `inert` removes non-active slides from the focus order and
-                // accessibility tree so the Copy Invite button inside peek
-                // slides isn't tabbable and screen readers don't announce them.
-                inert={offset !== 0}
                 onClick={() => offset !== 0 && onActiveIndexChange(i)}
               >
-                <GroupSlide
-                  group={item.group}
-                  index={item.index}
-                  label={item.label}
-                  scoresByDiscordId={scoresByDiscordId}
-                />
+                {/* `inert` lives on this inner wrapper, not the outer slide
+                    div, so the slide stays clickable for click-to-navigate
+                    while the GroupSlide subtree (Copy Invite button,
+                    portraits) is removed from the focus order and
+                    accessibility tree on peek/distant slides. */}
+                <div inert={offset !== 0} className="group-carousel__slide-content">
+                  <GroupSlide
+                    group={item.group}
+                    index={item.index}
+                    label={item.label}
+                    scoresByDiscordId={scoresByDiscordId}
+                  />
+                </div>
               </div>
             );
           })}
