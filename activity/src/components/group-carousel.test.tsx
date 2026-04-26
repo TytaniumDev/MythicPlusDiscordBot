@@ -32,14 +32,18 @@ describe('GroupCarousel navigation', () => {
     expect(screen.getByTestId('active').textContent).toBe('1');
   });
 
-  it('prev arrow is disabled at start', () => {
+  it('prev arrow wraps from start to last', async () => {
+    const user = userEvent.setup();
     render(<Harness initial={0} items={items} />);
-    expect((screen.getByLabelText('Previous group') as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByLabelText('Previous group'));
+    expect(screen.getByTestId('active').textContent).toBe(String(items.length - 1));
   });
 
-  it('next arrow is disabled at end', () => {
+  it('next arrow wraps from end to start', async () => {
+    const user = userEvent.setup();
     render(<Harness initial={items.length - 1} items={items} />);
-    expect((screen.getByLabelText('Next group') as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByLabelText('Next group'));
+    expect(screen.getByTestId('active').textContent).toBe('0');
   });
 
   it('hides arrows for a single-item carousel', () => {

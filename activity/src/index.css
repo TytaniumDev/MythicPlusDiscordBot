@@ -3439,17 +3439,28 @@ button.role-section-header--collapsible {
 }
 
 .group-slide__grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.group-slide__row {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   column-gap: clamp(8px, 1.5vw, 20px);
-  row-gap: 6px;
-  width: 100%;
-  align-items: end;
-  justify-items: center;
 }
 
-.group-slide__col {
-  display: contents;
+.group-slide__row--portraits {
+  align-items: end;
+}
+
+.group-slide__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
 }
 
 .group-slide__role-icon {
@@ -3520,19 +3531,23 @@ button.role-section-header--collapsible {
 }
 
 .group-carousel__track {
-  display: flex;
-  align-items: flex-start;
-  transition: transform 250ms ease-out;
-  will-change: transform;
+  position: relative;
+  width: 100%;
+  min-height: 360px;
 }
 
 .group-carousel__slide {
-  flex: 0 0 var(--group-carousel-slide-width);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--group-carousel-slide-width);
+  margin-left: calc(var(--group-carousel-slide-width) / -2);
   display: flex;
   justify-content: center;
   transition: opacity 250ms ease-out, transform 250ms ease-out;
   padding: 0 12px;
   box-sizing: border-box;
+  will-change: transform, opacity;
 }
 
 .group-carousel__slide--active {

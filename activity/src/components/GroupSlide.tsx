@@ -88,27 +88,40 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
     <div className="group-slide" data-testid={`group-slide-${index}`}>
       <h3 className="group-slide__heading">{heading}</h3>
       <div className="group-slide__grid" role="group" aria-label={heading}>
-        {slots.map((slot, i) => {
-          const offspec = isOffspecForSlot(slot.role, slot.player);
-          const color = ROLE_COLOR[slot.role];
-          const label = ROLE_LABEL[slot.role];
-          const ariaLabel = slot.player ? `${label}${offspec ? ' (offspec)' : ''}` : `${label} slot empty`;
-
-          return (
-            <div className="group-slide__col" key={i} data-role={slot.role}>
-              <span
-                className={`group-slide__role-icon${offspec ? ' is-offspec' : ''}${slot.player ? '' : ' is-empty'}`}
-                style={offspec ? { borderColor: color } : { background: color }}
-                role="img"
-                aria-label={ariaLabel}
-                title={ariaLabel}
-              />
+        <div className="group-slide__row group-slide__row--roles">
+          {slots.map((slot, i) => {
+            const offspec = isOffspecForSlot(slot.role, slot.player);
+            const color = ROLE_COLOR[slot.role];
+            const label = ROLE_LABEL[slot.role];
+            const ariaLabel = slot.player ? `${label}${offspec ? ' (offspec)' : ''}` : `${label} slot empty`;
+            return (
+              <div className="group-slide__cell" key={i}>
+                <span
+                  className={`group-slide__role-icon${offspec ? ' is-offspec' : ''}${slot.player ? '' : ' is-empty'}`}
+                  style={offspec ? { borderColor: color } : { background: color }}
+                  role="img"
+                  aria-label={ariaLabel}
+                  title={ariaLabel}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="group-slide__row group-slide__row--utils">
+          {slots.map((slot, i) => (
+            <div className="group-slide__cell" key={i}>
               <span
                 className="group-slide__utility-row"
                 aria-label={slot.player ? utilityIcons(slot.player).trim() || 'No utilities' : 'No utilities'}
               >
                 {slot.player ? utilityIcons(slot.player).trim() : ''}
               </span>
+            </div>
+          ))}
+        </div>
+        <div className="group-slide__row group-slide__row--portraits">
+          {slots.map((slot, i) => (
+            <div className="group-slide__cell" key={i}>
               {slot.player ? (
                 <SpotlightPortrait
                   name={slot.player.name}
@@ -126,8 +139,8 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
                 </div>
               )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
       {hasInvite && (
         <button

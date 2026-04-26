@@ -52,22 +52,27 @@ export function GroupCarousel({
 
   const clamped = Math.max(0, Math.min(activeIndex, items.length - 1));
   const single = items.length === 1;
+  const wrap = (i: number) => ((i % items.length) + items.length) % items.length;
+  const goPrev = () => onActiveIndexChange(wrap(clamped - 1));
+  const goNext = () => onActiveIndexChange(wrap(clamped + 1));
 
   useEffect(() => {
     const el = viewportRef.current;
     if (!el || single) return;
     const onKey = (e: KeyboardEvent) => {
       if (document.activeElement !== el) return;
-      if (e.key === 'ArrowLeft' && clamped > 0) {
+      if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        onActiveIndexChange(clamped - 1);
-      } else if (e.key === 'ArrowRight' && clamped < items.length - 1) {
+        onActiveIndexChange(wrap(clamped - 1));
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        onActiveIndexChange(clamped + 1);
+        onActiveIndexChange(wrap(clamped + 1));
       }
     };
     el.addEventListener('keydown', onKey);
     return () => el.removeEventListener('keydown', onKey);
+    // wrap is recreated each render but only depends on items.length, which is in deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clamped, items.length, onActiveIndexChange, single]);
 
   const dragStartXRef = useRef<number | null>(null);
@@ -83,11 +88,8 @@ export function GroupCarousel({
     if (startX == null || single) return;
     const dx = e.clientX - startX;
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-    if (dx < 0 && clamped < items.length - 1) {
-      onActiveIndexChange(clamped + 1);
-    } else if (dx > 0 && clamped > 0) {
-      onActiveIndexChange(clamped - 1);
-    }
+    if (dx < 0) goNext();
+    else goPrev();
   };
 
   return (
@@ -103,20 +105,24 @@ export function GroupCarousel({
         onPointerUp={handlePointerUp}
         onPointerCancel={() => { dragStartXRef.current = null; }}
       >
-        <div
-          className="group-carousel__track"
-          style={{
-            transform: `translateX(calc(50% - ${clamped} * var(--group-carousel-slide-width) - var(--group-carousel-slide-width) / 2))`,
-          }}
-        >
+        <div className="group-carousel__track">
           {items.map((item, i) => {
-            const offset = i - clamped;
+            const total = items.length;
+            // Shortest signed distance from active for circular peek placement.
+            let offset = i - clamped;
+            if (total > 1) {
+              if (offset > total / 2) offset -= total;
+              else if (offset < -total / 2) offset += total;
+            }
             const role =
               offset === 0 ? 'active' : Math.abs(offset) === 1 ? 'peek' : 'distant';
             return (
               <div
                 key={item.index}
                 className={`group-carousel__slide group-carousel__slide--${role}`}
+                style={{
+                  transform: `translateX(calc(${offset} * var(--group-carousel-slide-width)))`,
+                }}
                 aria-hidden={offset !== 0}
                 onClick={() => offset !== 0 && onActiveIndexChange(i)}
               >
@@ -137,8 +143,7 @@ export function GroupCarousel({
             type="button"
             className="group-carousel__arrow group-carousel__arrow--prev"
             aria-label="Previous group"
-            onClick={() => onActiveIndexChange(clamped - 1)}
-            disabled={clamped === 0}
+            onClick={goPrev}
           >
             <ArrowChevron direction="left" />
           </button>
@@ -146,8 +151,7 @@ export function GroupCarousel({
             type="button"
             className="group-carousel__arrow group-carousel__arrow--next"
             aria-label="Next group"
-            onClick={() => onActiveIndexChange(clamped + 1)}
-            disabled={clamped === items.length - 1}
+            onClick={goNext}
           >
             <ArrowChevron direction="right" />
           </button>
