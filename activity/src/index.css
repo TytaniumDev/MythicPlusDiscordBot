@@ -3509,6 +3509,7 @@ button.role-section-header--collapsible {
   display: flex;
   align-items: center;
   justify-content: center;
+  --group-carousel-slide-width: 76%;
 }
 
 .group-carousel__viewport {
@@ -3526,10 +3527,12 @@ button.role-section-header--collapsible {
 }
 
 .group-carousel__slide {
-  flex: 0 0 100%;
+  flex: 0 0 var(--group-carousel-slide-width);
   display: flex;
   justify-content: center;
   transition: opacity 250ms ease-out, transform 250ms ease-out;
+  padding: 0 12px;
+  box-sizing: border-box;
 }
 
 .group-carousel__slide--active {
@@ -3555,4 +3558,15 @@ button.role-section-header--collapsible {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .group-carousel {
+    --group-carousel-slide-width: 86%;
+  }
+
+  .group-carousel__slide--peek {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
 }

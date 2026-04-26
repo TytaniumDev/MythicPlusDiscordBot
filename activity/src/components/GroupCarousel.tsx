@@ -34,7 +34,9 @@ export function GroupCarousel({
       <div className="group-carousel__viewport">
         <div
           className="group-carousel__track"
-          style={{ transform: `translateX(${-clamped * 100}%)` }}
+          style={{
+            transform: `translateX(calc(50% - ${clamped} * var(--group-carousel-slide-width) - var(--group-carousel-slide-width) / 2))`,
+          }}
         >
           {items.map((item, i) => {
             const offset = i - clamped;
