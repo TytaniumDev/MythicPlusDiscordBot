@@ -3550,14 +3550,7 @@ button.role-section-header--collapsible {
   will-change: transform, opacity;
 }
 
-.group-carousel__slide--active {
-  opacity: 1;
-  transform: scale(1);
-}
-
 .group-carousel__slide--peek {
-  opacity: 0.4;
-  transform: scale(0.8);
   cursor: pointer;
 }
 
@@ -3579,11 +3572,6 @@ button.role-section-header--collapsible {
   .group-carousel {
     --group-carousel-slide-width: 86%;
   }
-
-  .group-carousel__slide--peek {
-    opacity: 0.25;
-    transform: scale(0.85);
-  }
 }
 
 .group-carousel__arrow {
@@ -3604,8 +3592,13 @@ button.role-section-header--collapsible {
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 
-.group-carousel__arrow--prev { left: 8px; }
-.group-carousel__arrow--next { right: 8px; }
+.group-carousel__arrow--prev {
+  left: calc(50% - var(--group-carousel-slide-width) / 2 - 28px);
+}
+
+.group-carousel__arrow--next {
+  right: calc(50% - var(--group-carousel-slide-width) / 2 - 28px);
+}
 
 .group-carousel__arrow:hover:not(:disabled) {
   border-color: var(--color-gold);

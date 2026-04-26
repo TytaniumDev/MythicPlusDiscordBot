@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { GroupSlide } from './GroupSlide';
 import type { WoWGroup } from '../types';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
@@ -55,6 +55,52 @@ export function GroupCarousel({
   const wrap = (i: number) => ((i % items.length) + items.length) % items.length;
   const goPrev = () => onActiveIndexChange(wrap(clamped - 1));
   const goNext = () => onActiveIndexChange(wrap(clamped + 1));
+
+  // When the active slide changes, any slide whose circular offset jumps
+  // across the screen (e.g. from left peek to right peek when wrapping in a
+  // 3-item carousel) gets its transition disabled for the next frame so it
+  // teleports to the new position instead of sliding through the active
+  // slide. Prev offsets are tracked to detect those jumps.
+  const prevOffsetsRef = useRef(new Map<number, number>());
+  const wrappedRef = useRef(new Set<number>());
+  const [transitionTick, setTransitionTick] = useState(0);
+
+  useLayoutEffect(() => {
+    const total = items.length;
+    const computeOffset = (i: number, active: number) => {
+      let off = i - active;
+      if (total > 1) {
+        if (off > total / 2) off -= total;
+        else if (off < -total / 2) off += total;
+      }
+      return off;
+    };
+    const wrapped = new Set<number>();
+    items.forEach((item, i) => {
+      const newOff = computeOffset(i, clamped);
+      const oldOff = prevOffsetsRef.current.get(item.index);
+      if (oldOff !== undefined && oldOff !== newOff) {
+        // Sign flipped without crossing zero (combined absolute > position swap),
+        // i.e. the slide would otherwise animate across the active slot.
+        if (oldOff * newOff < 0 && Math.abs(oldOff) + Math.abs(newOff) > 1) {
+          wrapped.add(item.index);
+        }
+      }
+      prevOffsetsRef.current.set(item.index, newOff);
+    });
+    if (wrapped.size > 0) {
+      wrappedRef.current = wrapped;
+      // Force a render with transitions disabled, then clear next frame.
+      setTransitionTick((t) => t + 1);
+      const raf = requestAnimationFrame(() => {
+        wrappedRef.current = new Set();
+        setTransitionTick((t) => t + 1);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [clamped, items]);
+  // Reference transitionTick so React tracks it.
+  void transitionTick;
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -116,12 +162,17 @@ export function GroupCarousel({
             }
             const role =
               offset === 0 ? 'active' : Math.abs(offset) === 1 ? 'peek' : 'distant';
+            const scale = offset === 0 ? 1 : 0.7;
+            const opacity = offset === 0 ? 1 : Math.abs(offset) === 1 ? 0.45 : 0;
+            const wrapping = wrappedRef.current.has(item.index);
             return (
               <div
                 key={item.index}
                 className={`group-carousel__slide group-carousel__slide--${role}`}
                 style={{
-                  transform: `translateX(calc(${offset} * var(--group-carousel-slide-width)))`,
+                  transform: `translateX(calc(${offset} * var(--group-carousel-slide-width))) scale(${scale})`,
+                  opacity,
+                  transition: wrapping ? 'none' : undefined,
                 }}
                 aria-hidden={offset !== 0}
                 onClick={() => offset !== 0 && onActiveIndexChange(i)}
