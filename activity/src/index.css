@@ -1797,6 +1797,26 @@ button:focus-visible,
   color: var(--text-secondary);
 }
 
+.group-slide__copy-invite {
+  margin-top: 4px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 6px);
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  min-width: 180px;
+}
+
+.group-slide__copy-invite:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+
 /* Skeleton loading shimmer */
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__rank,
 .dungeon-suggestions__list--skeleton .dungeon-suggestion-row__icon,

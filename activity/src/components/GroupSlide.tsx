@@ -2,6 +2,24 @@ import type { WoWGroup, WoWPlayer } from '../types';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 import { utilityIcons } from '../lib/roles';
 import { SpotlightPortrait } from './SpotlightPortrait';
+import { useState } from 'react';
+import { useAppStore } from '../store/store';
+import { generateInviteCommand } from '@mythicplus/shared';
+
+async function copyToClipboard(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+}
 
 export interface GroupSlideProps {
   group: WoWGroup;
@@ -55,6 +73,17 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
   const heading = label ?? `Group ${index + 1}`;
   const slots = buildSlots(group);
 
+  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
+  const inviteCmd = generateInviteCommand(group, currentPlayerId ?? undefined);
+  const hasInvite = inviteCmd.length > 0;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await copyToClipboard(inviteCmd);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="group-slide" data-testid={`group-slide-${index}`}>
       <h3 className="group-slide__heading">{heading}</h3>
@@ -100,6 +129,16 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
           );
         })}
       </div>
+      {hasInvite && (
+        <button
+          type="button"
+          className="group-slide__copy-invite"
+          onClick={handleCopy}
+          aria-label={`Copy invite command for ${heading}`}
+        >
+          {copied ? 'Copied!' : 'Copy Invite'}
+        </button>
+      )}
     </div>
   );
 }
