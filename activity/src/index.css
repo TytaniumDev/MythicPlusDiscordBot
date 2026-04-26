@@ -1294,69 +1294,6 @@ button:focus-visible,
   stroke-width: 0.3;
 }
 
-/* ============================================
-   Wheel portrait reveal (post-land animation)
-   ============================================ */
-.wheel-portrait {
-  /* transform duration must match PORTRAIT_EXPAND_DURATION in timing.ts (200ms).
-     Sized to the canvas's rendered square so the portrait's outer edge can
-     align with the wheel's gold ring, rather than the frame's bounding box. */
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  margin: auto;
-  aspect-ratio: 1 / 1;
-  max-width: 100%;
-  max-height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  transform: scale(0);
-  opacity: 0;
-  transition:
-    transform 200ms ease-out,
-    opacity 150ms ease-out;
-  z-index: 3;
-}
-
-.wheel-portrait.is-revealing {
-  transform: scale(1);
-  opacity: 1;
-}
-
-.wheel-portrait__img,
-.wheel-portrait__fallback {
-  /* 94% matches the wheel's drawn radius (canvas radius = size/2 - size*0.03). */
-  width: 94%;
-  height: 94%;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 4px solid var(--wp-color, var(--color-gold));
-  box-shadow:
-    0 0 24px color-mix(in srgb, var(--wp-color, var(--color-gold)) 40%, transparent),
-    0 8px 24px rgba(0, 0, 0, 0.55);
-  background: #0d0d1a;
-}
-
-.wheel-portrait__img {
-  object-fit: cover;
-}
-
-.wheel-portrait__fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Inter', sans-serif;
-  font-weight: 800;
-  font-size: clamp(32px, 18%, 80px);
-  color: var(--wp-color, #fff);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  background: color-mix(in srgb, var(--wp-color, var(--color-gold)) 22%, #0d0d1a);
-}
-
 /* Pointer / arrow at top of wheel — scales with wheel via container query units */
 .wheel-pointer {
   position: absolute;
