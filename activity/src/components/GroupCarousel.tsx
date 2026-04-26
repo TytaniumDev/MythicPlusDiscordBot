@@ -149,6 +149,15 @@ export function GroupCarousel({
           role="tablist"
           aria-label="Groups"
           data-testid="group-carousel-pager"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              onActiveIndexChange(wrap(clamped - 1));
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              onActiveIndexChange(wrap(clamped + 1));
+            }
+          }}
         >
           {items.map((item, i) => {
             const isActive = i === clamped;

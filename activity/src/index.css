@@ -3544,6 +3544,7 @@ button.role-section-header--collapsible {
   position: relative;
   width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   /* Cap to a fixed pixel width on wide screens so the slide container
