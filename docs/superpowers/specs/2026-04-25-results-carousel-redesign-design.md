@@ -117,19 +117,18 @@ interface GroupCarouselProps {
 
 - `activity/src/views/ResultsView.tsx` — replace `SpotlightPortraits` + `final-groups` map with `<GroupCarousel>`; lift `activeSlideIndex`; derive per-slide suggestions; conditional empty state for remainder slides.
 - `activity/src/views/ResultsView.stories.tsx` — update fixtures for the new layout.
-- `activity/src/styles.css` — new carousel/slide styles; remove styles for deleted components.
+- `activity/src/index.css` — new carousel/slide styles. (No removals: styles for `SpotlightPortraits`, `MobileGroupPager`, and `GroupCard` are still in use by other consumers.)
 
 **Deleted**
 
-- `activity/src/components/SpotlightPortraits.tsx`
-- `activity/src/components/SpotlightPortraits.stories.tsx` (if present; otherwise n/a)
-- `activity/src/components/MobileGroupPager.tsx`
-- `activity/src/components/MobileGroupPager.stories.tsx`
+- None. `SpotlightPortraits` is still used by `SpotlightCard` (wheel reveal); `MobileGroupPager` is still used by `WheelsView` (mid-spin paged view); `GroupCard` is still used by `WheelsView`. The redesign only removes their use sites inside `ResultsView`; they remain in the codebase for the other consumers.
 
 **Untouched**
 
 - `activity/src/components/SpotlightPortrait.tsx` (singular) — reused inside `GroupSlide`.
-- `activity/src/components/GroupCard.tsx` — still used by the wheel reveal flow.
+- `activity/src/components/SpotlightPortraits.tsx` (plural) — still used by `SpotlightCard`.
+- `activity/src/components/GroupCard.tsx` — still used by `WheelsView`.
+- `activity/src/components/MobileGroupPager.tsx` — still used by `WheelsView`.
 
 ## Tests
 
