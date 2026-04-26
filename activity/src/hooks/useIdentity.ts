@@ -54,6 +54,9 @@ export function useIdentity() {
       state.resetIdentity();
     }
 
+    // Re-read state — `resetIdentity()` above may have mutated, and we want
+    // the post-reset `currentGuildId` (in practice unchanged, but the fresh
+    // read keeps us robust if guild teardown ever moves into resetIdentity).
     const guildId = useAppStore.getState().currentGuildId;
 
     // Check localStorage — value is already persisted, so don't re-write it.

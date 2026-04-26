@@ -23,33 +23,6 @@ function backoffDelayMs(retryCount: number): number {
 }
 
 /**
- * Schedule a listener retry with exponential backoff, surfacing a status
- * message to the user. Returns true if a retry was scheduled, false if the
- * error is non-recoverable or we've exhausted attempts.
- */
-function scheduleListenerRetry(
-  label: string,
-  retryCount: number,
-  error: unknown,
-  retry: () => void,
-): boolean {
-  if (!isRecoverableError(error) || retryCount >= MAX_LISTENER_RETRIES) {
-    useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
-    return false;
-  }
-  const delayMs = backoffDelayMs(retryCount);
-  console.info(`[Wheelson] Retrying ${label} listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-  useAppStore.getState().setStatusMessage('Connection lost. Reconnecting...');
-  setTimeout(retry, delayMs);
-  return true;
-}
-
-interface ParsedHistory {
-  /** Wire-format rounds, each as an array of group dicts. Empty when invalid/stale. */
-  existingRounds: Record<string, unknown>[][];
-}
-
-/**
  * Parse the persisted group history from a guild doc, tolerating the legacy
  * flat shape and the current `{ groups: [...] }`-wrapped shape. Returns empty
  * rounds when the date doesn't match today or the data is malformed — the
@@ -58,25 +31,61 @@ interface ParsedHistory {
 function parseExistingRounds(
   guildData: GuildData | null | undefined,
   todayIso: string,
-): ParsedHistory {
+): Record<string, unknown>[][] {
   const history = guildData?.groupHistory;
   if (!history || history.date !== todayIso || !Array.isArray(history.rounds)) {
-    return { existingRounds: [] };
+    return [];
   }
-  const existingRounds = (history.rounds as unknown[]).map((r) => {
+  return (history.rounds as unknown[]).map((r) => {
     if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
       return (r as { groups: Record<string, unknown>[] }).groups;
     }
     return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
   });
-  return { existingRounds };
 }
 
 class FirestoreSessionService implements SessionService {
   private guildUnsub: (() => void) | null = null;
   private channelUnsub: (() => void) | null = null;
+  private guildRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private channelRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Schedule a listener retry with exponential backoff, surfacing a status
+   * message to the user. Stores the timer handle on the instance so a fresh
+   * subscribe call (or unsubscribe) can clear a pending retry instead of
+   * letting it fire and re-establish a stale listener.
+   */
+  private scheduleRetry(
+    slot: 'guildRetryTimer' | 'channelRetryTimer',
+    label: string,
+    retryCount: number,
+    error: unknown,
+    retry: () => void,
+  ): void {
+    if (!isRecoverableError(error) || retryCount >= MAX_LISTENER_RETRIES) {
+      useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
+      return;
+    }
+    const delayMs = backoffDelayMs(retryCount);
+    console.info(`[Wheelson] Retrying ${label} listener in ${delayMs}ms (attempt ${retryCount + 1})`);
+    useAppStore.getState().setStatusMessage('Connection lost. Reconnecting...');
+    this[slot] = setTimeout(() => {
+      this[slot] = null;
+      retry();
+    }, delayMs);
+  }
+
+  private clearRetry(slot: 'guildRetryTimer' | 'channelRetryTimer'): void {
+    const timer = this[slot];
+    if (timer !== null) {
+      clearTimeout(timer);
+      this[slot] = null;
+    }
+  }
 
   subscribeToGuild(guildId: string, retryCount = 0): () => void {
+    this.clearRetry('guildRetryTimer');
     this.guildUnsub?.();
     this.guildUnsub = null;
 
@@ -105,19 +114,21 @@ class FirestoreSessionService implements SessionService {
       },
       (error) => {
         reportError(error, { tag: 'firestoreService.guildListener', extra: { retryCount } });
-        scheduleListenerRetry('guild', retryCount, error, () =>
+        this.scheduleRetry('guildRetryTimer', 'guild', retryCount, error, () =>
           this.subscribeToGuild(guildId, retryCount + 1),
         );
       },
     );
 
     return () => {
+      this.clearRetry('guildRetryTimer');
       this.guildUnsub?.();
       this.guildUnsub = null;
     };
   }
 
   subscribeToChannel(channelId: string, retryCount = 0): () => void {
+    this.clearRetry('channelRetryTimer');
     this.channelUnsub?.();
     this.channelUnsub = null;
 
@@ -134,13 +145,14 @@ class FirestoreSessionService implements SessionService {
       },
       (error) => {
         reportError(error, { tag: 'firestoreService.channelListener', extra: { retryCount } });
-        scheduleListenerRetry('channel', retryCount, error, () =>
+        this.scheduleRetry('channelRetryTimer', 'channel', retryCount, error, () =>
           this.subscribeToChannel(channelId, retryCount + 1),
         );
       },
     );
 
     return () => {
+      this.clearRetry('channelRetryTimer');
       this.channelUnsub?.();
       this.channelUnsub = null;
     };
@@ -158,7 +170,7 @@ class FirestoreSessionService implements SessionService {
     // empty history.
     let existingRounds: Record<string, unknown>[][] = [];
     try {
-      existingRounds = parseExistingRounds(guildData, today).existingRounds;
+      existingRounds = parseExistingRounds(guildData, today);
       const rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
       setGroupHistory(rounds, guildId);
     } catch (err) {

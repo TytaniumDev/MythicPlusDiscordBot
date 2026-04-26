@@ -21,6 +21,7 @@ class AudioManager {
     try {
       fn(this.getContext());
     } catch {
+      // intentional: project's wheelson/no-silent-catch rule requires this exact form
       void 0;
     }
   }
