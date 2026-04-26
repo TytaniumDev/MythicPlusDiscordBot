@@ -5,8 +5,6 @@ export type DungeonSuggestionsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 
 export interface DungeonSuggestionsState {
   status: DungeonSuggestionsStatus;
   ranking: DungeonSuggestion[];
-  /** Number of players we successfully fetched scores for. */
-  characterCount: number;
   /** Number of players whose `inGameName` parsed to a usable lookup target. */
   lookupTargetCount: number;
 }

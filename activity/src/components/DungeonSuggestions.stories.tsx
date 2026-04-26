@@ -45,7 +45,6 @@ export const Ready: Story = {
   args: {
     status: 'ready',
     ranking: sampleRanking,
-    characterCount: 5,
     lookupTargetCount: 5,
   },
 };
@@ -55,7 +54,6 @@ export const ReadyHorizontal: Story = {
   args: {
     status: 'ready',
     ranking: sampleRanking,
-    characterCount: 5,
     lookupTargetCount: 5,
     layout: 'horizontal',
   },
@@ -77,7 +75,6 @@ export const InteractiveHorizontal: Story = {
   args: {
     status: 'ready',
     ranking: sampleRanking,
-    characterCount: 5,
     lookupTargetCount: 5,
     layout: 'horizontal',
   },
@@ -88,7 +85,6 @@ export const LoadingHorizontal: Story = {
   args: {
     status: 'loading',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 5,
     layout: 'horizontal',
   },
@@ -98,7 +94,6 @@ export const Loading: Story = {
   args: {
     status: 'loading',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 5,
   },
 };
@@ -107,7 +102,6 @@ export const Idle: Story = {
   args: {
     status: 'idle',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 0,
   },
 };
@@ -116,7 +110,6 @@ export const Empty: Story = {
   args: {
     status: 'empty',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 0,
   },
 };
@@ -125,7 +118,6 @@ export const EmptyNoRuns: Story = {
   args: {
     status: 'empty',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 5,
   },
 };
@@ -134,7 +126,6 @@ export const Error: Story = {
   args: {
     status: 'error',
     ranking: [],
-    characterCount: 0,
     lookupTargetCount: 5,
   },
 };
@@ -143,7 +134,6 @@ export const SinglePlayer: Story = {
   args: {
     status: 'ready',
     ranking: sampleRanking.slice(0, 3),
-    characterCount: 1,
     lookupTargetCount: 1,
   },
 };
@@ -152,7 +142,6 @@ export const FewerThanLimit: Story = {
   args: {
     status: 'ready',
     ranking: sampleRanking.slice(0, 3),
-    characterCount: 4,
     lookupTargetCount: 4,
   },
 };

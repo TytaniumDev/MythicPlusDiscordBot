@@ -185,7 +185,9 @@ function viewportTests(
 
       // Wait for the dungeon suggestions panel to reach a stable post-fetch
       // state so the screenshot doesn't race the loading skeleton.
-      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+      await expect(
+        page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
+      ).toBeVisible();
 
       await expect(page).toHaveScreenshot(`results-${viewport.width}x${viewport.height}.png`);
     });
@@ -390,7 +392,9 @@ test.describe('My Group Highlight', () => {
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('.group-card.is-my-group')).toBeVisible();
-      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+      await expect(
+        page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
+      ).toBeVisible();
       await expect(page).toHaveScreenshot('results-my-group-1280x720.png');
     });
   });
@@ -403,7 +407,9 @@ test.describe('My Group Highlight', () => {
       await page.goto(`/?data=${encodeData(resultsWithIdentityData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('.group-card.is-my-group')).toBeVisible();
-      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+      await expect(
+        page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
+      ).toBeVisible();
       await expect(page).toHaveScreenshot('results-my-group-420x700.png');
     });
   });
