@@ -28,9 +28,6 @@ export interface AppState {
   currentPlayerName: string | null;
   identityResolved: boolean;
 
-  // Player modal
-  activePlayer: WoWPlayer | null;
-
   // Spin sequence
   fullGroups: WoWGroup[];
   remainderGroups: WoWGroup[];
@@ -65,7 +62,6 @@ export interface AppState {
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
-  setActivePlayer: (player: WoWPlayer | null) => void;
   updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => void;
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) => void;
   setCurrentGroupIndex: (index: number) => void;

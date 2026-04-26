@@ -97,22 +97,19 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     [players, sittingOut],
   );
 
-  const activePlayer = useAppStore((s) => s.activePlayer);
+  const isSelfPlayer = (p: typeof players[number]): boolean =>
+    currentPlayerId != null && p.discordId === currentPlayerId;
 
   const handleChipClick = (player: typeof players[number]) => {
-    if (player.discordId === currentPlayerId) {
-      useAppStore.getState().setActivePlayer(player);
-    } else {
-      useAppStore.getState().setActivePlayer(null);
+    if (!isSelfPlayer(player)) {
       setEditingPlayer(player);
     }
   };
 
   const renderChip = (p: typeof players[number]) => {
     const roleKey = getPrimaryRole(p);
-    const isSelected = activePlayer != null && p.discordId === activePlayer.discordId;
+    const isSelf = isSelfPlayer(p);
     const isSittingOut = p.discordId != null && sittingOut.includes(p.discordId);
-    const isSelf = p.discordId === currentPlayerId;
     return (
       <PlayerChip
         key={p.discordId || p.name}
@@ -120,13 +117,13 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         roleKey={roleKey}
         roleLabel={formatRoleName(roleKey)}
         tags={getRoleTags(p)}
-        isSelected={isSelected}
+        isSelected={isSelf}
         isSittingOut={isSittingOut}
         isReady={isPlayerReady(p)}
         mediaUrl={p.mediaUrl}
         characterClass={p.characterClass}
         onClick={() => handleChipClick(p)}
-        ariaLabel={isSelf ? `View ${p.name} details` : `Edit ${p.name} roles`}
+        ariaLabel={isSelf ? `Your character: ${p.name}` : `Edit ${p.name} roles`}
       />
     );
   };

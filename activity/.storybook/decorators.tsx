@@ -13,7 +13,6 @@ type StoreOverrides = Partial<Pick<AppState,
   | 'currentGuildId'
   | 'currentChannelId'
   | 'statusMessage'
-  | 'activePlayer'
 >>;
 
 /**
