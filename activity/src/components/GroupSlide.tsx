@@ -133,6 +133,12 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
   const hasInvite = inviteCmd.length > 0;
   const [copied, setCopied] = useState(false);
 
+  const isYourGroup =
+    currentPlayerId != null &&
+    (group.tank?.discordId === currentPlayerId ||
+      group.healer?.discordId === currentPlayerId ||
+      group.dps.some((p) => p?.discordId === currentPlayerId));
+
   const handleCopy = async () => {
     await copyToClipboard(inviteCmd);
     setCopied(true);
@@ -141,7 +147,11 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
 
   return (
     <div className="group-slide" data-testid={`group-slide-${index}`}>
-      <h3 className="group-slide__heading">{heading}</h3>
+      <h3
+        className={`group-slide__heading${isYourGroup ? ' group-slide__heading--yours' : ''}`}
+      >
+        {heading}
+      </h3>
       <div className="group-slide__grid" role="group" aria-label={heading}>
         <div className="group-slide__row group-slide__row--utils">
           {slots.map((slot, i) => {
