@@ -3,6 +3,8 @@ import { GroupSlide } from './GroupSlide';
 import type { WoWGroup } from '../types';
 import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 
+const SWIPE_THRESHOLD_PX = 40;
+
 function ArrowChevron({ direction }: { direction: 'left' | 'right' }) {
   return (
     <svg
@@ -68,6 +70,26 @@ export function GroupCarousel({
     return () => el.removeEventListener('keydown', onKey);
   }, [clamped, items.length, onActiveIndexChange, single]);
 
+  const dragStartXRef = useRef<number | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (single) return;
+    dragStartXRef.current = e.clientX;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const startX = dragStartXRef.current;
+    dragStartXRef.current = null;
+    if (startX == null || single) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+    if (dx < 0 && clamped < items.length - 1) {
+      onActiveIndexChange(clamped + 1);
+    } else if (dx > 0 && clamped > 0) {
+      onActiveIndexChange(clamped - 1);
+    }
+  };
+
   return (
     <div
       className={`group-carousel${single ? ' group-carousel--single' : ''}`}
@@ -77,6 +99,9 @@ export function GroupCarousel({
         className="group-carousel__viewport"
         ref={viewportRef}
         tabIndex={single ? -1 : 0}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => { dragStartXRef.current = null; }}
       >
         <div
           className="group-carousel__track"
