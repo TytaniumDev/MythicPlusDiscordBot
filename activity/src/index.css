@@ -106,7 +106,7 @@ body {
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 8px;
