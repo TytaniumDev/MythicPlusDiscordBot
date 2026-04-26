@@ -108,11 +108,16 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-top: 8px;
-  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 8px;
   flex-shrink: 0;
+}
+
+/* Match .header-bar's specificity (0,2,0) so this padding override sticks
+   regardless of stylesheet order. */
+.header-bar.app-header {
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .app-header h1 {
