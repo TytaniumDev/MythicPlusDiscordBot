@@ -2465,7 +2465,7 @@ button.role-section-header--collapsible {
   padding: 12px 20px;
   background: var(--bg-secondary);
   flex-shrink: 0;
-  margin: -8px -12px 0;
+  margin: 0 -12px 0;
 }
 
 .header-bar__back-spacer {
