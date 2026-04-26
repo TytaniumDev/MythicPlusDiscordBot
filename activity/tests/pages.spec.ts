@@ -193,7 +193,7 @@ function designViewportTests(
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto(`/?data=${encodeData(resultsData)}`);
       await expect(page.locator('#view-results')).toBeVisible();
-      await expect(page.locator('#final-groups .group-card')).toHaveCount(mockGroups.length);
+      await expect(page.locator('.group-carousel .group-slide')).toHaveCount(mockGroups.length);
       // Wait for dungeon suggestions to settle into ready state.
       await expect(
         page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),

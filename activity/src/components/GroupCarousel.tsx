@@ -174,7 +174,10 @@ export function GroupCarousel({
                   opacity,
                   transition: wrapping ? 'none' : undefined,
                 }}
-                aria-hidden={offset !== 0}
+                // `inert` removes non-active slides from the focus order and
+                // accessibility tree so the Copy Invite button inside peek
+                // slides isn't tabbable and screen readers don't announce them.
+                inert={offset !== 0}
                 onClick={() => offset !== 0 && onActiveIndexChange(i)}
               >
                 <GroupSlide

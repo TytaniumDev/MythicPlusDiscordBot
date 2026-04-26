@@ -114,16 +114,16 @@ test.describe('Component: RoleSectionHeader', () => {
   });
 });
 
-// ── Component: GroupCard ─────────────────────────────────────
-test.describe('Component: GroupCard', () => {
-  test('Group card in results', async ({ page }) => {
+// ── Component: GroupSlide ─────────────────────────────────────
+test.describe('Component: GroupSlide', () => {
+  test('Active group slide in results', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const resultsData = { ...mockChannelData, status: 'completed', players: mockPlayers, groups: mockGroups };
     await page.goto(`/?data=${encodeData(resultsData)}`);
     await expect(page.locator('#view-results')).toBeVisible();
-    const card = page.locator('.group-card').first();
-    await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('group-card.png');
+    const slide = page.locator('.group-carousel__slide--active .group-slide').first();
+    await expect(slide).toBeVisible();
+    await expect(slide).toHaveScreenshot('group-slide.png');
   });
 });
 

@@ -139,10 +139,7 @@ export function GroupSlide({ group, index, label, scoresByDiscordId }: GroupSlid
         <div className="group-slide__row group-slide__row--utils">
           {slots.map((slot, i) => (
             <div className="group-slide__cell" key={i}>
-              <span
-                className="group-slide__utility-row"
-                aria-label={slot.player ? utilityIcons(slot.player).trim() || 'No utilities' : 'No utilities'}
-              >
+              <span className="group-slide__utility-row" aria-hidden="true">
                 {slot.player ? utilityIcons(slot.player).trim() : ''}
               </span>
             </div>
