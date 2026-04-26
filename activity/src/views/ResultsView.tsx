@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
-import { GroupCard } from '../components/GroupCard';
+import { GroupCarousel, type GroupCarouselItem } from '../components/GroupCarousel';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { ReportBadGroupDialog } from '../components/ReportBadGroupDialog';
-import { SpotlightPortraits } from '../components/SpotlightPortraits';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
 import { IconButton, SecondaryButton } from '../components/ui';
 import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
@@ -50,16 +49,21 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   }, [groups, currentPlayerId]);
   const yourGroup = yourGroupIndex >= 0 ? groups[yourGroupIndex] : null;
 
+  const initialSlide = Math.max(0, yourGroupIndex);
+  const [activeSlideIndex, setActiveSlideIndex] = useState<number>(initialSlide);
+  useEffect(() => {
+    // Reseed when the viewer's group changes (e.g., late identity resolution).
+    if (yourGroupIndex >= 0) setActiveSlideIndex(yourGroupIndex);
+    // Intentionally omit activeSlideIndex from deps so manual nav isn't overridden.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yourGroupIndex]);
+
   const yourGroupPlayers = useMemo(() => {
     if (!yourGroup) return [];
     return [yourGroup.tank, yourGroup.healer, ...yourGroup.dps].filter(
       (p): p is NonNullable<typeof p> => p != null,
     );
   }, [yourGroup]);
-
-  const yourGroupHeading = yourGroup
-    ? (isCompleteGroup(yourGroup) ? `Group ${yourGroupIndex + 1}` : 'Remainder')
-    : 'Your Group';
 
   // Scope dungeon suggestions to the players actually in this group, so the
   // ranking reflects the people who are about to run a key — not unrelated
@@ -77,6 +81,14 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     }
     return grouped;
   }, [yourGroupPlayers, groups]);
+  const carouselItems = useMemo<GroupCarouselItem[]>(() => {
+    return groups.map((g, i) => ({
+      group: g,
+      index: i,
+      label: isCompleteGroup(g) ? undefined : 'Remainder',
+    }));
+  }, [groups]);
+
   const [keyLevel, setKeyLevel] = useState<number>(KEY_LEVEL_DEFAULT);
   const [userOverrode, setUserOverrode] = useState(false);
   const handleKeyLevelChange = useCallback((next: number) => {
@@ -174,14 +186,13 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       />
       <main className="content-area">
         <section id="view-results">
-          {yourGroupPlayers.length > 0 && (
-            <div className="results-your-group">
-              <h3 className="results-your-group__heading">{yourGroupHeading}</h3>
-              <SpotlightPortraits
-                players={yourGroupPlayers}
-                scoresByDiscordId={scoresByDiscordId}
-              />
-            </div>
+          {carouselItems.length > 0 && (
+            <GroupCarousel
+              items={carouselItems}
+              activeIndex={activeSlideIndex}
+              onActiveIndexChange={setActiveSlideIndex}
+              scoresByDiscordId={scoresByDiscordId}
+            />
           )}
           <DungeonSuggestions
             {...dungeonSuggestionsState}
@@ -189,20 +200,6 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
             keyLevel={keyLevel}
             onKeyLevelChange={handleKeyLevelChange}
           />
-          <div id="final-groups">
-            {groups.map((g, i) => {
-              const remainder = !isCompleteGroup(g);
-              return (
-                <GroupCard
-                  key={i}
-                  group={g}
-                  index={i}
-                  label={remainder ? 'Remainder' : undefined}
-                  hideEmpty={remainder}
-                />
-              );
-            })}
-          </div>
           <div className="results-actions">
             <SecondaryButton
               id="new-round-btn"

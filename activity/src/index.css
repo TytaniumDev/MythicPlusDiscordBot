@@ -3607,3 +3607,15 @@ button.role-section-header--collapsible {
   outline-offset: 4px;
   border-radius: 4px;
 }
+
+#view-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.5vh, 20px);
+  padding-bottom: 16px;
+}
+
+#view-results > .group-carousel {
+  width: 100%;
+}
