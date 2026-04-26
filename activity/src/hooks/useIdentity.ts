@@ -17,6 +17,28 @@ function getIdentityStorageKey(guildId: string | null): string {
   return `wheelson-player-${guildId ?? 'unknown'}`;
 }
 
+interface CommitOptions {
+  /** When true, also write the discordId to localStorage. Skip when the call
+   *  site is *reading* from localStorage (the value is already there). */
+  persist: boolean;
+}
+
+/**
+ * Commit a resolved identity to the store and (optionally) persistence.
+ * Always sets identity + resolved flag; only writes localStorage and claims
+ * the player when there's a non-null discordId, since both are keyed off it.
+ */
+function commitIdentity(player: WoWPlayer, guildId: string | null, opts: CommitOptions): void {
+  const store = useAppStore.getState();
+  store.setIdentity(player.discordId ?? null, player.name);
+  store.setIdentityResolved(true);
+  if (!player.discordId) return;
+  if (opts.persist) {
+    localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
+  }
+  getSessionService().claimPlayer(player.discordId).catch(console.error);
+}
+
 export function useIdentity() {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const currentPlayerName = useAppStore((s) => s.currentPlayerName);
@@ -29,66 +51,47 @@ export function useIdentity() {
       const stillHere = players.some((p) => p.discordId === state.currentPlayerId);
       if (stillHere) return;
       // Player left — re-resolve
-      useAppStore.getState().resetIdentity();
+      state.resetIdentity();
     }
 
     const guildId = useAppStore.getState().currentGuildId;
 
-    // Check localStorage
+    // Check localStorage — value is already persisted, so don't re-write it.
     const stored = localStorage.getItem(getIdentityStorageKey(guildId));
     if (stored) {
       const match = players.find((p) => p.discordId === stored);
       if (match) {
-        useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
-        useAppStore.getState().setIdentityResolved(true);
-        if (match.discordId) {
-          getSessionService().claimPlayer(match.discordId).catch(console.error);
-        }
+        commitIdentity(match, guildId, { persist: false });
         return;
       }
     }
 
     // Auto-match via Discord participants
     const participants = await getParticipants();
-    if (participants.length > 0) {
-      for (const participant of participants) {
-        const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
-        const match = players.find((p) => p.name === pName);
-        if (match && match.discordId) {
-          useAppStore.getState().setIdentity(match.discordId, match.name);
-          useAppStore.getState().setIdentityResolved(true);
-          localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
-          getSessionService().claimPlayer(match.discordId).catch(console.error);
-          return;
-        }
-      }
+    if (participants.length === 0) return;
 
-      // Try matching by discordId directly
-      const participantIds = new Set(participants.map((p) => p.id));
-      const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
-      if (idMatches.length === 1) {
-        const match = idMatches[0];
-        useAppStore.getState().setIdentity(match.discordId ?? null, match.name);
-        useAppStore.getState().setIdentityResolved(true);
-        if (match.discordId) {
-          localStorage.setItem(getIdentityStorageKey(guildId), match.discordId);
-          getSessionService().claimPlayer(match.discordId).catch(console.error);
-        }
+    for (const participant of participants) {
+      const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
+      const match = players.find((p) => p.name === pName);
+      if (match && match.discordId) {
+        commitIdentity(match, guildId, { persist: true });
         return;
       }
     }
 
-    // No match found — identity selector will show in lobby
+    // Try matching by discordId directly
+    const participantIds = new Set(participants.map((p) => p.id));
+    const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
+    if (idMatches.length === 1) {
+      commitIdentity(idMatches[0], guildId, { persist: true });
+    }
+
+    // Otherwise: no match — identity selector will show in lobby
   }, []);
 
   const selectPlayer = useCallback((player: WoWPlayer) => {
     const guildId = useAppStore.getState().currentGuildId;
-    useAppStore.getState().setIdentity(player.discordId ?? null, player.name);
-    useAppStore.getState().setIdentityResolved(true);
-    if (player.discordId) {
-      localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
-      getSessionService().claimPlayer(player.discordId).catch(console.error);
-    }
+    commitIdentity(player, guildId, { persist: true });
   }, []);
 
   const clearIdentity = useCallback(() => {
