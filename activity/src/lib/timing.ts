@@ -12,7 +12,6 @@ export const SPOTLIGHT_ENTER_DURATION = 500;  // ms for spotlight card enter ani
 export const SPOTLIGHT_EXIT_DURATION = 400;   // ms for spotlight card exit animation
 export const WHEELS_FADE_DURATION = 350;      // ms for wheels fade in/out
 export const POST_LAND_PAUSE = 700;           // ms pause after wheels land before transitioning
-export const PROGRESS_FADE_DURATION = 200;    // ms for progress text cross-fade
 
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
