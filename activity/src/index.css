@@ -516,10 +516,10 @@ button:focus-visible,
   justify-content: center;
   flex-wrap: wrap;
   gap: 0;
-  padding: 10px 24px;
+  padding: 6px 24px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
-  margin: 0 -12px 16px;
+  margin: 0 -12px 10px;
   column-gap: 20px;
   row-gap: 8px;
   flex-shrink: 0;
