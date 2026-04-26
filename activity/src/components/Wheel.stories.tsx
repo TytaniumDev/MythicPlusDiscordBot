@@ -193,8 +193,8 @@ export const OffspecVsMainspecComparison: Story = {
   },
 };
 
-export const LandedWithPortrait: Story = {
-  name: 'Landed — winner with portrait',
+export const LandedTank: Story = {
+  name: 'Landed — winner highlighted',
   args: {
     role: 'tank',
     label: 'Tank',
@@ -203,12 +203,11 @@ export const LandedWithPortrait: Story = {
     initialEntries: TANK_POOL,
     initialRotation: FIXED_ROTATION,
     initialWinner: 'Gazzi',
-    initialRevealed: true,
   },
 };
 
-export const LandedMageWinner: Story = {
-  name: 'Landed — Mage (class color border)',
+export const LandedDps: Story = {
+  name: 'Landed — DPS winner',
   args: {
     role: 'dps1',
     label: 'DPS',
@@ -217,12 +216,11 @@ export const LandedMageWinner: Story = {
     initialEntries: DPS_POOL,
     initialRotation: FIXED_ROTATION,
     initialWinner: 'Tytaniormu',
-    initialRevealed: true,
   },
 };
 
-export const LandedFallback: Story = {
-  name: 'Landed — no image (fallback glyph)',
+export const LandedHealer: Story = {
+  name: 'Landed — Healer winner',
   args: {
     role: 'healer',
     label: 'Healer',
@@ -231,7 +229,6 @@ export const LandedFallback: Story = {
     initialEntries: HEALER_POOL,
     initialRotation: FIXED_ROTATION,
     initialWinner: 'Holymoly',
-    initialRevealed: true,
   },
 };
 
@@ -276,7 +273,7 @@ function SpinningHarness({ args }: { args: WheelProps }) {
 
 /**
  * Interactive play story — click "Spin" to trigger a real WAAPI spin.
- * Useful for manual QA of the end-to-end animation + portrait reveal.
+ * Useful for manual QA of the end-to-end animation.
  */
 export const InteractiveSpin: Story = {
   name: 'Interactive — click to spin',

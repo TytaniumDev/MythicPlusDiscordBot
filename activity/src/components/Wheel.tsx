@@ -6,14 +6,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from 'react';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
-import { getClassColor, getSliceColors } from '../lib/classColors';
-import { PORTRAIT_EXPAND_DURATION, PORTRAIT_REVEAL_DELAY } from '../lib/timing';
+import { getSliceColors } from '../lib/classColors';
 import {
   EASE_OUT_CUBIC_CSS,
   computeTickTimes,
@@ -39,11 +35,11 @@ export interface WheelHandle {
   init(entries: WheelEntry[]): void;
   /** Replace entries without resetting rotation or result. */
   updateEntries(entries: WheelEntry[]): void;
-  /** Animate to land on the named winner. Resolves after portrait reveal. */
+  /** Animate to land on the named winner. Resolves once the wheel has stopped. */
   spinTo(winnerName: string, duration?: number): Promise<string>;
   /** Cancel an in-flight spin, rejecting its promise. */
   cancel(): void;
-  /** Clear the result text + winner highlight + portrait. */
+  /** Clear the result text + winner highlight. */
   clearResult(): void;
   /** Toggle the spinning CSS state (pulse glow). spinTo manages this internally. */
   setSpinning(value: boolean): void;
@@ -56,11 +52,10 @@ export interface WheelProps {
   label: string;
   labelClass: WheelLabelClass;
   ariaLabel: string;
-  /** Storybook / test hook: initial entries + rotation + revealed winner. */
+  /** Storybook / test hook: initial entries + rotation + winner. */
   initialEntries?: WheelEntry[];
   initialRotation?: number;
   initialWinner?: string | null;
-  initialRevealed?: boolean;
 }
 
 export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
@@ -72,14 +67,12 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
     initialEntries,
     initialRotation,
     initialWinner = null,
-    initialRevealed = false,
   },
   ref,
 ) {
   const [entries, setEntries] = useState<WheelEntry[]>(initialEntries ?? []);
   const [rotation, setRotation] = useState(() => initialRotation ?? Math.random() * 2 * Math.PI);
   const [winnerName, setWinnerName] = useState<string | null>(initialWinner);
-  const [isRevealed, setIsRevealed] = useState(initialRevealed);
   const [isSpinning, setIsSpinning] = useState(false);
 
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -131,7 +124,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
         setEntries(next);
         setRotation(Math.random() * 2 * Math.PI);
         setWinnerName(null);
-        setIsRevealed(false);
         setIsSpinning(false);
       },
       updateEntries(next) {
@@ -181,7 +173,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
 
         setIsSpinning(true);
         setWinnerName(null);
-        setIsRevealed(false);
 
         const rotator = rotatorRef.current;
         if (!rotator) {
@@ -189,7 +180,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
           setRotation(adjusted);
           setWinnerName(name);
           setIsSpinning(false);
-          setIsRevealed(true);
           return name;
         }
 
@@ -226,25 +216,9 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
               setRotation(adjusted);
               setWinnerName(name);
               setIsSpinning(false);
-              // Audio fires immediately so the "pop" lands on the visible stop;
-              // the portrait reveal is delayed for a more deliberate beat.
               audio.land();
-
-              // Track these timeouts so a subsequent cancel/init clears them
-              // and they can't fire setIsRevealed/resolve after the wheel has
-              // already been reset. rejectSpinRef stays populated until the
-              // resolveTimeout fires so a cancel during the reveal delay still
-              // rejects the promise instead of leaking it.
-              const revealTimeout = window.setTimeout(() => {
-                // Trigger portrait CSS transition on the next frame so the
-                // transform: scale(0) → scale(1) actually fires.
-                requestAnimationFrame(() => setIsRevealed(true));
-              }, PORTRAIT_REVEAL_DELAY);
-              const resolveTimeout = window.setTimeout(() => {
-                rejectSpinRef.current = null;
-                resolve(name);
-              }, PORTRAIT_REVEAL_DELAY + PORTRAIT_EXPAND_DURATION);
-              tickTimeoutsRef.current.push(revealTimeout, resolveTimeout);
+              rejectSpinRef.current = null;
+              resolve(name);
             })
             .catch(() => {
               // Animation was cancelled — rejection is handled by cancelInFlight.
@@ -260,7 +234,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
       },
       clearResult() {
         setWinnerName(null);
-        setIsRevealed(false);
       },
       setSpinning(value) {
         setIsSpinning(value);
@@ -285,8 +258,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
       : entries.length > 0
         ? `${ariaLabel}. ${entries.length} candidates.`
         : ariaLabel;
-
-  const winnerEntry = winnerIndex !== null ? entries[winnerIndex] : null;
 
   return (
     <div
@@ -455,7 +426,6 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
             />
           )}
         </svg>
-        <WinnerPortrait entry={winnerEntry} revealed={isRevealed} />
       </div>
       <div
         id={`result-${role}`}
@@ -468,51 +438,4 @@ export const Wheel = forwardRef<WheelHandle, WheelProps>(function Wheel(
   );
 });
 
-function WinnerPortrait({
-  entry,
-  revealed,
-}: {
-  entry: WheelEntry | null;
-  revealed: boolean;
-}) {
-  const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [entry?.name, entry?.mediaUrl]);
-
-  // The outer div is always mounted so that its `transform: scale(0)` state
-  // is painted before the `is-revealing` class flips it to scale(1) —
-  // otherwise the mount and the class change commit in the same paint and
-  // the CSS transition is skipped.
-  const classColor = entry ? getClassColor(entry.characterClass) : null;
-  const avatarUrl = entry ? toAvatarUrl(entry.mediaUrl) : null;
-  const proxied = avatarUrl ? remapImageUrl(avatarUrl) : null;
-  const showImg = Boolean(proxied) && !imgFailed;
-  const fallbackGlyph = entry ? entry.name.charAt(0).toUpperCase() || '?' : '';
-
-  const style = classColor
-    ? ({ '--wp-color': classColor } as CSSProperties)
-    : undefined;
-
-  return (
-    <div
-      className={`wheel-portrait${revealed && entry ? ' is-revealing' : ''}`}
-      style={style}
-      aria-hidden="true"
-    >
-      {entry && showImg && (
-        <img
-          className="wheel-portrait__img"
-          src={proxied ?? undefined}
-          alt=""
-          onError={() => setImgFailed(true)}
-        />
-      )}
-      {entry && !showImg && (
-        <div className="wheel-portrait__fallback">{fallbackGlyph}</div>
-      )}
-    </div>
-  );
-}
 
