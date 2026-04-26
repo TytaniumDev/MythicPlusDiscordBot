@@ -3499,3 +3499,60 @@ button.role-section-header--collapsible {
   color: var(--text-secondary);
   margin-bottom: 1rem;
 }
+
+/* ============================================
+   GroupCarousel
+   ============================================ */
+.group-carousel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-carousel__viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 16px 0;
+}
+
+.group-carousel__track {
+  display: flex;
+  align-items: flex-start;
+  transition: transform 250ms ease-out;
+  will-change: transform;
+}
+
+.group-carousel__slide {
+  flex: 0 0 100%;
+  display: flex;
+  justify-content: center;
+  transition: opacity 250ms ease-out, transform 250ms ease-out;
+}
+
+.group-carousel__slide--active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.group-carousel__slide--peek {
+  opacity: 0.4;
+  transform: scale(0.8);
+  cursor: pointer;
+}
+
+.group-carousel__slide--distant {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.group-carousel__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
