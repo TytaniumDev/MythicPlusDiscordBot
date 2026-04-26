@@ -29,11 +29,10 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(panel).toBeVisible();
     await expect(panel.getByRole('heading', { name: /Suggested Keys/i })).toBeVisible();
 
-    // Wait for ready state — the footnote ("Based on N characters") only
-    // renders once requests resolve and ranking is computed.
-    await expect(panel.locator('.dungeon-suggestions__footnote')).toBeVisible();
-
+    // Wait for ready state — non-skeleton rows only render once requests
+    // resolve and the ranking is computed.
     const rows = panel.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)');
+    await expect(rows.first()).toBeVisible();
     // Operation: Floodgate should rank #1 — it's the lowest-scoring dungeon
     // in the fixture. We display the full name; the row text matches that.
     await expect(rows.first().locator('.dungeon-suggestion-row__name'))
@@ -67,7 +66,9 @@ test.describe('Dungeon Suggestions panel', () => {
     await expect(page.locator('.spotlight-portrait')).toHaveCount(5);
 
     // Wait for character data to settle so the tooltip has scores to show.
-    await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+    await expect(
+      page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
+    ).toBeVisible();
 
     const firstPortrait = page.locator('.spotlight-portrait').first();
     // Tooltip is rendered via FloatingPortal at the document root and only

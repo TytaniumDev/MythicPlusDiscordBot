@@ -195,7 +195,9 @@ function designViewportTests(
       await expect(page.locator('#view-results')).toBeVisible();
       await expect(page.locator('#final-groups .group-card')).toHaveCount(mockGroups.length);
       // Wait for dungeon suggestions to settle into ready state.
-      await expect(page.locator('.dungeon-suggestions__footnote')).toBeVisible();
+      await expect(
+        page.locator('.dungeon-suggestion-row:not(.dungeon-suggestion-row--skeleton)').first(),
+      ).toBeVisible();
       await expect(page).toHaveScreenshot(`results-${viewport.width}x${viewport.height}.png`);
     });
   });
