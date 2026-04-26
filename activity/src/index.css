@@ -3570,3 +3570,40 @@ button.role-section-header--collapsible {
     transform: scale(0.85);
   }
 }
+
+.group-carousel__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 1;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.group-carousel__arrow--prev { left: 8px; }
+.group-carousel__arrow--next { right: 8px; }
+
+.group-carousel__arrow:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.group-carousel__arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.group-carousel__viewport:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
