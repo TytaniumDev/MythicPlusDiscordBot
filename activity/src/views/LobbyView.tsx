@@ -97,20 +97,15 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     [players, sittingOut],
   );
 
-  const activePlayer = useAppStore((s) => s.activePlayer);
-
   const handleChipClick = (player: typeof players[number]) => {
-    if (player.discordId === currentPlayerId) {
-      useAppStore.getState().setActivePlayer(player);
-    } else {
-      useAppStore.getState().setActivePlayer(null);
+    if (player.discordId !== currentPlayerId) {
       setEditingPlayer(player);
     }
   };
 
   const renderChip = (p: typeof players[number]) => {
     const roleKey = getPrimaryRole(p);
-    const isSelected = activePlayer != null && p.discordId === activePlayer.discordId;
+    const isSelected = p.discordId != null && p.discordId === currentPlayerId;
     const isSittingOut = p.discordId != null && sittingOut.includes(p.discordId);
     const isSelf = p.discordId === currentPlayerId;
     return (
