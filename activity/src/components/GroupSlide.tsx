@@ -57,8 +57,8 @@ function RoleGlyph({ role }: { role: SlotRole }) {
         : 'var(--color-dps)';
   return (
     <svg
-      width="28"
-      height="28"
+      width="42"
+      height="42"
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
