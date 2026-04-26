@@ -20,7 +20,6 @@ import {
   CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATIONS,
   SPOTLIGHT_HOLD_DURATION, SPOTLIGHT_ENTER_DURATION, SPOTLIGHT_EXIT_DURATION,
   WHEELS_FADE_DURATION, POST_LAND_PAUSE,
-  PROGRESS_FADE_DURATION,
 } from '../lib/timing';
 
 interface WheelsViewProps {
@@ -48,8 +47,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const [showSpinBtn, setShowSpinBtn] = useState(false);
   const [spinBtnDisabled, setSpinBtnDisabled] = useState(false);
   const [autoAdvanceRunning, setAutoAdvanceRunning] = useState(false);
-  const [progressText, setProgressText] = useState('');
-  const [progressFading, setProgressFading] = useState(false);
   const [wheelsHidden, setWheelsHidden] = useState(false);
   const [spotlightGroup, setSpotlightGroup] = useState<{ group: import('../types').WoWGroup; index: number; label?: string } | null>(null);
   const [spotlightVisible, setSpotlightVisible] = useState(false);
@@ -194,13 +191,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [markedPools]);
 
-  const updateProgress = useCallback(async (text: string) => {
-    setProgressFading(true);
-    await delay(PROGRESS_FADE_DURATION);
-    setProgressText(text);
-    setProgressFading(false);
-  }, []);
-
   const runAutoAdvanceLoop = useCallback(async () => {
     const store = useAppStore.getState();
     const grid = gridRef.current?.grid;
@@ -218,7 +208,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       if (!autoAdvanceRef.current) break;
 
       store.setCurrentGroupIndex(i);
-      await updateProgress(`Group ${i + 1} of ${totalFull}`);
       setWheelStatus(`Spinning for Group ${i + 1}...`);
 
       // Fade wheels in (skip for first group — already visible)
@@ -271,7 +260,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
       const rg = store.remainderGroups[ri];
       const rgIndex = totalFull + ri;
-      await updateProgress(`Remainder ${ri + 1} of ${store.remainderGroups.length}`);
 
       setSpotlightGroup({ group: rg, index: rgIndex, label: 'Remainder' });
       setSpotlightExit(false);
@@ -303,7 +291,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     } catch (err) {
       reportError(err, { tag: 'WheelsView.finishSequence' });
     }
-  }, [spinOneGroupGrid, spinOneGroupCarousel, updateProgress, onNavigate, service]);
+  }, [spinOneGroupGrid, spinOneGroupCarousel, onNavigate, service]);
 
   const handleSpinClick = useCallback(async () => {
     const store = useAppStore.getState();
@@ -422,14 +410,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
               Spin
             </PrimaryCTA>
           )}
-          {!showSpinBtn && autoAdvanceRunning && (
-            <div className="spin-progress">
-              <span className={`spin-progress-text${progressFading ? ' fade-out' : ''}`}>
-                {progressText}
-              </span>
-            </div>
-          )}
-          {!showSpinBtn && !autoAdvanceRunning && (
+          {!showSpinBtn && (
             <PrimaryCTA id="next-btn" className="hidden">
               Spin
             </PrimaryCTA>

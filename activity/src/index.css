@@ -3431,26 +3431,6 @@ button.role-section-header--collapsible {
   pointer-events: none;
 }
 
-/* ── Progress Indicator ─────────────────────────────────── */
-.spin-progress {
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  padding: 12px 0;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.spin-progress-text {
-  transition: opacity 200ms ease;
-}
-
-.spin-progress-text.fade-out {
-  opacity: 0;
-}
-
 /* ============================================
    Reduced Motion
    ============================================ */
