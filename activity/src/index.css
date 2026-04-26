@@ -1791,13 +1791,6 @@ button:focus-visible,
   color: var(--text-secondary);
 }
 
-.dungeon-suggestions__footnote {
-  margin: 0;
-  font-size: 0.65rem;
-  color: var(--text-secondary);
-  opacity: 0.7;
-}
-
 .dungeon-suggestions__empty {
   margin: 0;
   font-size: 0.8rem;

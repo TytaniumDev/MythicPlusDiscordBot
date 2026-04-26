@@ -5,7 +5,6 @@ import { KeyLevelSelect } from './KeyLevelSelect';
 interface DungeonSuggestionsProps {
   status: DungeonSuggestionsStatus;
   ranking: DungeonSuggestion[];
-  characterCount: number;
   lookupTargetCount: number;
   /** How many dungeons to render (default 5). */
   limit?: number;
@@ -48,7 +47,6 @@ const STRATEGY_EXPLANATION =
 export function DungeonSuggestions({
   status,
   ranking,
-  characterCount,
   lookupTargetCount,
   limit = DEFAULT_LIMIT,
   layout = 'vertical',
@@ -90,16 +88,11 @@ export function DungeonSuggestions({
       )}
 
       {status === 'ready' && (
-        <>
-          <ol className="dungeon-suggestions__list">
-            {ranking.slice(0, limit).map((d, i) => (
-              <DungeonRow key={d.challengeModeId} suggestion={d} rank={i + 1} />
-            ))}
-          </ol>
-          <p className="dungeon-suggestions__footnote">
-            Based on {characterCount} {characterCount === 1 ? 'character' : 'characters'}
-          </p>
-        </>
+        <ol className="dungeon-suggestions__list">
+          {ranking.slice(0, limit).map((d, i) => (
+            <DungeonRow key={d.challengeModeId} suggestion={d} rank={i + 1} />
+          ))}
+        </ol>
       )}
     </aside>
   );

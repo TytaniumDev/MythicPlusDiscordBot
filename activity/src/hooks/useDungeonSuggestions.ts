@@ -200,19 +200,19 @@ export function useDungeonSuggestions(
 
     if (phase === 'idle') {
       return {
-        state: { status: 'idle', ranking: [], characterCount: 0, lookupTargetCount: 0 },
+        state: { status: 'idle', ranking: [], lookupTargetCount: 0 },
         scoresByDiscordId: EMPTY_SCORES_MAP,
       };
     }
     if (phase === 'no-targets') {
       return {
-        state: { status: 'empty', ranking: [], characterCount: 0, lookupTargetCount: 0 },
+        state: { status: 'empty', ranking: [], lookupTargetCount: 0 },
         scoresByDiscordId: EMPTY_SCORES_MAP,
       };
     }
     if (phase === 'loading') {
       return {
-        state: { status: 'loading', ranking: [], characterCount: 0, lookupTargetCount },
+        state: { status: 'loading', ranking: [], lookupTargetCount },
         scoresByDiscordId: EMPTY_SCORES_MAP,
       };
     }
@@ -239,7 +239,6 @@ export function useDungeonSuggestions(
       state: {
         status,
         ranking,
-        characterCount: valid.length,
         lookupTargetCount,
       },
       scoresByDiscordId,
