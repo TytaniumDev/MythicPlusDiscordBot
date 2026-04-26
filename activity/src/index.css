@@ -113,11 +113,22 @@ body {
   flex-shrink: 0;
 }
 
-/* Match .header-bar's specificity (0,2,0) so this padding override sticks
-   regardless of stylesheet order. */
+/* Match .header-bar's specificity (0,2,0) so this override sticks
+   regardless of stylesheet order. Keeps the bar at 32px tall by zeroing
+   vertical padding and shrinking the back button + center column to fit. */
 .header-bar.app-header {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  min-height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.header-bar.app-header .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.header-bar.app-header .header-bar__center {
+  min-height: 28px;
 }
 
 .app-header h1 {
