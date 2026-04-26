@@ -114,12 +114,22 @@ body {
 }
 
 /* Match .header-bar's specificity (0,2,0) so this override sticks
-   regardless of stylesheet order. Bar lands at 48px tall:
-   8 top + 32 content (back button) + 7 bottom + 1 border. */
+   regardless of stylesheet order. min-height keeps the bar at 48px
+   even when no in-flow child is 32px tall (e.g. no back button — the
+   centered title is position: absolute and out of flow). */
 .header-bar.app-header {
+  min-height: 48px;
   padding-top: 8px;
   padding-bottom: 7px;
   position: relative;
+}
+
+/* When the AffixBar renders directly below, drop the divider so the
+   two bars read as one surface. Compensate 1px in padding-bottom so
+   the header stays 48px tall. */
+.header-bar.app-header:has(+ .affix-bar) {
+  border-bottom: none;
+  padding-bottom: 8px;
 }
 
 /* Absolutely-positioned title so it sits at the bar's true horizontal
@@ -453,12 +463,6 @@ button:focus-visible,
 /* ============================================
    View: Lobby
    ============================================ */
-/* Remove header border when affix bar follows seamlessly */
-.main-layout:has(#view-lobby) .header-bar.app-header {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
 #view-lobby {
   flex: 1;
   min-height: 0;
