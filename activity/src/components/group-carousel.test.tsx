@@ -51,4 +51,17 @@ describe('GroupCarousel navigation', () => {
     expect(screen.queryByLabelText('Previous group')).toBeNull();
     expect(screen.queryByLabelText('Next group')).toBeNull();
   });
+
+  it('clicking a pager dot navigates to that group', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={0} items={items} />);
+    await user.click(screen.getByLabelText('Go to group 3'));
+    expect(screen.getByTestId('active').textContent).toBe('2');
+    expect(screen.getByLabelText('Go to group 3').getAttribute('aria-current')).toBe('true');
+  });
+
+  it('hides pager for a single-item carousel', () => {
+    render(<Harness initial={0} items={[items[0]]} />);
+    expect(screen.queryByTestId('group-carousel-pager')).toBeNull();
+  });
 });

@@ -143,6 +143,36 @@ export function GroupCarousel({
       className={`group-carousel${single ? ' group-carousel--single' : ''}`}
       data-testid="group-carousel"
     >
+      {!single && (
+        <div
+          className="group-carousel__pager"
+          aria-label="Groups"
+          data-testid="group-carousel-pager"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              onActiveIndexChange(wrap(clamped - 1));
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              onActiveIndexChange(wrap(clamped + 1));
+            }
+          }}
+        >
+          {items.map((item, i) => {
+            const isActive = i === clamped;
+            return (
+              <button
+                key={item.index}
+                type="button"
+                aria-label={`Go to group ${i + 1}`}
+                aria-current={isActive ? 'true' : undefined}
+                className={`group-carousel__pager-dot${isActive ? ' is-active' : ''}`}
+                onClick={() => onActiveIndexChange(i)}
+              />
+            );
+          })}
+        </div>
+      )}
       <div
         className="group-carousel__viewport"
         ref={viewportRef}
