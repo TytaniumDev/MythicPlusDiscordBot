@@ -3395,3 +3395,39 @@ button.role-section-header--collapsible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================
+   GroupSlide
+   ============================================ */
+.group-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.group-slide__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary, var(--text-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.group-slide__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: clamp(8px, 1.5vw, 20px);
+  row-gap: 6px;
+  width: 100%;
+  align-items: end;
+  justify-items: center;
+}
+
+.group-slide__col {
+  display: contents;
+}
