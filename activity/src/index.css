@@ -119,6 +119,18 @@ body {
 .header-bar.app-header {
   padding-top: 8px;
   padding-bottom: 7px;
+  position: relative;
+}
+
+/* Absolutely-positioned title so it sits at the bar's true horizontal
+   center regardless of the left and right sides being different widths. */
+.header-bar.app-header .header-bar__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  flex: none;
+  pointer-events: none;
 }
 
 .app-header h1 {
