@@ -27,7 +27,7 @@ class AudioManager {
   }
 
   // Returns an OscillatorNode already wired through a GainNode to destination.
-  private newVoice(ctx: AudioContext): { osc: OscillatorNode; gain: GainNode } {
+  private newTone(ctx: AudioContext): { osc: OscillatorNode; gain: GainNode } {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -50,7 +50,7 @@ class AudioManager {
     if (now - this.lastTickTime < 30) return;
     this.lastTickTime = now;
     this.play((ctx) => {
-      const { osc, gain } = this.newVoice(ctx);
+      const { osc, gain } = this.newTone(ctx);
       osc.frequency.value = 600 + Math.random() * 400;
       osc.type = 'triangle';
       gain.gain.setValueAtTime(0.08, ctx.currentTime);
@@ -65,7 +65,7 @@ class AudioManager {
     this.play((ctx) => {
       const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
       notes.forEach((freq, i) => {
-        const { osc, gain } = this.newVoice(ctx);
+        const { osc, gain } = this.newTone(ctx);
         osc.frequency.value = freq;
         osc.type = 'sine';
 
@@ -82,7 +82,7 @@ class AudioManager {
   /** Swoosh sound for individual wheel landing */
   land() {
     this.play((ctx) => {
-      const { osc, gain } = this.newVoice(ctx);
+      const { osc, gain } = this.newTone(ctx);
       osc.frequency.value = 400;
       osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
       osc.type = 'sine';
