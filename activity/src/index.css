@@ -285,6 +285,25 @@ button:focus-visible,
   border-radius: var(--radius-md);
 }
 
+.btn-compact {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  gap: 6px;
+}
+
+/* Narrow viewports: collapse compact button labels so the icon stays
+   visible without colliding with the centered header title. */
+@media (max-width: 480px) {
+  .btn-compact .btn-label {
+    display: none;
+  }
+
+  .btn-compact {
+    padding: 6px 8px;
+    gap: 0;
+  }
+}
+
 /* ============================================
    View: Home (Recent Guilds)
    ============================================ */
@@ -2177,6 +2196,13 @@ button:focus-visible,
     display: none;
   }
 
+  /* Results view keeps its header visible — the New Round button lives there
+     and must remain reachable on short screens. */
+  .main-layout:has(#view-results) .app-header,
+  .main-layout:has(#view-results) .header-bar.app-header {
+    display: flex;
+  }
+
   .wheel-status {
     font-size: 0.8rem;
     margin-bottom: 2px;
@@ -3683,6 +3709,7 @@ button.role-section-header--collapsible {
 }
 
 #view-results {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3692,6 +3719,23 @@ button.role-section-header--collapsible {
 
 #view-results > .group-carousel {
   width: 100%;
+}
+
+.results-new-round {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  z-index: 2;
+}
+
+@media (max-width: 480px) {
+  .results-new-round {
+    padding: 10px 18px;
+    font-size: 0.95rem;
+  }
+  .results-new-round .btn-label {
+    display: none;
+  }
 }
 
 .results-suggestions-fade {
@@ -3710,4 +3754,240 @@ button.role-section-header--collapsible {
   text-align: center;
   padding: 16px 0;
   min-height: 56px;
+}
+
+/* ============================================
+   Spin Prompt — fullscreen takeover before spin
+   ============================================ */
+.spin-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(0, 0, 0, 0.55) 45%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: spin-prompt-fade-in 220ms ease-out;
+}
+
+@keyframes spin-prompt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* When the user clicks Spin, fade the entire overlay out before unmounting.
+   The button also pops slightly during the same window for nice feedback. */
+.spin-prompt--leaving {
+  animation: spin-prompt-fade-out 320ms ease-in forwards;
+  pointer-events: none;
+}
+
+.spin-prompt--leaving .spin-button {
+  animation: spin-button-pop 320ms ease-out forwards;
+}
+
+@keyframes spin-prompt-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes spin-button-pop {
+  to { transform: scale(1.08); }
+}
+
+.spin-prompt__stage {
+  position: relative;
+  width: 1px;
+  height: 1px;
+  /* Children (button + orbiters) anchor to this point and absolutely
+     position around it, so the stage has no intrinsic size of its own. */
+}
+
+/* Rectangular spin button — matches the app's primary button language but
+   sized larger as the focal point of the takeover. */
+.spin-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  padding: 18px 116px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--color-gold), #d97706);
+  color: #1a0d00;
+  font-family: var(--font-family);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: spin-button-pulse 2.4s ease-in-out infinite;
+  transition: transform 120ms ease-out;
+}
+
+.spin-button:hover:not(:disabled) {
+  transform: scale(1.04);
+}
+
+.spin-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.spin-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  animation: none;
+}
+
+.spin-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+
+.spin-button__label {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Outer halo glow — a slightly inflated copy of the button shape with
+   layered box-shadows that radiate outward, so the glow follows the
+   button's rounded-rectangle silhouette instead of pooling as an oval. */
+.spin-button__halo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 0 28px 8px rgba(245, 158, 11, 0.55),
+    0 0 64px 22px rgba(245, 158, 11, 0.3),
+    0 0 110px 40px rgba(245, 158, 11, 0.14);
+  animation: spin-button-halo 2.4s ease-in-out infinite;
+}
+
+@keyframes spin-button-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.25),
+      0 8px 24px rgba(0, 0, 0, 0.45),
+      0 0 0 0 rgba(245, 158, 11, 0.0);
+  }
+  50% {
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.25),
+      0 8px 32px rgba(0, 0, 0, 0.55),
+      0 0 0 14px rgba(245, 158, 11, 0.08);
+  }
+}
+
+@keyframes spin-button-halo {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+/* Wheelson logos parked around the spin button. The orbiter is anchored
+   at a (left, top) computed in JS from polar coordinates; `translate` keeps
+   the icon centered on that anchor. The orbiter only tilts side-to-side —
+   it never rotates around the button — so the icon always reads upright. */
+.spin-orbiter {
+  position: absolute;
+  /* Without explicit width/height, shrink-to-fit clamps to 0 on the right
+     side of the stage (where containing_block_width - left is negative).
+     `max-content` lets the orbiter size to its content. */
+  width: max-content;
+  height: max-content;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation-name: spin-orbiter-tilt;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.spin-orbiter__bob {
+  display: block;
+  animation-name: spin-orbiter-bob;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.spin-orbiter__icon {
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+}
+
+/* Side-to-side tilt around the icon's center. `alternate` doubles the
+   visual range to ±10°, giving a gentle waddle without flipping the icon. */
+@keyframes spin-orbiter-tilt {
+  from { transform: rotate(-10deg); }
+  to   { transform: rotate(10deg); }
+}
+
+@keyframes spin-orbiter-bob {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -6px; }
+}
+
+/* Sparkles behind the spin button — small twinkling dots positioned around
+   the button at varied angles and distances. */
+.spin-sparkle {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(253, 230, 138, 0.9) 40%,
+    rgba(245, 158, 11, 0) 100%
+  );
+  box-shadow: 0 0 8px rgba(253, 230, 138, 0.9);
+  translate: -50% -50%;
+  opacity: 0;
+  animation-name: spin-sparkle-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes spin-sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50%      { opacity: 1; transform: scale(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-prompt,
+  .spin-button,
+  .spin-button__halo,
+  .spin-orbiter,
+  .spin-orbiter__bob,
+  .spin-orbiter__icon,
+  .spin-sparkle {
+    animation: none;
+  }
+  .spin-sparkle { opacity: 0.7; }
+}
+
+/* Scale the whole stage down on tight viewports so the widest orbit
+   (~210px radius) doesn't get clipped or overlap the header. */
+@media (max-width: 520px), (max-height: 520px) {
+  .spin-prompt__stage {
+    transform: scale(0.7);
+  }
 }

@@ -1,10 +1,10 @@
 // ── Configurable Timing Constants ────────────────────────────
 export const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
-export const CAROUSEL_ADVANCE_DELAY = 400;    // ms pause after each landing
+export const CAROUSEL_ADVANCE_DELAY = 600;    // ms pause after each landing
 // Per-wheel spin durations in grid mode, ordered tank → healer → dps1/2/3.
-// Each wheel lands 300ms after the previous so landings are
+// Each wheel lands 500ms after the previous so landings are
 // individually visible instead of clumping into a single pop.
-export const GRID_SPIN_DURATIONS = [3000, 3300, 3600, 3900, 4200];
+export const GRID_SPIN_DURATIONS = [3000, 3500, 4000, 4500, 5000];
 
 // Auto-advance spotlight timing
 export const SPOTLIGHT_HOLD_DURATION = 1500;  // ms to hold spotlight card center-stage
