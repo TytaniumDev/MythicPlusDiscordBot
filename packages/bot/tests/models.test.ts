@@ -156,6 +156,60 @@ describe('WoWPlayer', () => {
     expect(player.inGameName).toBe('Pandemonium-Sargeras');
     expect(player.inviteName).toBe('Pandemonium-Sargeras');
   });
+
+  describe('fromDict legacy format', () => {
+    it('reads offspec booleans into the offspecs array', () => {
+      const data = {
+        name: 'Flex',
+        discordId: '500',
+        roles: {
+          tankMain: true,
+          offhealer: true,
+          offranged: true,
+          offmelee: true,
+        },
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.tankMain).toBe(true);
+      expect(player.offhealer).toBe(true);
+      expect(player.offranged).toBe(true);
+      expect(player.offmelee).toBe(true);
+    });
+
+    it('reads hasBrez and hasLust into utilities', () => {
+      const data = {
+        name: 'Util',
+        discordId: '501',
+        roles: { healerMain: true, hasBrez: true, hasLust: true },
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.healerMain).toBe(true);
+      expect(player.hasBrez).toBe(true);
+      expect(player.hasLust).toBe(true);
+    });
+
+    it('handles entirely empty roles object without crashing', () => {
+      const data = {
+        name: 'Empty',
+        discordId: '502',
+        roles: {},
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.hasRoles()).toBe(false);
+      expect(player.tankMain).toBe(false);
+      expect(player.healerMain).toBe(false);
+      expect(player.dpsMain).toBe(false);
+      expect(player.hasBrez).toBe(false);
+      expect(player.hasLust).toBe(false);
+    });
+
+    it('handles a doc with no roles field at all', () => {
+      const data = { name: 'NoRoles', discordId: '503' };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.hasRoles()).toBe(false);
+      expect(player.discordId).toBe('503');
+    });
+  });
 });
 
 describe('WoWGroup', () => {
