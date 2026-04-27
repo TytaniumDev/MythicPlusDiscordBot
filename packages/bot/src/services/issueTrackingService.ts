@@ -25,11 +25,4 @@ export class IssueTrackingService {
       createdAt: SERVER_TIMESTAMP,
     });
   }
-
-  async deleteTracking(issueNumber: number): Promise<void> {
-    if (!this.firebase.db) return;
-
-    const docRef = this.firebase.db.collection('issueTracking').doc(String(issueNumber));
-    await docRef.delete();
-  }
 }
