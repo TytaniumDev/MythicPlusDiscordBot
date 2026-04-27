@@ -27,6 +27,21 @@ export function toCharacterClass(raw: unknown): CharacterClass | null {
   return (CHARACTER_CLASSES as readonly string[]).includes(raw) ? (raw as CharacterClass) : null;
 }
 
+const ROLES: readonly Role[] = ['tank', 'healer', 'ranged', 'melee'];
+const UTILITIES: readonly Utility[] = ['brez', 'lust'];
+
+/** Safely narrow an arbitrary value to Role, or null if it isn't a known role. */
+export function toRole(raw: unknown): Role | null {
+  if (typeof raw !== 'string') return null;
+  return (ROLES as readonly string[]).includes(raw) ? (raw as Role) : null;
+}
+
+/** Safely narrow an arbitrary value to Utility, or null if it isn't a known utility. */
+export function toUtility(raw: unknown): Utility | null {
+  if (typeof raw !== 'string') return null;
+  return (UTILITIES as readonly string[]).includes(raw) ? (raw as Utility) : null;
+}
+
 export interface WoWPlayerDict {
   [key: string]: unknown;
   name: string;

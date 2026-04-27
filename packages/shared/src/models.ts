@@ -10,7 +10,7 @@ import {
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
 } from './config.js';
-import { toCharacterClass } from './types.js';
+import { toCharacterClass, toRole, toUtility } from './types.js';
 import type { CharacterClass, Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
 
 export class WoWPlayer {
@@ -254,28 +254,33 @@ export class WoWPlayer {
 
     // New compact format: mainRole/offspecs/utilities
     if ('mainRole' in data || 'offspecs' in data || 'utilities' in data) {
-      const mainRole = (data.mainRole as Role | null) ?? null;
-      const offspecs = (data.offspecs as Role[]) ?? [];
-      const utilities = (data.utilities as Utility[]) ?? [];
+      const mainRole = toRole(data.mainRole);
+      const offspecs: Role[] = Array.isArray(data.offspecs)
+        ? data.offspecs.map(toRole).filter((r): r is Role => r !== null)
+        : [];
+      const utilities: Utility[] = Array.isArray(data.utilities)
+        ? data.utilities.map(toUtility).filter((u): u is Utility => u !== null)
+        : [];
       return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl, characterClass);
     }
 
-    // Legacy format: nested roles object with boolean flags
-    const roles = (data.roles ?? {}) as Record<string, boolean>;
+    // Legacy format: nested roles object with boolean flags. Coerce defensively
+    // since old Firestore docs may contain non-boolean values for these fields.
+    const roles = (data.roles ?? {}) as Record<string, unknown>;
     return WoWPlayer.fromFlags({
       name,
       discordId,
       inGameName,
-      tankMain: roles.tankMain ?? false,
-      healerMain: roles.healerMain ?? false,
-      ranged: roles.ranged ?? false,
-      melee: roles.melee ?? false,
-      offtank: roles.offtank ?? false,
-      offhealer: roles.offhealer ?? false,
-      offranged: roles.offranged ?? false,
-      offmelee: roles.offmelee ?? false,
-      hasBrez: roles.hasBrez ?? false,
-      hasLust: roles.hasLust ?? false,
+      tankMain: Boolean(roles.tankMain),
+      healerMain: Boolean(roles.healerMain),
+      ranged: Boolean(roles.ranged),
+      melee: Boolean(roles.melee),
+      offtank: Boolean(roles.offtank),
+      offhealer: Boolean(roles.offhealer),
+      offranged: Boolean(roles.offranged),
+      offmelee: Boolean(roles.offmelee),
+      hasBrez: Boolean(roles.hasBrez),
+      hasLust: Boolean(roles.hasLust),
     });
   }
 }

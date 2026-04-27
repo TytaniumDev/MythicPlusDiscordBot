@@ -41,6 +41,6 @@ export type {
   WoWGroupDict,
 } from './types.js';
 
-export { CHARACTER_CLASSES, toCharacterClass } from './types.js';
+export { CHARACTER_CLASSES, toCharacterClass, toRole, toUtility } from './types.js';
 
 export { todayPST } from './dateHelpers.js';

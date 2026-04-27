@@ -209,6 +209,143 @@ describe('WoWPlayer', () => {
       expect(player.hasRoles()).toBe(false);
       expect(player.discordId).toBe('503');
     });
+
+    it('coerces non-boolean truthy/falsy legacy roles values', () => {
+      const data = {
+        name: 'Truthy',
+        discordId: '504',
+        roles: {
+          tankMain: 1,
+          healerMain: 0,
+          offhealer: 'yes',
+          offranged: '',
+          hasBrez: {},
+          hasLust: null,
+        },
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.tankMain).toBe(true);
+      expect(player.healerMain).toBe(false);
+      expect(player.offhealer).toBe(true);
+      expect(player.offranged).toBe(false);
+      expect(player.hasBrez).toBe(true);
+      expect(player.hasLust).toBe(false);
+    });
+  });
+
+  describe('fromDict input validation', () => {
+    it('rejects unknown mainRole strings, returning null mainRole', () => {
+      const data = {
+        name: 'Wizard',
+        discordId: '600',
+        mainRole: 'wizard',
+        offspecs: [],
+        utilities: [],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.mainRole).toBeNull();
+      expect(player.hasRoles()).toBe(false);
+    });
+
+    it('rejects non-string mainRole (number) as null', () => {
+      const data = {
+        name: 'NumRole',
+        discordId: '601',
+        mainRole: 42,
+        offspecs: [],
+        utilities: [],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.mainRole).toBeNull();
+    });
+
+    it('treats null mainRole as null', () => {
+      const data = {
+        name: 'NullRole',
+        discordId: '602',
+        mainRole: null,
+        offspecs: [],
+        utilities: [],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.mainRole).toBeNull();
+    });
+
+    it('filters out garbage entries in offspecs while keeping valid roles', () => {
+      const data = {
+        name: 'MixedOff',
+        discordId: '603',
+        mainRole: 'tank',
+        offspecs: ['healer', 'wizard', 99, null, 'melee'],
+        utilities: [],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.mainRole).toBe('tank');
+      expect(player.offhealer).toBe(true);
+      expect(player.offmelee).toBe(true);
+      expect(player.offranged).toBe(false);
+      expect(player.offtank).toBe(false);
+    });
+
+    it('handles non-array offspecs by yielding empty offspecs', () => {
+      const data = {
+        name: 'BadOff',
+        discordId: '604',
+        mainRole: 'healer',
+        offspecs: 'tank',
+        utilities: [],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.mainRole).toBe('healer');
+      expect(player.offtank).toBe(false);
+      expect(player.offhealer).toBe(false);
+    });
+
+    it('filters out garbage entries in utilities while keeping valid ones', () => {
+      const data = {
+        name: 'MixedUtil',
+        discordId: '605',
+        mainRole: 'ranged',
+        offspecs: [],
+        utilities: ['brez', 'invisibility', 7, 'lust'],
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.hasBrez).toBe(true);
+      expect(player.hasLust).toBe(true);
+    });
+
+    it('handles non-array utilities by yielding empty utilities', () => {
+      const data = {
+        name: 'BadUtil',
+        discordId: '606',
+        mainRole: 'melee',
+        offspecs: [],
+        utilities: { brez: true },
+      };
+      const player = WoWPlayer.fromDict(data);
+      expect(player.hasBrez).toBe(false);
+      expect(player.hasLust).toBe(false);
+    });
+
+    it('round-trips create -> toDict -> fromDict preserving all fields', () => {
+      const original = WoWPlayer.create(
+        'RoundTrip',
+        [ROLE_RANGED, ROLE_MELEE_OFFSPEC, ROLE_HEALER_OFFSPEC, ROLE_BREZ, ROLE_LUST],
+        '700',
+        'RoundTrip-Sargeras',
+      );
+      const restored = WoWPlayer.fromDict(original.toDict());
+      expect(restored.name).toBe(original.name);
+      expect(restored.discordId).toBe(original.discordId);
+      expect(restored.inGameName).toBe(original.inGameName);
+      expect(restored.mainRole).toBe(original.mainRole);
+      expect(restored.offspecs).toEqual([...original.offspecs]);
+      expect(restored.utilities).toEqual([...original.utilities]);
+      expect(restored.hasBrez).toBe(original.hasBrez);
+      expect(restored.hasLust).toBe(original.hasLust);
+      expect(restored.offhealer).toBe(original.offhealer);
+      expect(restored.offmelee).toBe(original.offmelee);
+    });
   });
 });
 
