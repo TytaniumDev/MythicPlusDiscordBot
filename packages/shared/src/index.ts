@@ -44,3 +44,9 @@ export type {
 export { CHARACTER_CLASSES, toCharacterClass, toRole, toUtility } from './types.js';
 
 export { todayPST } from './dateHelpers.js';
+
+export {
+  encodeGroupHistoryRounds,
+  decodeGroupHistoryRounds,
+  type WireRound,
+} from './groupHistoryWire.js';

@@ -3,8 +3,15 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
-import { WoWGroup, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
-import type { CharacterClass } from '@mythicplus/shared';
+import {
+  WoWGroup,
+  createMythicPlusGroups,
+  decodeGroupHistoryRounds,
+  encodeGroupHistoryRounds,
+  setGroupHistory,
+  todayPST,
+} from '@mythicplus/shared';
+import type { CharacterClass, WoWGroupDict } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
@@ -24,25 +31,20 @@ function backoffDelayMs(retryCount: number): number {
 }
 
 /**
- * Parse the persisted group history from a guild doc, tolerating the legacy
- * flat shape and the current `{ groups: [...] }`-wrapped shape. Returns empty
- * rounds when the date doesn't match today or the data is malformed — the
- * spin should never be blocked by stale or bad history.
+ * Parse the persisted group history from a guild doc. Returns empty rounds
+ * when the date doesn't match today or the data is malformed — the spin
+ * should never be blocked by stale or bad history. Wire-shape normalization
+ * (wrapped vs legacy flat) is handled by `decodeGroupHistoryRounds`.
  */
 function parseExistingRounds(
   guildData: GuildData | null | undefined,
   todayIso: string,
-): Record<string, unknown>[][] {
+): WoWGroupDict[][] {
   const history = guildData?.groupHistory;
   if (!history || history.date !== todayIso || !Array.isArray(history.rounds)) {
     return [];
   }
-  return history.rounds.map((r) => {
-    if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
-      return (r as { groups: Record<string, unknown>[] }).groups;
-    }
-    return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
-  });
+  return decodeGroupHistoryRounds(history.rounds);
 }
 
 class FirestoreSessionService implements SessionService {
@@ -172,7 +174,7 @@ class FirestoreSessionService implements SessionService {
     // Restore group history from Firestore so the algorithm avoids repeat
     // groupings. Malformed history should never block a spin — fall back to
     // empty history.
-    let existingRounds: Record<string, unknown>[][] = [];
+    let existingRounds: WoWGroupDict[][] = [];
     try {
       existingRounds = parseExistingRounds(guildData, today);
       const rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
@@ -190,10 +192,9 @@ class FirestoreSessionService implements SessionService {
 
     // Persist group history to guild doc for cross-session diversity.
     // Intentionally not awaited — history save should not block the spin.
-    // Wire format wraps each round as { groups: [...] } because Firestore rejects nested arrays.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
-      const wireRounds = [...existingRounds, groupDicts].map(round => ({ groups: round }));
+      const wireRounds = encodeGroupHistoryRounds([...existingRounds, groupDicts]);
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
