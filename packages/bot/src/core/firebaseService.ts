@@ -1,4 +1,9 @@
 import { createRequire } from 'node:module';
+import {
+  decodeGroupHistoryRounds,
+  encodeGroupHistoryRounds,
+  type WoWGroupDict,
+} from '@mythicplus/shared';
 import logger from './logger.js';
 import * as config from './config.js';
 
@@ -349,22 +354,14 @@ export class FirebaseService implements IFirebaseService {
     const data = doc.data();
     const raw = data?.groupHistory as { date: string; rounds: unknown[] } | undefined;
     if (!raw) return null;
-    // Wire format wraps each round as { groups: [...] } because Firestore rejects
-    // nested arrays. Tolerate the legacy flat shape in case older data exists.
-    const rounds = (raw.rounds ?? []).map((r) => {
-      if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
-        return (r as { groups: Record<string, unknown>[] }).groups;
-      }
-      return Array.isArray(r) ? (r as Record<string, unknown>[]) : [];
-    });
-    return { date: raw.date, rounds };
+    const rounds = decodeGroupHistoryRounds(raw.rounds ?? []);
+    return { date: raw.date, rounds: rounds as Record<string, unknown>[][] };
   }
 
   async saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
-    // Wrap each round as { groups: [...] } — Firestore rejects nested arrays.
-    const wireRounds = history.rounds.map((round) => ({ groups: round }));
+    const wireRounds = encodeGroupHistoryRounds(history.rounds as WoWGroupDict[][]);
     await docRef.set(
       { groupHistory: { date: history.date, rounds: wireRounds } },
       { merge: true },
