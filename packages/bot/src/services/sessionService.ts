@@ -40,6 +40,17 @@ export class SessionService {
     this.firebase = firebase ?? FirebaseService.getInstance();
   }
 
+  /**
+   * Mark a channel as active and its guild as having an active session.
+   * Idempotent — re-registering an already-active channel is a no-op
+   * regardless of which side calls it (refresh listener, command handler).
+   */
+  registerChannel(channelId: string, guildId: string, docId: string): void {
+    if (this.activeChannels.has(channelId)) return;
+    this.activeChannels.set(channelId, { docId, guildId });
+    this.activeGuilds.add(guildId);
+  }
+
   shutdown(): void {
     for (const watch of this.channelListeners.values()) {
       watch?.unsubscribe();
