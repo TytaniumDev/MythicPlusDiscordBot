@@ -199,6 +199,57 @@ describe('GroupService.coreWheel', () => {
 
     expect(executeSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('releases lock when _executeCoreWheel throws', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ guild: { id: '123' } });
+
+    const executeSpy = vi
+      .spyOn(service, '_executeCoreWheel')
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(undefined);
+
+    // First call rejects — lock must still release in `finally`
+    await expect(service.coreWheel(ctx)).rejects.toThrow('boom');
+
+    // Second call must be able to acquire the lock and run
+    await service.coreWheel(ctx);
+
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('per-guild locks are independent across guilds', async () => {
+    const service = new GroupService();
+    const ctxA = makeCtx({ guild: { id: 'guild-a' } });
+    const ctxB = makeCtx({ guild: { id: 'guild-b' } });
+
+    let resolveA!: () => void;
+    let resolveB!: () => void;
+    const promiseA = new Promise<void>((r) => {
+      resolveA = r;
+    });
+    const promiseB = new Promise<void>((r) => {
+      resolveB = r;
+    });
+
+    const executeSpy = vi
+      .spyOn(service, '_executeCoreWheel')
+      .mockImplementationOnce(() => promiseA)
+      .mockImplementationOnce(() => promiseB);
+
+    // Both calls in flight simultaneously — different guilds, neither blocked
+    const callA = service.coreWheel(ctxA);
+    const callB = service.coreWheel(ctxB);
+
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+    expect(executeSpy).toHaveBeenNthCalledWith(1, ctxA, ctxA.channel, 'guild-a', false);
+    expect(executeSpy).toHaveBeenNthCalledWith(2, ctxB, ctxB.channel, 'guild-b', false);
+
+    resolveA();
+    resolveB();
+    await callA;
+    await callB;
+  });
 });
 
 describe('GroupService._executeCoreWheel', () => {
