@@ -215,7 +215,7 @@ sequenceDiagram
 
     User->>Discord: /activity (in voice channel)
     Discord->>Bot: command
-    Bot->>Bot: GroupService.get_groups_data (players from channel)
+    Bot->>Bot: GroupService.getGroupsData (players from channel)
     Bot->>Firestore: create session (lobby, players)
     Firestore-->>Bot: sessionId
     Bot->>Discord: reply with Activity link + browser link (sessionId)
@@ -224,8 +224,8 @@ sequenceDiagram
 
     loop Lobby
         User->>Discord: join/leave voice
-        Discord->>Bot: on_voice_state_update
-        Bot->>Firestore: update_session(players)
+        Discord->>Bot: onVoiceStateUpdate
+        Bot->>Firestore: updateChannelPlayers(players)
         Firestore-->>Frontend: snapshot → update lobby
     end
 
