@@ -9,6 +9,44 @@ const githubWebhookSecret = defineSecret('GITHUB_WEBHOOK_SECRET');
 
 const DISCORD_API = 'https://discord.com/api/v10';
 
+interface WebhookPayload {
+  action: string;
+  issue: { number: number };
+}
+
+interface IssueTrackingDoc {
+  discordUserId: string;
+  issueUrl: string;
+  issueTitle: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function parseWebhookPayload(body: unknown): WebhookPayload | null {
+  if (!isRecord(body)) return null;
+  if (typeof body.action !== 'string') return null;
+  if (!isRecord(body.issue)) return null;
+  if (typeof body.issue.number !== 'number') return null;
+  return {
+    action: body.action,
+    issue: { number: body.issue.number },
+  };
+}
+
+export function parseIssueTrackingDoc(data: unknown): IssueTrackingDoc | null {
+  if (!isRecord(data)) return null;
+  if (typeof data.discordUserId !== 'string') return null;
+  if (typeof data.issueUrl !== 'string') return null;
+  if (typeof data.issueTitle !== 'string') return null;
+  return {
+    discordUserId: data.discordUserId,
+    issueUrl: data.issueUrl,
+    issueTitle: data.issueTitle,
+  };
+}
+
 export function verifyGithubSignature(
   body: string,
   signature: string,
@@ -62,15 +100,10 @@ export async function sendDiscordDm(
   }
 }
 
-interface WebhookPayload {
-  action: string;
-  issue: { number: number };
-}
-
 export async function handleIssueWebhook(
   payload: WebhookPayload,
   botToken: string,
-): Promise<'notified' | 'ignored' | 'no-tracking'> {
+): Promise<'notified' | 'ignored' | 'no-tracking' | 'invalid-doc'> {
   if (payload.action !== 'closed') return 'ignored';
 
   const db = getFirestore();
@@ -79,11 +112,13 @@ export async function handleIssueWebhook(
 
   if (!doc.exists) return 'no-tracking';
 
-  const data = doc.data() as {
-    discordUserId: string;
-    issueUrl: string;
-    issueTitle: string;
-  };
+  const data = parseIssueTrackingDoc(doc.data());
+  if (!data) {
+    logger.warn(
+      `issueTracking doc for issue #${payload.issue.number} has unexpected shape; skipping`,
+    );
+    return 'invalid-doc';
+  }
 
   try {
     await sendDiscordDm(
@@ -121,7 +156,12 @@ export const onGithubIssueWebhook = onRequest(
       return;
     }
 
-    const payload = req.body as WebhookPayload;
+    const payload = parseWebhookPayload(req.body);
+    if (!payload) {
+      res.status(400).json({ result: 'invalid' });
+      return;
+    }
+
     const result = await handleIssueWebhook(payload, discordBotToken.value());
 
     res.status(200).json({ result });
