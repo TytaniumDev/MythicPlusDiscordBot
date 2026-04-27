@@ -284,16 +284,25 @@ export class WoWGroup {
     this.dps = dps;
   }
 
+  // Avoid the `players` getter's intermediate array allocation in the hot
+  // path — the algorithm calls these getters once per group per fill phase,
+  // so allocating a fresh array per call would be O(groups * phases) per spin.
   get hasBrez(): boolean {
-    return this.players.some((p) => p.hasBrez);
+    return (this.tank?.hasBrez ?? false)
+      || (this.healer?.hasBrez ?? false)
+      || this.dps.some((p) => p.hasBrez);
   }
 
   get hasLust(): boolean {
-    return this.players.some((p) => p.hasLust);
+    return (this.tank?.hasLust ?? false)
+      || (this.healer?.hasLust ?? false)
+      || this.dps.some((p) => p.hasLust);
   }
 
   get hasRanged(): boolean {
-    return this.players.some((p) => p.ranged);
+    return (this.tank?.ranged ?? false)
+      || (this.healer?.ranged ?? false)
+      || this.dps.some((p) => p.ranged);
   }
 
   get isComplete(): boolean {
@@ -301,7 +310,7 @@ export class WoWGroup {
   }
 
   get size(): number {
-    return this.players.length;
+    return (this.tank ? 1 : 0) + (this.healer ? 1 : 0) + this.dps.length;
   }
 
   get players(): WoWPlayer[] {
