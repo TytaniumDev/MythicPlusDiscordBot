@@ -26,6 +26,30 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
   if (idx !== -1) list.splice(idx, 1);
 }
 
+/**
+ * Form balanced Mythic+ groups from a player pool. Used by both the bot
+ * (Discord-only `/wheel`) and the frontend (Activity spin), and mirrored in
+ * Lua by the MythicPlusWheel addon — keep behavior in sync if you change it.
+ *
+ * Three things that aren't obvious from the signature:
+ *
+ * 1. **Diversity across rounds.** A pair-count matrix tracks how often each
+ *    pair of players has shared a group tonight, scoped per `guildId`. The
+ *    grabber-loop scoring penalizes repeats, so successive `/wheel` calls or
+ *    Activity spins in the same guild produce minimally repeated groupings.
+ *
+ * 2. **Per-guild history.** `guildId: null` falls back to a single shared
+ *    bucket (suitable for tests and single-guild bots). Multi-guild bots
+ *    must always pass a real guild ID, otherwise round histories collide.
+ *
+ * 3. **Fill order encodes priority.** Tank → lust → brez → healer → ranged →
+ *    remaining DPS. Earlier slots' utility coverage is enforced before later
+ *    slots compete for the remaining player pool, which is why the algorithm
+ *    sometimes "skips" the obviously-best DPS to satisfy lust/brez coverage.
+ *
+ * The `_debug` parameter is currently a no-op — kept for API compatibility
+ * with the Lua sibling, which uses it to gate verbose logging.
+ */
 export function createMythicPlusGroups(
   players: WoWPlayer[],
   _debug = true,
