@@ -162,22 +162,7 @@ export class SessionService {
     }
 
     await this.firebase.deleteChannelDoc(active.docId);
-    await this._asyncCleanupGuildIfEmpty(active.guildId);
-  }
-
-  private async _asyncCleanupGuildIfEmpty(guildId: string): Promise<void> {
-    const guildHasChannels = [...this.activeChannels.values()].some(
-      (ac) => ac.guildId === guildId,
-    );
-    if (!guildHasChannels) {
-      this.activeGuilds.delete(guildId);
-      await this.firebase.deleteGuildDoc(guildId);
-      if (this.guildListeners.has(guildId)) {
-        const watch = this.guildListeners.get(guildId);
-        watch?.unsubscribe();
-        this.guildListeners.delete(guildId);
-      }
-    }
+    await this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: true });
   }
 
   handleCollectionRemoved(change: {
@@ -194,21 +179,27 @@ export class SessionService {
         this.channelListeners.delete(channelId);
       }
       logger.info(`Channel ${channelId} removed from tracking`);
-      this._cleanupGuildIfEmpty(active.guildId);
+      void this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: false });
     }
   }
 
-  private _cleanupGuildIfEmpty(guildId: string): void {
+  private async _cleanupGuildIfEmpty(
+    guildId: string,
+    { deleteFirestoreDoc }: { deleteFirestoreDoc: boolean },
+  ): Promise<void> {
     const guildHasChannels = [...this.activeChannels.values()].some(
       (ac) => ac.guildId === guildId,
     );
-    if (!guildHasChannels) {
-      this.activeGuilds.delete(guildId);
-      if (this.guildListeners.has(guildId)) {
-        const watch = this.guildListeners.get(guildId);
-        watch?.unsubscribe();
-        this.guildListeners.delete(guildId);
-      }
+    if (guildHasChannels) return;
+
+    this.activeGuilds.delete(guildId);
+    if (deleteFirestoreDoc) {
+      await this.firebase.deleteGuildDoc(guildId);
+    }
+    if (this.guildListeners.has(guildId)) {
+      const watch = this.guildListeners.get(guildId);
+      watch?.unsubscribe();
+      this.guildListeners.delete(guildId);
     }
   }
 
