@@ -51,13 +51,17 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     try {
       setIsCalculating(true);
 
-      // Auto-sit-out players missing a role
+      // Auto-sit-out players missing a role.
+      // Each toggleSitOut runs its own Firestore transaction (read+write
+      // round trip), so issuing them in parallel converts O(N) latency to
+      // O(1). The underlying writes use commutative arrayUnion ops, so
+      // there's no ordering hazard.
       const { missingRole } = categorizeUnreadyPlayers(players, sittingOut);
-      for (const p of missingRole) {
-        if (p.discordId && !sittingOut.includes(p.discordId)) {
-          await service.toggleSitOut(p.discordId);
-        }
-      }
+      await Promise.all(
+        missingRole
+          .filter((p) => p.discordId && !sittingOut.includes(p.discordId))
+          .map((p) => service.toggleSitOut(p.discordId!)),
+      );
 
       if (useAppStore.getState().isDemoMode) {
         onNavigate('wheels');
