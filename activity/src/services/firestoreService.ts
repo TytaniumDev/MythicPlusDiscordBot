@@ -3,9 +3,10 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
-import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
+import { WoWGroup, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
 import type { CharacterClass } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
+import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
 const MAX_LISTENER_RETRIES = 5;
 const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
@@ -179,11 +180,7 @@ class FirestoreSessionService implements SessionService {
       setGroupHistory([], guildId);
     }
 
-    const sittingOut = channelData.sittingOut ?? [];
-    const players = channelData.players
-      .filter(p => (p.mainRole !== null || p.offspecs.length > 0)
-        && (!p.discordId || !sittingOut.includes(p.discordId)))
-      .map(p => WoWPlayer.fromDict(p));
+    const players = eligibleSpinPlayers(channelData.players, channelData.sittingOut ?? []);
 
     const groups = createMythicPlusGroups(players, true, guildId);
     const groupDicts = groups.map(g => g.toDict());
