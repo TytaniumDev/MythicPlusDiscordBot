@@ -297,4 +297,162 @@ describe('PreferenceService', () => {
       expect(docs).toEqual({});
     });
   });
+
+  describe('loadCache hydrates sync caches', () => {
+    it('hydrates characterClass, mediaUrl, inGameName, and name->id caches from Firestore', async () => {
+      const mockSnapshot = {
+        docs: [
+          {
+            id: 'discord-1',
+            data: () => ({
+              roles: ['Tank', 'Brez'],
+              wowName: 'Martz',
+              inGameName: 'Martz-Sargeras',
+              mediaUrl: 'https://example.com/martz.png',
+              characterClass: 'Paladin',
+            }),
+          },
+          {
+            id: 'discord-2',
+            data: () => ({
+              roles: ['Healer'],
+              wowName: 'Tytanium',
+              inGameName: 'Tytanium-Proudmoore',
+              mediaUrl: 'https://example.com/tytanium.png',
+              characterClass: 'Priest',
+            }),
+          },
+        ],
+      };
+      const mockDb: Record<string, ReturnType<typeof vi.fn>> = {
+        collection: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(mockSnapshot),
+        }),
+      };
+      const mockFb = createMockFirebase(true);
+      mockFb.db = mockDb as unknown as FirebaseService['db'];
+      const testSvc = new PreferenceService(mockFb);
+
+      await testSvc.loadCache();
+
+      expect(testSvc.getCharacterClassSync('discord-1')).toBe('Paladin');
+      expect(testSvc.getMediaUrlSync('discord-1')).toBe('https://example.com/martz.png');
+      expect(testSvc.getInGameNameSync('discord-1')).toBe('Martz-Sargeras');
+      expect(testSvc.getPreferenceByNameSync('Martz')).toEqual(['Tank', 'Brez']);
+
+      expect(testSvc.getCharacterClassSync('discord-2')).toBe('Priest');
+      expect(testSvc.getMediaUrlSync('discord-2')).toBe('https://example.com/tytanium.png');
+      expect(testSvc.getInGameNameSync('discord-2')).toBe('Tytanium-Proudmoore');
+      expect(testSvc.getPreferenceByNameSync('Tytanium')).toEqual(['Healer']);
+    });
+
+    it('skips optional fields when missing from Firestore docs', async () => {
+      const mockSnapshot = {
+        docs: [
+          {
+            id: 'discord-3',
+            data: () => ({ roles: ['Ranged'], wowName: 'Sparse' }),
+          },
+          // Doc with null data should be filtered out
+          { id: 'discord-null', data: () => null },
+        ],
+      };
+      const mockDb: Record<string, ReturnType<typeof vi.fn>> = {
+        collection: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue(mockSnapshot),
+        }),
+      };
+      const mockFb = createMockFirebase(true);
+      mockFb.db = mockDb as unknown as FirebaseService['db'];
+      const testSvc = new PreferenceService(mockFb);
+
+      await testSvc.loadCache();
+
+      expect(testSvc.getPreferenceSync('discord-3')).toEqual(['Ranged']);
+      expect(testSvc.getInGameNameSync('discord-3')).toBe('');
+      expect(testSvc.getMediaUrlSync('discord-3')).toBeNull();
+      expect(testSvc.getCharacterClassSync('discord-3')).toBeNull();
+      // Null-data doc is excluded
+      expect(testSvc.getPreferenceSync('discord-null')).toBeNull();
+    });
+  });
+
+  describe('resolveDiscordId', () => {
+    it('returns the discordId after setPreference registers the name mapping', async () => {
+      await svc.setPreference('discord-42', 'Martz', ['Tank']);
+      expect(svc.resolveDiscordId('Martz')).toBe('discord-42');
+    });
+
+    it('returns null for an unknown name', () => {
+      expect(svc.resolveDiscordId('NobodyHere')).toBeNull();
+    });
+  });
+
+  describe('clearPreference purges all sync caches', () => {
+    it('removes characterClass and mediaUrl cache entries on clearPreference', async () => {
+      const mockFb = createMockFirebase(true);
+      const testSvc = new PreferenceService(mockFb);
+
+      // Hydrate caches via getPreference + Firestore mock so all four caches populate
+      testSvc._readFirestorePref = vi.fn().mockResolvedValue({
+        roles: ['Tank'],
+        wowName: 'Martz',
+        inGameName: 'Martz-Sargeras',
+        mediaUrl: 'https://example.com/avatar.png',
+        characterClass: 'Warrior',
+      });
+      testSvc._deleteFirestorePref = vi.fn().mockResolvedValue(undefined);
+
+      await testSvc.getPreference('discord-1');
+
+      expect(testSvc.getCharacterClassSync('discord-1')).toBe('Warrior');
+      expect(testSvc.getMediaUrlSync('discord-1')).toBe('https://example.com/avatar.png');
+      expect(testSvc.getInGameNameSync('discord-1')).toBe('Martz-Sargeras');
+      expect(testSvc.resolveDiscordId('Martz')).toBe('discord-1');
+
+      await testSvc.clearPreference('discord-1');
+
+      expect(testSvc.getPreferenceSync('discord-1')).toBeNull();
+      expect(testSvc.getCharacterClassSync('discord-1')).toBeNull();
+      expect(testSvc.getMediaUrlSync('discord-1')).toBeNull();
+      expect(testSvc.getInGameNameSync('discord-1')).toBe('');
+      expect(testSvc.resolveDiscordId('Martz')).toBeNull();
+    });
+  });
+
+  describe('refreshPreference removes stale optional fields', () => {
+    it('deletes cached characterClass and mediaUrl when payload omits them', async () => {
+      const mockFb = createMockFirebase(true);
+      const testSvc = new PreferenceService(mockFb);
+
+      // Pre-populate caches with stale values
+      const internals = testSvc as unknown as {
+        _cache: Record<string, string[]>;
+        _nameToId: Record<string, string>;
+        _inGameNameCache: Record<string, string>;
+        _mediaUrlCache: Record<string, string>;
+        _characterClassCache: Record<string, string>;
+      };
+      internals._cache['discord-1'] = ['Tank'];
+      internals._nameToId['OldName'] = 'discord-1';
+      internals._inGameNameCache['discord-1'] = 'Old-Realm';
+      internals._mediaUrlCache['discord-1'] = 'https://example.com/old.png';
+      internals._characterClassCache['discord-1'] = 'Paladin';
+
+      // Refresh payload omits inGameName, mediaUrl, characterClass entirely
+      testSvc._readFirestorePref = vi
+        .fn()
+        .mockResolvedValue({ roles: ['Healer'], wowName: 'NewName' });
+
+      await testSvc.refreshPreference('discord-1');
+
+      expect(testSvc.getPreferenceSync('discord-1')).toEqual(['Healer']);
+      expect(testSvc.resolveDiscordId('NewName')).toBe('discord-1');
+      expect(testSvc.resolveDiscordId('OldName')).toBeNull();
+      // The else-branches in refreshPreference should have wiped these
+      expect(testSvc.getInGameNameSync('discord-1')).toBe('');
+      expect(testSvc.getMediaUrlSync('discord-1')).toBeNull();
+      expect(testSvc.getCharacterClassSync('discord-1')).toBeNull();
+    });
+  });
 });
