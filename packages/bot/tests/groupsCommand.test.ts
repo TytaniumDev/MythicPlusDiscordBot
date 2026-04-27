@@ -96,6 +96,7 @@ function makeCtx(overrides: Partial<GroupsContext> = {}): GroupsContext {
         },
       },
     },
+    channel: overrides.channel === undefined ? undefined : overrides.channel,
     send: vi.fn().mockResolvedValue(undefined),
     defer: vi.fn().mockResolvedValue(undefined),
     interaction: overrides.interaction === undefined ? null : overrides.interaction,
@@ -104,6 +105,51 @@ function makeCtx(overrides: Partial<GroupsContext> = {}): GroupsContext {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('GroupsHandler.wheel', () => {
+  it('calls coreWheel successfully when context has channel', async () => {
+    const groupService = new GroupService();
+    // Use vitest to spy on the method
+    vi.spyOn(groupService, 'coreWheel').mockResolvedValue(undefined);
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+
+    const ctx = makeCtx({ channel: { members: [], sendTyping: vi.fn() } });
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).toHaveBeenCalledWith(ctx, false);
+    expect(ctx.send).not.toHaveBeenCalled();
+  });
+
+  it('reports an error when caller has no channel context', async () => {
+    const groupService = new GroupService();
+    vi.spyOn(groupService, 'coreWheel').mockResolvedValue(undefined);
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+
+    const ctx = makeCtx();
+    delete ctx.channel;
+
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).not.toHaveBeenCalled();
+    expect(ctx.send).toHaveBeenCalledWith('❌ An unexpected error occurred. Please try again later.');
+  });
+
+  it('reports an error when coreWheel throws', async () => {
+    const groupService = new GroupService();
+    // Use vitest to spy on the method
+    vi.spyOn(groupService, 'coreWheel').mockRejectedValue(new Error('coreWheel failed'));
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+
+    const ctx = makeCtx({ channel: { members: [], sendTyping: vi.fn() } });
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).toHaveBeenCalledWith(ctx, false);
+    expect(ctx.send).toHaveBeenCalledWith('❌ An unexpected error occurred. Please try again later.');
+  });
 });
 
 describe('GroupsHandler.badgroup', () => {
