@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { onRequest } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
+import { logger } from 'firebase-functions';
 
 const discordBotToken = defineSecret('BOT_TOKEN');
 const githubWebhookSecret = defineSecret('GITHUB_WEBHOOK_SECRET');
@@ -91,7 +92,7 @@ export async function handleIssueWebhook(
       `Your issue "${data.issueTitle}" has been resolved!\n${data.issueUrl}`,
     );
   } catch (e) {
-    console.warn(`Failed to DM user ${data.discordUserId}: ${e}`);
+    logger.warn(`Failed to DM user ${data.discordUserId}`, e);
   }
 
   await docRef.delete();

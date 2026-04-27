@@ -1,5 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
 import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
@@ -158,7 +159,7 @@ export async function runRefresh(): Promise<RefreshSummary> {
       summary.cleared += 1;
     } catch (err) {
       summary.failed += 1;
-      console.warn(`[refreshCharacterMedia] ${discordId} clear failed:`, err);
+      logger.warn(`[refreshCharacterMedia] ${discordId} clear failed`, err);
     }
   }
 
@@ -206,11 +207,11 @@ export async function runRefresh(): Promise<RefreshSummary> {
       summary.refreshed += 1;
     } catch (err) {
       summary.failed += 1;
-      console.warn(`[refreshCharacterMedia] ${target.discordId} (${target.linkedCharacter.name}-${target.linkedCharacter.realm}) failed:`, err);
+      logger.warn(`[refreshCharacterMedia] ${target.discordId} (${target.linkedCharacter.name}-${target.linkedCharacter.realm}) failed`, err);
     }
   }
 
-  console.log(`[refreshCharacterMedia] ${JSON.stringify(summary)}`);
+  logger.info('[refreshCharacterMedia] summary', summary);
   return summary;
 }
 
