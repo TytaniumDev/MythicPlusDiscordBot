@@ -1,5 +1,5 @@
 import { SessionService, type Bot, type Guild } from '../services/sessionService.js';
-import type { GroupService } from '../services/groupService.js';
+import type { CommandContext, GroupService } from '../services/groupService.js';
 import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import logger from '../core/logger.js';
@@ -22,8 +22,7 @@ export interface GroupsContext {
     members: { bot: boolean; id: string; toString(): string }[];
     sendTyping(): Promise<void>;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  send(content: string, options?: { ephemeral?: boolean }): Promise<any>;
+  send(content: string, options?: { ephemeral?: boolean }): Promise<unknown>;
   defer(options?: { ephemeral?: boolean }): Promise<void>;
   interaction?: { response: { sendModal(modal: unknown): Promise<void> } } | null;
 }
@@ -53,7 +52,7 @@ export class GroupsHandler {
       if (!ctx.channel) {
         throw new Error('Channel context is required for coreWheel');
       }
-      await this.groupService.coreWheel(ctx as GroupsContext & { channel: NonNullable<GroupsContext['channel']> }, false);
+      await this.groupService.coreWheel(ctx as unknown as CommandContext, false);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
       logger.error(`Error in wheel command: ${e}`);
