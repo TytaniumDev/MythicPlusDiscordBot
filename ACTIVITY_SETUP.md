@@ -32,6 +32,41 @@ We have added a GitHub Action to automatically deploy your activity files. You j
     *   **Target**: Paste the GitHub Pages URL you copied earlier (e.g., `https://yourname.github.io/your-repo/`).
     *   *Important:* Ensure the target URL matches exactly.
 
+## 2.5 Firebase Configuration
+
+The activity uses Firebase (Firestore + Auth + Functions) for real-time lobby
+state and group reveals. Without these credentials the frontend will fail to
+initialize and the bot cannot persist sessions.
+
+### Frontend (`activity/`)
+
+The Vite frontend reads the following variables at **build time** (Vite inlines
+`import.meta.env.VITE_*` into the bundle), so they must be present whenever the
+activity is built — including in CI when the GitHub Pages workflow runs. Add
+each one as a **repository secret** in GitHub (`Settings` → `Secrets and
+variables` → `Actions`) so the deploy workflow can pass them through:
+
+| Variable                            | Source (Firebase Console → Project Settings) |
+| ----------------------------------- | -------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`             | Web app config — `apiKey`                    |
+| `VITE_FIREBASE_AUTH_DOMAIN`         | Web app config — `authDomain`                |
+| `VITE_FIREBASE_PROJECT_ID`          | Web app config — `projectId`                 |
+| `VITE_FIREBASE_STORAGE_BUCKET`      | Web app config — `storageBucket`             |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Web app config — `messagingSenderId`         |
+| `VITE_FIREBASE_APP_ID`              | Web app config — `appId`                     |
+
+For local development, place the same values in `activity/.env.local`.
+
+### Bot
+
+The bot writes session state to Firestore using a service account. Set
+`FIREBASE_CREDENTIALS_JSON` in the bot's environment to the full JSON of a
+Firebase Admin SDK service account key.
+
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for instructions on provisioning the
+Firebase project, enabling Firestore, and generating both the web app config
+and the service account credentials.
+
 ## 3. Running the Activity
 
 1.  Start your bot.
