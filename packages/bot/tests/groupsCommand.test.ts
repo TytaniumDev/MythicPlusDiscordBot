@@ -112,7 +112,7 @@ describe('GroupsHandler.wheel', () => {
     const groupService = new GroupService();
     // Use vitest to spy on the method
     vi.spyOn(groupService, 'coreWheel').mockResolvedValue(undefined);
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const ctx = makeCtx({ channel: { members: [], sendTyping: vi.fn() } });
     await handler.wheel(ctx);
@@ -125,7 +125,7 @@ describe('GroupsHandler.wheel', () => {
   it('reports an error when caller has no channel context', async () => {
     const groupService = new GroupService();
     vi.spyOn(groupService, 'coreWheel').mockResolvedValue(undefined);
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const ctx = makeCtx();
     delete ctx.channel;
@@ -141,7 +141,7 @@ describe('GroupsHandler.wheel', () => {
     const groupService = new GroupService();
     // Use vitest to spy on the method
     vi.spyOn(groupService, 'coreWheel').mockRejectedValue(new Error('coreWheel failed'));
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService());
+    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const ctx = makeCtx({ channel: { members: [], sendTyping: vi.fn() } });
     await handler.wheel(ctx);
