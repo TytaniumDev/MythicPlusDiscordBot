@@ -2,8 +2,9 @@ import { mockChannelData, mockPlayers, mockGuildData } from '../lib/mockData';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import type { ChannelData } from '../types';
-import { WoWPlayer, createMythicPlusGroups } from '@mythicplus/shared';
+import { createMythicPlusGroups } from '@mythicplus/shared';
 import type { CharacterClass } from '@mythicplus/shared';
+import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
 /**
  * Apply a partial update to the in-memory channelData. No-op when there is
@@ -32,11 +33,7 @@ class DemoSessionService implements SessionService {
     const currentData = useAppStore.getState().channelData;
     if (!currentData) return;
 
-    const sittingOut = currentData.sittingOut ?? [];
-    const players = currentData.players
-      .filter((p) => (p.mainRole !== null || p.offspecs.length > 0)
-        && (!p.discordId || !sittingOut.includes(p.discordId)))
-      .map((p) => WoWPlayer.fromDict(p));
+    const players = eligibleSpinPlayers(currentData.players, currentData.sittingOut ?? []);
 
     const groupDicts = createMythicPlusGroups(players, true, null).map((g) => g.toDict());
 
