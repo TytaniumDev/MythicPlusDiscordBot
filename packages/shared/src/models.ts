@@ -84,6 +84,12 @@ export class WoWPlayer {
     return this.inGameName || this.name;
   }
 
+  /**
+   * Build a player from the raw Discord role-name list, mapping role strings
+   * (see `config.ts`) into the compact `mainRole`/`offspecs`/`utilities` shape.
+   * Used both by the bot when parsing Discord members and by the frontend when
+   * parsing Activity preference toggles.
+   */
   static create(
     name: string,
     roles: string[],
@@ -234,6 +240,11 @@ export class WoWPlayer {
     return dict;
   }
 
+  /**
+   * Firestore wire-format boundary: accepts both the current compact shape
+   * (`mainRole`/`offspecs`/`utilities`) and the legacy nested-`roles`-boolean
+   * shape so older session documents keep deserializing.
+   */
   static fromDict(data: WoWPlayerDict | Record<string, unknown>): WoWPlayer {
     const name = data.name as string;
     const discordId = (data.discordId as string) ?? '';
@@ -336,6 +347,10 @@ export class WoWGroup {
     };
   }
 
+  /**
+   * Firestore wire-format boundary — delegates per-player dual-shape handling
+   * to `WoWPlayer.fromDict`, see notes there.
+   */
   static fromDict(data: Record<string, unknown>): WoWGroup {
     const tankData = data.tank as Record<string, unknown> | null;
     const healerData = data.healer as Record<string, unknown> | null;
