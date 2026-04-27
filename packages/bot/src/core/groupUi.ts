@@ -2,7 +2,7 @@ import { generateInviteCommand, type WoWGroup } from '@mythicplus/shared';
 import { PLACEHOLDER_CHAR } from './config.js';
 import { getMaskedName, showShortTyping } from './utils.js';
 
-export interface EmbedField {
+interface EmbedField {
   name: string;
   value: string;
   inline?: boolean;
@@ -30,7 +30,7 @@ function setFieldAt(embed: Embed, index: number, name: string, value: string): E
   return embed;
 }
 
-export interface GroupDisplayNames {
+interface GroupDisplayNames {
   tankName: string;
   healerName: string;
   dps1Name: string;
@@ -47,7 +47,7 @@ export interface GroupDisplayNames {
  * @param {WoWGroup} group - The generated group to extract names from.
  * @returns {GroupDisplayNames} A structured object containing formatted player names for UI display.
  */
-export function getGroupDisplayNames(group: WoWGroup): GroupDisplayNames {
+function getGroupDisplayNames(group: WoWGroup): GroupDisplayNames {
   const allPlayers = group.players;
   return {
     tankName: group.tank?.name ?? PLACEHOLDER_CHAR,
@@ -67,7 +67,7 @@ export function getGroupDisplayNames(group: WoWGroup): GroupDisplayNames {
  * @param {WoWGroup} group - The group to generate the invite command for.
  * @returns {EmbedField | null} The formatted EmbedField, or null if generation fails.
  */
-export function getInviteCommandField(group: WoWGroup): EmbedField | null {
+function getInviteCommandField(group: WoWGroup): EmbedField | null {
   const inviteCmd = generateInviteCommand(group.toDict());
   if (!inviteCmd) return null;
   const formatted = inviteCmd.includes('\n')
@@ -123,7 +123,7 @@ async function animateUpdate(
  * @param {boolean} debug - If true, skips artificial delays.
  * @returns {Promise<void>} Resolves when the entire animation sequence is complete.
  */
-export async function announceGroupAnimated(
+async function announceGroupAnimated(
   ctx: Sendable,
   channel: TypingChannel,
   group: WoWGroup,
