@@ -101,6 +101,16 @@ function adaptMember(m: { nickname: string | null; displayName: string; id: stri
   };
 }
 
+// Resolve the reporter's display name, preferring the per-guild nickname when
+// available and falling back to the global username. Used by issue-reporting
+// commands and modal handlers.
+function getReporterName(
+  interaction: ChatInputCommandInteraction | ModalSubmitInteraction,
+): string {
+  const member = interaction.member as import('discord.js').GuildMember | null;
+  return member?.displayName ?? interaction.user.displayName;
+}
+
 // ---------------------------------------------------------------------------
 // Adapter: Discord.js Client → Bot interface for SessionService
 // ---------------------------------------------------------------------------
@@ -181,6 +191,38 @@ async function notifyReporterOfIssue(
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Firestore payload validation
+// ---------------------------------------------------------------------------
+
+// Validate an affixes payload coming from Firestore. The config doc is edited
+// out-of-band (cloud function / manual updates), so we can't trust the shape
+// blindly. Returns null on any malformed entry so the caller can fall back to
+// STATIC_AFFIXES rather than crash or render garbage.
+function parseAffixDisplays(raw: unknown): AffixDisplay[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: AffixDisplay[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') return null;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.id !== 'number') return null;
+    if (typeof e.name !== 'string') return null;
+    if (typeof e.keystoneLevel !== 'string') return null;
+    if (typeof e.wowheadUrl !== 'string') return null;
+    if (typeof e.color !== 'string') return null;
+    if (e.nickname !== null && typeof e.nickname !== 'string') return null;
+    out.push({
+      id: e.id,
+      name: e.name,
+      nickname: e.nickname as string | null,
+      keystoneLevel: e.keystoneLevel,
+      wowheadUrl: e.wowheadUrl,
+      color: e.color,
+    });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -490,7 +532,7 @@ async function main() {
           .filter((ch) => ch.isVoiceBased())
           .map((ch) => {
             const vc = ch as import('discord.js').VoiceChannel;
-            const count = vc.members.filter((m) => !m.user.bot).size;
+            const count = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot).length;
             return { id: ch.id, name: ch.name, userCount: count };
           })
           .sort((a, b) => {
@@ -549,7 +591,7 @@ async function main() {
         }
 
         const vc = voiceChannel as import('discord.js').VoiceChannel;
-        const members = vc.members.filter((m) => !m.user.bot);
+        const members = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot);
 
         // Refresh preference cache for these members so roles are up-to-date
         const prefSvc = getPreferenceService();
@@ -557,7 +599,7 @@ async function main() {
           members.map((m) => prefSvc.refreshPreference(m.id)),
         );
 
-        const players = getPlayerList(members.map((m) => adaptMember(m)));
+        const players = getPlayerList(members);
         const playersData = players.map((p) => p.toDict());
 
         await firebase.updateChannelDoc(channelId, {
@@ -655,8 +697,11 @@ async function main() {
             const snap = await firebase.db.collection('config').doc('affixes').get();
             if (snap.exists) {
               const data = snap.data();
-              if (data && Array.isArray(data.affixes)) {
-                affixes = data.affixes as AffixDisplay[];
+              const parsed = parseAffixDisplays(data?.affixes);
+              if (parsed) {
+                affixes = parsed;
+              } else if (data?.affixes !== undefined) {
+                logger.warn('Firestore affixes payload failed validation; falling back to STATIC_AFFIXES');
               }
             }
           } catch (e) {
@@ -676,7 +721,7 @@ async function main() {
           guild: guildObj,
           author: {
             id: interaction.user.id,
-            name: member?.displayName ?? interaction.user.displayName,
+            name: getReporterName(interaction),
             voice: voiceChannel
               ? { channel: adaptVoiceChannelForCtx(voiceChannel as import('discord.js').VoiceChannel) }
               : null,
@@ -720,7 +765,7 @@ async function main() {
             guild: activityGuild,
             author: {
               id: interaction.user.id,
-              name: member?.displayName ?? interaction.user.displayName,
+              name: getReporterName(interaction),
               voice: voiceChannel
                 ? { channel: adaptVoiceChannelForCtx(voiceChannel as import('discord.js').VoiceChannel) }
                 : null,
@@ -783,7 +828,7 @@ async function main() {
             break;
           }
 
-          const reporterName = member?.displayName ?? interaction.user.displayName;
+          const reporterName = getReporterName(interaction);
           const issue = await reportBadGroup({
             reporterName,
             reporterId: interaction.user.id,
@@ -813,7 +858,7 @@ async function main() {
             const quickTitle = quickText.length > maxTitle
               ? quickText.slice(0, maxTitle) + '...'
               : quickText;
-            const reporterName = member?.displayName ?? interaction.user.displayName;
+            const reporterName = getReporterName(interaction);
 
             const issue = await submitGithubIssueModal({
               issueType: 'bug',
@@ -885,7 +930,7 @@ async function main() {
             const quickTitle = quickFeatureText.length > maxTitle
               ? quickFeatureText.slice(0, maxTitle) + '...'
               : quickFeatureText;
-            const reporterName = member?.displayName ?? interaction.user.displayName;
+            const reporterName = getReporterName(interaction);
 
             const issue = await submitGithubIssueModal({
               issueType: 'feature',
@@ -1116,8 +1161,7 @@ async function main() {
   // -- Modal submit handler --
   async function handleModalSubmit(interaction: ModalSubmitInteraction) {
     const customId = interaction.customId;
-    const member = interaction.member as import('discord.js').GuildMember | null;
-    const reporterName = member?.displayName ?? interaction.user.displayName;
+    const reporterName = getReporterName(interaction);
     const reporterId = interaction.user.id;
 
     if (customId === 'bug_modal' || customId === 'feature_modal') {
