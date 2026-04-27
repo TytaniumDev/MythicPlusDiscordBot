@@ -114,9 +114,9 @@ The system uses a **Hybrid Persistence** model:
 |------------|----------|-------------|
 | `guildId`  | string   | Discord guild ID |
 | `channelId`| string   | Discord voice channel ID |
-| `status`   | string   | `lobby` → `request_spin` → `spinning` → `completed` |
+| `status`   | string   | `lobby` → `spinning` → `completed` |
 | `players`  | array    | List of player objects (name, roles) for the lobby |
-| `groups`   | array    | Computed groups (tank, healer, dps), filled when bot sets `spinning` |
+| `groups`   | array    | Computed groups (tank, healer, dps), filled by the frontend when it transitions to `spinning` |
 | `createdAt`| timestamp| Used for cleanup of old sessions |
 
 ```mermaid
@@ -132,27 +132,27 @@ erDiagram
     }
 ```
 
-- **Bot**: creates the document (status `lobby`), updates `players` on voice changes, and on `request_spin` writes `status: spinning` and `groups`.
-- **Frontend**: subscribes with `onSnapshot` to the document (using `sessionId` from the URL), updates `status` to `request_spin` when the user clicks Spin, then to `completed` when the wheel animation finishes.
+- **Bot**: creates the document (status `lobby`), keeps `players` in sync with the voice channel, and listens for `completed` to post the embed in Discord.
+- **Frontend**: subscribes with `onSnapshot` to the document (using `sessionId` from the URL). When the user clicks Spin it runs `createMythicPlusGroups` client-side, writes the computed `groups` plus `status: spinning` directly, then writes `status: completed` after the animation finishes. The bot does **not** compute groups in Activity mode.
 
 Security and cleanup are described in `FIREBASE_SETUP.md` (rules, session replacement, startup cleanup).
 
 ### 4. Activity Frontend (TypeScript / Vite)
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
-- **Entry**: `activity/src/main.ts`. On load it reads `sessionId` from the query string (`?sessionId=...`). If missing, it shows a message like “Use /activity in Discord.”
+- **Entry**: `activity/src/main.tsx`. On load it reads `guildId`/`channelId` from the query string. If missing, it shows a message like “Use /activity in Discord.”
 - **Firebase**: Uses the Firebase JS SDK (see `activity/src/firebase.ts`) with config from `VITE_FIREBASE_*` env vars. It uses Firestore only (no Auth in the minimal setup).
 - **Flow**:
   1. Subscribe to `sessions/{sessionId}` with `onSnapshot`.
   2. **Lobby**: Always render the current `players` list; show/hide lobby vs wheel vs results based on `status`.
-  3. **Spin**: User clicks “Spin” → frontend calls `updateDoc` to set `status: 'request_spin'`. Bot (via its listener) computes groups and sets `status: 'spinning'` and `groups`.
-  4. **Spinning**: Frontend sees `spinning` and `groups`, runs the wheel animation (e.g. `wheel.ts`), then sets `status: 'completed'`.
+  3. **Spin**: User clicks “Spin” → frontend runs `createMythicPlusGroups` client-side and writes both `groups` and `status: 'spinning'` to Firestore in one update.
+  4. **Spinning**: Frontend animates the reveal in `activity/src/views/WheelsView.tsx`, then writes `status: 'completed'`.
   5. **Completed**: Show final groups; if the document is deleted (e.g. new `/activity` in same channel), show “Activity ended.”
 
 So the frontend is a **state machine** driven by the single session document in Firestore.
 
 #### Frontend Modes
-The Activity frontend (`activity/src/main.ts`) operates in three distinct modes to support production, demos, and testing:
+The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes to support production, demos, and testing:
 
 1.  **Firebase Mode (Production):**
     -   Triggered when a `?sessionId=...` or `?guildId=...` query parameter is present.
@@ -230,19 +230,18 @@ sequenceDiagram
     end
 
     User->>Frontend: click "Spin the wheel"
-    Frontend->>Firestore: updateDoc(status: request_spin)
-    Firestore-->>Bot: listener: MODIFIED
-    Bot->>Bot: get channel members, create_mythic_plus_groups
-    Bot->>Firestore: update_session(status: spinning, groups)
+    Frontend->>Frontend: createMythicPlusGroups (client-side)
+    Frontend->>Firestore: updateDoc(status: spinning, groups)
     Firestore-->>Frontend: snapshot → run wheel animation
-    Frontend->>Frontend: animate wheels, then updateDoc(status: completed)
+    Frontend->>Frontend: animate wheels
     Frontend->>Firestore: updateDoc(status: completed)
+    Firestore-->>Bot: snapshot → bot posts result embed
     Firestore-->>Frontend: snapshot → show results screen
 ```
 
 - **Creation**: Bot creates the session and returns links; frontend only needs the URL with `sessionId`.
 - **Lobby**: Bot keeps `players` in sync with voice; frontend only reads and renders.
-- **Spin**: Frontend writes `request_spin`; bot computes and writes `spinning` + `groups`; frontend animates then writes `completed`.
+- **Spin**: Frontend computes `groups` client-side and writes `spinning` + `groups`; frontend animates and writes `completed`; bot listens for `completed` and posts the result embed in Discord.
 
 ---
 
@@ -256,8 +255,8 @@ sequenceDiagram
 | Voice → lobby sync | `packages/bot/src/commands/groups.ts` (`onVoiceStateUpdate`) → `SessionService.updateChannelPlayers` |
 | Session create/listen/update | `SessionService` + `FirebaseService` |
 | Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
-| “Spin” handling | `SessionService.processSpinRequest` |
-| Activity UI and wheel | `activity/src/main.ts`, `activity/src/wheel.ts` |
+| “Spin” handling | Frontend: `activity/src/services/firestoreService.ts` (`requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups` |
+| Activity UI and wheel | `activity/src/main.tsx`, `activity/src/views/WheelsView.tsx` |
 | Session cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
 
 ---
