@@ -58,7 +58,7 @@ export class SessionService {
 
   async getOrCreateSession(
     ctx: {
-      guild: { id: string; name: string; icon?: { url: string } | null; voice_channels: VoiceChannel[] } | null;
+      guild: Guild | null;
       author: { voice?: { channel?: { id: string; name: string } | null } | null };
     },
     debug = false,
@@ -77,7 +77,7 @@ export class SessionService {
     );
     this.activeGuilds.add(guildId);
 
-    await this.refreshGuildVoiceChannels(ctx.guild as unknown as Guild);
+    await this.refreshGuildVoiceChannels(ctx.guild);
 
     const voiceChannelId = ctx.author.voice?.channel?.id ?? null;
     const voiceChannelName = ctx.author.voice?.channel?.name ?? '';
@@ -96,7 +96,7 @@ export class SessionService {
       guildId,
     });
 
-    await this.updateChannelPlayers(voiceChannelId, ctx.guild as unknown as Guild);
+    await this.updateChannelPlayers(voiceChannelId, ctx.guild);
 
     return [guildDocId, channelDocId];
   }
