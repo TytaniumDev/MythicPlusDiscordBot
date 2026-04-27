@@ -41,7 +41,6 @@ vi.mock('../src/core/firebaseService.js', () => ({
 
 vi.mock('../src/core/utils.js', () => ({
   getPlayerList: vi.fn(),
-  getDebugPlayers: vi.fn(),
   getPlayerFromMember: vi.fn(),
   getWowName: vi.fn(),
   getMaskedName: vi.fn((n: string) => '?'.repeat(n.length)),
