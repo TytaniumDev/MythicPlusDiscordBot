@@ -1,6 +1,6 @@
 import { generateInviteCommand, type WoWGroup } from '@mythicplus/shared';
 import { PLACEHOLDER_CHAR } from './config.js';
-import { getMaskedName, showShortTyping } from './utils.js';
+import { getMaskedName, showShortTyping, type TypingChannel } from './utils.js';
 
 interface EmbedField {
   name: string;
@@ -93,10 +93,6 @@ export function buildGroupEmbed(group: WoWGroup, groupNumber: number): Embed {
   }
 
   return { title: `Group ${groupNumber}`, color: GOLD, fields };
-}
-
-interface TypingChannel {
-  sendTyping(): Promise<void>;
 }
 
 async function animateUpdate(
