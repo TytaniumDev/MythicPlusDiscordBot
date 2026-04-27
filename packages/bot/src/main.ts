@@ -566,13 +566,7 @@ async function main() {
         });
 
         // Register the channel as active so voice state changes are tracked.
-        if (!sessionService.activeChannels.has(channelId)) {
-          sessionService.activeChannels.set(channelId, {
-            docId: channelId,
-            guildId,
-          });
-          sessionService.activeGuilds.add(guildId);
-        }
+        sessionService.registerChannel(channelId, guildId, channelId);
 
         logger.debug(`Refreshed players for channel ${channelId} (${playersData.length} players)`);
       } catch (e) {
