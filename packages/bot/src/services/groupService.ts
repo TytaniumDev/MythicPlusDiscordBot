@@ -1,4 +1,4 @@
-import { WoWGroup, WoWPlayer, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
+import { WoWGroup, WoWPlayer, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getDebugPlayers, getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { FirebaseService } from '../core/firebaseService.js';
@@ -61,7 +61,7 @@ export class GroupService {
 
     try {
       const history = await firebase.getGroupHistory(guildId);
-      if (!history || history.date !== new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })) {
+      if (!history || history.date !== todayPST()) {
         this.loadedRounds.set(guildId, []);
         setGroupHistory([], guildId);
         return;
@@ -87,7 +87,7 @@ export class GroupService {
     try {
       const existingRounds = this.loadedRounds.get(guildId) ?? [];
       const newRound = groups.map((g) => g.toDict() as Record<string, unknown>);
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+      const today = todayPST();
       await firebase.saveGroupHistory(guildId, {
         date: today,
         rounds: [...existingRounds, newRound],
