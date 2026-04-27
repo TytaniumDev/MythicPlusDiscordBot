@@ -196,6 +196,75 @@ describe('GroupsHandler.activity', () => {
     );
     expect(msgCall).toBeTruthy();
   });
+
+  it('rejects when caller is not in a voice channel', async () => {
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      new GroupService(),
+      makeMockSessionService(),
+    );
+
+    const ctx = makeCtx({
+      author: { id: '1', name: 'TestUser', voice: null },
+    }) as unknown as ActivityContext;
+    await handler.activity(ctx);
+
+    expect(ctx.send).toHaveBeenCalledWith(
+      '❌ You must be in a voice channel to start an activity.',
+    );
+  });
+
+  it('reports Firebase failure when getOrCreateSession returns null', async () => {
+    const sessionService = makeMockSessionService();
+    vi.mocked(sessionService.getOrCreateSession).mockResolvedValue(null);
+
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      new GroupService(),
+      sessionService,
+    );
+
+    const ctx = makeCtx() as unknown as ActivityContext;
+    await handler.activity(ctx);
+
+    expect(ctx.send).toHaveBeenCalledWith(
+      '❌ Failed to create/get session. Is Firebase configured?',
+    );
+  });
+
+  it('falls back to N/A when createInvite throws', async () => {
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      new GroupService(),
+      makeMockSessionService(),
+    );
+
+    const failingInvite = vi.fn().mockRejectedValue(new Error('rate-limited'));
+    const ctx = makeCtx({
+      author: {
+        id: '1',
+        name: 'TestUser',
+        voice: {
+          channel: {
+            id: '99',
+            name: 'Raid',
+            members: [],
+            createInvite: failingInvite,
+          },
+        },
+      },
+    }) as unknown as ActivityContext;
+    await handler.activity(ctx);
+
+    const calls = vi.mocked(ctx.send).mock.calls;
+    // The activity URL message should still be sent (no rethrow), and it
+    // should show the N/A fallback for the invite line.
+    const msgCall = calls.find(
+      ([msg]) => typeof msg === 'string' && msg.includes('Voice Channel Activity:'),
+    );
+    expect(msgCall).toBeTruthy();
+    expect(msgCall![0]).toContain('**Voice Channel Activity:** N/A');
+  });
 });
 
 describe('GroupsHandler.onVoiceStateUpdate', () => {
