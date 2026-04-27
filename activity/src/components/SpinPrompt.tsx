@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import wheelsonIcon from '../img/wheelson.png';
 
 interface SpinPromptProps {
@@ -33,17 +33,34 @@ function polar(angleDeg: number, distance: number): { x: number; y: number } {
 
 export function SpinPrompt({ disabled, onSpin }: SpinPromptProps) {
   const [leaving, setLeaving] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Pull keyboard focus to the spin button so it acts as a true modal entry
+  // point — pairs with role="dialog" + aria-modal so AT treats background
+  // content as inert.
+  useEffect(() => {
+    buttonRef.current?.focus();
+  }, []);
 
   const handleClick = useCallback(() => {
-    if (leaving) return;
-    setLeaving(true);
-    window.setTimeout(onSpin, FADE_OUT_MS);
-  }, [leaving, onSpin]);
+    setLeaving((prev) => prev || true);
+  }, []);
+
+  // Defer the actual onSpin until the fade-out finishes; cleanup guards
+  // against the component unmounting mid-fade.
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = window.setTimeout(onSpin, FADE_OUT_MS);
+    return () => window.clearTimeout(timer);
+    // onSpin intentionally omitted — referential changes shouldn't restart the fade timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaving]);
 
   return (
     <div
       className={`spin-prompt${leaving ? ' spin-prompt--leaving' : ''}`}
       role="dialog"
+      aria-modal="true"
       aria-label="Ready to spin"
     >
       <div className="spin-prompt__stage">
@@ -97,6 +114,7 @@ export function SpinPrompt({ disabled, onSpin }: SpinPromptProps) {
 
         <button
           id="next-btn"
+          ref={buttonRef}
           type="button"
           className="spin-button"
           onClick={handleClick}
