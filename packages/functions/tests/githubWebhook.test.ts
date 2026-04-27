@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { verifyGithubSignature, sendDiscordDm, handleIssueWebhook } from '../src/githubWebhook';
+import {
+  verifyGithubSignature,
+  sendDiscordDm,
+  handleIssueWebhook,
+  parseWebhookPayload,
+  parseIssueTrackingDoc,
+} from '../src/githubWebhook';
 
 // Mock firebase-admin/firestore
 const mockDocData = vi.fn();
@@ -24,6 +30,9 @@ vi.mock('firebase-functions/v2/https', () => ({
 }));
 vi.mock('firebase-functions/params', () => ({
   defineSecret: vi.fn(),
+}));
+vi.mock('firebase-functions', () => ({
+  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
 }));
 
 describe('verifyGithubSignature', () => {
@@ -151,5 +160,84 @@ describe('handleIssueWebhook', () => {
 
     expect(result).toBe('notified');
     expect(mockDocDelete).toHaveBeenCalled();
+  });
+
+  it('returns "invalid-doc" and skips DM when stored doc has wrong shape', async () => {
+    mockDocData.mockReturnValue({
+      // Missing discordUserId; should be rejected by parseIssueTrackingDoc
+      issueUrl: 'https://github.com/owner/repo/issues/7',
+      issueTitle: 'Bad doc',
+    });
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock;
+
+    const result = await handleIssueWebhook(
+      { action: 'closed', issue: { number: 7 } },
+      'bot-token',
+    );
+
+    expect(result).toBe('invalid-doc');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockDocDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('parseWebhookPayload', () => {
+  it('returns the payload for a valid shape', () => {
+    expect(parseWebhookPayload({ action: 'closed', issue: { number: 42 } })).toEqual({
+      action: 'closed',
+      issue: { number: 42 },
+    });
+  });
+
+  it('returns null for null/undefined/non-object input', () => {
+    expect(parseWebhookPayload(null)).toBeNull();
+    expect(parseWebhookPayload(undefined)).toBeNull();
+    expect(parseWebhookPayload('not an object')).toBeNull();
+    expect(parseWebhookPayload(123)).toBeNull();
+  });
+
+  it('returns null when action is missing or wrong type', () => {
+    expect(parseWebhookPayload({ issue: { number: 1 } })).toBeNull();
+    expect(parseWebhookPayload({ action: 99, issue: { number: 1 } })).toBeNull();
+  });
+
+  it('returns null when issue is missing or malformed', () => {
+    expect(parseWebhookPayload({ action: 'closed' })).toBeNull();
+    expect(parseWebhookPayload({ action: 'closed', issue: null })).toBeNull();
+    expect(parseWebhookPayload({ action: 'closed', issue: { number: 'one' } })).toBeNull();
+    expect(parseWebhookPayload({ action: 'closed', issue: {} })).toBeNull();
+  });
+});
+
+describe('parseIssueTrackingDoc', () => {
+  it('returns the doc for a valid shape', () => {
+    const input = {
+      discordUserId: '999',
+      issueUrl: 'https://example.com',
+      issueTitle: 'Title',
+    };
+    expect(parseIssueTrackingDoc(input)).toEqual(input);
+  });
+
+  it('returns null for null/undefined/non-object', () => {
+    expect(parseIssueTrackingDoc(null)).toBeNull();
+    expect(parseIssueTrackingDoc(undefined)).toBeNull();
+    expect(parseIssueTrackingDoc('s')).toBeNull();
+  });
+
+  it('returns null if any required field is missing or wrong type', () => {
+    expect(
+      parseIssueTrackingDoc({ issueUrl: 'u', issueTitle: 't' }),
+    ).toBeNull();
+    expect(
+      parseIssueTrackingDoc({ discordUserId: 1, issueUrl: 'u', issueTitle: 't' }),
+    ).toBeNull();
+    expect(
+      parseIssueTrackingDoc({ discordUserId: 'd', issueUrl: 2, issueTitle: 't' }),
+    ).toBeNull();
+    expect(
+      parseIssueTrackingDoc({ discordUserId: 'd', issueUrl: 'u', issueTitle: 3 }),
+    ).toBeNull();
   });
 });
