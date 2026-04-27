@@ -32,6 +32,7 @@ describe('getWowName', () => {
       nick: 'Nick.Name',
       global_name: 'Global.Name',
       id: '1',
+      bot: false,
       toString: () => 'User.Name',
     };
     expect(getWowName(member1)).toBe('NickName');
@@ -41,6 +42,7 @@ describe('getWowName', () => {
       nick: null,
       global_name: 'Global.Name',
       id: '2',
+      bot: false,
       toString: () => 'User.Name',
     };
     expect(getWowName(member2)).toBe('GlobalName');
@@ -50,6 +52,7 @@ describe('getWowName', () => {
       nick: null,
       global_name: null,
       id: '3',
+      bot: false,
       toString: () => 'User.Name',
     };
     expect(getWowName(member3)).toBe('UserName');
@@ -78,9 +81,9 @@ describe('getPlayerList', () => {
     vi.mocked(mockSvc.getPreferenceByNameSync).mockReturnValue(null);
 
     const members: DiscordMember[] = [
-      { nick: 'SavedPlayer', id: '111', toString: () => 'SavedPlayer' },
-      { nick: 'NoRolesPlayer', id: '222', toString: () => 'NoRolesPlayer' },
-      { nick: 'AnotherPlayer', id: '333', toString: () => 'AnotherPlayer' },
+      { nick: 'SavedPlayer', id: '111', bot: false, toString: () => 'SavedPlayer' },
+      { nick: 'NoRolesPlayer', id: '222', bot: false, toString: () => 'NoRolesPlayer' },
+      { nick: 'AnotherPlayer', id: '333', bot: false, toString: () => 'AnotherPlayer' },
     ];
 
     const players = getPlayerList(members);

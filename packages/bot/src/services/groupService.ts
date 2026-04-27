@@ -34,9 +34,7 @@ export class GroupService {
     if (debug) {
       players = getDebugPlayers();
     } else {
-      const members = ctx.channel.members.filter(
-        (m) => !(m as unknown as { bot: boolean }).bot,
-      );
+      const members = ctx.channel.members.filter((m) => !m.bot);
       if (members.length === 0) {
         await ctx.send('❌ No players found in the channel.');
         return null;

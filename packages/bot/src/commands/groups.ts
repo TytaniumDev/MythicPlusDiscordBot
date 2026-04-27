@@ -29,12 +29,7 @@ export interface GroupsContext {
 }
 
 export type ActivityContext = Omit<GroupsContext, 'guild'> & {
-  guild: {
-    id: string;
-    name: string;
-    icon?: { url: string } | null;
-    voice_channels: VoiceChannel[];
-  } | null;
+  guild: Guild | null;
 };
 
 export interface VoiceState {

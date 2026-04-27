@@ -16,6 +16,7 @@ export interface DiscordMember {
   nick?: string | null;
   global_name?: string | null;
   id: string;
+  bot: boolean;
   toString(): string;
 }
 

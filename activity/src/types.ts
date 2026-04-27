@@ -24,7 +24,10 @@ export interface GuildData {
   voiceChannels: VoiceChannel[];
   groupHistory?: {
     date: string;
-    rounds: Record<string, unknown>[][];
+    // Stored as either flat `Record<string, unknown>[][]` (legacy) or
+    // `{ groups: Record<string, unknown>[] }[]` (current). Always read
+    // through parseExistingRounds() in firestoreService.ts to normalize.
+    rounds: unknown[];
   };
   refreshRequest?: unknown;
   createdAt: unknown;

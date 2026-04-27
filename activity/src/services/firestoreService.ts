@@ -36,7 +36,7 @@ function parseExistingRounds(
   if (!history || history.date !== todayIso || !Array.isArray(history.rounds)) {
     return [];
   }
-  return (history.rounds as unknown[]).map((r) => {
+  return history.rounds.map((r) => {
     if (r && typeof r === 'object' && 'groups' in r && Array.isArray((r as { groups: unknown }).groups)) {
       return (r as { groups: Record<string, unknown>[] }).groups;
     }
