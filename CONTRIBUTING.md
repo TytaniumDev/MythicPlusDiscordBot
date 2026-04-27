@@ -41,12 +41,14 @@ This script handles:
 -   **Dependencies**: `npm ci`
 -   **Type Checking**: `npm run typecheck`
 -   **Build**: `npm run build`
--   **E2E Tests**: `npx playwright test`
+-   **E2E Tests**: `./scripts/playwright-docker.sh` (from the project root)
+
+> **Playwright must run in Docker.** Snapshots are pixel-compared with a 2% tolerance and Chromium's font rendering differs by OS — running `npx playwright test` directly will produce noisy diffs. The Playwright config enforces this with a `PLAYWRIGHT_TEST` env guard. To regenerate snapshots, run `./scripts/playwright-docker.sh --update-snapshots`.
 
 ### Visual Regression Tests
 The project uses Playwright for visual regression testing.
--   Snapshots are stored in `activity/tests/visual.spec.ts-snapshots`.
--   **Rule:** If your changes affect the UI, you must update and commit the new snapshots.
+-   Snapshots are stored in `activity/tests/__screenshots__/`.
+-   **Rule:** If your changes affect the UI, you must update and commit the new snapshots (regenerated via Docker — see above).
 -   **CI:** Tests run automatically in CI and will fail if snapshots do not match.
 
 ## Coding Standards
