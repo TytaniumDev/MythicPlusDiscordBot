@@ -1,4 +1,4 @@
-import { initSentry, Sentry } from './core/sentry.js';
+import { initSentry, reportError, Sentry } from './core/sentry.js';
 initSentry();
 
 import {
@@ -605,9 +605,9 @@ async function main() {
         await handleModalSubmit(interaction);
       }
     } catch (e) {
-      logger.error(`Interaction error: ${e}`);
-      Sentry.captureException(e, {
+      reportError(e, {
         tags: {
+          handler: 'interaction',
           command: interaction.isChatInputCommand() ? interaction.commandName : 'button',
           guild: interaction.guildId ?? 'DM',
         },
@@ -1242,8 +1242,7 @@ async function main() {
         after,
       );
     } catch (e) {
-      logger.error(`Voice state update error: ${e}`);
-      Sentry.captureException(e, { tags: { handler: 'voiceStateUpdate' } });
+      reportError(e, { tags: { handler: 'voiceStateUpdate' } });
     }
   });
 
@@ -1288,8 +1287,7 @@ function adaptVoiceChannelForCtx(ch: import('discord.js').VoiceChannel) {
 
 // -- Start --
 main().catch(async (e) => {
-  logger.error(`Fatal: ${e}`);
-  Sentry.captureException(e, { tags: { handler: 'fatal' } });
+  reportError(e, { tags: { handler: 'fatal' } });
   await Sentry.flush(2000);
   process.exit(1);
 });
