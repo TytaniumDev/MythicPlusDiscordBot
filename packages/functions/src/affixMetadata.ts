@@ -2,7 +2,6 @@
 export {
   STATIC_AFFIXES,
   BARGAIN_AFFIXES,
-  FORT_TYRAN_AFFIXES,
   resolveAffixDisplay,
 } from '@mythicplus/shared';
 

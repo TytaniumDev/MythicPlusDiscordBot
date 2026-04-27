@@ -28,8 +28,8 @@ export const BARGAIN_AFFIXES: Record<number, AffixDisplay> = {
   160: { id: 160, name: "Xal'atath's Bargain: Devour", nickname: 'Dispel Allies', keystoneLevel: '+4–11', wowheadUrl: 'https://www.wowhead.com/affix=160/xalataths-bargain-devour', color: '#a855f7' },
 };
 
-// Fort/Tyran
-export const FORT_TYRAN_AFFIXES: Record<number, AffixDisplay> = {
+// Fort/Tyran (internal — only consumed by resolveAffixDisplay)
+const FORT_TYRAN_AFFIXES: Record<number, AffixDisplay> = {
   10: { id: 10, name: 'Fortified', nickname: null, keystoneLevel: '+7', wowheadUrl: 'https://www.wowhead.com/affix=10/fortified', color: '#ef4444' },
   9: { id: 9, name: 'Tyrannical', nickname: null, keystoneLevel: '+7', wowheadUrl: 'https://www.wowhead.com/affix=9/tyrannical', color: '#ef4444' },
 };

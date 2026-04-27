@@ -10,8 +10,7 @@ vi.mock('../src/core/firebaseService.js', () => ({
 
 describe('IssueTrackingService', () => {
   const mockSet = vi.fn().mockResolvedValue(undefined);
-  const mockDelete = vi.fn().mockResolvedValue(undefined);
-  const mockDoc = vi.fn().mockReturnValue({ set: mockSet, delete: mockDelete });
+  const mockDoc = vi.fn().mockReturnValue({ set: mockSet });
   const mockCollection = vi.fn().mockReturnValue({ doc: mockDoc });
 
   const mockFirebase = {
@@ -59,21 +58,4 @@ describe('IssueTrackingService', () => {
     });
   });
 
-  describe('deleteTracking', () => {
-    it('deletes the document from the issueTracking collection', async () => {
-      await service.deleteTracking(42);
-
-      expect(mockCollection).toHaveBeenCalledWith('issueTracking');
-      expect(mockDoc).toHaveBeenCalledWith('42');
-      expect(mockDelete).toHaveBeenCalled();
-    });
-
-    it('returns early when Firebase is unavailable', async () => {
-      const nullDbService = new IssueTrackingService({ db: null } as unknown as FirebaseService);
-
-      await nullDbService.deleteTracking(1);
-
-      expect(mockDelete).not.toHaveBeenCalled();
-    });
-  });
 });

@@ -4,15 +4,7 @@ import { HeaderBar } from '../components/HeaderBar';
 import { CharacterHeader } from '../components/CharacterHeader';
 import { Divider, PrimaryCTA } from '../components/ui';
 import { RoleEditor } from '../components/RoleEditor';
-import { getPrimaryRole, isPlayerReady } from '../lib/roles';
-
-const ROLE_COLOR_MAP: Record<string, string> = {
-  tank: 'var(--color-tank)',
-  healer: 'var(--color-healer)',
-  ranged: 'var(--color-dps)',
-  melee: 'var(--color-dps)',
-  unassigned: 'var(--text-secondary)',
-};
+import { getPrimaryRole, getRoleColor, isPlayerReady } from '../lib/roles';
 
 interface SetupViewProps {
   onNavigate: (view: 'identity' | 'lobby' | 'home', opts?: { replace?: boolean }) => void;
@@ -63,7 +55,7 @@ export function SetupView({ onNavigate }: SetupViewProps) {
   }
 
   const primaryRole = getPrimaryRole(player);
-  const color = ROLE_COLOR_MAP[primaryRole] ?? ROLE_COLOR_MAP.unassigned;
+  const color = getRoleColor(primaryRole);
   const ready = isPlayerReady(player);
 
   return (
