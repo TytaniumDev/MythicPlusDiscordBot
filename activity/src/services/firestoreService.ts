@@ -141,7 +141,10 @@ class FirestoreSessionService implements SessionService {
         if (docSnap.exists()) {
           useAppStore.getState().setChannelData(docSnap.data() as ChannelData);
         } else {
-          console.warn('[Wheelson] No doc at channels/' + channelId);
+          reportError(new Error(`No doc at channels/${channelId}`), {
+            tag: 'firestoreService.channelDocMissing',
+            extra: { channelId },
+          });
         }
       },
       (error) => {
@@ -340,7 +343,10 @@ class FirestoreSessionService implements SessionService {
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {
     if (!/^\d+$/.test(guildId) && guildId !== 'demo-guild') {
-      console.error('[Wheelson] Invalid guild ID:', guildId);
+      reportError(new Error(`Invalid guild ID: ${guildId}`), {
+        tag: 'firestoreService.createGuildEntry',
+        extra: { guildId },
+      });
       return;
     }
 

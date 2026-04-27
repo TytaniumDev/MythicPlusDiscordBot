@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 import { getAuth, signInAnonymously } from 'firebase/auth';
+import { reportError } from './lib/sentry';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,7 +28,7 @@ try {
   // The promise is not awaited here — Firebase SDK queues callable requests
   // until auth resolves, so functions called after import will work correctly.
   signInAnonymously(auth).catch((err) => {
-    console.warn('[Wheelson] Anonymous auth failed:', err);
+    reportError(err, { tag: 'firebase.signIn' });
   });
 } catch {
   // No valid Firebase config (e.g. Storybook) — auth features are unavailable.

@@ -3,6 +3,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
 import { useAppStore } from '../store/store';
 import { lookupCharacterProfile } from '../services/raiderioService';
+import { reportError } from '../lib/sentry';
 import { toCharacterClass } from '@mythicplus/shared';
 import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
@@ -63,7 +64,7 @@ export function useCharacterLookup() {
       return result.data;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Character lookup failed';
-      console.warn('[Wheelson] lookupCharacter callable failed:', err);
+      reportError(err, { tag: 'useCharacterLookup.lookup' });
       setError(message);
       return null;
     } finally {
