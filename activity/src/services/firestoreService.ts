@@ -3,7 +3,7 @@ import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
-import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
 import type { CharacterClass } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 
@@ -163,7 +163,7 @@ class FirestoreSessionService implements SessionService {
     if (!currentChannelId || !channelData) return;
 
     const guildId = channelData.guildId || null;
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const today = todayPST();
 
     // Restore group history from Firestore so the algorithm avoids repeat
     // groupings. Malformed history should never block a spin — fall back to
