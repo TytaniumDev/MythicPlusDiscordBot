@@ -163,6 +163,68 @@ describe('GeneralHandler.affixes', () => {
   });
 });
 
+describe('GeneralHandler.invite', () => {
+  it('sends fallback message when applicationId is missing and config.DISCORD_APPLICATION_ID is unset', async () => {
+    const original = config.DISCORD_APPLICATION_ID;
+    Object.defineProperty(config, 'DISCORD_APPLICATION_ID', {
+      value: null,
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      const handler = new GeneralHandler(0, null);
+      const ctx = makeCtx();
+
+      await handler.invite(ctx);
+
+      expect(ctx.send).toHaveBeenCalledOnce();
+      const [content, options] = vi.mocked(ctx.send).mock.calls[0];
+      expect(content).toBe(
+        '❌ Application ID not available. Set config.DISCORD_APPLICATION_ID in your environment.',
+      );
+      expect(options).toBeUndefined();
+      expect(content).not.toContain('https://discord.com');
+    } finally {
+      Object.defineProperty(config, 'DISCORD_APPLICATION_ID', {
+        value: original,
+        writable: true,
+        configurable: true,
+      });
+    }
+  });
+
+  it('builds OAuth URL with constructor applicationId, scope=bot, and BOT_INVITE_PERMISSIONS', async () => {
+    const handler = new GeneralHandler(0, '67890');
+    const ctx = makeCtx();
+
+    await handler.invite(ctx);
+
+    expect(ctx.send).toHaveBeenCalledOnce();
+    const [content] = vi.mocked(ctx.send).mock.calls[0];
+    expect(content).toContain('client_id=67890');
+    expect(content).toContain('scope=bot');
+    expect(content).toContain(`permissions=${config.BOT_INVITE_PERMISSIONS}`);
+    expect(content).toContain('https://discord.com/api/oauth2/authorize');
+    expect(content).toContain('**Add this bot to a server:**');
+  });
+
+  it('falls back to config.DISCORD_APPLICATION_ID when constructor applicationId is null', async () => {
+    const handler = new GeneralHandler(0, null);
+    const ctx = makeCtx();
+
+    await handler.invite(ctx);
+
+    expect(ctx.send).toHaveBeenCalledOnce();
+    const [content] = vi.mocked(ctx.send).mock.calls[0];
+    // The mocked config value is '12345'
+    expect(content).toContain(`client_id=${config.DISCORD_APPLICATION_ID}`);
+    expect(content).toContain('client_id=12345');
+    expect(content).toContain('scope=bot');
+    expect(content).toContain(`permissions=${config.BOT_INVITE_PERMISSIONS}`);
+  });
+});
+
 describe('GeneralHandler.onVoiceStateUpdate', () => {
   it('disconnects when bot is the only one left', async () => {
     const handler = new GeneralHandler();
