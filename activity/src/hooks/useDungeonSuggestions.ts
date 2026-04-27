@@ -5,6 +5,7 @@ import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
 import { computeDungeonRanking } from '../lib/dungeonSuggestions';
 import type { DungeonSuggestionsState } from '../lib/dungeonSuggestions';
 import type { WoWPlayer } from '../types';
+import { reportError } from '../lib/sentry';
 
 const DEFAULT_REGION = 'us';
 
@@ -163,7 +164,7 @@ export function useDungeonSuggestions(
         } else {
           characters.push(null);
           serviceErrors += 1;
-          console.warn('[Wheelson] Dungeon suggestions fetch failed:', r.reason);
+          reportError(r.reason, { tag: 'useDungeonSuggestions.fetch' });
         }
       }
 

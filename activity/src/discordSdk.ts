@@ -120,7 +120,7 @@ export async function getParticipants(): Promise<DiscordParticipant[]> {
       username: (p.username ?? '') as string,
     }));
   } catch (e) {
-    console.warn('[DiscordSDK] Failed to get participants:', e);
+    reportError(e, { tag: 'discordSdk.getParticipants' });
     return [];
   }
 }

@@ -1,5 +1,6 @@
 // Note: This endpoint is not part of Raider.io's official public API and may change without notice.
 // Only used by demo mode — production lookups go through the `lookupCharacter` Cloud Function.
+import { reportError } from '../lib/sentry';
 
 interface RaiderioProfileResponse {
   name: string;
@@ -47,7 +48,7 @@ export async function lookupCharacterProfile(
       thumbnailUrl,
     };
   } catch (err) {
-    console.warn('[Wheelson] Raider.io profile lookup failed:', err);
+    reportError(err, { tag: 'raiderioService.fetchProfile' });
     return null;
   }
 }
