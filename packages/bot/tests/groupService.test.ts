@@ -36,12 +36,15 @@ vi.mock('../src/core/logger.js', () => ({
 
 vi.mock('../src/core/utils.js', () => ({
   getPlayerList: vi.fn(),
-  getDebugPlayers: vi.fn(),
   getPlayerFromMember: vi.fn(),
   getWowName: vi.fn(),
   getMaskedName: vi.fn((n: string) => '?'.repeat(n.length)),
   showLongTyping: vi.fn().mockResolvedValue(undefined),
   showShortTyping: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../src/core/debugFixtures.js', () => ({
+  getDebugPlayers: vi.fn(),
 }));
 
 vi.mock('../src/core/groupUi.js', () => ({
@@ -57,7 +60,8 @@ vi.mock('../src/core/preferenceService.js', () => ({
 }));
 
 import { GroupService, type CommandContext } from '../src/services/groupService.js';
-import { getPlayerList, getDebugPlayers } from '../src/core/utils.js';
+import { getPlayerList } from '../src/core/utils.js';
+import { getDebugPlayers } from '../src/core/debugFixtures.js';
 import { announceGroup } from '../src/core/groupUi.js';
 import { createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
 

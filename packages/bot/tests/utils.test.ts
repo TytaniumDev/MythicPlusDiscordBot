@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getWowName,
   getMaskedName,
-  getDebugPlayers,
   getPlayerList,
   showLongTyping,
   showShortTyping,
@@ -56,17 +55,6 @@ describe('getWowName', () => {
       toString: () => 'User.Name',
     };
     expect(getWowName(member3)).toBe('UserName');
-  });
-});
-
-describe('getDebugPlayers', () => {
-  it('returns valid list of WoWPlayers', () => {
-    const players = getDebugPlayers();
-    expect(players.length).toBeGreaterThan(0);
-    for (const player of players) {
-      expect(player.name).toBeTruthy();
-      expect(player.hasRoles()).toBe(true);
-    }
   });
 });
 
