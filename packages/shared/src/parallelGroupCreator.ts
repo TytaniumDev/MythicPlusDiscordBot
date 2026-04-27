@@ -3,10 +3,20 @@ import { WoWGroup, WoWPlayer } from './models.js';
 /** Per-guild history of all rounds tonight — avoids cross-guild contamination. */
 const groupHistory = new Map<string | number | null, WoWGroup[][]>();
 
+/**
+ * Drop the entire per-guild pair-history map. Intended only for tests that
+ * need a clean module state between cases.
+ */
 export function clear(): void {
   groupHistory.clear();
 }
 
+/**
+ * Seed a guild's pair-history with previously persisted rounds. Called when a
+ * guild's stored history is rehydrated for the current PST day (see
+ * `todayPST()`); on day rollover the guild is reseeded with an empty array so
+ * pair penalties don't leak across days.
+ */
 export function setGroupHistory(rounds: WoWGroup[][], guildId: string | number | null = null): void {
   groupHistory.set(guildId, rounds);
 }

@@ -36,6 +36,14 @@ function generateSplitInviteCommands(names: string[]): string {
   return commands.join('\n');
 }
 
+/**
+ * Build the WoW `/run …InviteUnit(…)` macro that group members paste in-game.
+ * When `excludeDiscordId` is omitted the tank is excluded (legacy bot embed
+ * convention — the tank invites everyone else); when set, that specific player
+ * is excluded so any group member can act as the inviter from the Activity UI.
+ * Long player lists are split across multiple commands to stay under WoW's
+ * 255-character chat limit.
+ */
 export function generateInviteCommand(group: WoWGroupDict, excludeDiscordId?: string): string {
   let invitees: WoWPlayerDict[];
 
