@@ -9,7 +9,7 @@ import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { SpotlightCard } from '../components/SpotlightCard';
-import { PrimaryCTA } from '../components/ui';
+import { SpinPrompt } from '../components/SpinPrompt';
 import { isCompleteGroup } from '../store/types';
 import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
@@ -402,18 +402,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
           )}
 
           {showSpinBtn && (
-            <PrimaryCTA
-              id="next-btn"
-              disabled={spinBtnDisabled}
-              onClick={handleSpinClick}
-            >
-              Spin
-            </PrimaryCTA>
-          )}
-          {!showSpinBtn && (
-            <PrimaryCTA id="next-btn" className="hidden">
-              Spin
-            </PrimaryCTA>
+            <SpinPrompt disabled={spinBtnDisabled} onSpin={handleSpinClick} />
           )}
         </section>
       </main>

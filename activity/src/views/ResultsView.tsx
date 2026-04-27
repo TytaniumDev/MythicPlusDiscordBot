@@ -7,7 +7,7 @@ import { HeaderBar } from '../components/HeaderBar';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { ReportBadGroupDialog } from '../components/ReportBadGroupDialog';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
-import { IconButton, SecondaryButton } from '../components/ui';
+import { IconButton, PrimaryCTA } from '../components/ui';
 import { useDungeonSuggestions } from '../hooks/useDungeonSuggestions';
 import { clampKeyLevel, computeSuggestedKeyLevel, KEY_LEVEL_DEFAULT } from '../lib/keyLevel';
 import { isCompleteGroup } from '../store/types';
@@ -174,6 +174,15 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
       />
       <main className="content-area">
         <section id="view-results">
+          <PrimaryCTA
+            id="new-round-btn"
+            className="results-new-round"
+            icon={<RotateIcon />}
+            onClick={handleNewRound}
+            aria-label="New Round"
+          >
+            <span className="btn-label">New Round</span>
+          </PrimaryCTA>
           {carouselItems.length > 0 && (
             <GroupCarousel
               items={carouselItems}
@@ -199,19 +208,11 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
               </div>
             )}
           </div>
-          <div className="results-actions">
-            <SecondaryButton
-              id="new-round-btn"
-              large
-              icon={<RotateIcon />}
-              onClick={handleNewRound}
-            >
-              New Round
-            </SecondaryButton>
-            {reportSubmitted && (
+          {reportSubmitted && (
+            <div className="results-actions">
               <p className="report-success" role="status">Report submitted. Thank you!</p>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       </main>
       {showConfirmBack && (

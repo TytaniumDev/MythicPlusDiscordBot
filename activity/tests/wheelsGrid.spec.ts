@@ -221,22 +221,25 @@ test.describe('WheelsGrid Layout', () => {
       }
     });
 
-    test('Wheels do not overflow below spin button', async ({ page }) => {
+    test('Spin prompt overlays wheels and is centered in the viewport', async ({ page }) => {
       await page.goto(`/?data=${encodeData(spinningReadyData)}`);
 
       const btn = page.locator('#next-btn');
       await expect(btn).toBeVisible();
       const btnBox = await btn.boundingBox();
+      const viewport = page.viewportSize();
+      expect(btnBox).not.toBeNull();
+      expect(viewport).not.toBeNull();
 
-      // Check that all wheel frames are fully above the button
-      const frames = page.locator('.wheel-frame');
-      const count = await frames.count();
-      for (let i = 0; i < count; i++) {
-        const frameBox = await frames.nth(i).boundingBox();
-        if (frameBox && btnBox) {
-          expect(frameBox.y + frameBox.height).toBeLessThanOrEqual(btnBox.y + 1);
-        }
-      }
+      // Button should sit roughly in the middle of the viewport (within
+      // a generous tolerance to allow for the orbital stage offset).
+      const cx = btnBox!.x + btnBox!.width / 2;
+      const cy = btnBox!.y + btnBox!.height / 2;
+      expect(Math.abs(cx - viewport!.width / 2)).toBeLessThan(viewport!.width * 0.1);
+      expect(Math.abs(cy - viewport!.height / 2)).toBeLessThan(viewport!.height * 0.15);
+
+      // Wheels remain attached in DOM behind the overlay
+      await expect(page.locator('.wheel-frame').first()).toBeAttached();
     });
 
     test('Tank and healer in top row, DPS in bottom row', async ({ page }) => {
