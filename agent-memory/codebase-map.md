@@ -39,7 +39,15 @@ These wrap Sentry capture + structured logging. New code should use them rather 
 
 ## Firestore wire format gotcha
 
-Group history rounds are stored as `{ groups: [...] }`-wrapped per round (Firestore rejects nested arrays). `parseExistingRounds` in `activity/src/services/firestoreService.ts` handles both legacy flat and current wrapped shapes. `GuildData.groupHistory.rounds` is typed as `unknown[]` to make this contract honest.
+Group history rounds are stored as `{ groups: [...] }`-wrapped per round (Firestore rejects nested arrays). The canonical codec lives in `packages/shared/src/groupHistoryWire.ts` (`encodeGroupHistoryRounds` / `decodeGroupHistoryRounds`); both `packages/bot/src/core/firebaseService.ts` and `activity/src/services/firestoreService.ts` import it so the two packages can't drift on legacy-shape tolerance. `GuildData.groupHistory.rounds` is typed as `unknown[]` to make this contract honest.
+
+## Firestore input validation
+
+`packages/shared/src/types.ts` exposes `toRole(raw)` / `toUtility(raw)` validators alongside the existing `toCharacterClass`. `WoWPlayer.fromDict` uses them to defensively coerce Firestore data — Firestore is an external boundary, not typed-code-internal, so blind casts are forbidden there. The `/affixes` handler in `packages/bot/src/main.ts` similarly validates Firestore-derived data through `parseAffixDisplays` before rendering.
+
+## main.ts adapter helpers
+
+`packages/bot/src/main.ts` has a `getReporterName(interaction)` helper near `adaptMember` (used in 6 sites previously hand-rolled). Discord member iteration in this file uses `adaptMember(m).bot`, never raw `m.user.bot`. Fixture data lives in `packages/bot/src/core/debugFixtures.ts` (`getDebugPlayers`) — `core/utils.ts` is for runtime helpers only, not fixtures.
 
 ## Tests
 
