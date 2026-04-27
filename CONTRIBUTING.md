@@ -25,7 +25,7 @@ Or use the npm script:
 npm run verify
 ```
 
--   **Linting/Formatting**: Uses `eslint` and `prettier` (or built-in formatters).
+-   **Linting/Formatting**: Uses `eslint` (the project has no Prettier config — `eslint` is the only formatter/linter).
 -   **Type Checking**: Uses `tsc --noEmit`.
 -   **Tests**: Runs tests via `vitest`.
 
