@@ -4,6 +4,7 @@ import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
+import { reportError } from '../lib/sentry';
 
 function getSessionService() {
   return useAppStore.getState().isDemoMode ? demoService : firestoreService;
@@ -36,7 +37,9 @@ function commitIdentity(player: WoWPlayer, guildId: string | null, opts: CommitO
   if (opts.persist) {
     localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
   }
-  getSessionService().claimPlayer(player.discordId).catch(console.error);
+  getSessionService().claimPlayer(player.discordId).catch((err) => {
+    reportError(err, { tag: 'useIdentity.claimPlayer' });
+  });
 }
 
 export function useIdentity() {
@@ -104,7 +107,9 @@ export function useIdentity() {
     localStorage.removeItem(getIdentityStorageKey(guildId));
     state.resetIdentity();
     if (previousId) {
-      getSessionService().unclaimPlayer(previousId).catch(console.error);
+      getSessionService().unclaimPlayer(previousId).catch((err) => {
+        reportError(err, { tag: 'useIdentity.unclaimPlayer' });
+      });
     }
   }, []);
 

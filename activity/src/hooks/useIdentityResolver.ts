@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useIdentity } from './useIdentity';
 import { WoWPlayer } from '../types';
+import { reportError } from '../lib/sentry';
 
 /**
  * Automatically resolves the current user's identity when players change.
@@ -27,7 +28,9 @@ export function useIdentityResolver(players: WoWPlayer[]) {
   const { resolveIdentity } = identity;
   useEffect(() => {
     if (playersRef.current.length > 0) {
-      resolveIdentity(playersRef.current).catch(console.error);
+      resolveIdentity(playersRef.current).catch((err) => {
+        reportError(err, { tag: 'useIdentityResolver.resolveIdentity' });
+      });
     }
   }, [membershipKey, resolveIdentity]);
 
