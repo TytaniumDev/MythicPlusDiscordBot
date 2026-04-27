@@ -47,9 +47,23 @@ export interface RoleSelectionState {
   stepContents: string[];
 }
 
+export type ButtonData = RoleButtonData | NextButtonData | NoneButtonData;
+
+function isRoleButton(b: ButtonData): b is RoleButtonData {
+  return 'roleName' in b;
+}
+
+function isNoneButton(b: ButtonData): b is NoneButtonData {
+  return 'clearRoles' in b;
+}
+
+function isNextButton(b: ButtonData): b is NextButtonData {
+  return 'disabled' in b && 'label' in b;
+}
+
 export interface ViewData {
   type: 'main' | 'offspec' | 'utilities';
-  buttons: (RoleButtonData | NextButtonData | NoneButtonData)[];
+  buttons: ButtonData[];
   stopped: boolean;
 }
 
@@ -57,13 +71,13 @@ export interface ViewData {
 
 export function handleRoleButtonClick(
   state: RoleSelectionState,
-  viewButtons: (RoleButtonData | NextButtonData | NoneButtonData)[],
+  viewButtons: ButtonData[],
   roleName: string,
   isMainSpec: boolean,
 ): void {
   const btn = viewButtons.find(
-    (b) => 'roleName' in b && b.roleName === roleName,
-  ) as RoleButtonData | undefined;
+    (b): b is RoleButtonData => isRoleButton(b) && b.roleName === roleName,
+  );
   if (!btn) return;
 
   if (state.selectedRoles.has(roleName)) {
@@ -72,7 +86,7 @@ export function handleRoleButtonClick(
   } else {
     if (isMainSpec) {
       for (const item of viewButtons) {
-        if ('roleName' in item && item.roleName !== roleName) {
+        if (isRoleButton(item) && item.roleName !== roleName) {
           state.selectedRoles.delete(item.roleName);
           item.style = 'secondary';
         }
@@ -83,8 +97,8 @@ export function handleRoleButtonClick(
 
     // Deselect NoneButton sibling if present
     for (const item of viewButtons) {
-      if ('clearRoles' in item) {
-        (item as NoneButtonData).style = 'secondary';
+      if (isNoneButton(item)) {
+        item.style = 'secondary';
       }
     }
   }
@@ -92,30 +106,28 @@ export function handleRoleButtonClick(
 
 export function handleNoneButtonClick(
   state: RoleSelectionState,
-  viewButtons: (RoleButtonData | NextButtonData | NoneButtonData)[],
+  viewButtons: ButtonData[],
   clearRoles: ReadonlySet<string>,
 ): void {
   for (const role of clearRoles) {
     state.selectedRoles.delete(role);
   }
   for (const item of viewButtons) {
-    if ('roleName' in item) {
-      (item as RoleButtonData).style = 'secondary';
+    if (isRoleButton(item)) {
+      item.style = 'secondary';
     }
   }
-  const noneBtn = viewButtons.find((b) => 'clearRoles' in b) as
-    | NoneButtonData
-    | undefined;
+  const noneBtn = viewButtons.find(isNoneButton);
   if (noneBtn) noneBtn.style = 'primary';
 }
 
 export function handleNextButtonClick(
   state: RoleSelectionState,
-  viewButtons: (RoleButtonData | NextButtonData | NoneButtonData)[],
+  viewButtons: ButtonData[],
 ): { nextView: ViewData; content: string } | null {
   const nextBtn = viewButtons.find(
-    (b) => 'disabled' in b && 'label' in b && (b as NextButtonData).label === 'Next →',
-  ) as NextButtonData | undefined;
+    (b): b is NextButtonData => isNextButton(b) && b.label === 'Next →',
+  );
   if (!nextBtn) return null;
 
   // Find current view index
