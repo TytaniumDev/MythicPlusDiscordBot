@@ -1,4 +1,3 @@
-import { WoWPlayer } from '@mythicplus/shared';
 import {
   ROLE_BREZ,
   ROLE_HEALER,
@@ -9,7 +8,8 @@ import {
   ROLE_RANGED,
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
-} from './config.js';
+  WoWPlayer,
+} from '@mythicplus/shared';
 import { getPreferenceService } from './preferenceService.js';
 
 export interface DiscordMember {

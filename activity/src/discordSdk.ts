@@ -53,8 +53,6 @@ if (_isEmbedded) {
   patchUrlMappings(mappings);
 }
 
-export const isEmbedded = _isEmbedded;
-
 /**
  * Rewrite an external image URL to go through Discord's activity proxy.
  * Must be used for <img> src attributes since patchUrlMappings only patches fetch/XHR.

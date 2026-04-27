@@ -50,9 +50,6 @@ export interface WheelsGridRef {
   grid: WheelsGridHandle | null;
 }
 
-// Re-export under the old class-alias name so existing callers keep working.
-export type { WheelsGridHandle as WheelsGridClass };
-
 interface DotConfig {
   ariaLabel: string;
   dotColor: string;

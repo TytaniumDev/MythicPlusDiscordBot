@@ -1,21 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
-// Re-export shared role constants
-export {
-  ROLE_TANK,
-  ROLE_HEALER,
-  ROLE_RANGED,
-  ROLE_MELEE,
-  ROLE_TANK_OFFSPEC,
-  ROLE_HEALER_OFFSPEC,
-  ROLE_RANGED_OFFSPEC,
-  ROLE_MELEE_OFFSPEC,
-  ROLE_BREZ,
-  ROLE_LUST,
-  ALL_ROLES,
-} from '@mythicplus/shared';
-
 const envSchema = z.object({
   BOT_TOKEN: z.string().optional(),
   DISCORD_APPLICATION_ID: z.string().optional(),

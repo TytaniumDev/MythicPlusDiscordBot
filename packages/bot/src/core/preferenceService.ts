@@ -32,11 +32,6 @@ export function getPreferenceService(): PreferenceService {
   return _instance;
 }
 
-/** Reset singleton — for testing only. */
-export function _resetInstance(): void {
-  _instance = null;
-}
-
 export class PreferenceService implements IPreferenceService {
   firebase: FirebaseService;
   private _cache: Record<string, string[]> = {};

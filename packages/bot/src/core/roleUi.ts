@@ -9,7 +9,7 @@ import {
   ROLE_RANGED_OFFSPEC,
   ROLE_TANK,
   ROLE_TANK_OFFSPEC,
-} from './config.js';
+} from '@mythicplus/shared';
 
 export type ButtonStyle = 'primary' | 'secondary' | 'success';
 
