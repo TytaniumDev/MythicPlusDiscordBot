@@ -65,6 +65,7 @@ import { GroupsHandler, type GroupsContext, type ActivityContext } from '../src/
 import { GroupService } from '../src/services/groupService.js';
 import type { SessionService } from '../src/services/sessionService.js';
 import { reportBadGroup } from '../src/core/issues.js';
+import logger from '../src/core/logger.js';
 
 function makeMockSessionService() {
   return {
@@ -355,5 +356,90 @@ describe('GroupsHandler.onVoiceStateUpdate', () => {
     await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     expect(sessionService.updateChannelPlayers).not.toHaveBeenCalled();
+  });
+});
+
+describe('GroupsHandler.wheel', () => {
+  function makeStubGroupService() {
+    const groupService = new GroupService();
+    // Stub coreWheel so we can observe forwarding without exercising the
+    // (heavy) real implementation.
+    groupService.coreWheel = vi.fn().mockResolvedValue(undefined);
+    return groupService;
+  }
+
+  it('defers and forwards the context to groupService.coreWheel(ctx, false)', async () => {
+    const groupService = makeStubGroupService();
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      groupService,
+      makeMockSessionService(),
+    );
+
+    const ctx = makeCtx();
+    ctx.channel = {
+      members: [],
+      sendTyping: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).toHaveBeenCalledWith(ctx, false);
+    expect(ctx.send).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('catches missing-channel error, sends fallback, and logs', async () => {
+    const groupService = makeStubGroupService();
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      groupService,
+      makeMockSessionService(),
+    );
+
+    // ctx.channel is omitted so the handler should throw internally.
+    const ctx = makeCtx();
+
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).not.toHaveBeenCalled();
+    expect(ctx.send).toHaveBeenCalledWith(
+      '❌ An unexpected error occurred. Please try again later.',
+    );
+    expect(logger.error).toHaveBeenCalledOnce();
+    const errMsg = vi.mocked(logger.error).mock.calls[0][0] as unknown as string;
+    expect(errMsg).toContain('Channel context is required for coreWheel');
+  });
+
+  it('catches errors thrown by groupService.coreWheel and logs them', async () => {
+    const groupService = makeStubGroupService();
+    vi.mocked(groupService.coreWheel).mockRejectedValue(new Error('boom'));
+
+    const handler = new GroupsHandler(
+      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+      groupService,
+      makeMockSessionService(),
+    );
+
+    const ctx = makeCtx();
+    ctx.channel = {
+      members: [],
+      sendTyping: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await handler.wheel(ctx);
+
+    expect(ctx.defer).toHaveBeenCalledOnce();
+    expect(groupService.coreWheel).toHaveBeenCalledOnce();
+    expect(ctx.send).toHaveBeenCalledWith(
+      '❌ An unexpected error occurred. Please try again later.',
+    );
+    expect(logger.error).toHaveBeenCalledOnce();
+    const errMsg = vi.mocked(logger.error).mock.calls[0][0] as unknown as string;
+    expect(errMsg).toContain('Error in wheel command');
+    expect(errMsg).toContain('boom');
   });
 });
