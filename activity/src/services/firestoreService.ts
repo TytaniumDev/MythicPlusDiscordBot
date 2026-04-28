@@ -143,10 +143,11 @@ class FirestoreSessionService implements SessionService {
         if (docSnap.exists()) {
           useAppStore.getState().setChannelData(docSnap.data() as ChannelData);
         } else {
-          reportError(new Error(`No doc at channels/${channelId}`), {
-            tag: 'firestoreService.channelDocMissing',
-            extra: { channelId },
-          });
+          // Expected during normal lifecycle: the listener fires before
+          // selectChannel finishes creating the doc, or before the bot has
+          // written it on activity launch. The next snapshot will arrive once
+          // the doc is created; the UI shows "Loading..." in the meantime.
+          console.warn(`[Wheelson] No doc at channels/${channelId}`);
         }
       },
       (error) => {
