@@ -390,7 +390,7 @@ describe('GroupsHandler.wheel', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('catches missing-channel error, sends fallback, and logs', async () => {
+  it('throws when channel context is missing (caller wraps for Sentry)', async () => {
     const groupService = makeStubGroupService();
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -398,22 +398,19 @@ describe('GroupsHandler.wheel', () => {
       makeMockSessionService(),
     );
 
-    // ctx.channel is omitted so the handler should throw internally.
+    // ctx.channel is omitted so the handler should throw — the outer
+    // InteractionCreate wrapper in main.ts handles the user reply + Sentry.
     const ctx = makeCtx();
 
-    await handler.wheel(ctx);
-
+    await expect(handler.wheel(ctx)).rejects.toThrow(
+      'Channel context is required for coreWheel',
+    );
     expect(ctx.defer).toHaveBeenCalledOnce();
     expect(groupService.coreWheel).not.toHaveBeenCalled();
-    expect(ctx.send).toHaveBeenCalledWith(
-      '❌ An unexpected error occurred. Please try again later.',
-    );
-    expect(logger.error).toHaveBeenCalledOnce();
-    const errMsg = vi.mocked(logger.error).mock.calls[0][0] as unknown as string;
-    expect(errMsg).toContain('Channel context is required for coreWheel');
+    expect(ctx.send).not.toHaveBeenCalled();
   });
 
-  it('catches errors thrown by groupService.coreWheel and logs them', async () => {
+  it('propagates errors from groupService.coreWheel to caller', async () => {
     const groupService = makeStubGroupService();
     vi.mocked(groupService.coreWheel).mockRejectedValue(new Error('boom'));
 
@@ -429,16 +426,9 @@ describe('GroupsHandler.wheel', () => {
       sendTyping: vi.fn().mockResolvedValue(undefined),
     };
 
-    await handler.wheel(ctx);
-
+    await expect(handler.wheel(ctx)).rejects.toThrow('boom');
     expect(ctx.defer).toHaveBeenCalledOnce();
     expect(groupService.coreWheel).toHaveBeenCalledOnce();
-    expect(ctx.send).toHaveBeenCalledWith(
-      '❌ An unexpected error occurred. Please try again later.',
-    );
-    expect(logger.error).toHaveBeenCalledOnce();
-    const errMsg = vi.mocked(logger.error).mock.calls[0][0] as unknown as string;
-    expect(errMsg).toContain('Error in wheel command');
-    expect(errMsg).toContain('boom');
+    expect(ctx.send).not.toHaveBeenCalled();
   });
 });

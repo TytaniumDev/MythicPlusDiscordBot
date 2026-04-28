@@ -34,7 +34,7 @@ import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup, STATIC_AFFIXES } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
-import { reportBadGroup, submitGithubIssueModal } from './core/issues.js';
+import { reportBadGroup, submitGithubIssueModal, GitHubError } from './core/issues.js';
 import type { GitHubIssueResponse } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import { IssueTrackingService } from './services/issueTrackingService.js';
@@ -499,13 +499,15 @@ async function main() {
 
         logger.info(`Bad group report processed: ${issue.html_url}`);
       } catch (e) {
-        logger.error(`Failed to process bad group report ${docId}: ${e}`);
+        reportError(e, { tags: { handler: 'badGroupReport' }, extra: { docId } });
       } finally {
-        // Always delete the report doc to prevent reprocessing on restart
+        // Always delete the report doc to prevent reprocessing on restart.
+        // A persistent delete failure would re-fire the same report on every
+        // listener tick, so escalate this rather than swallowing.
         try {
           await firebase.deleteDoc('badGroupReports', docId);
         } catch (delErr) {
-          logger.error(`Failed to delete bad group report doc ${docId}: ${delErr}`);
+          reportError(delErr, { tags: { handler: 'badGroupReportCleanup' }, extra: { docId } });
         }
       }
     });
@@ -549,8 +551,10 @@ async function main() {
         await firebase.updateGuildDoc(guildId, updateData);
         logger.debug(`Refreshed voice channels for guild ${guildId}`);
       } catch (e) {
-        logger.error(`Failed to refresh voice channels for guild ${guildId}: ${e}`);
+        reportError(e, { tags: { handler: 'guildRefresh' }, extra: { guildId } });
       } finally {
+        // Best-effort clear; the refresh fires again on the next request, so
+        // a transient failure here is recoverable. Keep at debug.
         try {
           await firebase.updateGuildDoc(guildId, { refreshRequest: DELETE_FIELD });
         } catch (e) {
@@ -612,7 +616,7 @@ async function main() {
 
         logger.debug(`Refreshed players for channel ${channelId} (${playersData.length} players)`);
       } catch (e) {
-        logger.error(`Failed to refresh players for channel ${channelId}: ${e}`);
+        reportError(e, { tags: { handler: 'channelPlayerRefresh' }, extra: { channelId } });
       }
     });
 
@@ -841,7 +845,14 @@ async function main() {
           const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
           await sender.send(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
         } catch (e) {
-          logger.error(`Failed to submit quick badgroup: ${e}`);
+          reportError(e, {
+            tags: {
+              handler: 'submitIssue',
+              kind: 'badgroup',
+              source: 'quick',
+              errorType: e instanceof GitHubError ? 'github' : 'unknown',
+            },
+          });
           const msg = e instanceof Error ? e.message : String(e);
           await sender.send(`❌ Failed to create issue: ${msg}`);
         }
@@ -873,7 +884,14 @@ async function main() {
             const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
             await sender.send(`✅ Bug reported: ${issue.html_url}${dmHint}`);
           } catch (e) {
-            logger.error(`Failed to submit quick bug: ${e}`);
+            reportError(e, {
+              tags: {
+                handler: 'submitIssue',
+                kind: 'bug',
+                source: 'quick',
+                errorType: e instanceof GitHubError ? 'github' : 'unknown',
+              },
+            });
             const msg = e instanceof Error ? e.message : String(e);
             await sender.send(`❌ Failed to create issue: ${msg}`);
           }
@@ -945,7 +963,14 @@ async function main() {
             const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
             await sender.send(`✅ Feature request created: ${issue.html_url}${dmHint}`);
           } catch (e) {
-            logger.error(`Failed to submit quick feature request: ${e}`);
+            reportError(e, {
+              tags: {
+                handler: 'submitIssue',
+                kind: 'feature',
+                source: 'quick',
+                errorType: e instanceof GitHubError ? 'github' : 'unknown',
+              },
+            });
             const msg = e instanceof Error ? e.message : String(e);
             await sender.send(`❌ Failed to create issue: ${msg}`);
           }
@@ -1142,9 +1167,10 @@ async function main() {
           }
         }
       } catch (syncErr) {
-        // warn (not debug) — role desync is user-visible and worth surfacing
-        // in prod logs even though local role state was already saved.
-        logger.warn(`Failed to sync role changes to active channels: ${syncErr}`);
+        // Role desync is user-visible (the activity will show stale roles
+        // until the next refresh), worth surfacing to Sentry even though
+        // local role state was already saved successfully.
+        reportError(syncErr, { tags: { handler: 'roleSyncAfterSave' } });
       }
       return;
     }
@@ -1189,7 +1215,14 @@ async function main() {
         const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
         await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
       } catch (e) {
-        logger.error(`Failed to submit ${customId}: ${e}`);
+        reportError(e, {
+          tags: {
+            handler: 'submitIssue',
+            kind: customId === 'bug_modal' ? 'bug' : 'feature',
+            source: 'modal',
+            errorType: e instanceof GitHubError ? 'github' : 'unknown',
+          },
+        });
         const msg = e instanceof Error ? e.message : String(e);
         await interaction.editReply(`❌ Failed to create issue: ${msg}`);
       }
@@ -1221,7 +1254,14 @@ async function main() {
         const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
         await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
       } catch (e) {
-        logger.error(`Failed to submit badgroup modal: ${e}`);
+        reportError(e, {
+          tags: {
+            handler: 'submitIssue',
+            kind: 'badgroup',
+            source: 'modal',
+            errorType: e instanceof GitHubError ? 'github' : 'unknown',
+          },
+        });
         const msg = e instanceof Error ? e.message : String(e);
         await interaction.editReply(`❌ Failed to create issue: ${msg}`);
       }
