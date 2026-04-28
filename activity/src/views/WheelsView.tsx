@@ -128,10 +128,14 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       if (store.groupCards.length >= totalFull) return;
       if (store.currentGroupIndex >= totalFull) {
         onNavigate('results', { replace: true });
-        service.finishSequence();
+        service.finishSequence().catch((err) => {
+          reportError(err, { tag: 'WheelsView.finishSequenceEffect' });
+        });
         return;
       }
-      runAutoAdvanceLoop();
+      runAutoAdvanceLoop().catch((err) => {
+        reportError(err, { tag: 'WheelsView.autoAdvanceEffect' });
+      });
     }
   }, [channelData?.revealedGroups, spinSequenceStarted, autoAdvanceRunning]);
 
@@ -325,7 +329,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     onNavigate('lobby');
     gridRef.current?.grid?.cancelAll();
     useAppStore.getState().resetSpinState();
-    await service.cancelToLobby();
+    try {
+      await service.cancelToLobby();
+    } catch (err) {
+      reportError(err, { tag: 'WheelsView.cancelToLobby' });
+    }
   }, [service, onNavigate]);
 
   const requestBack = useCallback(() => {

@@ -48,6 +48,12 @@ export async function lookupCharacterProfile(
       thumbnailUrl,
     };
   } catch (err) {
+    // Don't report environment failures (offline, abort, generic fetch failure).
+    // Demo mode is contributor-facing; offline runs of Storybook etc. would
+    // otherwise produce noise without an actionable bug.
+    if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TypeError')) {
+      return null;
+    }
     reportError(err, { tag: 'raiderioService.fetchProfile' });
     return null;
   }

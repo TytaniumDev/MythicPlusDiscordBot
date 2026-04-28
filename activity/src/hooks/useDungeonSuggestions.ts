@@ -157,15 +157,24 @@ export function useDungeonSuggestions(
       if (cancelled || controller.signal.aborted) return;
 
       const characters: (CharacterDungeonScores | null)[] = [];
-      let serviceErrors = 0;
+      const failureReasons: unknown[] = [];
       for (const r of results) {
         if (r.status === 'fulfilled') {
           characters.push(r.value);
         } else {
           characters.push(null);
-          serviceErrors += 1;
-          reportError(r.reason, { tag: 'useDungeonSuggestions.fetch' });
+          failureReasons.push(r.reason);
         }
+      }
+      const serviceErrors = failureReasons.length;
+      // Per-character Raider.io failures are tolerated — the UI shows partial
+      // data and the next refetch usually fixes it. Only escalate if every
+      // lookup in the batch failed (Raider.io outage or local network down).
+      if (serviceErrors > 0 && serviceErrors === uniqueLookups.length) {
+        reportError(failureReasons[0], {
+          tag: 'useDungeonSuggestions.fetch',
+          extra: { batchSize: uniqueLookups.length },
+        });
       }
 
       const indexByKey: Record<string, number> = {};
