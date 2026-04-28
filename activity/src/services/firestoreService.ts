@@ -17,6 +17,7 @@ import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
 const MAX_LISTENER_RETRIES = 5;
 const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
+const CHANNEL_DOC_MISSING_GRACE_MS = 10000;
 
 function isRecoverableError(error: unknown): boolean {
   if (error instanceof Error) {
@@ -52,6 +53,7 @@ class FirestoreSessionService implements SessionService {
   private channelUnsub: (() => void) | null = null;
   private guildRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private channelRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private channelMissingTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Schedule a listener retry with exponential backoff, surfacing a status
@@ -132,6 +134,7 @@ class FirestoreSessionService implements SessionService {
 
   subscribeToChannel(channelId: string, retryCount = 0): () => void {
     this.clearRetry('channelRetryTimer');
+    this.clearChannelMissingTimer();
     this.channelUnsub?.();
     this.channelUnsub = null;
 
@@ -141,12 +144,24 @@ class FirestoreSessionService implements SessionService {
       docRef,
       (docSnap) => {
         if (docSnap.exists()) {
+          this.clearChannelMissingTimer();
           useAppStore.getState().setChannelData(docSnap.data() as ChannelData);
-        } else {
-          reportError(new Error(`No doc at channels/${channelId}`), {
-            tag: 'firestoreService.channelDocMissing',
-            extra: { channelId },
-          });
+          return;
+        }
+        // The listener fires `exists()=false` during normal lifecycle —
+        // before `selectChannel` finishes creating the doc, or before the bot
+        // has written it on activity launch. Only escalate if the doc is
+        // still missing after a grace period (stale URL, deleted doc, or a
+        // bot-side write failure that would otherwise leave the user stuck
+        // on "Loading...").
+        if (this.channelMissingTimer === null) {
+          this.channelMissingTimer = setTimeout(() => {
+            this.channelMissingTimer = null;
+            reportError(
+              new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
+              { tag: 'firestoreService.channelDocMissing', extra: { channelId } },
+            );
+          }, CHANNEL_DOC_MISSING_GRACE_MS);
         }
       },
       (error) => {
@@ -159,9 +174,17 @@ class FirestoreSessionService implements SessionService {
 
     return () => {
       this.clearRetry('channelRetryTimer');
+      this.clearChannelMissingTimer();
       this.channelUnsub?.();
       this.channelUnsub = null;
     };
+  }
+
+  private clearChannelMissingTimer(): void {
+    if (this.channelMissingTimer !== null) {
+      clearTimeout(this.channelMissingTimer);
+      this.channelMissingTimer = null;
+    }
   }
 
   async requestSpin(): Promise<void> {
