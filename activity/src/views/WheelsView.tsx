@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
-import { useIsCarouselMode, useIsCompactPanel } from '../hooks/useMediaQuery';
+import { useIsCarouselMode, useIsCompactPanel, useIsBottomStrip } from '../hooks/useMediaQuery';
 import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGrid';
 import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
@@ -41,6 +41,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const players = channelData?.players || [];
   useIdentityResolver(players);
   const isCompact = useIsCompactPanel();
+  const isBottomStrip = useIsBottomStrip();
   const gridRef = useRef<WheelsGridRef>(null);
 
   const [wheelStatus, setWheelStatus] = useState('Calculating...');
@@ -365,7 +366,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       />
       <main className="content-area">
         <section id="view-wheels">
-          <div className="wheels-content">
+          <div className={`wheels-content${isBottomStrip ? ' wheels-content--strip' : ''}`}>
             <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <div className={`wheels-area-fade${wheelsHidden ? ' wheels-hidden' : ''}`}>
                 <WheelsGridComponent ref={gridRef} pools={pools} />
@@ -397,6 +398,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
                         label={card.label}
                         hideEmpty={card.hideEmpty}
                         compact={isCompact}
+                        variant={isBottomStrip ? 'strip' : 'panel'}
                       />
                     ))}
                   </div>
