@@ -1915,6 +1915,14 @@ button:focus-visible,
   background-position: right 6px center;
 }
 
+/* The options inherit our light text color but render against the
+   browser/OS default white dropdown background, leaving the open list
+   nearly unreadable. Force a solid dark backdrop for the option list. */
+.key-level-select option {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 /* Info tooltip — small "i" trigger that reveals an explanatory bubble on
    hover/focus. Used in DungeonSuggestions to keep the strategy explanation
    discoverable without crowding the title. */
