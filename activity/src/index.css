@@ -1185,24 +1185,38 @@ button:focus-visible,
   min-height: 0;
 }
 
-/* ── Grid Mode (>=600px) — 6-column, 2-row, fit-to-container ── */
+/* ── Grid Mode (>=600px) — two rows, each fills its width ──
+   Top row: tank + healer, each ≈ rowWidth/2 wide.
+   Bottom row: 3 DPS, each ≈ rowWidth/3 wide.
+   Wheels keep aspect-ratio: 1, so in width-limited windows top wheels
+   end up ~50% larger than DPS. In wide-enough landscape windows both
+   rows become height-limited and converge on the same diameter. */
 .wheels-container {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  justify-items: center;
-  align-items: stretch;
   flex: 1;
   min-height: 0;
   width: 100%;
 }
 
-#slot-tank   { grid-column: 2 / 4; }
-#slot-healer { grid-column: 4 / 6; }
-#slot-dps1   { grid-column: 1 / 3; }
-#slot-dps2   { grid-column: 3 / 5; }
-#slot-dps3   { grid-column: 5 / 7; }
+.wheels-row {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  justify-items: center;
+}
+
+.wheels-row--top {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wheels-row--bottom {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 
 .wheel-slot {
   display: flex;
@@ -2100,6 +2114,7 @@ button:focus-visible,
   /* Switch wheels container to scroll-snap carousel */
   .wheels-container {
     display: flex;
+    flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -2111,17 +2126,14 @@ button:focus-visible,
     align-items: center;
   }
 
-  .wheels-container::-webkit-scrollbar {
-    display: none;
+  /* Collapse row wrappers in carousel mode so wheel slots scroll-snap as
+     direct children of .wheels-container. */
+  .wheels-row {
+    display: contents;
   }
 
-  /* Reset grid placements */
-  #slot-tank,
-  #slot-healer,
-  #slot-dps1,
-  #slot-dps2,
-  #slot-dps3 {
-    grid-column: auto;
+  .wheels-container::-webkit-scrollbar {
+    display: none;
   }
 
   .wheel-slot {

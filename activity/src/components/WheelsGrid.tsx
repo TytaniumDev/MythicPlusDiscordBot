@@ -198,41 +198,45 @@ export const WheelsGridComponent = forwardRef<WheelsGridRef, WheelsGridProps>(
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          <Wheel
-            ref={tankRef}
-            role="tank"
-            label="Tank"
-            labelClass="tank"
-            ariaLabel="Tank Selection Wheel"
-          />
-          <Wheel
-            ref={healerRef}
-            role="healer"
-            label="Healer"
-            labelClass="healer"
-            ariaLabel="Healer Selection Wheel"
-          />
-          <Wheel
-            ref={dps1Ref}
-            role="dps1"
-            label="DPS"
-            labelClass="dps"
-            ariaLabel="DPS Selection Wheel 1"
-          />
-          <Wheel
-            ref={dps2Ref}
-            role="dps2"
-            label="DPS"
-            labelClass="dps"
-            ariaLabel="DPS Selection Wheel 2"
-          />
-          <Wheel
-            ref={dps3Ref}
-            role="dps3"
-            label="DPS"
-            labelClass="dps"
-            ariaLabel="DPS Selection Wheel 3"
-          />
+          <div className="wheels-row wheels-row--top">
+            <Wheel
+              ref={tankRef}
+              role="tank"
+              label="Tank"
+              labelClass="tank"
+              ariaLabel="Tank Selection Wheel"
+            />
+            <Wheel
+              ref={healerRef}
+              role="healer"
+              label="Healer"
+              labelClass="healer"
+              ariaLabel="Healer Selection Wheel"
+            />
+          </div>
+          <div className="wheels-row wheels-row--bottom">
+            <Wheel
+              ref={dps1Ref}
+              role="dps1"
+              label="DPS"
+              labelClass="dps"
+              ariaLabel="DPS Selection Wheel 1"
+            />
+            <Wheel
+              ref={dps2Ref}
+              role="dps2"
+              label="DPS"
+              labelClass="dps"
+              ariaLabel="DPS Selection Wheel 2"
+            />
+            <Wheel
+              ref={dps3Ref}
+              role="dps3"
+              label="DPS"
+              labelClass="dps"
+              ariaLabel="DPS Selection Wheel 3"
+            />
+          </div>
         </div>
         <div className="carousel-dots" aria-label="Wheel navigation">
           {DOT_CONFIGS.map((cfg, i) => {
