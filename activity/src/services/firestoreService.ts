@@ -1,4 +1,4 @@
-import { doc, collection, addDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
+import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
@@ -323,8 +323,42 @@ class FirestoreSessionService implements SessionService {
   }
 
   async reportBadGroup(title: string, description: string): Promise<void> {
-    const { channelData, currentPlayerName, currentPlayerId } = useAppStore.getState();
+    const { channelData, guildData, currentPlayerName, currentPlayerId } = useAppStore.getState();
     if (!channelData) return;
+
+    // Use the players actually in the spin output, not channelData.players —
+    // voice-channel membership drifts (people leave to start the dungeon)
+    // between spin and report, which would otherwise silently truncate the
+    // input list and make the report unreproducible.
+    const playersFromGroups = channelData.groups.flatMap((g) => {
+      const members: typeof channelData.players = [];
+      if (g.tank) members.push(g.tank);
+      if (g.healer) members.push(g.healer);
+      if (g.dps) members.push(...g.dps);
+      return members;
+    });
+    const players = playersFromGroups.length > 0 ? playersFromGroups : channelData.players;
+
+    // Read fresh guild history rather than trusting the cached `guildData`,
+    // which can lag the spin's own `setDoc` if the user clicks Report before
+    // the onSnapshot listener has caught up. Falls back to the cached value
+    // on read failure so a transient network blip still produces a report
+    // (without history) instead of dropping it entirely.
+    let freshGuildData = guildData;
+    if (channelData.guildId) {
+      try {
+        const snap = await getDoc(doc(db, 'guilds', channelData.guildId));
+        if (snap.exists()) freshGuildData = snap.data() as GuildData;
+      } catch (err) {
+        reportError(err, { tag: 'firestoreService.reportBadGroup.getGuildDoc' });
+      }
+    }
+
+    // Prior rounds = persisted group history minus the round being reported.
+    // The algorithm's pair-history scoring depends on these, so omitting them
+    // makes "shouldn't have grouped me with X again" complaints undebuggable.
+    const allRounds = parseExistingRounds(freshGuildData, todayPST());
+    const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
 
     await addDoc(collection(db, 'badGroupReports'), {
       title,
@@ -332,8 +366,9 @@ class FirestoreSessionService implements SessionService {
       reporterName: currentPlayerName || 'Unknown',
       reporterId: currentPlayerId || 'Unknown',
       guildId: channelData.guildId || null,
-      players: channelData.players,
+      players,
       groups: channelData.groups,
+      priorRounds: encodeGroupHistoryRounds(priorRounds),
       createdAt: serverTimestamp(),
     });
   }

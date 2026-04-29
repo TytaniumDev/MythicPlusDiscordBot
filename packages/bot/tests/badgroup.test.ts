@@ -61,4 +61,49 @@ describe('reportBadGroup', () => {
       '[`abc1234`](https://github.com/owner/repo/commit/abc123456)';
     expect(body.body).toContain(`**Version:** ${expectedVersion}`);
   });
+
+  it('renders prior rounds when supplied', async () => {
+    const priorTank = WoWPlayer.create('PriorTank', ['Tank']);
+    const priorHealer = WoWPlayer.create('PriorHealer', ['Healer']);
+    const priorDps1 = WoWPlayer.create('PriorDps1', ['Melee']);
+    const priorDps2 = WoWPlayer.create('PriorDps2', ['Ranged']);
+    const priorDps3 = WoWPlayer.create('PriorDps3', ['Melee']);
+    const priorRound1 = [
+      new WoWGroup(priorTank, priorHealer, [priorDps1, priorDps2, priorDps3]),
+    ];
+
+    await reportBadGroup({
+      reporterName: 'TestUser',
+      reporterId: '12345',
+      title: 'Repeat pairing',
+      description: 'Got grouped with same person twice',
+      players,
+      groups: [group],
+      priorRounds: [priorRound1],
+    });
+
+    const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+    const body = JSON.parse(fetchCall[1]!.body as string) as { body: string };
+
+    expect(body.body).toContain('**Prior Rounds:**');
+    expect(body.body).toContain('PriorTank');
+    expect(body.body).toContain('PriorHealer');
+  });
+
+  it('omits prior rounds section when not supplied or empty', async () => {
+    await reportBadGroup({
+      reporterName: 'TestUser',
+      reporterId: '12345',
+      title: 'No history',
+      description: 'First round of the night',
+      players,
+      groups: [group],
+      priorRounds: [],
+    });
+
+    const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+    const body = JSON.parse(fetchCall[1]!.body as string) as { body: string };
+
+    expect(body.body).not.toContain('**Prior Rounds:**');
+  });
 });
