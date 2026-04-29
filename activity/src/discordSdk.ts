@@ -28,8 +28,14 @@ try {
   _isEmbedded = true;
 }
 
-const IMAGE_PROXY_PREFIX = '/blizzard-renders';
-const IMAGE_PROXY_TARGET = 'render.worldofwarcraft.com';
+// Hosts whose images are loaded via <img src>. They need both a patchUrlMappings
+// entry (so the SDK whitelists them) AND a Developer Portal URL mapping.
+const IMAGE_HOST_MAPPINGS: { prefix: string; target: string }[] = [
+  // Battle.net character renders (profile pictures)
+  { prefix: '/blizzard-renders', target: 'render.worldofwarcraft.com' },
+  // Raider.io dungeon icons
+  { prefix: '/raiderio-cdn', target: 'cdn.raiderio.net' },
+];
 
 if (_isEmbedded) {
   const mappings: { prefix: string; target: string }[] = [
@@ -37,8 +43,7 @@ if (_isEmbedded) {
     // Firebase Auth endpoints needed for anonymous sign-in
     { prefix: '/auth', target: 'identitytoolkit.googleapis.com' },
     { prefix: '/authtoken', target: 'securetoken.googleapis.com' },
-    // Battle.net character renders (profile pictures)
-    { prefix: IMAGE_PROXY_PREFIX, target: IMAGE_PROXY_TARGET },
+    ...IMAGE_HOST_MAPPINGS,
     // Raider.io character search + profile lookup
     { prefix: '/raiderio', target: 'raider.io' },
   ];
@@ -61,8 +66,9 @@ export function remapImageUrl(url: string | null | undefined): string | null {
   if (!url || !_isEmbedded) return url || null;
   try {
     const parsed = new URL(url);
-    if (parsed.hostname === IMAGE_PROXY_TARGET) {
-      return `${IMAGE_PROXY_PREFIX}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const mapping = IMAGE_HOST_MAPPINGS.find(m => m.target === parsed.hostname);
+    if (mapping) {
+      return `${mapping.prefix}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
     return url;
   } catch {

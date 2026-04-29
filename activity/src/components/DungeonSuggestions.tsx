@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { DungeonSuggestion, DungeonSuggestionsStatus } from '../lib/dungeonSuggestions';
+import { remapImageUrl } from '../discordSdk';
 import { KeyLevelSelect } from './KeyLevelSelect';
 
 interface DungeonSuggestionsProps {
@@ -104,13 +105,14 @@ interface DungeonRowProps {
 }
 
 function DungeonRow({ suggestion, rank }: DungeonRowProps) {
+  const proxiedIconUrl = remapImageUrl(suggestion.iconUrl);
   return (
     <li className="dungeon-suggestion-row">
       <span className="dungeon-suggestion-row__rank">{rank}</span>
-      {suggestion.iconUrl ? (
+      {proxiedIconUrl ? (
         <img
           className="dungeon-suggestion-row__icon"
-          src={suggestion.iconUrl}
+          src={proxiedIconUrl}
           alt=""
           aria-hidden="true"
           loading="lazy"
