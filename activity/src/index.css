@@ -1474,9 +1474,9 @@ button:focus-visible,
 }
 
 .wheels-content--strip .side-panel {
+  display: flex;
   flex-direction: column;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   flex: 1;
   min-height: 0;
 }
