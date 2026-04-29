@@ -118,7 +118,11 @@ class FirestoreSessionService implements SessionService {
           });
       },
       (error) => {
-        reportError(error, { tag: 'firestoreService.guildListener', extra: { retryCount } });
+        // Report only on the first failure to avoid 5x amplification across the
+        // retry chain. The status-message UX is driven separately by scheduleRetry.
+        if (retryCount === 0) {
+          reportError(error, { tag: 'firestoreService.guildListener' });
+        }
         this.scheduleRetry('guildRetryTimer', 'guild', retryCount, error, () =>
           this.subscribeToGuild(guildId, retryCount + 1),
         );
@@ -165,7 +169,9 @@ class FirestoreSessionService implements SessionService {
         }
       },
       (error) => {
-        reportError(error, { tag: 'firestoreService.channelListener', extra: { retryCount } });
+        if (retryCount === 0) {
+          reportError(error, { tag: 'firestoreService.channelListener' });
+        }
         this.scheduleRetry('channelRetryTimer', 'channel', retryCount, error, () =>
           this.subscribeToChannel(channelId, retryCount + 1),
         );
@@ -196,17 +202,19 @@ class FirestoreSessionService implements SessionService {
 
     // Restore group history from Firestore so the algorithm avoids repeat
     // groupings. Malformed history should never block a spin — fall back to
-    // empty history.
-    let existingRounds: WoWGroupDict[][] = [];
+    // empty history. The try is narrowed to just WoWGroup.fromDict since
+    // parseExistingRounds already returns [] defensively for malformed data
+    // and setGroupHistory doesn't throw.
+    const existingRounds = parseExistingRounds(guildData, today);
+    let rounds: WoWGroup[][];
     try {
-      existingRounds = parseExistingRounds(guildData, today);
-      const rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
-      setGroupHistory(rounds, guildId);
+      rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
     } catch (err) {
       reportError(err, { tag: 'firestoreService.restoreGroupHistory' });
-      existingRounds = [];
-      setGroupHistory([], guildId);
+      rounds = [];
     }
+    setGroupHistory(rounds, guildId);
+    const roundsForPersist: WoWGroupDict[][] = rounds.length === 0 ? [] : existingRounds;
 
     const players = eligibleSpinPlayers(channelData.players, channelData.sittingOut ?? []);
 
@@ -217,7 +225,7 @@ class FirestoreSessionService implements SessionService {
     // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
-      const wireRounds = encodeGroupHistoryRounds([...existingRounds, groupDicts]);
+      const wireRounds = encodeGroupHistoryRounds([...roundsForPersist, groupDicts]);
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
@@ -367,10 +375,9 @@ class FirestoreSessionService implements SessionService {
 
   async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {
     if (!/^\d+$/.test(guildId) && guildId !== 'demo-guild') {
-      reportError(new Error(`Invalid guild ID: ${guildId}`), {
-        tag: 'firestoreService.createGuildEntry',
-        extra: { guildId },
-      });
+      // Precondition check on URL-derived input — a user opening a malformed
+      // activity link is bad input, not an actionable error.
+      console.warn(`[Wheelson] Invalid guild ID: ${guildId}`);
       return;
     }
 

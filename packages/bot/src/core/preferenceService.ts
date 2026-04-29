@@ -1,4 +1,5 @@
 import logger from './logger.js';
+import { reportError } from './sentry.js';
 import { toCharacterClass } from '@mythicplus/shared';
 import type { CharacterClass } from '@mythicplus/shared';
 import { FirebaseService, SERVER_TIMESTAMP } from './firebaseService.js';
@@ -71,8 +72,8 @@ export class PreferenceService implements IPreferenceService {
         if (characterClass) this._characterClassCache[discordId] = characterClass;
       }
       logger.info(`Loaded ${Object.keys(docs).length} preferences from Firestore`);
-    } catch {
-      logger.error('Failed to load preferences from Firestore, using local');
+    } catch (err) {
+      reportError(err, { tags: { handler: 'preferenceService.loadCache' } });
       this._loadFromLocal();
     }
   }
@@ -123,8 +124,11 @@ export class PreferenceService implements IPreferenceService {
           if (characterClass) this._characterClassCache[discordId] = characterClass;
           return roles;
         }
-      } catch {
-        logger.error(`Firestore read failed for ${discordId}`);
+      } catch (err) {
+        reportError(err, {
+          tags: { handler: 'preferenceService.getPreference' },
+          extra: { discordId },
+        });
       }
     }
 
@@ -145,8 +149,11 @@ export class PreferenceService implements IPreferenceService {
     if (this._firebaseOk()) {
       try {
         await this._writeFirestorePref(discordId, name, roles, inGameName);
-      } catch {
-        logger.error(`Firestore write failed for ${discordId}`);
+      } catch (err) {
+        reportError(err, {
+          tags: { handler: 'preferenceService.setPreference' },
+          extra: { discordId },
+        });
       }
     }
 
@@ -169,8 +176,11 @@ export class PreferenceService implements IPreferenceService {
     if (this._firebaseOk()) {
       try {
         await this._deleteFirestorePref(discordId);
-      } catch {
-        logger.error(`Firestore delete failed for ${discordId}`);
+      } catch (err) {
+        reportError(err, {
+          tags: { handler: 'preferenceService.clearPreference' },
+          extra: { discordId },
+        });
       }
     }
   }
@@ -212,8 +222,11 @@ export class PreferenceService implements IPreferenceService {
         Reflect.deleteProperty(this._characterClassCache, discordId);
         this._clearNameMapping(discordId);
       }
-    } catch {
-      logger.error(`Firestore refresh failed for ${discordId}`);
+    } catch (err) {
+      reportError(err, {
+        tags: { handler: 'preferenceService.refreshPreference' },
+        extra: { discordId },
+      });
     }
   }
 

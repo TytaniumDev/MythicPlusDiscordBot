@@ -5,6 +5,7 @@ import {
   type WoWGroupDict,
 } from '@mythicplus/shared';
 import logger from './logger.js';
+import { reportError } from './sentry.js';
 import * as config from './config.js';
 
 // Sentinel for Firestore server timestamps.
@@ -285,7 +286,7 @@ export class FirebaseService implements IFirebaseService {
         }
       },
       (...errArgs: unknown[]) => {
-        logger.error(`Bad group report listener error: ${errArgs[0]}`);
+        reportError(errArgs[0], { tags: { handler: 'firebaseService.badGroupReportListener' } });
       },
     );
 
@@ -312,7 +313,7 @@ export class FirebaseService implements IFirebaseService {
         }
       },
       (...errArgs: unknown[]) => {
-        logger.error(`Guild refresh listener error: ${errArgs[0]}`);
+        reportError(errArgs[0], { tags: { handler: 'firebaseService.guildRefreshListener' } });
       },
     );
 
@@ -339,7 +340,7 @@ export class FirebaseService implements IFirebaseService {
         }
       },
       (...errArgs: unknown[]) => {
-        logger.error(`Channel player refresh listener error: ${errArgs[0]}`);
+        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelPlayerRefreshListener' } });
       },
     );
 
@@ -391,7 +392,7 @@ export class FirebaseService implements IFirebaseService {
         }
       },
       (...errArgs: unknown[]) => {
-        logger.error(`Channel removed listener error: ${errArgs[0]}`);
+        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelRemovedListener' } });
       },
     );
 

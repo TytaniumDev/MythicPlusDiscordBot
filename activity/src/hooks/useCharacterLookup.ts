@@ -7,6 +7,20 @@ import { reportError } from '../lib/sentry';
 import { toCharacterClass } from '@mythicplus/shared';
 import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
+// Callable error codes that indicate user input failed validation rather than
+// an actionable bug — surface them to the user but don't report to Sentry.
+const EXPECTED_LOOKUP_CODES = new Set([
+  'functions/not-found',
+  'functions/invalid-argument',
+  'functions/failed-precondition',
+]);
+
+function isExpectedLookupError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: string }).code;
+  return typeof code === 'string' && EXPECTED_LOOKUP_CODES.has(code);
+}
+
 export interface CharacterData {
   name: string;
   realm: string;
@@ -64,7 +78,9 @@ export function useCharacterLookup() {
       return result.data;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Character lookup failed';
-      reportError(err, { tag: 'useCharacterLookup.lookup' });
+      if (!isExpectedLookupError(err)) {
+        reportError(err, { tag: 'useCharacterLookup.lookup' });
+      }
       setError(message);
       return null;
     } finally {

@@ -2,7 +2,7 @@ import { SessionService, type Bot, type Guild } from '../services/sessionService
 import type { CommandContext, GroupService } from '../services/groupService.js';
 import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
-import logger from '../core/logger.js';
+import { reportError } from '../core/sentry.js';
 
 export interface GroupsContext {
   guild: { id: string } | null;
@@ -46,61 +46,57 @@ export class GroupsHandler {
     this.sessionService = sessionService ?? new SessionService(bot);
   }
 
+  // Errors propagate to the InteractionCreate wrapper in main.ts, which
+  // reports to Sentry with command/guild tags and replies with a generic
+  // ephemeral error message. Catching here would prevent that.
   async wheel(ctx: GroupsContext): Promise<void> {
     await ctx.defer();
-    try {
-      if (!ctx.channel) {
-        throw new Error('Channel context is required for coreWheel');
-      }
-      await this.groupService.coreWheel(ctx as unknown as CommandContext, false);
-    } catch (e) {
-      await ctx.send('❌ An unexpected error occurred. Please try again later.');
-      logger.error(`Error in wheel command: ${e}`);
+    if (!ctx.channel) {
+      throw new Error('Channel context is required for coreWheel');
     }
+    await this.groupService.coreWheel(ctx as unknown as CommandContext, false);
   }
 
   async activity(ctx: ActivityContext, debug = false): Promise<void> {
     await ctx.defer();
-    try {
-      if (!ctx.author.voice?.channel) {
-        await ctx.send('❌ You must be in a voice channel to start an activity.');
-        return;
-      }
-
-      const result = await this.sessionService.getOrCreateSession(ctx, debug);
-      if (!result) {
-        await ctx.send('❌ Failed to create/get session. Is Firebase configured?');
-        return;
-      }
-
-      const [guildId, channelId] = result;
-
-      let inviteUrl = 'N/A';
-      if (DISCORD_APPLICATION_ID && ctx.author.voice.channel.createInvite) {
-        try {
-          const invite = await ctx.author.voice.channel.createInvite();
-          inviteUrl = invite.url;
-        } catch (e) {
-          logger.warn(`Failed to create embedded invite: ${e}`);
-        }
-      }
-
-      const activityUrlBase = ACTIVITY_URL;
-      let msg = '🎮 **Join the Activity!**\n';
-      msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
-
-      if (activityUrlBase) {
-        const directLink = `${activityUrlBase}?guildId=${guildId}&channelId=${channelId}`;
-        msg += `**Browser Link:** [Click Here](${directLink})\n`;
-      } else {
-        msg += '⚠️ `ACTIVITY_URL` not set in .env.';
-      }
-
-      await ctx.send(msg);
-    } catch (e) {
-      await ctx.send('❌ An unexpected error occurred. Please try again later.');
-      logger.error(`Error in activity command: ${e}`);
+    if (!ctx.author.voice?.channel) {
+      await ctx.send('❌ You must be in a voice channel to start an activity.');
+      return;
     }
+
+    const result = await this.sessionService.getOrCreateSession(ctx, debug);
+    if (!result) {
+      await ctx.send('❌ Failed to create/get session. Is Firebase configured?');
+      return;
+    }
+
+    const [guildId, channelId] = result;
+
+    let inviteUrl = 'N/A';
+    if (DISCORD_APPLICATION_ID && ctx.author.voice.channel.createInvite) {
+      try {
+        const invite = await ctx.author.voice.channel.createInvite();
+        inviteUrl = invite.url;
+      } catch (e) {
+        // Invite creation can fail for many benign reasons (missing perms,
+        // channel type, rate limit). The activity link still works without
+        // it; surface to Sentry but don't break the response.
+        reportError(e, { tags: { handler: 'activity.createInvite' } });
+      }
+    }
+
+    const activityUrlBase = ACTIVITY_URL;
+    let msg = '🎮 **Join the Activity!**\n';
+    msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
+
+    if (activityUrlBase) {
+      const directLink = `${activityUrlBase}?guildId=${guildId}&channelId=${channelId}`;
+      msg += `**Browser Link:** [Click Here](${directLink})\n`;
+    } else {
+      msg += '⚠️ `ACTIVITY_URL` not set in .env.';
+    }
+
+    await ctx.send(msg);
   }
 
   async badgroup(
@@ -135,20 +131,15 @@ export class GroupsHandler {
     }
 
     await ctx.defer({ ephemeral: true });
-    try {
-      const issue = await reportBadGroup({
-        reporterName: ctx.author.name,
-        reporterId: ctx.author.id,
-        title,
-        description,
-        players: lastResults.players,
-        groups: lastResults.groups,
-      });
-      await ctx.send(`✅ Bad group reported successfully: ${issue.html_url}`, { ephemeral: true });
-    } catch (e) {
-      logger.error(`Error creating GitHub issue via badgroup command: ${e}`);
-      await ctx.send(`❌ Failed to create issue: ${e}`, { ephemeral: true });
-    }
+    const issue = await reportBadGroup({
+      reporterName: ctx.author.name,
+      reporterId: ctx.author.id,
+      title,
+      description,
+      players: lastResults.players,
+      groups: lastResults.groups,
+    });
+    await ctx.send(`✅ Bad group reported successfully: ${issue.html_url}`, { ephemeral: true });
   }
 
   async onVoiceStateUpdate(
