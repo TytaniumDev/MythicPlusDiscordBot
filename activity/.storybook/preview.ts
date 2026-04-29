@@ -41,6 +41,10 @@ const preview: Preview = {
           name: 'Discord Activity (Large)',
           styles: { width: '905px', height: '900px' },
         },
+        discordTall: {
+          name: 'Discord Activity (Tall)',
+          styles: { width: '600px', height: '1200px' },
+        },
         mobile: {
           name: 'Mobile',
           styles: { width: '375px', height: '667px' },

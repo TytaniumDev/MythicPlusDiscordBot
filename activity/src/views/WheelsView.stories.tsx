@@ -96,3 +96,23 @@ export const DiscordLarge: Story = {
     }
   },
 };
+
+export const DiscordTall: Story = {
+  args: { loop: false },
+  globals: {
+    viewport: {
+      value: 'discordTall',
+      isRotated: false,
+    },
+  },
+};
+
+export const Desktop: Story = {
+  args: { loop: false },
+  globals: {
+    viewport: {
+      value: 'desktop',
+      isRotated: false,
+    },
+  },
+};
