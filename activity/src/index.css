@@ -1460,6 +1460,44 @@ button:focus-visible,
   gap: 8px;
 }
 
+/* ── Bottom-strip variant (portrait windows above carousel breakpoint) ── */
+.wheels-content--strip {
+  flex-direction: column;
+}
+
+.wheels-content--strip .side-column {
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: row;
+  max-height: 180px;
+  min-height: 140px;
+}
+
+.wheels-content--strip .side-panel {
+  flex-direction: column;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.wheels-content--strip .side-panel h3 {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+}
+
+.wheels-content--strip #groups-list {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
 /* ============================================
    Group Cards (side panel + results)
    ============================================ */
