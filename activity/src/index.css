@@ -1552,14 +1552,6 @@ button:focus-visible,
   color: var(--text-primary);
 }
 
-/* Highlighted group card — "your" group */
-.group-card.is-my-group,
-.group-card-compact.is-my-group {
-  border-color: var(--color-gold);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
-  background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
-}
-
 .btn-copy-invite {
   display: block;
   width: calc(100% + 10px);
@@ -1613,6 +1605,52 @@ button:focus-visible,
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 70px;
+}
+
+/* Strip group card — horizontal stamp for the bottom strip */
+.group-card-strip {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  text-align: left;
+  flex: 0 0 auto;
+  min-width: 220px;
+  max-width: 280px;
+  animation: fadeSlideIn 0.4s ease-out;
+}
+
+.group-card-strip h4 {
+  font-size: 0.75rem;
+  color: var(--color-gold);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.group-card-strip .group-role {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  padding: 1px 0;
+}
+
+.group-card-strip .group-role .role-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Highlighted group card — "your" group */
+.group-card.is-my-group,
+.group-card-compact.is-my-group,
+.group-card-strip.is-my-group {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+  background: color-mix(in srgb, var(--color-gold) 5%, var(--bg-card));
 }
 
 /* ============================================

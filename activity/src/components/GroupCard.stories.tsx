@@ -30,3 +30,7 @@ export const Remainder: Story = {
 export const Compact: Story = {
   args: { group: mockGroups[0], index: 0, compact: true },
 };
+
+export const Strip: Story = {
+  args: { group: mockGroups[0], index: 0, variant: 'strip' },
+};

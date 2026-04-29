@@ -11,6 +11,7 @@ interface GroupCardProps {
   label?: string;
   hideEmpty?: boolean;
   compact?: boolean;
+  variant?: 'panel' | 'strip';
 }
 
 async function copyToClipboard(text: string): Promise<void> {
@@ -28,13 +29,21 @@ async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-export function GroupCard({ group, index, label, hideEmpty = false, compact = false }: GroupCardProps) {
+export function GroupCard({
+  group,
+  index,
+  label,
+  hideEmpty = false,
+  compact = false,
+  variant = 'panel',
+}: GroupCardProps) {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
 
   const allPlayers = [group.tank, group.healer, ...group.dps];
   const isMyGroup = currentPlayerId != null && allPlayers.some((p) => p?.discordId === currentPlayerId);
 
-  const cardClass = compact ? 'group-card-compact' : 'group-card';
+  const cardClass =
+    variant === 'strip' ? 'group-card-strip' : compact ? 'group-card-compact' : 'group-card';
   const heading = label ?? `Group ${index + 1}`;
 
   // Exclude the current user so anyone in the group can be the inviter
