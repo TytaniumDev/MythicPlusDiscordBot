@@ -1274,7 +1274,7 @@ button:focus-visible,
   font-weight: 700;
   paint-order: stroke fill;
   stroke: #000;
-  stroke-width: 1;
+  stroke-width: 0.15em;
   stroke-linejoin: round;
   filter: drop-shadow(0 0.4px 0.8px rgba(0, 0, 0, 0.9));
   transition: opacity 200ms ease-out;
