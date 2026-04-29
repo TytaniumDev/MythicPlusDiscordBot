@@ -1273,9 +1273,10 @@ button:focus-visible,
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   paint-order: stroke fill;
-  stroke: rgba(0, 0, 0, 0.9);
-  stroke-width: 0.6;
-  filter: drop-shadow(0 0.4px 0.6px rgba(0, 0, 0, 0.75));
+  stroke: #000;
+  stroke-width: 0.15em;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0.4px 0.8px rgba(0, 0, 0, 0.9));
   transition: opacity 200ms ease-out;
   pointer-events: none;
 }
