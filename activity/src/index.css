@@ -1885,6 +1885,10 @@ button:focus-visible,
    parity; styled to fit alongside our typography without screaming. */
 .key-level-select {
   appearance: none;
+  /* Hint the UA to render the open <option> list with dark-theme native
+     surfaces; without this the inherited light text renders against the
+     browser default white dropdown and is unreadable. */
+  color-scheme: dark;
   background: var(--bg-card);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
@@ -1913,14 +1917,6 @@ button:focus-visible,
   font-size: 0.75rem;
   padding: 2px 22px 2px 8px;
   background-position: right 6px center;
-}
-
-/* The options inherit our light text color but render against the
-   browser/OS default white dropdown background, leaving the open list
-   nearly unreadable. Force a solid dark backdrop for the option list. */
-.key-level-select option {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
 }
 
 /* Info tooltip — small "i" trigger that reveals an explanatory bubble on
