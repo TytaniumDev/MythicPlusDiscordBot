@@ -35,15 +35,7 @@ describe('useIsBottomStrip', () => {
     expect(result.current).toBe(true);
   });
 
-  it('returns false for landscape window', () => {
-    mockMatchMedia({
-      '(min-width: 600px) and (max-aspect-ratio: 6/5)': false,
-    });
-    const { result } = renderHook(() => useIsBottomStrip());
-    expect(result.current).toBe(false);
-  });
-
-  it('returns false for narrow window (carousel territory)', () => {
+  it('returns false when the media query does not match (landscape or narrow)', () => {
     mockMatchMedia({
       '(min-width: 600px) and (max-aspect-ratio: 6/5)': false,
     });
