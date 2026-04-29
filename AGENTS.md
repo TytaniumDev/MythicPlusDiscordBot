@@ -3,7 +3,7 @@
 This file provides the necessary context and operational standards for AI agents working on this codebase.
 
 ## Project Overview
-**MythicPlusDiscordBot** is a TypeScript monorepo application designed to integrate World of Warcraft Mythic Plus data into Discord, with a web-based activity frontend. It uses npm workspaces across `@mythicplus/bot`, `@mythicplus/shared`, and `activity`.
+**MythicPlusDiscordBot** is a TypeScript monorepo application designed to integrate World of Warcraft Mythic Plus data into Discord, with a web-based activity frontend. It uses npm workspaces across `@mythicplus/bot`, `@mythicplus/shared`, `@mythicplus/functions`, and `activity`.
 
 ## Mandatory Development Standards
 
@@ -15,6 +15,10 @@ To maintain consistency and prevent CI failures, you **MUST** run the appropriat
   ./scripts/verify-ts.sh
   ```
   Runs ESLint, `tsc` (Type Check), and Vitest (Tests).
+  For integration testing, run the emulator test script:
+  ```bash
+  ./scripts/emulator-test.sh
+  ```
 - **Frontend (`activity/`):** Run the verification script:
   ```bash
   ./scripts/verify-activity.sh
@@ -48,6 +52,10 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
    - **Backend:**
      ```bash
      ./scripts/verify-ts.sh
+     ```
+     For backend integration tests against the emulator:
+     ```bash
+     ./scripts/emulator-test.sh
      ```
    - **Frontend:**
      ```bash

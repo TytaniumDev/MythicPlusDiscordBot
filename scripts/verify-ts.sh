@@ -46,9 +46,21 @@ if [ "$RUN_BUILD" -eq 1 ]; then
   echo ""
   echo "--- Typecheck: packages/bot ---"
   npx -w packages/bot tsc --noEmit
+
+  echo ""
+  echo "--- Typecheck: packages/functions ---"
+  npx -w packages/functions tsc --noEmit
 fi
 
 if [ "$RUN_TEST" -eq 1 ]; then
+  echo ""
+  echo "--- Tests: packages/shared ---"
+  npm -w packages/shared run test
+
+  echo ""
+  echo "--- Tests: packages/functions ---"
+  npm -w packages/functions run test
+
   echo ""
   echo "--- Tests: packages/bot ---"
   npm -w packages/bot run test
