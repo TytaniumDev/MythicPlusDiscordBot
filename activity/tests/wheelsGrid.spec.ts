@@ -192,13 +192,21 @@ test.describe('WheelsGrid Layout', () => {
     test('Grid uses 2-row layout', async ({ page }) => {
       await page.goto(`/?data=${encodeData(staticWheelsData)}`);
       const container = page.locator('.wheels-container');
-      const display = await container.evaluate(el => getComputedStyle(el).display);
-      expect(display).toBe('grid');
 
-      const rows = await container.evaluate(el => getComputedStyle(el).gridTemplateRows);
-      // Should have 2 row tracks
-      const rowValues = rows.split(' ').filter(v => v.length > 0);
-      expect(rowValues).toHaveLength(2);
+      // Container is a flex column holding two row-grid children.
+      const display = await container.evaluate(el => getComputedStyle(el).display);
+      expect(display).toBe('flex');
+
+      // Top row: 2 column tracks (tank, healer). Bottom row: 3 column tracks (3 DPS).
+      const topCols = await page
+        .locator('.wheels-row--top')
+        .evaluate(el => getComputedStyle(el).gridTemplateColumns);
+      expect(topCols.split(' ').filter(v => v.length > 0)).toHaveLength(2);
+
+      const bottomCols = await page
+        .locator('.wheels-row--bottom')
+        .evaluate(el => getComputedStyle(el).gridTemplateColumns);
+      expect(bottomCols.split(' ').filter(v => v.length > 0)).toHaveLength(3);
     });
 
     test('No overflow hidden on grid container', async ({ page }) => {

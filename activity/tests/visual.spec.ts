@@ -500,10 +500,17 @@ test.describe('Grid Mode Tests', () => {
     await expect(page.locator('#wheel-dps3')).toBeVisible();
   });
 
-  test('Wheels use grid layout', async ({ page }) => {
-    const container = page.locator('.wheels-container');
+  test('Wheels use per-row grid layout', async ({ page }) => {
     await page.goto(`/?data=${encodeData(staticWheelsData)}`);
+    const container = page.locator('.wheels-container');
     const display = await container.evaluate(el => getComputedStyle(el).display);
-    expect(display).toBe('grid');
+    expect(display).toBe('flex');
+
+    for (const rowSelector of ['.wheels-row--top', '.wheels-row--bottom']) {
+      const rowDisplay = await page
+        .locator(rowSelector)
+        .evaluate(el => getComputedStyle(el).display);
+      expect(rowDisplay).toBe('grid');
+    }
   });
 });
