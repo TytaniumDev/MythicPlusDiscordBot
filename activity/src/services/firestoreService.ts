@@ -323,8 +323,27 @@ class FirestoreSessionService implements SessionService {
   }
 
   async reportBadGroup(title: string, description: string): Promise<void> {
-    const { channelData, currentPlayerName, currentPlayerId } = useAppStore.getState();
+    const { channelData, guildData, currentPlayerName, currentPlayerId } = useAppStore.getState();
     if (!channelData) return;
+
+    // Use the players actually in the spin output, not channelData.players —
+    // voice-channel membership drifts (people leave to start the dungeon)
+    // between spin and report, which would otherwise silently truncate the
+    // input list and make the report unreproducible.
+    const playersFromGroups = channelData.groups.flatMap((g) => {
+      const members: typeof channelData.players = [];
+      if (g.tank) members.push(g.tank);
+      if (g.healer) members.push(g.healer);
+      if (g.dps) members.push(...g.dps);
+      return members;
+    });
+    const players = playersFromGroups.length > 0 ? playersFromGroups : channelData.players;
+
+    // Prior rounds = persisted group history minus the round being reported.
+    // The algorithm's pair-history scoring depends on these, so omitting them
+    // makes "shouldn't have grouped me with X again" complaints undebuggable.
+    const allRounds = parseExistingRounds(guildData, todayPST());
+    const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
 
     await addDoc(collection(db, 'badGroupReports'), {
       title,
@@ -332,8 +351,9 @@ class FirestoreSessionService implements SessionService {
       reporterName: currentPlayerName || 'Unknown',
       reporterId: currentPlayerId || 'Unknown',
       guildId: channelData.guildId || null,
-      players: channelData.players,
+      players,
       groups: channelData.groups,
+      priorRounds: encodeGroupHistoryRounds(priorRounds),
       createdAt: serverTimestamp(),
     });
   }

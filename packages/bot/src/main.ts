@@ -32,7 +32,7 @@ import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
 import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
-import { WoWPlayer, WoWGroup, STATIC_AFFIXES } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, STATIC_AFFIXES, decodeGroupHistoryRounds } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal, GitHubError } from './core/issues.js';
 import type { GitHubIssueResponse } from './core/issues.js';
@@ -488,6 +488,14 @@ async function main() {
         const players = playersData.map((p) => WoWPlayer.fromDict(p));
         const groups = groupsData.map((g) => WoWGroup.fromDict(g));
 
+        // Prior rounds use the same wrapped wire shape as guild groupHistory
+        // (Firestore rejects nested arrays). Defensively tolerate missing /
+        // malformed history so a bad doc still files an issue rather than
+        // dropping the report.
+        const priorRoundsRaw = Array.isArray(data.priorRounds) ? data.priorRounds : [];
+        const priorRounds = decodeGroupHistoryRounds(priorRoundsRaw)
+          .map((round) => round.map((g) => WoWGroup.fromDict(g)));
+
         const issue = await reportBadGroup({
           reporterName: String(data.reporterName ?? 'Unknown'),
           reporterId: String(data.reporterId ?? 'Unknown'),
@@ -495,6 +503,7 @@ async function main() {
           description: String(data.description ?? ''),
           players,
           groups,
+          priorRounds,
         });
 
         logger.info(`Bad group report processed: ${issue.html_url}`);

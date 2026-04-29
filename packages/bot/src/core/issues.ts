@@ -196,6 +196,12 @@ export interface BadGroupReportData {
   description: string;
   players: { toTestString(): string }[];
   groups: { toTestString(): string }[];
+  /**
+   * Earlier rounds the algorithm had in pair-history when this round ran.
+   * Required to debug "shouldn't have grouped me with X again" complaints,
+   * since the per-day pair-count scoring depends on prior pairings.
+   */
+  priorRounds?: { toTestString(): string }[][];
 }
 
 export async function reportBadGroup(
@@ -208,9 +214,16 @@ export async function reportBadGroup(
   const formattedTitle = `[Bad Group] ${safeTitle}`;
   const versionStr = getVersionString();
 
-  const reproInfo =
+  let reproInfo =
     `**Input Players:**\n\`\`\`python\n[${data.players.map((p) => p.toTestString()).join(', ')}]\n\`\`\`\n` +
     `**Resulting Groups:**\n\`\`\`python\n[${data.groups.map((g) => g.toTestString()).join(', ')}]\n\`\`\`\n`;
+
+  if (data.priorRounds && data.priorRounds.length > 0) {
+    const renderedRounds = data.priorRounds
+      .map((round, i) => `Round ${i + 1}: [${round.map((g) => g.toTestString()).join(', ')}]`)
+      .join('\n');
+    reproInfo += `**Prior Rounds:**\n\`\`\`python\n${renderedRounds}\n\`\`\`\n`;
+  }
 
   let body =
     `**Reporter:** ${safeReporterName} (\`${sanitizeForGithub(String(data.reporterId))}\`)\n` +
