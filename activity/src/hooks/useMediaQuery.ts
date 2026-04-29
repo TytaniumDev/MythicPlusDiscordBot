@@ -25,3 +25,14 @@ export function useIsCompactPanel(): boolean {
 export function useIsMobileLobby(): boolean {
   return useMediaQuery('(max-width: 899px)');
 }
+
+/**
+ * True when the viewport is wide enough to escape carousel mode but
+ * portrait-ish (aspect ratio < 1.2:1). At these dimensions the Groups
+ * panel docks to the bottom of the wheels view as a horizontal strip.
+ *
+ * Threshold is 6/5 (= 1.2). Tweakable in CSS-aligned media query below.
+ */
+export function useIsBottomStrip(): boolean {
+  return useMediaQuery('(min-width: 600px) and (max-aspect-ratio: 6/5)');
+}
