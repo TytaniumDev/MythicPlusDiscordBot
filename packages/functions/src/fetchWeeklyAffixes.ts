@@ -11,6 +11,11 @@ export interface AffixDocument {
   affixes: AffixDisplay[];
 }
 
+// Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort (+7) → Tyran (+7) → Guile (+12)
+// ⚡ Bolt: Initialized at module level to avoid recreating the object and iterating BARGAIN_AFFIXES on every call.
+const SORT_ORDER: Record<number, number> = { 165: 0, 147: 4, 10: 2, 9: 3 };
+Object.keys(BARGAIN_AFFIXES).forEach(id => { SORT_ORDER[Number(id)] = 1; });
+
 // Pure logic — testable without Firebase
 export function buildAffixDocument(
   affixIds: number[],
@@ -29,9 +34,6 @@ export function buildAffixDocument(
     affixes.push(lindormis);
   }
 
-  // Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort (+7) → Tyran (+7) → Guile (+12)
-  const SORT_ORDER: Record<number, number> = { 165: 0, 147: 4, 10: 2, 9: 3 };
-  Object.keys(BARGAIN_AFFIXES).forEach(id => { SORT_ORDER[Number(id)] = 1; });
   affixes.sort((a, b) => (SORT_ORDER[a.id] ?? 99) - (SORT_ORDER[b.id] ?? 99));
 
   return {
