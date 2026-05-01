@@ -11,7 +11,21 @@ export interface AffixDocument {
   affixes: AffixDisplay[];
 }
 
-// Pure logic — testable without Firebase
+// Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort (+7) → Tyran (+7) → Guile (+12)
+const AFFIX_SORT_ORDER: Record<number, number> = { 165: 0, 147: 4, 10: 2, 9: 3 };
+Object.keys(BARGAIN_AFFIXES).forEach((id) => {
+  AFFIX_SORT_ORDER[Number(id)] = 1;
+});
+
+/**
+ * Builds an AffixDocument by resolving affix IDs into full AffixDisplay objects.
+ * Also handles business logic such as injecting implied affixes (e.g. Lindormi's Guidance)
+ * and sorting them by their appearance keystone level.
+ *
+ * @param affixIds - The array of raw affix IDs from the Raider.IO response.
+ * @param region - The region string (e.g., 'us', 'eu').
+ * @returns The constructed AffixDocument, omitting the Firebase FieldValue for lastUpdated.
+ */
 export function buildAffixDocument(
   affixIds: number[],
   region: string,
@@ -29,10 +43,7 @@ export function buildAffixDocument(
     affixes.push(lindormis);
   }
 
-  // Sort by keystone level appearance: Lindormi's (+2) → Bargain (+4) → Fort (+7) → Tyran (+7) → Guile (+12)
-  const SORT_ORDER: Record<number, number> = { 165: 0, 147: 4, 10: 2, 9: 3 };
-  Object.keys(BARGAIN_AFFIXES).forEach(id => { SORT_ORDER[Number(id)] = 1; });
-  affixes.sort((a, b) => (SORT_ORDER[a.id] ?? 99) - (SORT_ORDER[b.id] ?? 99));
+  affixes.sort((a, b) => (AFFIX_SORT_ORDER[a.id] ?? 99) - (AFFIX_SORT_ORDER[b.id] ?? 99));
 
   return {
     period: 0, // Raider.IO does not return a WoW period ID
@@ -44,7 +55,13 @@ export function buildAffixDocument(
 
 const RAIDERIO_AFFIXES_URL = 'https://raider.io/api/v1/mythic-plus/affixes?region=us&locale=en';
 
-// Shared logic: fetch current affixes from Raider.IO and write to Firestore
+/**
+ * Fetches the current mythic plus affixes from the Raider.IO API and writes them
+ * to the `config/affixes` document in Firestore.
+ *
+ * @returns A promise that resolves to the constructed AffixDocument.
+ * @throws Error if the Raider.IO request fails or the response is missing expected data.
+ */
 export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastUpdated'> & { lastUpdated: Date }> {
   const response = await fetch(RAIDERIO_AFFIXES_URL);
   if (!response.ok) throw new Error(`Raider.IO request failed: ${response.status}`);
