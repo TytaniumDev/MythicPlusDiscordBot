@@ -71,6 +71,21 @@ describe('BattleNetClient', () => {
       expect(mockFetch.mock.calls[1][0]).toContain('/profile/wow/character/stormrage/tytanium');
     });
 
+    it('URL encodes realm and character name to prevent path traversal', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ name: 'Hack', character_class: { name: 'Rogue' } }),
+      });
+
+      await client.getCharacterProfile('us', 'area 52', '../hack');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch.mock.calls[1][0]).toContain('/profile/wow/character/area%2052/..%2Fhack');
+    });
+
     it('returns null when character is not found', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
