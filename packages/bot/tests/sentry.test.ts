@@ -35,14 +35,14 @@ describe('sentry.ts', () => {
     });
 
     it('does not initialize sentry when DSN is not present', () => {
-      vi.spyOn(config, 'SENTRY_DSN', 'get').mockReturnValue(undefined as any);
+      vi.spyOn(config, 'SENTRY_DSN', 'get').mockReturnValue(undefined);
       initSentry();
       expect(Sentry.init).not.toHaveBeenCalled();
     });
 
     it('initializes sentry without release when GIT_SHA is not present', () => {
       vi.spyOn(config, 'SENTRY_DSN', 'get').mockReturnValue('https://test@sentry.io/123');
-      vi.spyOn(config, 'GIT_SHA', 'get').mockReturnValue(undefined as any);
+      vi.spyOn(config, 'GIT_SHA', 'get').mockReturnValue(undefined);
       initSentry();
       expect(Sentry.init).toHaveBeenCalledWith(expect.objectContaining({
         dsn: 'https://test@sentry.io/123',
