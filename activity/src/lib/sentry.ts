@@ -41,6 +41,12 @@ export function initSentry(): void {
     release: typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : undefined,
     // Keep the payload small — we care about errors, not performance traces.
     tracesSampleRate: 0,
+    // Drop benign cancellations bubbled up by Firebase/Discord SDKs through
+    // `onunhandledrejection` as bare strings — they have no stacktrace and
+    // no actionable signal.
+    ignoreErrors: [
+      /Non-Error promise rejection captured with value: cancelled/,
+    ],
     // Anonymous correlation only. NEVER pass Discord user IDs here.
     initialScope: {
       user: { id: getAnonymousId() },

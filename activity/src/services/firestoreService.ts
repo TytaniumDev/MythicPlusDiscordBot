@@ -155,15 +155,18 @@ class FirestoreSessionService implements SessionService {
         // The listener fires `exists()=false` during normal lifecycle —
         // before `selectChannel` finishes creating the doc, or before the bot
         // has written it on activity launch. Only escalate if the doc is
-        // still missing after a grace period (stale URL, deleted doc, or a
-        // bot-side write failure that would otherwise leave the user stuck
-        // on "Loading...").
+        // still missing after a grace period AND the user is on a view that
+        // depends on channel data; on home/channels the doc may legitimately
+        // not exist yet (URL/Discord SDK sets currentChannelId before the
+        // user has selected a channel, which is what bootstraps the doc).
         if (this.channelMissingTimer === null) {
           this.channelMissingTimer = setTimeout(() => {
             this.channelMissingTimer = null;
+            const view = useAppStore.getState().currentView;
+            if (view === 'home' || view === 'channels') return;
             reportError(
               new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
-              { tag: 'firestoreService.channelDocMissing', extra: { channelId } },
+              { tag: 'firestoreService.channelDocMissing', extra: { channelId, view } },
             );
           }, CHANNEL_DOC_MISSING_GRACE_MS);
         }
