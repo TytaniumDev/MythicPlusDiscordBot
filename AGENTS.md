@@ -31,15 +31,14 @@ To maintain consistency and prevent CI failures, you **MUST** run the appropriat
 - Avoid `any` whenever possible.
 - Ensure all new features or logic changes are accompanied by Vitest unit tests.
 
-### 3. discord.js Implementation
-- All bot commands, events, and API interactions must be implemented using `async/await` syntax.
-- Extract complex UI generation logic (embeds, etc.) into dedicated UI modules (e.g., `roleUi.ts`) to decouple presentation from business logic.
-
-### 4. CI/CD & Security Standards
+### 3. CI/CD & Security Standards
 Detailed guidelines for writing GitHub Actions workflows and handling secrets are available in:
 - [**docs/CI_STANDARDS.md**](docs/CI_STANDARDS.md)
 
 **Key Rule:** Never log secrets or inline multi-line secrets in workflows.
+
+### 4. Package-Specific Instructions
+- Bot Package (discord.js implementation details): [**packages/bot/AGENTS.md**](packages/bot/AGENTS.md)
 
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.

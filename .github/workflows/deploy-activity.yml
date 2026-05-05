@@ -61,9 +61,7 @@ jobs:
           VITE_DISCORD_CLIENT_ID: ${{ env.DISCORD_APPLICATION_ID }}
           VITE_SENTRY_DSN: ${{ env.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
-        run: |
-          cd activity
-          npm run build
+        run: ./scripts/build-activity.sh
 
       - name: Build Storybook
         run: npm -w activity run build-storybook -- -o dist/storybook
