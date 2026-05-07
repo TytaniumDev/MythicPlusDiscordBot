@@ -37,6 +37,276 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
 }
 
 /**
+ * Canonical key for an unordered name pair, so `pairCounts.get(pairKey(a, b))`
+ * yields the same value regardless of argument order. Mirrored verbatim by
+ * the Lua addon's pair-count map — keep the format byte-for-byte identical.
+ */
+function pairKey(a: string, b: string): string {
+  return a < b ? a + '|' + b : b + '|' + a;
+}
+
+/**
+ * Slot in a `WoWGroup` (independent of `Role` from types.ts: there ranged/melee
+ * are distinct, here both fall under `'dps'`). Tagged so `dpsIdx` is only
+ * present where it's meaningful.
+ */
+type SlotInfo =
+  | { slot: 'tank' }
+  | { slot: 'healer' }
+  | { slot: 'dps'; dpsIdx: number };
+
+/** Identify which slot a player occupies in a group, or null if absent. */
+function findSlot(group: WoWGroup, player: WoWPlayer): SlotInfo | null {
+  if (group.tank?.equals(player)) return { slot: 'tank' };
+  if (group.healer?.equals(player)) return { slot: 'healer' };
+  const dpsIdx = group.dps.findIndex((p) => p.equals(player));
+  if (dpsIdx !== -1) return { slot: 'dps', dpsIdx };
+  return null;
+}
+
+/** Mutate `group` in place, placing `player` at the slot described by `info`. */
+function setSlot(group: WoWGroup, info: SlotInfo, player: WoWPlayer): void {
+  if (info.slot === 'tank') group.tank = player;
+  else if (info.slot === 'healer') group.healer = player;
+  else group.dps[info.dpsIdx] = player;
+}
+
+/**
+ * Whether `player` is a legal occupant of `slot`. Mirrors the constraints the
+ * fill phases impose: tanks cannot be healer-mains, tank slot needs a tank-
+ * capable player, healer slot needs a healer-capable player, DPS accepts any
+ * player with a DPS spec or offspec.
+ */
+function canFillSlot(player: WoWPlayer, slot: SlotInfo['slot']): boolean {
+  if (slot === 'tank') return (player.tankMain || player.offtank) && !player.healerMain;
+  if (slot === 'healer') return player.healerMain || player.offhealer;
+  return player.dpsMain || player.offdps;
+}
+
+/**
+ * Lexicographic score for a group set:
+ *   - `maxPerPlayer`: worst-case count of repeat-teammates any single player has
+ *   - `total`: sum of pair-counts for every unique pair across all groups
+ *
+ * Smaller is better on both axes; `maxPerPlayer` dominates because the user-
+ * facing complaint is "*I* keep getting grouped with X again", not "the
+ * algorithm-wide repeat sum is high".
+ */
+function scoreGroups(
+  groups: readonly WoWGroup[],
+  pairCounts: Map<string, number>,
+): { maxPerPlayer: number; total: number } {
+  let maxPerPlayer = 0;
+  let perPlayerSum = 0;
+  for (const g of groups) {
+    const ms = g.players;
+    for (let i = 0; i < ms.length; i++) {
+      let perPlayer = 0;
+      for (let j = 0; j < ms.length; j++) {
+        if (i === j) continue;
+        perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+      }
+      if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
+      perPlayerSum += perPlayer;
+    }
+  }
+  // Each unique pair is summed twice across the players' perPlayer counts.
+  return { maxPerPlayer, total: perPlayerSum / 2 };
+}
+
+function isBetterScore(
+  candidate: { maxPerPlayer: number; total: number },
+  current: { maxPerPlayer: number; total: number },
+): boolean {
+  if (candidate.maxPerPlayer !== current.maxPerPlayer) {
+    return candidate.maxPerPlayer < current.maxPerPlayer;
+  }
+  return candidate.total < current.total;
+}
+
+/**
+ * Try every legal pairwise swap; apply the best one if it strictly improves
+ * the lexicographic score. Returns true if a swap was applied.
+ */
+function trySingleSwap(
+  groups: WoWGroup[],
+  pairCounts: Map<string, number>,
+  origBrez: boolean[],
+  origLust: boolean[],
+): boolean {
+  let bestScore = scoreGroups(groups, pairCounts);
+  let bestSwap:
+    | { gi: WoWGroup; gj: WoWGroup; pa: WoWPlayer; sa: SlotInfo; pb: WoWPlayer; sb: SlotInfo }
+    | null = null;
+
+  for (let i = 0; i < groups.length; i++) {
+    for (let j = i + 1; j < groups.length; j++) {
+      const gi = groups[i];
+      const gj = groups[j];
+      const playersI = gi.players;
+      const playersJ = gj.players;
+      for (const pa of playersI) {
+        const sa = findSlot(gi, pa);
+        if (!sa) continue;
+        for (const pb of playersJ) {
+          const sb = findSlot(gj, pb);
+          if (!sb) continue;
+          if (!canFillSlot(pa, sb.slot) || !canFillSlot(pb, sa.slot)) continue;
+
+          setSlot(gi, sa, pb);
+          setSlot(gj, sb, pa);
+          const utilityOk = (!origBrez[i] || gi.hasBrez)
+            && (!origLust[i] || gi.hasLust)
+            && (!origBrez[j] || gj.hasBrez)
+            && (!origLust[j] || gj.hasLust);
+          if (utilityOk) {
+            const candidate = scoreGroups(groups, pairCounts);
+            if (isBetterScore(candidate, bestScore)) {
+              bestScore = candidate;
+              bestSwap = { gi, gj, pa, sa, pb, sb };
+            }
+          }
+          setSlot(gi, sa, pa);
+          setSlot(gj, sb, pb);
+        }
+      }
+    }
+  }
+
+  if (!bestSwap) return false;
+  setSlot(bestSwap.gi, bestSwap.sa, bestSwap.pb);
+  setSlot(bestSwap.gj, bestSwap.sb, bestSwap.pa);
+  return true;
+}
+
+/**
+ * Escape single-swap local minima by rotating one player between three
+ * groups (gi → gj → gk → gi). Some optimal assignments — particularly when
+ * tank/healer placements are interdependent — are unreachable via any
+ * single 2-swap because each individual swap looks worse than the current
+ * state, but the composite 3-cycle improves it. Returns true if a cycle
+ * was applied.
+ */
+function tryThreeCycle(
+  groups: WoWGroup[],
+  pairCounts: Map<string, number>,
+  origBrez: boolean[],
+  origLust: boolean[],
+): boolean {
+  if (groups.length < 3) return false;
+
+  let bestScore = scoreGroups(groups, pairCounts);
+  let bestCycle:
+    | {
+      gi: WoWGroup; pi: WoWPlayer; si: SlotInfo;
+      gj: WoWGroup; pj: WoWPlayer; sj: SlotInfo;
+      gk: WoWGroup; pk: WoWPlayer; sk: SlotInfo;
+    }
+    | null = null;
+
+  for (let i = 0; i < groups.length; i++) {
+    for (let j = 0; j < groups.length; j++) {
+      if (j === i) continue;
+      for (let k = 0; k < groups.length; k++) {
+        if (k === i || k === j) continue;
+        const gi = groups[i];
+        const gj = groups[j];
+        const gk = groups[k];
+        const playersI = gi.players;
+        const playersJ = gj.players;
+        const playersK = gk.players;
+        for (const pi of playersI) {
+          const si = findSlot(gi, pi);
+          if (!si) continue;
+          for (const pj of playersJ) {
+            const sj = findSlot(gj, pj);
+            if (!sj) continue;
+            if (!canFillSlot(pi, sj.slot)) continue;
+            for (const pk of playersK) {
+              const sk = findSlot(gk, pk);
+              if (!sk) continue;
+              if (!canFillSlot(pj, sk.slot) || !canFillSlot(pk, si.slot)) continue;
+
+              setSlot(gi, si, pk);
+              setSlot(gj, sj, pi);
+              setSlot(gk, sk, pj);
+              const utilityOk = (!origBrez[i] || gi.hasBrez)
+                && (!origLust[i] || gi.hasLust)
+                && (!origBrez[j] || gj.hasBrez)
+                && (!origLust[j] || gj.hasLust)
+                && (!origBrez[k] || gk.hasBrez)
+                && (!origLust[k] || gk.hasLust);
+              if (utilityOk) {
+                const candidate = scoreGroups(groups, pairCounts);
+                if (isBetterScore(candidate, bestScore)) {
+                  bestScore = candidate;
+                  bestCycle = { gi, pi, si, gj, pj, sj, gk, pk, sk };
+                }
+              }
+              setSlot(gi, si, pi);
+              setSlot(gj, sj, pj);
+              setSlot(gk, sk, pk);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!bestCycle) return false;
+  setSlot(bestCycle.gi, bestCycle.si, bestCycle.pk);
+  setSlot(bestCycle.gj, bestCycle.sj, bestCycle.pi);
+  setSlot(bestCycle.gk, bestCycle.sk, bestCycle.pj);
+  return true;
+}
+
+/**
+ * Local-search post-processing: swap pairs of players between groups if doing
+ * so lowers the lexicographic `(maxPerPlayer, total)` score. The greedy fill
+ * passes optimize each group as it is built, which strands the last-filled
+ * group with the leftover DPS and can leave one player with 2+ repeat
+ * teammates even though a strictly better assignment exists. This pass cleans
+ * that up without changing role assignments or utility coverage. See issue
+ * #512 for the motivating scenario.
+ *
+ * Two phases run alternately until both quiesce. Single-swap exploration
+ * handles the common cases. A 3-cycle pass escapes local minima that single
+ * swaps can't see — typically when tank or healer placements would all need
+ * to rotate between groups simultaneously to improve the score.
+ *
+ * Constraints preserved:
+ *   - Role compatibility for each slot (tank/healer/DPS slot occupants).
+ *   - No healer-main placed as tank.
+ *   - Brez/lust coverage of any group that originally had it.
+ *   - Group sizes (only same-cardinality slot swaps occur).
+ *
+ * Mirrored in Lua by the MythicPlusWheel addon — keep behavior in sync.
+ */
+function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): void {
+  if (pairCounts.size === 0) return;
+
+  const completeGroups = groups.filter((g) => g.isComplete);
+  if (completeGroups.length < 2) return;
+
+  const origBrez = completeGroups.map((g) => g.hasBrez);
+  const origLust = completeGroups.map((g) => g.hasLust);
+
+  // Outer loop bounded so a hostile pair-count map can't make this run away;
+  // each phase already converges in O(complete-groups) iterations in practice.
+  const maxOuter = completeGroups.length * 4;
+  for (let outer = 0; outer < maxOuter; outer++) {
+    let progress = false;
+    while (trySingleSwap(completeGroups, pairCounts, origBrez, origLust)) {
+      progress = true;
+    }
+    if (tryThreeCycle(completeGroups, pairCounts, origBrez, origLust)) {
+      progress = true;
+    }
+    if (!progress) return;
+  }
+}
+
+/**
  * Form balanced Mythic+ groups from a player pool. Used by both the bot
  * (Discord-only `/wheel`) and the frontend (Activity spin), and mirrored in
  * Lua by the MythicPlusWheel addon — keep behavior in sync if you change it.
@@ -74,8 +344,7 @@ export function createMythicPlusGroups(
       const members = group.players;
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
-          const [n1, n2] = [members[i].name, members[j].name];
-          const key = n1 < n2 ? n1 + '|' + n2 : n2 + '|' + n1;
+          const key = pairKey(members[i].name, members[j].name);
           pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
         }
       }
@@ -169,8 +438,7 @@ export function createMythicPlusGroups(
       // Score = total times this player has been grouped with current teammates
       let score = 0;
       for (const teammate of teammates) {
-        const key = player.name < teammate.name ? player.name + '|' + teammate.name : teammate.name + '|' + player.name;
-        score += pairCounts.get(key) ?? 0;
+        score += pairCounts.get(pairKey(player.name, teammate.name)) ?? 0;
       }
 
       if (score < bestScore) {
@@ -352,6 +620,8 @@ export function createMythicPlusGroups(
   fillRanged();
   fillRemainingDps();
   handleRemainders();
+
+  diversifyGroups(groups, pairCounts);
 
   groupHistory.set(guildId, [...rounds, groups]);
   return groups;

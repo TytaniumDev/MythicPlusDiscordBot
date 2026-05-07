@@ -403,4 +403,105 @@ describe('GroupCreator', () => {
     expect(dpsNames).not.toContain('DPS1');
     expect(dpsNames).toContain('DPS6');
   });
+
+  it('reaches the global minimum pair-overlap on the issue #512 input', () => {
+    // Reproduction of issue #512. With the captured prior rounds, the greedy
+    // fillRemainingDps pass leaves the last-filled group with leftover DPS
+    // and produces total pair-overlap up to 14 across runs (avg ~10.5). A
+    // brute-force search of valid 3-group partitions for this input shows
+    // the global minimum total pair-overlap is 10. The post-processing
+    // diversifyGroups step in createMythicPlusGroups should reach that
+    // minimum on every spin so a player like Tyt isn't stranded with two
+    // already-seen teammates while a strictly better assignment exists.
+    for (let trial = 0; trial < 25; trial++) {
+      clear();
+
+      const Gazzi = WoWPlayer.create('Gazzi (Nikki)', ['Tank', 'Brez']);
+      const Sorovar = WoWPlayer.create('Sorovar (Jeremy)', ['Healer', 'Ranged Offspec']);
+      const Poppy = WoWPlayer.create('Poppybrosjr (Steve)', ['Ranged', 'Lust']);
+      const JohnG = WoWPlayer.create('John G', ['Melee', 'Tank Offspec', 'Brez']);
+      const Marti = WoWPlayer.create('Martichoux (Erik)', ['Ranged', 'Ranged Offspec', 'Lust']);
+      const Temma = WoWPlayer.create('Temma (Ben)', ['Tank', 'Melee Offspec', 'Brez']);
+      const Quill = WoWPlayer.create('Quill (Josh)', [
+        'Healer',
+        'Tank Offspec',
+        'Ranged Offspec',
+        'Melee Offspec',
+        'Brez',
+      ]);
+      const Volk = WoWPlayer.create('Volkareth (Graham)', ['Ranged', 'Lust']);
+      const Alch = WoWPlayer.create('Alchemy (Yamyam)', ['Ranged', 'Brez']);
+      const Mickey = WoWPlayer.create('Mickey (rook (AJ))', ['Melee']);
+      const Drach = WoWPlayer.create('Drachlyn (Evan)', ['Tank', 'Brez']);
+      const Cyonoc = WoWPlayer.create('Cyonoc (Kyle)', ['Healer', 'Healer Offspec', 'Brez']);
+      const Tyt = WoWPlayer.create('Tytaniormu (Tyler)', ['Ranged', 'Lust']);
+      const Blue = WoWPlayer.create('Blueshift (Bevan)', ['Ranged']);
+      const jim = WoWPlayer.create('jim (Stink)', ['Melee', 'Tank Offspec']);
+      const Raxef = WoWPlayer.create('Raxef', ['Melee']);
+
+      const mkGroup = (
+        tank: WoWPlayer | null,
+        healer: WoWPlayer | null,
+        dps: WoWPlayer[],
+      ): WoWGroup => {
+        const g = new WoWGroup();
+        g.tank = tank;
+        g.healer = healer;
+        g.dps = [...dps];
+        return g;
+      };
+
+      const r1 = [
+        mkGroup(Gazzi, Cyonoc, [Volk, Mickey, JohnG]),
+        mkGroup(Drach, Quill, [Poppy, jim, Alch]),
+        mkGroup(Temma, Sorovar, [Blue, Tyt]),
+      ];
+      const r2 = [
+        mkGroup(Drach, Sorovar, [Volk, Marti, Raxef]),
+        mkGroup(Gazzi, Quill, [Tyt, jim, Mickey]),
+        mkGroup(Temma, Cyonoc, [Poppy, Blue, Alch]),
+      ];
+
+      setGroupHistory([r1, r2]);
+
+      const players = [
+        Gazzi, Sorovar, Poppy, JohnG, Marti,
+        Temma, Quill, Volk, Alch, Mickey,
+        Drach, Cyonoc, Tyt, Blue, jim,
+      ];
+      const groups = createMythicPlusGroups(players);
+      expect(groups.length).toBe(3);
+
+      const pairCount = new Map<string, number>();
+      for (const round of [r1, r2]) {
+        for (const grp of round) {
+          const ms = grp.players;
+          for (let i = 0; i < ms.length; i++) {
+            for (let j = i + 1; j < ms.length; j++) {
+              const a = ms[i].name, b = ms[j].name;
+              const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+              pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
+            }
+          }
+        }
+      }
+
+      let totalOverlap = 0;
+      for (const group of groups) {
+        const ms = group.players;
+        for (let i = 0; i < ms.length; i++) {
+          for (let j = i + 1; j < ms.length; j++) {
+            const a = ms[i].name, b = ms[j].name;
+            const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+            totalOverlap += pairCount.get(key) ?? 0;
+          }
+        }
+      }
+
+      expect(
+        totalOverlap,
+        `total pair overlap was ${totalOverlap} on trial ${trial}, expected the proven global minimum of 10`,
+      ).toBe(10);
+    }
+  });
 });
