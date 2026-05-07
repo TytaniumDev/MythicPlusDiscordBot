@@ -4051,3 +4051,14 @@ button.role-section-header--collapsible {
     transform: scale(0.7);
   }
 }
+
+/* Connections view */
+.connections-view__body { padding: 16px; max-width: 640px; margin: 0 auto; }
+.connections-view__heading { font-size: 18px; margin-bottom: 12px; }
+.connections-view__empty { color: #888; font-style: italic; }
+.connections-view__list { list-style: none; padding: 0; }
+.connections-view__list li {
+  display: flex; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid #333;
+}
+.connections-view__count { font-family: monospace; color: #888; }
