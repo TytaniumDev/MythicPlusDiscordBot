@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
 import { WoWGroup, WoWPlayer, WheelEntry, GuildData, ChannelData, SeasonConfig, SeasonPairs } from '../types';
+import { saveStoredCharacter, clearStoredCharacter, loadStoredCharacter } from '../lib/currentCharacter';
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
@@ -24,6 +25,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentPlayerId: null,
   currentPlayerName: null,
   identityResolved: false,
+  currentCharacter: loadStoredCharacter(),
 
   // Spin sequence
   fullGroups: [],
@@ -61,6 +63,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
+  setCurrentCharacter: (character) => {
+    if (character) {
+      saveStoredCharacter(character);
+    } else {
+      clearStoredCharacter();
+    }
+    set({ currentCharacter: character });
+  },
   updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => set((s) => {
     if (!s.channelData) return s;
     const players = s.channelData.players.map((p) =>
