@@ -1,5 +1,5 @@
 import { WoWPlayer } from '../types';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 import { SpotlightPortrait } from './SpotlightPortrait';
 
 interface SpotlightPortraitsProps {

@@ -1,4 +1,4 @@
-import type { CharacterDungeonScores, DungeonRunSummary } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores, DungeonRunSummary } from './dungeonScoreTypes';
 
 export type DungeonSuggestionsStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 

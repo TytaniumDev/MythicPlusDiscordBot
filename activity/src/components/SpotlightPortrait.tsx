@@ -14,7 +14,7 @@ import {
   useTransitionStyles,
 } from '@floating-ui/react';
 import type { CharacterClass } from '@mythicplus/shared';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 import { remapImageUrl } from '../discordSdk';
 import { toMainBodyUrl } from '../lib/characterMedia';
 import { getClassColor } from '../lib/classColors';

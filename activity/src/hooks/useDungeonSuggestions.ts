@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/store';
 import { fetchCharacterDungeonScores } from '../services/raiderioMythicPlus';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 import { computeDungeonRanking } from '../lib/dungeonSuggestions';
 import type { DungeonSuggestionsState } from '../lib/dungeonSuggestions';
 import type { WoWPlayer } from '../types';
