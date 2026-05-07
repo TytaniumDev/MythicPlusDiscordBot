@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeDungeonRanking } from './dungeonSuggestions';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from './dungeonScoreTypes';
 
 function makeChar(
   name: string,

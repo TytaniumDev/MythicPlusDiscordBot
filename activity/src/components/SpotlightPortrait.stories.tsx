@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CHARACTER_CLASSES } from '@mythicplus/shared';
 import { SpotlightPortrait } from './SpotlightPortrait';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 
 // Realistic-looking sample so the hover/focus tooltip has something to show.
 // Edit `name`, `score`, `level`, and `iconUrl` here to preview different

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { GroupSlide } from './GroupSlide';
 import type { WoWGroup } from '../types';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 
 const SWIPE_THRESHOLD_PX = 40;
 

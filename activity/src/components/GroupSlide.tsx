@@ -1,5 +1,5 @@
 import type { WoWGroup, WoWPlayer } from '../types';
-import type { CharacterDungeonScores } from '../services/raiderioMythicPlus';
+import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
 import { utilityIcons } from '../lib/roles';
 import { SpotlightPortrait } from './SpotlightPortrait';
 import { useState } from 'react';
