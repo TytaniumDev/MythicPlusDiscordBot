@@ -5,11 +5,18 @@ import { SecondaryButton, PrimaryCTA } from './ui';
 interface SpinWarningDialogProps {
   missingRole: WoWPlayer[];
   missingNameOnly: WoWPlayer[];
+  missingCharacterLookup: WoWPlayer[];
   onGoBack: () => void;
   onSpinAnyway: () => void;
 }
 
-export function SpinWarningDialog({ missingRole, missingNameOnly, onGoBack, onSpinAnyway }: SpinWarningDialogProps) {
+export function SpinWarningDialog({
+  missingRole,
+  missingNameOnly,
+  missingCharacterLookup,
+  onGoBack,
+  onSpinAnyway,
+}: SpinWarningDialogProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
@@ -50,6 +57,20 @@ export function SpinWarningDialog({ missingRole, missingNameOnly, onGoBack, onSp
               <div key={p.discordId || p.name} className="spin-warning__player">
                 <span>{p.name}</span>
                 <span className="spin-warning__reason">has role, no WoW name</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {missingCharacterLookup.length > 0 && (
+          <div className="spin-warning__section spin-warning__section--warn">
+            <div className="spin-warning__section-label">Character not found</div>
+            {missingCharacterLookup.map(p => (
+              <div key={p.discordId || p.name} className="spin-warning__player">
+                <span>{p.name}</span>
+                <span className="spin-warning__reason">
+                  {`'${p.inGameName ?? ''}' didn't resolve — typo?`}
+                </span>
               </div>
             ))}
           </div>

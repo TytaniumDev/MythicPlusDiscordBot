@@ -23,18 +23,30 @@ const unassigned = {
   utilities: [],
 };
 const assignedNoName = { ...mockPlayers[1], inGameName: undefined };
+const typoCharacter = {
+  ...mockPlayers[1],
+  name: 'Typo',
+  discordId: '200000000000000002',
+  inGameName: 'Tytaniumm-Stomrage',
+  mediaUrl: null,
+};
 
 export const MissingRoleOnly: Story = {
-  args: { missingRole: [unassigned], missingNameOnly: [] },
+  args: { missingRole: [unassigned], missingNameOnly: [], missingCharacterLookup: [] },
 };
 
 export const MissingNameOnly: Story = {
-  args: { missingRole: [], missingNameOnly: [assignedNoName] },
+  args: { missingRole: [], missingNameOnly: [assignedNoName], missingCharacterLookup: [] },
 };
 
-export const Both: Story = {
+export const MissingCharacterLookup: Story = {
+  args: { missingRole: [], missingNameOnly: [], missingCharacterLookup: [typoCharacter] },
+};
+
+export const All: Story = {
   args: {
     missingRole: [unassigned],
     missingNameOnly: [assignedNoName],
+    missingCharacterLookup: [typoCharacter],
   },
 };
