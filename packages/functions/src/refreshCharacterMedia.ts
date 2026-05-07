@@ -16,15 +16,15 @@ interface LinkedCharacter {
 // Battle.net lookup fails: previously-verified targets get a pass on transient
 // failures, while inGameName-derived targets indicate stale/invalid user input
 // and get their character fields cleared.
-export type TargetSource = 'linkedCharacter' | 'inGameName';
+type TargetSource = 'linkedCharacter' | 'inGameName';
 
-export interface RefreshTarget {
+interface RefreshTarget {
   discordId: string;
   linkedCharacter: LinkedCharacter;
   source: TargetSource;
 }
 
-export interface RefreshSummary {
+interface RefreshSummary {
   total: number;
   refreshed: number;
   skipped: number;
@@ -80,7 +80,7 @@ function hasAnyCharacterField(data: Record<string, unknown>): boolean {
   return CHARACTER_FIELDS_TO_CLEAR.some((f) => data[f] != null);
 }
 
-export interface ClassifiedDocs {
+interface ClassifiedDocs {
   // BN-resolvable. Preferred source: linkedCharacter (server-verified),
   // falling back to parsed inGameName for older docs.
   targets: RefreshTarget[];

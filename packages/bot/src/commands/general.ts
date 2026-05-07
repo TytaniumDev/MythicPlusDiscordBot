@@ -12,7 +12,7 @@ export interface VoiceClient {
   disconnect(options?: { force?: boolean }): Promise<void>;
 }
 
-export interface EmbedData {
+interface EmbedData {
   title: string;
   color: number;
   fields: { name: string; value: string; inline?: boolean }[];

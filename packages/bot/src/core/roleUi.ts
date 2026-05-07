@@ -11,7 +11,7 @@ import {
   ROLE_TANK_OFFSPEC,
 } from '@mythicplus/shared';
 
-export type ButtonStyle = 'primary' | 'secondary' | 'success';
+type ButtonStyle = 'primary' | 'secondary' | 'success';
 
 export interface RoleButtonData {
   roleName: string;

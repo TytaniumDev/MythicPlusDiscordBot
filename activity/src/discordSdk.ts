@@ -1,12 +1,12 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
 
-export interface DiscordContext {
+interface DiscordContext {
   guildId: string;
   channelId: string | null;
 }
 
-export interface DiscordParticipant {
+interface DiscordParticipant {
   id: string;
   nickname: string | null;
   global_name: string | null;
