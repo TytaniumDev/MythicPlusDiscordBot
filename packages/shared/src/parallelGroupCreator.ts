@@ -41,7 +41,7 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
  * yields the same value regardless of argument order. Mirrored verbatim by
  * the Lua addon's pair-count map — keep the format byte-for-byte identical.
  */
-function pairKey(a: string, b: string): string {
+export function pairKey(a: string, b: string): string {
   return a < b ? a + '|' + b : b + '|' + a;
 }
 

@@ -19,6 +19,7 @@ export {
   clear,
   setGroupHistory,
   createMythicPlusGroups,
+  pairKey,
 } from './parallelGroupCreator.js';
 
 export { generateInviteCommand } from './inviteCommand.js';
