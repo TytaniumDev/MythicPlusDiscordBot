@@ -11,7 +11,7 @@ import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { getDebugPlayers } from '../core/debugFixtures.js';
 import { FirebaseService } from '../core/firebaseService.js';
-import logger from '../core/logger.js';
+import { reportError } from '../core/sentry.js';
 
 export interface CommandContext extends Sendable {
   channel: { members: DiscordMember[] } & TypingChannel;
@@ -82,7 +82,10 @@ export class GroupService {
       );
       setGroupHistory(rounds, guildId);
     } catch (err) {
-      logger.warn(`Failed to load group history for guild ${guildId}: ${err}`);
+      reportError(err, {
+        tags: { handler: 'groupService.loadGroupHistory' },
+        extra: { guildId },
+      });
     }
   }
 
@@ -107,7 +110,10 @@ export class GroupService {
         await this._bumpSeasonPairs(firebase, guildId, groups);
       }
     } catch (err) {
-      logger.warn(`Failed to save group history for guild ${guildId}: ${err}`);
+      reportError(err, {
+        tags: { handler: 'groupService.saveGroupHistory' },
+        extra: { guildId },
+      });
     } finally {
       this.loadedRounds.delete(guildId);
     }

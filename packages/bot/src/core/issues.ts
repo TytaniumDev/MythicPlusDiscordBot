@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import * as config from './config.js';
 import logger from './logger.js';
+import { reportError } from './sentry.js';
 import { sanitizeForGithub, sanitizeLogs } from './security.js';
 
 export class GitHubError extends Error {
@@ -23,8 +24,7 @@ async function getRecentLogs(): Promise<string | null> {
       const lines = content.split('\n');
       return lines.slice(-50).join('\n');
     } catch (e) {
-      const errType = e instanceof Error ? e.constructor.name : String(e);
-      logger.error(`Failed to read logs: ${errType}`);
+      reportError(e, { tags: { handler: 'issues.getRecentLogs' } });
     }
   }
   return null;
@@ -94,7 +94,7 @@ export async function searchGithubIssues(
       }
     }
   } catch (e) {
-    logger.warn(`Failed to search for existing GitHub issues: ${e}`);
+    reportError(e, { tags: { handler: 'issues.searchGithubIssues' } });
   }
   return null;
 }
@@ -140,8 +140,7 @@ export async function createErrorIssue(
 
     return await createGithubIssue(title, body, ['bug', 'auto-error']);
   } catch (e) {
-    const errType = e instanceof Error ? e.constructor.name : String(e);
-    logger.error(`Failed to create automatic error issue: ${errType}`);
+    reportError(e, { tags: { handler: 'issues.createErrorIssue' } });
     return null;
   }
 }
