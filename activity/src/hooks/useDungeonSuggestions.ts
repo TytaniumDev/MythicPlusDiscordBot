@@ -6,8 +6,7 @@ import { computeDungeonRanking } from '../lib/dungeonSuggestions';
 import type { DungeonSuggestionsState } from '../lib/dungeonSuggestions';
 import type { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
-
-const DEFAULT_REGION = 'us';
+import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 
 interface FetchState {
   phase: 'idle' | 'loading' | 'fetched' | 'no-targets';
@@ -51,26 +50,6 @@ export interface UseDungeonSuggestionsResult {
    * are absent until the fetch settles. Lookup failures map to `null`.
    */
   scoresByDiscordId: ReadonlyMap<string, CharacterDungeonScores | null>;
-}
-
-function realmToSlug(realm: string): string {
-  return realm
-    .trim()
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function parseInGameName(input: string | undefined | null): { name: string; realmSlug: string } | null {
-  if (!input) return null;
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  return { name, realmSlug: realmToSlug(realm) };
 }
 
 function buildPlayerTargets(players: readonly WoWPlayer[]): PlayerTarget[] {

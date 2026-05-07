@@ -2,6 +2,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 import { getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
 import { enforceRateLimit } from './rateLimit.js';
@@ -42,31 +43,6 @@ const CHARACTER_FIELDS_TO_CLEAR = [
   'mediaUrlUpdatedAt',
   'wowName', // legacy, no readers remain
 ] as const;
-
-const DEFAULT_REGION = 'us';
-
-// Mirrors activity/src/components/RoleEditor.tsx. Apostrophes are stripped
-// entirely (Kel'Thuzad → kelthuzad); any other non-alphanumeric run collapses
-// to a single hyphen so inputs with stray spacing (e.g. "Azjol - Nerub") still
-// produce a valid slug.
-function realmToSlug(realm: string): string {
-  return realm
-    .trim()
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function parseInGameName(input: string): { name: string; realm: string } | null {
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  return { name, realm: realmToSlug(realm) };
-}
 
 function readLinkedCharacter(data: Record<string, unknown>): LinkedCharacter | null {
   const linked = data.linkedCharacter as LinkedCharacter | undefined;
@@ -109,7 +85,7 @@ export function classifyDocs(
     if (parsed) {
       targets.push({
         discordId: doc.id,
-        linkedCharacter: { name: parsed.name, realm: parsed.realm, region: DEFAULT_REGION },
+        linkedCharacter: { name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION },
         source: 'inGameName',
       });
       continue;
