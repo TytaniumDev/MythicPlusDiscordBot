@@ -72,10 +72,18 @@ function buildAdjacency(counts: Record<string, number>): Map<string, Map<string,
     if (sep === -1) continue;
     const a = key.slice(0, sep);
     const b = key.slice(sep + 1);
-    if (!adj.has(a)) adj.set(a, new Map());
-    if (!adj.has(b)) adj.set(b, new Map());
-    adj.get(a)!.set(b, count);
-    adj.get(b)!.set(a, count);
+    let aEdges = adj.get(a);
+    if (!aEdges) {
+      aEdges = new Map();
+      adj.set(a, aEdges);
+    }
+    let bEdges = adj.get(b);
+    if (!bEdges) {
+      bEdges = new Map();
+      adj.set(b, bEdges);
+    }
+    aEdges.set(b, count);
+    bEdges.set(a, count);
   }
   return adj;
 }
@@ -116,7 +124,8 @@ export function shortestPath(
     if (current === to) break;
     visited.add(current);
 
-    const neighbors = adj.get(current)!;
+    const neighbors = adj.get(current);
+    if (!neighbors) continue;
     for (const [neighbor, count] of neighbors) {
       if (visited.has(neighbor)) continue;
       const candidate = currentDist + 1 / count;
