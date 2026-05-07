@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@mythicplus/shared": "*",
-    "firebase-admin": "^13.0.0",
+    "firebase-admin": "^13.8.0",
     "firebase-functions": "^6.3.0"
   },
   "devDependencies": {
