@@ -46,16 +46,15 @@ The `seasonSlug` field is the reset signal: when it differs from
 overwrites `seasonSlug` with the current value. No active "reset all guilds"
 job is needed.
 
-### Auto-detect expansion (no hardcoding)
+### Fetch current season
 
 raider.io's `https://raider.io/api/v1/mythic-plus/static-data?expansion_id=N`
-returns one season per expansion: the current season for the active expansion,
-or a `-cutoffs`/`-post` season for past expansions, or empty `seasons: []` for
-expansions that don't exist yet.
+returns one season per expansion. For v1, `expansion_id` is hardcoded to `11`
+(The War Within / "MN" — Midnight). When the next expansion ships we'll need a
+manual bump of the constant; a follow-up issue can revisit auto-detection.
 
-`fetchCurrentSeasonInfo()` probes from `expansion_id=15` downward; the first
-expansion that returns a non-empty `seasons` array is the most recent. ~5 HTTP
-calls per weekly invocation; self-correcting when new expansions ship.
+`fetchCurrentSeasonInfo()` makes a single HTTP request, returns the slug and
+`blizzard_season_id` from the first season in the response.
 
 Hooked into the existing `fetchAndWriteAffixes` Tuesday cron — after the
 affixes write succeeds, fetch + write `config/season`. Same on-demand
@@ -156,7 +155,8 @@ through `routeToView` / `viewToRoute` in `lib/routing.ts`.
 ## Files touched
 
 **packages/functions/src/**
-- `fetchCurrentSeason.ts` (new) — `fetchCurrentSeasonInfo()` probing helper
+- `fetchCurrentSeason.ts` (new) — `fetchCurrentSeasonInfo()` (hardcoded
+  `expansion_id=11`)
 - `fetchWeeklyAffixes.ts` — extend `fetchAndWriteAffixes` to also write
   `config/season`
 
@@ -206,8 +206,10 @@ test file is present, otherwise add one for the bump path):
   slug resets to empty
 
 **Cloud Function** (Vitest, in `packages/functions/`):
-- `fetchCurrentSeasonInfo` returns the highest expansion's season info
-- Skips empty `seasons: []` responses while probing
+- `fetchCurrentSeasonInfo` parses raider.io's response and returns slug +
+  `blizzard_season_id`
+- Throws on empty `seasons` (signal that `EXPANSION_ID` constant needs
+  bumping)
 
 **Activity UI**:
 - Storybook stories for `ProfileAvatar`, `ProfileModal`, `ConnectionsView`
