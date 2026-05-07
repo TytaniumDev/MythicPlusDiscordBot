@@ -2569,6 +2569,7 @@ button.role-section-header--collapsible {
   text-decoration: none;
   opacity: 0.75;
   transition: opacity 0.2s;
+  flex-shrink: 0;
 }
 
 .header-bar__hash:hover {
