@@ -104,7 +104,7 @@ Click New repository secret for each:
   If fine-grained tokens do not show Packages, use a classic PAT with `read:packages`
   (and `repo` if the repo is private).
 - `BOT_TOKEN`: Discord bot token.
-- `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `!activity` invite).
+- `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `/wheelson` invite).
 - `GH_ISSUE_TOKEN`: GitHub PAT with `repo` scope for creating issues.
 
 ### Optional
@@ -142,7 +142,7 @@ When inviting the bot or generating an invite URL, include at least these **scop
 | **Attach Files**   | Post the wheel GIF and other assets. |
 | **Connect**        | Join voice channels. |
 | **Speak**          | Play spin/reveal sounds in voice. |
-| **Create Instant Invite** | Required for `!activity` (embedded activity invite). |
+| **Create Instant Invite** | Required for `/wheelson` (embedded activity invite). |
 | **Read Message History** | Recommended so the bot can work in existing channels. |
 
 Use **Bot** scope and the permissions above; add **applications.commands** if you use slash commands.
@@ -158,15 +158,15 @@ If you copy the **permissions integer** from the Discord Developer Portal (OAuth
 
 The permissions integer is only used when generating the OAuth2 invite URL; it does not change the bot’s behavior inside a server. Server admins still grant permissions when they complete the invite flow.
 
-### 3.4 Activity (optional, for `!activity`)
+### 3.4 Activity (optional, for `/wheelson`)
 
-The `!activity` command creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
+The `/wheelson` command (legacy alias `/activity`) creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
 
 1. In the Developer Portal: your application → **Activities** (or **Rich Presence** / app type).
 2. Create or link an Activity so Discord allows `target_type=embedded_application` invites.
 3. Set the **DISCORD_APPLICATION_ID** secret (and `DISCORD_APPLICATION_ID` in `.env` locally) to your application’s **Application ID** (Application → General Information).
 
-If Activities are not set up, `/activity` will fail; `/wheel` (voice + GIFs) still work with the permissions above.
+If Activities are not set up, `/wheelson` will fail; `/wheel` (voice + GIFs) still works with the permissions above.
 
 ## 4. First deploy
 
@@ -179,7 +179,9 @@ If Activities are not set up, `/activity` will fail; `/wheel` (voice + GIFs) sti
 
 ### 4.1 Data Persistence
 
-The bot now stores player preferences (roles) in a `data/` directory inside the repository folder on the Pi (`/home/deploy/mythic-plus-bot/data`).
+In normal production deployments (`FIREBASE_CREDENTIALS_JSON` set), player preferences are stored in the Firestore `preferences/` collection by `PreferenceService` and there is nothing to back up on the Pi.
+
+If Firebase credentials are not configured, the bot falls back to a local JSON file in the `data/` directory inside the repository folder on the Pi (`/home/deploy/mythic-plus-bot/data`):
 - This directory is created automatically by Docker when the container starts.
 - It is ignored by git (via `.gitignore`), so your data survives deployments and `git reset`.
 - You can back up this file manually: `cp /home/deploy/mythic-plus-bot/data/player_preferences.json ~/.backup_prefs.json`.
@@ -260,13 +262,3 @@ Create a new repository secret:
 - Value: (The token you copied in the previous step)
 
 This token will be injected into the container at runtime.
-
-### 7.3 Jules Automation
-
-To enable automatic fix attempts by Jules:
-
-1.  **Jules GitHub App:** Ensure the Jules app is installed on your repository (via `jules.google`).
-2.  **API Key:** Generate a Jules API Key from your [Jules Settings](https://jules.google/settings).
-3.  **GitHub Secret:** Go to your repository **Settings > Secrets and variables > Actions** and create a new Repository Secret named `JULES_API_KEY` with your key.
-
-The bot automatically adds the `jules` label to new issues, which triggers the `.github/workflows/jules-issue-fix.yml` workflow to send the issue to Jules for an automated fix attempt.

@@ -1,6 +1,6 @@
 # Discord Activity Setup Guide
 
-This guide details how to set up the "Wheel of Names" activity for your Discord bot. This involves hosting the web files on GitHub Pages and configuring your Discord Application to recognize them.
+This guide details how to set up the Wheelson activity for your Discord bot. This involves hosting the web files on GitHub Pages and configuring your Discord Application to recognize them.
 
 ## 1. Hosting the Activity (GitHub Pages)
 
@@ -71,9 +71,9 @@ and the service account credentials.
 
 1.  Start your bot.
 2.  Join a Voice Channel in Discord.
-3.  Run the command: `/activity`.
+3.  Run the command: `/wheelson` (the legacy `/activity` alias also works).
 4.  The bot should reply with a "Join Activity" link.
-5.  Clicking the link will open your hosted Wheel of Names directly inside Discord!
+5.  Clicking the link will open the Wheelson activity directly inside Discord!
 
 ## Troubleshooting
 
