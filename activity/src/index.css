@@ -2578,6 +2578,29 @@ button.role-section-header--collapsible {
 }
 
 /* ============================================
+   Design System: Profile Avatar (header slot)
+   ============================================ */
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--avatar-ring, #888);
+  background: rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-weight: 700;
+  color: #fff;
+}
+
+.profile-avatar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.profile-avatar__img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ============================================
    Design System: Character Header
    ============================================ */
 .character-header {
