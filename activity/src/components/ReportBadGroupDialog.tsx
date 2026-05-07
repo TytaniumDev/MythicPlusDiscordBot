@@ -38,7 +38,7 @@ export function ReportBadGroupDialog({ onClose, onSubmit }: ReportBadGroupDialog
 
   return (
     <div className="edit-modal-backdrop" ref={backdropRef} onClick={handleBackdropClick}>
-      <div className="report-dialog" role="dialog" aria-label="Report bad group">
+      <div className="report-dialog" role="dialog" aria-modal="true" aria-label="Report bad group">
         <h3 className="report-dialog__title">Report Bad Group</h3>
         <p className="report-dialog__subtitle">
           Tell us what looks wrong with this group formation — we'll review it and improve the algorithm.

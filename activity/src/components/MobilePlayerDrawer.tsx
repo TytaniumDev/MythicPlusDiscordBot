@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useId } from 'react';
 import { PlayerCard } from './PlayerCard';
 import { getPrimaryRole, ROLE_LABELS } from '../lib/roles';
 import type { WoWPlayer } from '../types';
@@ -10,6 +10,7 @@ interface MobilePlayerDrawerProps {
 export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
   const [expanded, setExpanded] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const bodyId = useId();
 
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
@@ -43,6 +44,7 @@ export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
           className="mobile-drawer__header"
           onClick={toggle}
           aria-expanded={expanded}
+          aria-controls={bodyId}
           aria-label={expanded ? 'Collapse player card' : 'Expand player card'}
         >
           <div className="mobile-drawer__info">
@@ -64,7 +66,7 @@ export function MobilePlayerDrawer({ player }: MobilePlayerDrawerProps) {
             {expanded ? '\u25BE' : '\u25B4'}
           </span>
         </button>
-        <div className="mobile-drawer__body">
+        <div className="mobile-drawer__body" id={bodyId}>
           <PlayerCard player={player} />
         </div>
       </div>

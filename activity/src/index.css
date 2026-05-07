@@ -4088,3 +4088,19 @@ button.role-section-header--collapsible {
   width: 100%; padding: 8px 0; background: transparent; border: 0;
   color: inherit; cursor: pointer; text-align: left;
 }
+
+/* ============================================
+   Accessibility: visually hidden but available
+   to screen readers (e.g. for aria-live regions)
+   ============================================ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
