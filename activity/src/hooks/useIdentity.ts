@@ -8,6 +8,7 @@ import { reportError } from '../lib/sentry';
 import {
   loadStoredDiscordId,
   saveStoredDiscordId,
+  parseInGameName,
   type StoredCharacter,
 } from '../lib/currentCharacter';
 import { toCharacterClass } from '@mythicplus/shared';
@@ -101,21 +102,6 @@ function parseRegionFromInGameName(_inGameName: string | undefined): string {
   // No region in the player record today — default to "us".
   // Existing RoleEditor also defaults to "us"; keeping consistent.
   return 'us';
-}
-
-function parseInGameName(input: string): { name: string; realmSlug: string } | null {
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  const realmSlug = realm
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-  return { name, realmSlug };
 }
 
 export function useIdentity() {

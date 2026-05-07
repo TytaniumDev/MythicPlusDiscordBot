@@ -14,7 +14,7 @@ import {
   type RoleButtonDef,
 } from '../lib/roles';
 import { reportError } from '../lib/sentry';
-import { saveStoredDiscordId, type StoredCharacter } from '../lib/currentCharacter';
+import { saveStoredDiscordId, type StoredCharacter, parseInGameName } from '../lib/currentCharacter';
 
 interface RoleEditorProps {
   player: WoWPlayer;
@@ -31,29 +31,6 @@ interface RoleEditorProps {
 
 const LOOKUP_DEBOUNCE_MS = 800;
 const DEFAULT_REGION = 'us';
-
-// Best-effort realm display → slug conversion. Battle.net's realm-slug
-// endpoint is authoritative, but for typical US realms this is correct
-// (`Area 52` → `area-52`, `Kel'Thuzad` → `kelthuzad`). Failures surface as
-// "Character not found", which doubles as a typo check.
-function realmToSlug(realm: string): string {
-  return realm
-    .trim()
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function parseInGameName(input: string): { name: string; realmSlug: string } | null {
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  return { name, realmSlug: realmToSlug(realm) };
-}
 
 export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit }: RoleEditorProps) {
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
@@ -97,9 +74,10 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
 
   /**
    * Persist a partial character update through the appropriate channels.
-   * In profile-edit mode: always writes localStorage + slice; mirrors to
-   * preferences only when discordId is set.
-   * In channel mode (default): writes channelData.players + preferences.
+   * In profile-edit mode: always writes localStorage + slice.
+   * Whenever a Discord ID is available: also optimistically updates
+   * channelData via store.updatePlayer so the lobby roster stays in sync
+   * with profile-modal edits. Both writes can fire together.
    */
   const persistCharacter = useCallback((opts: {
     roles: Set<string>;
@@ -111,7 +89,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
     const fields = roleStringsToPlayerFields(opts.roles);
 
     if (isProfileEdit) {
-      // Optimistic local write
+      // Optimistic local write to currentCharacter slice
       const store = useAppStore.getState();
       const prev = store.currentCharacter;
       const next: StoredCharacter = {
@@ -123,14 +101,15 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
         lastUpdated: Date.now(),
       };
       store.setCurrentCharacter(next);
-    } else {
-      // Channel-mode optimistic update — same as before
-      if (player.discordId) {
-        const id = player.discordId;
-        queueMicrotask(() => {
-          useAppStore.getState().updatePlayer(id, { ...fields, inGameName: opts.name || undefined });
-        });
-      }
+    }
+
+    // Optimistic roster update — fires whenever we have a Discord ID, regardless
+    // of mode. Keeps the lobby roster in sync with profile-modal edits.
+    if (player.discordId) {
+      const id = player.discordId;
+      queueMicrotask(() => {
+        useAppStore.getState().updatePlayer(id, { ...fields, inGameName: opts.name || undefined });
+      });
     }
   }, [isProfileEdit, player.discordId]);
 

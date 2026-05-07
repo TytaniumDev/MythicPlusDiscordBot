@@ -62,6 +62,34 @@ export function saveStoredDiscordId(discordId: string): void {
 }
 
 /**
+ * Convert a realm display name to its slug form (lowercase, dash-separated,
+ * no apostrophes). E.g. `"Kel'Thuzad"` → `"kelthuzad"`, `"Area 52"` → `"area-52"`.
+ */
+export function realmToSlug(realm: string): string {
+  return realm
+    .trim()
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * Parse a "Name-Realm" combined input into the character name and realm slug.
+ * Returns null when input has no dash, or either side is empty after trim.
+ */
+export function parseInGameName(input: string | undefined | null): { name: string; realmSlug: string } | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  const dashIdx = trimmed.indexOf('-');
+  if (dashIdx === -1) return null;
+  const name = trimmed.slice(0, dashIdx).trim();
+  const realm = trimmed.slice(dashIdx + 1).trim();
+  if (!name || !realm) return null;
+  return { name, realmSlug: realmToSlug(realm) };
+}
+
+/**
  * One-shot migration of legacy per-guild Discord ID keys into the new global
  * key. Called once on app boot. No-op when the new key already exists or
  * there are no legacy keys. Does not delete legacy keys — they're harmless

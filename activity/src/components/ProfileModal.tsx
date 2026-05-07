@@ -79,19 +79,19 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
   // The avatar mirrors ProfileAvatar's lookup priority — slice first, channel second.
   const avatarMediaUrl = mediaUrl ?? channelPlayer?.mediaUrl ?? null;
   const avatarCharacterClass = characterClass ?? channelPlayer?.characterClass ?? null;
-  const displayName = inGameName?.split('-')[0]
-    ?? currentPlayerName
-    ?? channelPlayer?.name
-    ?? 'You';
+  const displayName = (inGameName?.split('-')[0])
+    || currentPlayerName
+    || channelPlayer?.name
+    || 'You';
 
   const proxied = remapImageUrl(toAvatarUrl(avatarMediaUrl) ?? undefined);
   const ring = getClassColor(avatarCharacterClass) ?? '#888';
 
-  // Profile-edit mode: writes go through currentCharacter slice + localStorage
-  // (always), and mirror to preferences only when discordId is non-empty.
-  // channelData updates indirectly via the bot reading preferences when
-  // refreshPlayers triggers.
-  const isProfileEdit = !channelPlayer;
+  // Always treat ProfileModal edits as profile edits so the persistent
+  // currentCharacter slice + localStorage stay in sync. RoleEditor's
+  // persistCharacter additionally mirrors to channelData whenever a Discord
+  // ID is present, so the in-voice lobby still updates immediately.
+  const isProfileEdit = true;
 
   return (
     <div className="profile-modal__backdrop" onClick={onClose}>
@@ -104,7 +104,7 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
         <div className="profile-modal__avatar" style={{ borderColor: ring }}>
           {proxied
             ? <img src={proxied} alt="" />
-            : <span>{displayName.charAt(0).toUpperCase()}</span>}
+            : <span>{(displayName || '?').charAt(0).toUpperCase()}</span>}
         </div>
         <div className="profile-modal__name">{displayName}</div>
         {currentPlayerId && (

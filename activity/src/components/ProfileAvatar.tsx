@@ -23,7 +23,7 @@ export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
 
   const mediaUrl = currentCharacter?.mediaUrl ?? channelPlayer?.mediaUrl ?? null;
   const characterClass = currentCharacter?.characterClass ?? channelPlayer?.characterClass ?? null;
-  const displayName = currentCharacter?.inGameName || currentPlayerName || channelPlayer?.name || null;
+  const displayName = (currentCharacter?.inGameName?.split('-')[0]) || currentPlayerName || channelPlayer?.name || null;
 
   const proxied = remapImageUrl(toAvatarUrl(mediaUrl) ?? undefined);
   const ringColor = getClassColor(characterClass) ?? '#888';

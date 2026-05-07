@@ -6,6 +6,8 @@ import {
   loadStoredDiscordId,
   saveStoredDiscordId,
   migrateLegacyDiscordId,
+  realmToSlug,
+  parseInGameName,
   CHARACTER_KEY,
   DISCORD_ID_KEY,
 } from './currentCharacter';
@@ -101,5 +103,41 @@ describe('migrateLegacyDiscordId', () => {
     localStorage.setItem('wheelson-player-guild-1', 'legacy-id');
     migrateLegacyDiscordId();
     expect(localStorage.getItem('wheelson-player-guild-1')).toBe('legacy-id');
+  });
+});
+
+describe('realmToSlug', () => {
+  it('lowercases', () => {
+    expect(realmToSlug('Stormrage')).toBe('stormrage');
+  });
+  it('strips apostrophes', () => {
+    expect(realmToSlug("Kel'Thuzad")).toBe('kelthuzad');
+  });
+  it('replaces spaces with dashes', () => {
+    expect(realmToSlug('Area 52')).toBe('area-52');
+  });
+  it('trims leading/trailing dashes', () => {
+    expect(realmToSlug('--foo--')).toBe('foo');
+  });
+});
+
+describe('parseInGameName', () => {
+  it('returns null for null/undefined/empty input', () => {
+    expect(parseInGameName(null)).toBeNull();
+    expect(parseInGameName(undefined)).toBeNull();
+    expect(parseInGameName('')).toBeNull();
+  });
+  it('returns null when there is no dash', () => {
+    expect(parseInGameName('Tytanium')).toBeNull();
+  });
+  it('returns null when name or realm is empty', () => {
+    expect(parseInGameName('-Stormrage')).toBeNull();
+    expect(parseInGameName('Tytanium-')).toBeNull();
+  });
+  it('parses Name-Realm into name and realmSlug', () => {
+    expect(parseInGameName('Tytanium-Stormrage')).toEqual({ name: 'Tytanium', realmSlug: 'stormrage' });
+  });
+  it('handles realms with spaces', () => {
+    expect(parseInGameName('Foo-Area 52')).toEqual({ name: 'Foo', realmSlug: 'area-52' });
   });
 });
