@@ -26,6 +26,7 @@ export {
   bumpPairCounts,
   topAffinityFor,
   shortestPath,
+  parseSeasonPairs,
 } from './seasonPairs.js';
 
 export { generateInviteCommand } from './inviteCommand.js';

@@ -12,6 +12,20 @@ export interface SeasonPairs {
 }
 
 /**
+ * Validate an unknown value against the {@link SeasonPairs} shape. Returns the
+ * narrowed object when valid (string `seasonSlug`, non-null object `counts`)
+ * and `null` otherwise. The bot and frontend both run this on raw Firestore
+ * values, so they must not drift on what "valid" means.
+ */
+export function parseSeasonPairs(raw: unknown): SeasonPairs | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const sp = raw as { seasonSlug?: unknown; counts?: unknown };
+  if (typeof sp.seasonSlug !== 'string') return null;
+  if (typeof sp.counts !== 'object' || sp.counts === null) return null;
+  return { seasonSlug: sp.seasonSlug, counts: sp.counts as Record<string, number> };
+}
+
+/**
  * Increment season pair counts by every pair in `round`. Returns a NEW map;
  * does not mutate `current`. Groups with fewer than 2 players are skipped
  * (degenerate remainders).
