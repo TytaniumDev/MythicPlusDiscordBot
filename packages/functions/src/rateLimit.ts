@@ -1,7 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
-export async function enforceRateLimit(uid: string, endpoint: string, maxRequests: number = 30, windowMs: number = 60000) {
+export async function enforceRateLimit(uid: string, endpoint: string, maxRequests: number = 30, windowMs: number = 60000): Promise<void> {
   const db = getFirestore();
   const ref = db.doc(`rateLimits/${uid}_${endpoint}`);
   await db.runTransaction(async (t) => {

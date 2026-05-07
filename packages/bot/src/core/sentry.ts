@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import logger from './logger.js';
 import { SENTRY_DSN, GIT_SHA } from './config.js';
 
-export function initSentry() {
+export function initSentry(): void {
   if (!SENTRY_DSN) return;
 
   Sentry.init({
