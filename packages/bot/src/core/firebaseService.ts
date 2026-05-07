@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import {
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
+  parseSeasonPairs,
   type WoWGroupDict,
 } from '@mythicplus/shared';
 import logger from './logger.js';
@@ -400,19 +401,7 @@ export class FirebaseService implements IFirebaseService {
     const doc = await docRef.get();
     if (!doc.exists) return null;
     const data = doc.data() ?? {};
-    const sp = data.seasonPairs as { seasonSlug?: unknown; counts?: unknown } | undefined;
-    if (
-      !sp ||
-      typeof sp.seasonSlug !== 'string' ||
-      typeof sp.counts !== 'object' ||
-      sp.counts === null
-    ) {
-      return null;
-    }
-    return {
-      seasonSlug: sp.seasonSlug,
-      counts: sp.counts as Record<string, number>,
-    };
+    return parseSeasonPairs(data.seasonPairs);
   }
 
   async saveSeasonPairs(
