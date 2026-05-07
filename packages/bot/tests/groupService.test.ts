@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WoWPlayer, WoWGroup } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, todayPST } from '@mythicplus/shared';
 
 const { mockFirebaseInstance } = vi.hoisted(() => {
   const mockFirebaseInstance = {
@@ -307,7 +307,7 @@ describe('GroupService Firebase groupHistory integration', () => {
 
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const round = [new WoWGroup(tank, null, []).toDict()];
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const today = todayPST();
     mockFirebaseInstance.getGroupHistory.mockResolvedValue({ date: today, rounds: [round] });
 
     vi.mocked(getDebugPlayers).mockReturnValue([tank]);
@@ -346,7 +346,7 @@ describe('GroupService Firebase groupHistory integration', () => {
 
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const group = new WoWGroup(tank, null, []);
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const today = todayPST();
 
     mockFirebaseInstance.getGroupHistory.mockResolvedValue(null);
     vi.mocked(getDebugPlayers).mockReturnValue([tank]);
@@ -371,7 +371,7 @@ describe('GroupService Firebase groupHistory integration', () => {
 
     const tank = WoWPlayer.create('Tank1', ['Tank']);
     const group = new WoWGroup(tank, null, []);
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const today = todayPST();
 
     const existingRound = [new WoWGroup(tank, null, []).toDict()];
     mockFirebaseInstance.getGroupHistory.mockResolvedValue({ date: today, rounds: [existingRound] });
