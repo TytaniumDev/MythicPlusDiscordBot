@@ -116,3 +116,59 @@ describe('topAffinityFor', () => {
     expect(topAffinityFor('alice', counts)).toEqual([{ teammate: 'Alice', count: 1 }]);
   });
 });
+
+import { shortestPath } from '../src/seasonPairs.js';
+
+describe('shortestPath', () => {
+  it('returns single-element path when from === to', () => {
+    expect(shortestPath('Alice', 'Alice', { 'Alice|Bob': 1 })).toEqual(['Alice']);
+  });
+
+  it('returns direct path for adjacent players', () => {
+    const counts = { 'Alice|Bob': 1 };
+    expect(shortestPath('Alice', 'Bob', counts)).toEqual(['Alice', 'Bob']);
+  });
+
+  it('returns multi-hop path when no direct edge', () => {
+    const counts = {
+      'Alice|Bob': 1,
+      'Bob|Carol': 1,
+    };
+    expect(shortestPath('Alice', 'Carol', counts)).toEqual(['Alice', 'Bob', 'Carol']);
+  });
+
+  it('prefers heavy-weighted (frequent-pairing) edges over light ones', () => {
+    // Direct edge Alice-Carol exists but with count=1 (cost 1.0).
+    // The two-hop Alice-Bob-Carol both have count=10 (cost 0.1+0.1=0.2 < 1.0).
+    const counts = {
+      'Alice|Carol': 1,
+      'Alice|Bob': 10,
+      'Bob|Carol': 10,
+    };
+    expect(shortestPath('Alice', 'Carol', counts)).toEqual(['Alice', 'Bob', 'Carol']);
+  });
+
+  it('returns null when no path exists', () => {
+    const counts = {
+      'Alice|Bob': 1,
+      'Carol|Dave': 1,
+    };
+    expect(shortestPath('Alice', 'Carol', counts)).toBeNull();
+  });
+
+  it('returns null when from is unknown', () => {
+    expect(shortestPath('Ghost', 'Alice', { 'Alice|Bob': 1 })).toBeNull();
+  });
+
+  it('returns null when to is unknown', () => {
+    expect(shortestPath('Alice', 'Ghost', { 'Alice|Bob': 1 })).toBeNull();
+  });
+
+  it('ignores entries with count 0 (no real pairing)', () => {
+    const counts = {
+      'Alice|Bob': 0,
+      'Bob|Carol': 1,
+    };
+    expect(shortestPath('Alice', 'Carol', counts)).toBeNull();
+  });
+});
