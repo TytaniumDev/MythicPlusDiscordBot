@@ -6,9 +6,9 @@ The agent's evolving understanding of this codebase's architecture. Updated by t
 
 Monorepo with three TypeScript workspaces:
 
-- **`packages/bot/`** — Discord bot. Entry: `src/main.ts` (currently a 1296-line god-file mixing client init, command routing, modal building, button handling, Firestore listener orchestration, and adapter helpers). Commands live in `src/commands/`, services in `src/services/`, shared infra in `src/core/`.
+- **`packages/bot/`** — Discord bot. Entry: `src/main.ts` (currently a ~1220-line god-file mixing client init, command routing, modal building, button handling, Firestore listener orchestration, and adapter helpers — shrunk by ~75 LoC in #537 via the discordAdapters extraction). Commands live in `src/commands/`, services in `src/services/`, shared infra in `src/core/`.
 - **`packages/shared/`** — Platform-agnostic. Owns the group-creation algorithm (`parallelGroupCreator.ts`) and the `WoWPlayer` / `WoWGroup` models. **The Lua sibling in [MythicPlusWheel](https://github.com/TytaniumDev/Wheelson) reimplements the same algorithm — preserve behavior + structural similarity when changing it.**
-- **`packages/functions/`** — Firebase Cloud Functions v2 (Battle.net character lookups, weekly affix sync, GitHub webhook). Re-exports affix metadata from `@mythicplus/shared`.
+- **`packages/functions/`** — Firebase Cloud Functions v2 (Battle.net character lookups, weekly affix sync, GitHub webhook). Imports affix metadata from `@mythicplus/shared` directly (the local `affixMetadata.ts` re-export was deleted in #538).
 - **`activity/`** — Vite 7 + React 19 frontend for the Discord Activity. State in Zustand (`src/store/store.ts`), services in `src/services/`, views in `src/views/`, components in `src/components/`. Backed by the Firebase JS SDK.
 
 ## Two operational modes
@@ -48,6 +48,41 @@ Group history rounds are stored as `{ groups: [...] }`-wrapped per round (Firest
 ## main.ts adapter helpers
 
 `packages/bot/src/main.ts` has a `getReporterName(interaction)` helper near `adaptMember` (used in 6 sites previously hand-rolled). Discord member iteration in this file uses `adaptMember(m).bot`, never raw `m.user.bot`. Fixture data lives in `packages/bot/src/core/debugFixtures.ts` (`getDebugPlayers`) — `core/utils.ts` is for runtime helpers only, not fixtures.
+
+## Discord.js → handler boundary
+
+`packages/bot/src/core/discordAdapters.ts` is the canonical Discord.js → handler shape boundary (added in #537). It exports:
+
+- `adaptGuild(guild)` — builds the `Guild` shape consumed by handlers (id, members, voiceChannels, etc.).
+- `buildVoiceChannelsSnapshot(guild)` — single-source construction of the voice-channels snapshot used by both `main.ts` (Firestore listener block) and `services/sessionService.ts`.
+
+Both `main.ts` and `sessionService.ts` consume these helpers; do not hand-roll the snapshot or guild adaptation in either file.
+
+The legacy `packages/bot/src/events/voiceStateUpdate.ts` was deleted in #538 as dead code; the live voiceStateUpdate handler is inlined in `main.ts` and was never wired through the events module.
+
+## Realm slug + region helpers
+
+`packages/shared/src/realmSlug.ts` (added in #529) exposes:
+
+- `realmToSlug(realm)` — normalize realm names to lowercase hyphenated slugs (handles apostrophes/umlauts).
+- `parseInGameName(raw)` — split `"Charname-Realm"` into `{ name, realm }`.
+- `DEFAULT_REGION = 'us'` — the canonical default region constant.
+
+Consumed by `activity/src/components/RoleEditor.tsx`, `activity/src/hooks/useDungeonSuggestions.ts`, `activity/src/lib/currentCharacter.ts`, and `packages/functions/src/refreshCharacterMedia.ts`. Do not redefine.
+
+## Activity dungeon-score types
+
+`activity/src/lib/dungeonScoreTypes.ts` (added in #539) is now the canonical home for `CharacterDungeonScores` + `DungeonRunSummary`. `activity/src/services/raiderioMythicPlus.ts` re-exports them for back-compat. The `lib/` layer must NOT import types from `services/`; the previous direction was inverted to enforce a clean dependency arrow.
+
+## PreferenceService cache hydration
+
+`packages/bot/src/core/preferenceService.ts` (#530) exposes a private `_hydrateCacheFromPrefData(discordId, data, deleteEmpty)` helper as the canonical cache-hydration path. All cache reads — `getPreferences`, `getCharacter`, `listenToPreferences` — funnel through it; do not hand-roll Map population in new methods.
+
+## Firestore wire validators
+
+`packages/shared/src/seasonPairs.ts` exposes `parseSeasonPairs(raw)` (added in #540) — the shared validator for the `seasonPairs` wire field. `packages/bot/src/core/firebaseService.ts` and `activity/src/services/firestoreService.ts` both consume it; do not duplicate validation logic.
+
+The activity `GuildData.seasonPairs?` field is typed via the shared `SeasonPairs` interface (re-exported from `@mythicplus/shared`); see #525.
 
 ## Tests
 
