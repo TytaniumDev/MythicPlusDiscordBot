@@ -1,3 +1,4 @@
+import { logger } from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -88,7 +89,7 @@ export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastU
     const seasonInfo = await fetchCurrentSeasonInfo();
     await writeSeasonConfig(db as never, seasonInfo, () => FieldValue.serverTimestamp());
   } catch (err) {
-    console.error('[fetchAndWriteAffixes] season config write failed:', err);
+    logger.error('[fetchAndWriteAffixes] season config write failed', err);
   }
 
   return doc;
