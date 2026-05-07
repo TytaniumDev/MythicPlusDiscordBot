@@ -4070,3 +4070,8 @@ button.role-section-header--collapsible {
 .connections-view__path { padding: 8px 0; }
 .connections-view__arrow { color: #888; }
 .connections-view__sub { color: #aaa; font-size: 14px; margin-bottom: 8px; }
+.connections-view__player-button {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; padding: 8px 0; background: transparent; border: 0;
+  color: inherit; cursor: pointer; text-align: left;
+}

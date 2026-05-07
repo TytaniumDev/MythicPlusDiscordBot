@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../store/store';
 import { topAffinityFor, shortestPath } from '@mythicplus/shared';
 import { HeaderBar } from '../components/HeaderBar';
@@ -10,8 +10,14 @@ export function ConnectionsView() {
   const setView = useAppStore((s) => s.setView);
 
   const counts = seasonPairs?.counts ?? {};
-  const topTeammates = currentPlayerName
-    ? topAffinityFor(currentPlayerName, counts, 5)
+
+  const [subject, setSubject] = useState<string | null>(currentPlayerName);
+  useEffect(() => {
+    setSubject(currentPlayerName);
+  }, [currentPlayerName]);
+
+  const topTeammates = subject
+    ? topAffinityFor(subject, counts, 5)
     : [];
 
   const allNames = useMemo(() => {
@@ -41,11 +47,11 @@ export function ConnectionsView() {
       <main className="connections-view__body">
         <section>
           <h2 className="connections-view__heading">
-            {currentPlayerName ? `Your top teammates` : 'Top teammates'}
+            {subject ? `${subject === currentPlayerName ? 'Your' : `${subject}'s`} top teammates` : 'Top teammates'}
           </h2>
           {topTeammates.length === 0 ? (
             <div className="connections-view__empty">
-              {currentPlayerName
+              {subject
                 ? 'No shared groups yet — spin together once first.'
                 : 'Sign in to see your teammates.'}
             </div>
@@ -90,6 +96,27 @@ export function ConnectionsView() {
               )
               : <div className="connections-view__empty">No shared groups yet — spin together once first.</div>
           )}
+        </section>
+
+        <section>
+          <h2 className="connections-view__heading">All players</h2>
+          <ul className="connections-view__list">
+            {allNames.map((name) => {
+              const top1 = topAffinityFor(name, counts, 1)[0];
+              return (
+                <li key={name}>
+                  <button
+                    type="button"
+                    className="connections-view__player-button"
+                    onClick={() => setSubject(name)}
+                  >
+                    <span className="connections-view__name">{name}</span>
+                    {top1 && <span className="connections-view__count">{top1.teammate} ×{top1.count}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       </main>
     </div>
