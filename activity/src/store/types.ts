@@ -1,4 +1,5 @@
 import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer, SeasonConfig, SeasonPairs } from '../types';
+import type { StoredCharacter } from '../lib/currentCharacter';
 
 export function isCompleteGroup(group: WoWGroup): boolean {
   return group.tank !== null && group.healer !== null && group.dps.length === 3;
@@ -29,6 +30,9 @@ export interface AppState {
   currentPlayerId: string | null;
   currentPlayerName: string | null;
   identityResolved: boolean;
+
+  // Current-user character (independent of channelData; hydrated from localStorage)
+  currentCharacter: StoredCharacter | null;
 
   // Spin sequence
   fullGroups: WoWGroup[];
@@ -66,6 +70,7 @@ export interface AppState {
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
+  setCurrentCharacter: (character: StoredCharacter | null) => void;
   updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => void;
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) => void;
   setCurrentGroupIndex: (index: number) => void;

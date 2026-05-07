@@ -20,6 +20,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { useAppStore } from './store/store';
 import { setupDiscordSdk } from './discordSdk';
+import { migrateLegacyDiscordId } from './lib/currentCharacter';
 import { statusToView, routeToView } from './lib/routing';
 import { isPlayerReady } from './lib/roles';
 import type { ChannelData, GuildData } from './types';
@@ -28,6 +29,9 @@ import './index.css';
 // ── Pre-render initialization ──────────────────────────────
 
 async function init() {
+  // Migrate any legacy per-guild Discord ID keys to the new global key before
+  // any code reads wheelson-discord-id (e.g. resolveLobbyGate in App.tsx).
+  migrateLegacyDiscordId();
   const urlParams = new URLSearchParams(window.location.search);
 
   // Check for injected mock data (testing via ?data=)

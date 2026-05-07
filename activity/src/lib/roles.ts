@@ -249,10 +249,14 @@ export function getReadyCount(players: WoWPlayer[], sittingOut: string[]): { rea
 export function categorizeUnreadyPlayers(players: WoWPlayer[], sittingOut: string[]): {
   missingRole: WoWPlayer[];
   missingNameOnly: WoWPlayer[];
+  missingCharacterLookup: WoWPlayer[];
 } {
   const active = activePlayers(players, sittingOut);
   return {
     missingRole: active.filter((p) => p.mainRole === null),
     missingNameOnly: active.filter((p) => p.mainRole !== null && !p.inGameName),
+    missingCharacterLookup: active.filter(
+      (p) => p.mainRole !== null && !!p.inGameName && !p.mediaUrl,
+    ),
   };
 }

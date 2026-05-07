@@ -386,6 +386,36 @@ test.describe('Home View Tests', () => {
   });
 });
 
+// ── Profile Avatar from localStorage Tests ───────────────────
+test.describe('Profile avatar from localStorage', () => {
+  test('home view shows avatar when wheelson-character is set', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop);
+
+    // Seed localStorage BEFORE the app boots — currentCharacter hydrates from
+    // this in the store's initial state.
+    await page.addInitScript(() => {
+      localStorage.setItem('wheelson-character', JSON.stringify({
+        inGameName: 'Tytanium-Stormrage',
+        region: 'us',
+        // mediaUrl null so we get the deterministic initial-letter rendering
+        // (avoids cross-platform image-load flake in the snapshot)
+        mediaUrl: null,
+        characterClass: 'Druid',
+        lookupStatus: 'ok',
+        lastUpdated: 1234567890,
+      }));
+    });
+
+    await page.goto('/');
+
+    // Wait for the avatar button to be in the DOM
+    const avatar = page.locator('.profile-avatar');
+    await avatar.waitFor({ state: 'visible' });
+
+    await expect(avatar).toHaveScreenshot('profile-avatar-from-current-character.png');
+  });
+});
+
 // ── My Group Highlight Tests ─────────────────────────────────
 // Fourseven (discordId 100000000000000007) is in Group 2
 const resultsWithIdentityData = {

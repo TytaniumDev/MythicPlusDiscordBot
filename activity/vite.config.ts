@@ -56,6 +56,7 @@ export default defineConfig({
           name: 'unit',
           include: ['**/*.test.ts', '**/*.test.tsx'],
           environment: 'jsdom',
+          setupFiles: ['./src/vitest.setup.ts'],
         },
       },
       {

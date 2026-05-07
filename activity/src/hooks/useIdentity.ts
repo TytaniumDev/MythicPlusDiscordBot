@@ -5,6 +5,13 @@ import { WoWPlayer } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
 import { reportError } from '../lib/sentry';
+import {
+  loadStoredDiscordId,
+  saveStoredDiscordId,
+  parseInGameName,
+  type StoredCharacter,
+} from '../lib/currentCharacter';
+import { toCharacterClass } from '@mythicplus/shared';
 
 function getSessionService() {
   return useAppStore.getState().isDemoMode ? demoService : firestoreService;
@@ -12,10 +19,6 @@ function getSessionService() {
 
 function stripDots(s: string): string {
   return s.replace(/\./g, '');
-}
-
-function getIdentityStorageKey(guildId: string | null): string {
-  return `wheelson-player-${guildId ?? 'unknown'}`;
 }
 
 interface CommitOptions {
@@ -29,17 +32,76 @@ interface CommitOptions {
  * Always sets identity + resolved flag; only writes localStorage and claims
  * the player when there's a non-null discordId, since both are keyed off it.
  */
-function commitIdentity(player: WoWPlayer, guildId: string | null, opts: CommitOptions): void {
+function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
   const store = useAppStore.getState();
   store.setIdentity(player.discordId ?? null, player.name);
   store.setIdentityResolved(true);
   if (!player.discordId) return;
   if (opts.persist) {
-    localStorage.setItem(getIdentityStorageKey(guildId), player.discordId);
+    saveStoredDiscordId(player.discordId);
   }
   getSessionService().claimPlayer(player.discordId).catch((err) => {
     reportError(err, { tag: 'useIdentity.claimPlayer' });
   });
+  syncCharacterAcrossLayers(player);
+}
+
+/**
+ * One-shot opportunistic sync between localStorage character and
+ * preferences/{discordId} when an identity first resolves.
+ *
+ * - If localStorage is empty AND channelData has character data for this
+ *   user, hydrate localStorage so returning users see their avatar without
+ *   re-entering it.
+ * - If localStorage has data, mirror it to preferences/{discordId} so the
+ *   bot can populate channelData for other voice members. Last-write-wins.
+ *
+ * Fire-and-forget: failures don't surface; the local character keeps
+ * working regardless.
+ */
+function syncCharacterAcrossLayers(player: WoWPlayer): void {
+  const store = useAppStore.getState();
+  const local = store.currentCharacter;
+
+  if (!local) {
+    // Hydrate from channel record if it has anything useful.
+    if (player.inGameName || player.mediaUrl) {
+      const region = parseRegionFromInGameName(player.inGameName);
+      const hydrated: StoredCharacter = {
+        inGameName: player.inGameName ?? '',
+        region,
+        mediaUrl: player.mediaUrl ?? null,
+        characterClass: toCharacterClass(player.characterClass),
+        lookupStatus: player.mediaUrl ? 'ok' : (player.inGameName ? 'pending' : 'no_name'),
+        lastUpdated: Date.now(),
+      };
+      store.setCurrentCharacter(hydrated);
+    }
+    return;
+  }
+
+  // Mirror localStorage → preferences. Fire-and-forget.
+  if (!player.discordId) return;
+  const service = getSessionService();
+  if (local.inGameName) {
+    const parsed = parseInGameName(local.inGameName);
+    if (parsed) {
+      service.saveLinkedCharacter(
+        player.discordId,
+        { name: parsed.name, realm: parsed.realmSlug, region: local.region },
+        local.mediaUrl,
+        local.characterClass,
+      ).catch((err) => {
+        reportError(err, { tag: 'useIdentity.syncMirror' });
+      });
+    }
+  }
+}
+
+function parseRegionFromInGameName(_inGameName: string | undefined): string {
+  // No region in the player record today — default to "us".
+  // Existing RoleEditor also defaults to "us"; keeping consistent.
+  return 'us';
 }
 
 export function useIdentity() {
@@ -57,17 +119,12 @@ export function useIdentity() {
       state.resetIdentity();
     }
 
-    // Re-read state — `resetIdentity()` above may have mutated, and we want
-    // the post-reset `currentGuildId` (in practice unchanged, but the fresh
-    // read keeps us robust if guild teardown ever moves into resetIdentity).
-    const guildId = useAppStore.getState().currentGuildId;
-
     // Check localStorage — value is already persisted, so don't re-write it.
-    const stored = localStorage.getItem(getIdentityStorageKey(guildId));
+    const stored = loadStoredDiscordId();
     if (stored) {
       const match = players.find((p) => p.discordId === stored);
       if (match) {
-        commitIdentity(match, guildId, { persist: false });
+        commitIdentity(match, { persist: false });
         return;
       }
     }
@@ -80,7 +137,7 @@ export function useIdentity() {
       const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
       const match = players.find((p) => p.name === pName);
       if (match && match.discordId) {
-        commitIdentity(match, guildId, { persist: true });
+        commitIdentity(match, { persist: true });
         return;
       }
     }
@@ -89,22 +146,23 @@ export function useIdentity() {
     const participantIds = new Set(participants.map((p) => p.id));
     const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
     if (idMatches.length === 1) {
-      commitIdentity(idMatches[0], guildId, { persist: true });
+      commitIdentity(idMatches[0], { persist: true });
     }
 
     // Otherwise: no match — identity selector will show in lobby
   }, []);
 
   const selectPlayer = useCallback((player: WoWPlayer) => {
-    const guildId = useAppStore.getState().currentGuildId;
-    commitIdentity(player, guildId, { persist: true });
+    commitIdentity(player, { persist: true });
   }, []);
 
   const clearIdentity = useCallback(() => {
     const state = useAppStore.getState();
-    const guildId = state.currentGuildId;
     const previousId = state.currentPlayerId;
-    localStorage.removeItem(getIdentityStorageKey(guildId));
+    // Don't clear localStorage Discord ID here — clearIdentity is only called
+    // on Player-Left re-resolution today, which preserves the user's identity
+    // across sessions. Switching to a different identity goes through
+    // selectPlayer, which overwrites the stored ID.
     state.resetIdentity();
     if (previousId) {
       getSessionService().unclaimPlayer(previousId).catch((err) => {

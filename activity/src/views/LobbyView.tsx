@@ -39,8 +39,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const sittingOut = channelData?.sittingOut ?? [];
 
   const handleSpinClick = () => {
-    const { missingRole, missingNameOnly } = categorizeUnreadyPlayers(players, sittingOut);
-    if (missingRole.length > 0 || missingNameOnly.length > 0) {
+    const { missingRole, missingNameOnly, missingCharacterLookup } = categorizeUnreadyPlayers(players, sittingOut);
+    if (missingRole.length > 0 || missingNameOnly.length > 0 || missingCharacterLookup.length > 0) {
       setShowSpinWarning(true);
     } else {
       doSpin();
@@ -284,6 +284,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         <SpinWarningDialog
           missingRole={unreadyBreakdown.missingRole}
           missingNameOnly={unreadyBreakdown.missingNameOnly}
+          missingCharacterLookup={unreadyBreakdown.missingCharacterLookup}
           onGoBack={() => setShowSpinWarning(false)}
           onSpinAnyway={doSpin}
         />

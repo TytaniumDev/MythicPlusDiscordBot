@@ -14,40 +14,25 @@ import {
   type RoleButtonDef,
 } from '../lib/roles';
 import { reportError } from '../lib/sentry';
+import { saveStoredDiscordId, type StoredCharacter, parseInGameName } from '../lib/currentCharacter';
 
 interface RoleEditorProps {
   player: WoWPlayer;
   onMediaUrlChange?: (url: string | null) => void;
   hideSitOut?: boolean;
+  /**
+   * When true: writes optimistically to `currentCharacter` slice + localStorage
+   * (always), and mirrors to preferences/{discordId} only when player.discordId
+   * is set. When false (default): writes to channelData via store.updatePlayer
+   * and to preferences via firestoreService — same as today.
+   */
+  isProfileEdit?: boolean;
 }
 
 const LOOKUP_DEBOUNCE_MS = 800;
 const DEFAULT_REGION = 'us';
 
-// Best-effort realm display → slug conversion. Battle.net's realm-slug
-// endpoint is authoritative, but for typical US realms this is correct
-// (`Area 52` → `area-52`, `Kel'Thuzad` → `kelthuzad`). Failures surface as
-// "Character not found", which doubles as a typo check.
-function realmToSlug(realm: string): string {
-  return realm
-    .trim()
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-function parseInGameName(input: string): { name: string; realmSlug: string } | null {
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  return { name, realmSlug: realmToSlug(realm) };
-}
-
-export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorProps) {
+export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit }: RoleEditorProps) {
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
   const service = useSessionService();
 
@@ -87,36 +72,77 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
     setLookupError(null);
   }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Persist a partial character update through the appropriate channels.
+   * In profile-edit mode: always writes localStorage + slice.
+   * Whenever a Discord ID is available: also optimistically updates
+   * channelData via store.updatePlayer so the lobby roster stays in sync
+   * with profile-modal edits. Both writes can fire together.
+   */
+  const persistCharacter = useCallback((opts: {
+    roles: Set<string>;
+    name: string;
+    mediaUrl?: string | null;
+    characterClass?: StoredCharacter['characterClass'];
+    lookupStatus?: StoredCharacter['lookupStatus'];
+  }) => {
+    const fields = roleStringsToPlayerFields(opts.roles);
+
+    if (isProfileEdit) {
+      // Optimistic local write to currentCharacter slice
+      const store = useAppStore.getState();
+      const prev = store.currentCharacter;
+      const next: StoredCharacter = {
+        inGameName: opts.name,
+        region: prev?.region ?? DEFAULT_REGION,
+        mediaUrl: opts.mediaUrl !== undefined ? opts.mediaUrl : (prev?.mediaUrl ?? null),
+        characterClass: opts.characterClass !== undefined ? opts.characterClass : (prev?.characterClass ?? null),
+        lookupStatus: opts.lookupStatus ?? prev?.lookupStatus ?? 'pending',
+        lastUpdated: Date.now(),
+      };
+      store.setCurrentCharacter(next);
+    }
+
+    // Optimistic roster update — fires whenever we have a Discord ID, regardless
+    // of mode. Keeps the lobby roster in sync with profile-modal edits.
+    if (player.discordId) {
+      const id = player.discordId;
+      queueMicrotask(() => {
+        useAppStore.getState().updatePlayer(id, { ...fields, inGameName: opts.name || undefined });
+      });
+    }
+  }, [isProfileEdit, player.discordId]);
+
   const autoSave = useCallback((roles: Set<string>, name: string) => {
+    persistCharacter({ roles, name });
+
+    // Firestore writes are gated on having a Discord ID. In profile-edit
+    // mode without a Discord ID, writes are local-only.
     if (!player.discordId) return;
 
-    const id = player.discordId;
-    queueMicrotask(() => {
-      const fields = roleStringsToPlayerFields(roles);
-      useAppStore.getState().updatePlayer(id, { ...fields, inGameName: name || undefined });
-    });
-
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-
     saveTimerRef.current = setTimeout(async () => {
       try {
         await service.saveRoles(player.discordId!, player.name, Array.from(roles), name);
+        // Persist the discordId hint when this is a profile edit and we
+        // happen to have a discordId (e.g., the user is in voice and edited
+        // through the modal).
+        if (isProfileEdit) {
+          saveStoredDiscordId(player.discordId!);
+        }
         const store = useAppStore.getState();
         if (!store.identityResolved && player.discordId === store.currentPlayerId) {
           store.setIdentity(player.discordId!, player.name);
           store.setIdentityResolved(true);
-          const guildId = store.currentGuildId;
-          localStorage.setItem(`wheelson-player-${guildId ?? 'unknown'}`, player.discordId!);
+          saveStoredDiscordId(player.discordId!);
         }
       } catch (err) {
         reportError(err, { tag: 'RoleEditor.autoSave' });
       }
     }, 500);
-  }, [player.discordId, player.name, service]);
+  }, [persistCharacter, player.discordId, player.name, service, isProfileEdit]);
 
   const runLookup = useCallback(async (rawName: string) => {
-    if (!player.discordId) return;
-
     const parsed = parseInGameName(rawName);
     if (!parsed) {
       setLookupError(null);
@@ -133,18 +159,38 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
 
       if (!character) {
         setLookupError('Character not found');
+        // Persist the failed lookup status in profile mode so the avatar
+        // shows the correct state (still triggers spin warning).
+        if (isProfileEdit) {
+          persistCharacter({
+            roles: rolesRef.current,
+            name: rawName,
+            lookupStatus: 'not_found',
+          });
+        }
         return;
       }
 
       setLookupError(null);
       if (character.mediaUrl) onMediaUrlChange?.(character.mediaUrl);
 
-      await service.saveLinkedCharacter(
-        player.discordId,
-        { name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION },
-        character.mediaUrl,
-        character.class,
-      );
+      // Persist successful lookup
+      persistCharacter({
+        roles: rolesRef.current,
+        name: rawName,
+        mediaUrl: character.mediaUrl,
+        characterClass: character.class,
+        lookupStatus: 'ok',
+      });
+
+      if (player.discordId) {
+        await service.saveLinkedCharacter(
+          player.discordId,
+          { name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION },
+          character.mediaUrl,
+          character.class,
+        );
+      }
 
       // Auto-assign roles only on the very first successful lookup for this player.
       // Read from rolesRef (not the player prop) — the prop is captured at the
@@ -164,7 +210,17 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
           const roleSet = new Set(roles);
           setSelectedRoles(roleSet);
           rolesRef.current = roleSet;
-          await service.saveRoles(player.discordId, player.name, roles, rawName);
+          // Persist roles via the same path
+          persistCharacter({
+            roles: roleSet,
+            name: rawName,
+            mediaUrl: character.mediaUrl,
+            characterClass: character.class,
+            lookupStatus: 'ok',
+          });
+          if (player.discordId) {
+            await service.saveRoles(player.discordId, player.name, roles, rawName);
+          }
         }
       }
     } catch (err) {
@@ -172,7 +228,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
       setLookupError('Character not found');
       reportError(err, { tag: 'RoleEditor.runLookup' });
     }
-  }, [player, lookup, service, onMediaUrlChange]);
+  }, [player, lookup, service, onMediaUrlChange, isProfileEdit, persistCharacter]);
 
   useEffect(() => {
     return () => {
@@ -202,6 +258,12 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
   }, [autoSave, runLookup]);
 
   const isSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
+
+  // In profile-edit mode without a Discord ID (truly outside Discord, first
+  // visit), there's nowhere to persist roles/utilities/sit-out — StoredCharacter
+  // doesn't carry them and saveRoles is gated on discordId. Hide those sections
+  // to avoid showing controls that silently drop their state.
+  const showRoleSections = !isProfileEdit || !!player.discordId;
 
   function renderSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
     return (
@@ -248,11 +310,15 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
         )}
       </div>
 
-      {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
-      {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
-      {renderSection('Utilities', UTILITY_BUTTONS, false)}
+      {showRoleSections && (
+        <>
+          {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
+          {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
+          {renderSection('Utilities', UTILITY_BUTTONS, false)}
+        </>
+      )}
 
-      {!hideSitOut && (
+      {!hideSitOut && showRoleSections && (
         <div className="role-editor-section" style={{ marginTop: 4 }}>
           <div className="role-editor-row">
             <SecondaryButton

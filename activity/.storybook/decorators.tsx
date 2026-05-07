@@ -15,6 +15,7 @@ type StoreOverrides = Partial<Pick<AppState,
   | 'statusMessage'
   | 'seasonConfig'
   | 'seasonPairs'
+  | 'currentCharacter'
 >>;
 
 /**
