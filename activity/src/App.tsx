@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
+import { loadStoredDiscordId } from './lib/currentCharacter';
 import { useGuildSubscription, useChannelSubscription } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
@@ -27,8 +28,7 @@ function resolveLobbyGate(): ViewName {
   store.resetSpinState();
 
   if (!store.identityResolved) {
-    const guildId = store.currentGuildId;
-    const savedId = localStorage.getItem(`wheelson-player-${guildId ?? 'unknown'}`);
+    const savedId = loadStoredDiscordId();
     const players = store.channelData?.players ?? [];
     const match = savedId ? players.find(p => p.discordId === savedId) : null;
     if (match) {
