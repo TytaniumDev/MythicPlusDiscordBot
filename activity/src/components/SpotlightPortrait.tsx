@@ -72,6 +72,7 @@ export function SpotlightPortrait({ name, characterClass, mediaUrl, scores }: Sp
       style={{ '--ch-color': color } as React.CSSProperties}
       title={hasTooltip ? undefined : name}
       tabIndex={hasTooltip ? 0 : undefined}
+      aria-label={hasTooltip ? `${name} character portrait, score details available` : undefined}
       {...getReferenceProps()}
     >
       <div className="spotlight-portrait__stage">

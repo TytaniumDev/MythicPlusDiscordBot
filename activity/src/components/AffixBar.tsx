@@ -23,6 +23,7 @@ export function AffixBar() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="affix-name"
+                aria-label={`${affix.name} (opens on Wowhead)`}
               >
                 {affix.name}
               </a>

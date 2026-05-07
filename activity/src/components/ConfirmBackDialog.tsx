@@ -30,7 +30,7 @@ export function ConfirmBackDialog({
 
   return (
     <div className="edit-modal-backdrop" ref={backdropRef} onClick={handleBackdropClick}>
-      <div className="spin-warning" role="alertdialog" aria-label={title}>
+      <div className="spin-warning" role="alertdialog" aria-modal="true" aria-label={title}>
         <div className="spin-warning__icon">&#x26A0;&#xFE0F;</div>
         <h3 className="spin-warning__title">{title}</h3>
         <p className="spin-warning__subtitle">{message}</p>

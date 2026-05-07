@@ -366,6 +366,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
         avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {wheelStatus}
+        </div>
         <section id="view-wheels">
           <div className="wheels-content">
             <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

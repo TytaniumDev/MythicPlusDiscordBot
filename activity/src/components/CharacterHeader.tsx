@@ -16,7 +16,7 @@ export function CharacterHeader({ name, subtitle, color = 'var(--color-tank)', i
         {proxiedUrl ? (
           <img
             src={proxiedUrl}
-            alt={`${name} character model`}
+            alt=""
             className="character-header__img"
           />
         ) : (
