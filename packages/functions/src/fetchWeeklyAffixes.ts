@@ -1,7 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
+import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from '@mythicplus/shared';
 import { enforceRateLimit } from './rateLimit.js';
 import { fetchCurrentSeasonInfo, type SeasonInfo } from './fetchCurrentSeason.js';
 
