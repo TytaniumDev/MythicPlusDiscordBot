@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import logger from './logger.js';
+import { reportError } from './sentry.js';
 
 const PREFERENCES_PATH = process.env.PREFERENCES_PATH;
 const DATA_DIR = process.env.DATA_DIR;
@@ -20,8 +20,7 @@ function ensureLoaded(): void {
       const raw = fs.readFileSync(STORAGE_FILE, 'utf-8');
       preferencesCache = JSON.parse(raw) as Record<string, string[]>;
     } catch (e) {
-      const errType = e instanceof Error ? e.constructor.name : String(e);
-      logger.error(`Error loading preferences: ${errType}`);
+      reportError(e, { tags: { handler: 'storage.loadPreferences' } });
       preferencesCache = {};
     }
   } else {
@@ -39,8 +38,7 @@ export function savePreferences(preferences: Record<string, string[]>): void {
     preferencesCache = preferences;
     fs.writeFileSync(STORAGE_FILE, JSON.stringify(preferences, null, 4));
   } catch (e) {
-    const errType = e instanceof Error ? e.constructor.name : String(e);
-    logger.error(`Error saving preferences: ${errType}`);
+    reportError(e, { tags: { handler: 'storage.savePreferences' } });
   }
 }
 

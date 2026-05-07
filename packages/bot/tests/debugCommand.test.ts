@@ -58,7 +58,7 @@ describe('DebugHandler.test', () => {
     await handler.test(ctx);
 
     expect(ctx.send).toHaveBeenCalledWith('❌ An unexpected error occurred. Please try again later.');
-    expect(logger.error).toHaveBeenCalledWith('Error in test command: Error: Test error');
+    expect(logger.error).toHaveBeenCalledWith('[debug.test] Error: Test error');
   });
 });
 

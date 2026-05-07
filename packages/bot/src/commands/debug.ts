@@ -1,5 +1,5 @@
 import type { GroupService, CommandContext } from '../services/groupService.js';
-import logger from '../core/logger.js';
+import { reportError } from '../core/sentry.js';
 
 export interface DebugContext extends CommandContext {
   channel: CommandContext['channel'] & {
@@ -19,7 +19,7 @@ export class DebugHandler {
       await this.groupService.coreWheel(ctx, true);
     } catch (e) {
       await ctx.send('❌ An unexpected error occurred. Please try again later.');
-      logger.error(`Error in test command: ${e}`);
+      reportError(e, { tags: { handler: 'debug.test' } });
     }
   }
 
