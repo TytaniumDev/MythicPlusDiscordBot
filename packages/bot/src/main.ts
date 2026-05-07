@@ -26,6 +26,7 @@ import * as config from './core/config.js';
 import logger from './core/logger.js';
 import { GroupService } from './services/groupService.js';
 import { SessionService, type Bot, type Guild, type VoiceChannel } from './services/sessionService.js';
+import { adaptGuild, buildVoiceChannelsSnapshot } from './core/discordAdapters.js';
 import { GeneralHandler } from './commands/general.js';
 import { GroupsHandler } from './commands/groups.js';
 import { DebugHandler } from './commands/debug.js';
@@ -119,23 +120,7 @@ function createBotAdapter(client: Client): Bot {
   return {
     get_guild(id: string): Guild | null {
       const g = client.guilds.cache.get(id);
-      if (!g) return null;
-      const guildIcon = g.iconURL();
-      return {
-        id: g.id,
-        name: g.name,
-        icon: guildIcon ? { url: guildIcon } : null,
-        get voice_channels(): VoiceChannel[] {
-          return g.channels.cache
-            .filter((ch) => ch.isVoiceBased())
-            .map((ch) => adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel));
-        },
-        get_channel(chId: string): VoiceChannel | null {
-          const ch = g.channels.cache.get(chId);
-          if (!ch || !ch.isVoiceBased()) return null;
-          return adaptVoiceChannel(ch as unknown as import('discord.js').VoiceChannel);
-        },
-      };
+      return adaptGuild(g ?? null, adaptVoiceChannel);
     },
   };
 }
@@ -539,17 +524,12 @@ async function main() {
         const guildName = discordGuild.name;
         const guildIconUrl = discordGuild.iconURL();
 
-        const voiceChannelsData = discordGuild.channels.cache
-          .filter((ch) => ch.isVoiceBased())
-          .map((ch) => {
-            const vc = ch as import('discord.js').VoiceChannel;
-            const count = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot).length;
-            return { id: ch.id, name: ch.name, userCount: count };
-          })
-          .sort((a, b) => {
-            if (b.userCount !== a.userCount) return b.userCount - a.userCount;
-            return a.name.localeCompare(b.name);
-          });
+        const voiceChannelsData = buildVoiceChannelsSnapshot(
+          discordGuild.channels.cache
+            .filter((ch) => ch.isVoiceBased())
+            .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
+          { sorted: true },
+        );
 
         const updateData: Record<string, unknown> = {
           voiceChannels: voiceChannelsData,
@@ -755,24 +735,8 @@ async function main() {
 
       case 'wheelson': {
         const voiceChannel = member?.voice.channel;
-        // activity's getOrCreateSession needs extra guild fields; cast to satisfy handler
-        const djsGuild = interaction.guild;
-        const activityIconUrl = djsGuild?.iconURL();
-        const activityGuild = djsGuild
-          ? {
-              id: djsGuild.id,
-              name: djsGuild.name,
-              icon: activityIconUrl ? { url: activityIconUrl } : null,
-              voice_channels: djsGuild.channels.cache
-                .filter((ch) => ch.isVoiceBased())
-                .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
-              get_channel(chId: string): VoiceChannel | null {
-                const ch = djsGuild.channels.cache.get(chId);
-                if (!ch || !ch.isVoiceBased()) return null;
-                return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
-              },
-            }
-          : null;
+        // activity's getOrCreateSession needs the adapter Guild shape
+        const activityGuild = adaptGuild(interaction.guild, adaptVoiceChannel);
         await groupsHandler.activity(
           {
             guild: activityGuild,
@@ -1291,23 +1255,8 @@ async function main() {
       const member = newState.member ?? oldState.member;
       if (!member) return;
 
-      const guild = member.guild;
-      const voiceGuildIcon = guild.iconURL();
-      const guildAdapter: Guild = {
-        id: guild.id,
-        name: guild.name,
-        icon: voiceGuildIcon ? { url: voiceGuildIcon } : null,
-        get voice_channels() {
-          return guild.channels.cache
-            .filter((ch) => ch.isVoiceBased())
-            .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel));
-        },
-        get_channel(chId: string) {
-          const ch = guild.channels.cache.get(chId);
-          if (!ch || !ch.isVoiceBased()) return null;
-          return adaptVoiceChannel(ch as import('discord.js').VoiceChannel);
-        },
-      };
+      const guildAdapter = adaptGuild(member.guild, adaptVoiceChannel);
+      if (!guildAdapter) return;
 
       const before = {
         channel: oldState.channel

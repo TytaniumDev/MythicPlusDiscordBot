@@ -1,6 +1,7 @@
 import { FirebaseService, ARRAY_UNION, ARRAY_REMOVE } from '../core/firebaseService.js';
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
+import { buildVoiceChannelsSnapshot } from '../core/discordAdapters.js';
 
 interface ActiveChannel {
   docId: string;
@@ -129,19 +130,8 @@ export class SessionService {
   }
 
   async refreshGuildVoiceChannels(guild: Guild): Promise<void> {
-    const voiceChannelsData: { id: string; name: string; userCount: number }[] = [];
-    for (const vc of guild.voice_channels) {
-      const count = vc.members.filter((m) => !m.bot).length;
-      voiceChannelsData.push({
-        id: vc.id,
-        name: vc.name,
-        userCount: count,
-      });
-    }
-
-    voiceChannelsData.sort((a, b) => {
-      if (b.userCount !== a.userCount) return b.userCount - a.userCount;
-      return a.name.localeCompare(b.name);
+    const voiceChannelsData = buildVoiceChannelsSnapshot(guild.voice_channels, {
+      sorted: true,
     });
 
     await this.firebase.updateGuildDoc(guild.id, {
