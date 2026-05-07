@@ -1,11 +1,11 @@
-import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer } from '../types';
+import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer, SeasonConfig, SeasonPairs } from '../types';
 
 export function isCompleteGroup(group: WoWGroup): boolean {
   return group.tank !== null && group.healer !== null && group.dps.length === 3;
 }
 
 
-export type ViewName = 'home' | 'channels' | 'identity' | 'setup' | 'lobby' | 'wheels' | 'results';
+export type ViewName = 'home' | 'channels' | 'identity' | 'setup' | 'lobby' | 'wheels' | 'results' | 'connections';
 
 export interface AppState {
   // Navigation
@@ -19,6 +19,8 @@ export interface AppState {
   isDemoMode: boolean;
   discordChannelId: string | null;
   guildDocCreationInFlight: boolean;
+  seasonConfig: SeasonConfig | null;
+  seasonPairs: SeasonPairs | null;
 
   // Status
   statusMessage: string;
@@ -59,6 +61,8 @@ export interface AppState {
   setDemoMode: (val: boolean) => void;
   setDiscordChannelId: (id: string | null) => void;
   setGuildDocCreationInFlight: (val: boolean) => void;
+  setSeasonConfig: (config: SeasonConfig | null) => void;
+  setSeasonPairs: (pairs: SeasonPairs | null) => void;
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;

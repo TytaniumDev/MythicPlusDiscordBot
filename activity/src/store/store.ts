@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
-import { WoWGroup, WoWPlayer, WheelEntry, GuildData, ChannelData } from '../types';
+import { WoWGroup, WoWPlayer, WheelEntry, GuildData, ChannelData, SeasonConfig, SeasonPairs } from '../types';
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
@@ -14,6 +14,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   isDemoMode: false,
   discordChannelId: null,
   guildDocCreationInFlight: false,
+  seasonConfig: null,
+  seasonPairs: null,
 
   // Status
   statusMessage: '',
@@ -53,6 +55,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDemoMode: (val: boolean) => set({ isDemoMode: val }),
   setDiscordChannelId: (id: string | null) => set({ discordChannelId: id }),
   setGuildDocCreationInFlight: (val: boolean) => set({ guildDocCreationInFlight: val }),
+  setSeasonConfig: (config: SeasonConfig | null) => set({ seasonConfig: config }),
+  setSeasonPairs: (pairs: SeasonPairs | null) => set({ seasonPairs: pairs }),
   setStatusMessage: (msg: string) => set({ statusMessage: msg }),
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
@@ -107,6 +111,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       isDemoMode: false,
       discordChannelId: null,
       guildDocCreationInFlight: false,
+      seasonConfig: null,
+      seasonPairs: null,
       statusMessage: '',
     });
   },
