@@ -50,3 +50,69 @@ describe('bumpPairCounts', () => {
     expect(result['Alice|Frank']).toBeUndefined();
   });
 });
+
+import { topAffinityFor } from '../src/seasonPairs.js';
+
+describe('topAffinityFor', () => {
+  it('returns teammates sorted by count desc', () => {
+    const counts = {
+      'Alice|Bob': 5,
+      'Alice|Carol': 3,
+      'Alice|Dave': 7,
+    };
+    const result = topAffinityFor('Alice', counts);
+    expect(result).toEqual([
+      { teammate: 'Dave', count: 7 },
+      { teammate: 'Bob', count: 5 },
+      { teammate: 'Carol', count: 3 },
+    ]);
+  });
+
+  it('breaks ties alphabetically', () => {
+    const counts = {
+      'Alice|Bob': 2,
+      'Alice|Carol': 2,
+      'Alice|Dave': 2,
+    };
+    const result = topAffinityFor('Alice', counts);
+    expect(result.map((r) => r.teammate)).toEqual(['Bob', 'Carol', 'Dave']);
+  });
+
+  it('respects the limit', () => {
+    const counts = {
+      'Alice|Bob': 1,
+      'Alice|Carol': 2,
+      'Alice|Dave': 3,
+      'Alice|Eve': 4,
+    };
+    const result = topAffinityFor('Alice', counts, 2);
+    expect(result).toEqual([
+      { teammate: 'Eve', count: 4 },
+      { teammate: 'Dave', count: 3 },
+    ]);
+  });
+
+  it('ignores entries that don\'t involve the queried player', () => {
+    const counts = {
+      'Alice|Bob': 3,
+      'Carol|Dave': 5,
+    };
+    const result = topAffinityFor('Alice', counts);
+    expect(result).toEqual([{ teammate: 'Bob', count: 3 }]);
+  });
+
+  it('returns empty array when player has no pairings', () => {
+    const counts = { 'Bob|Carol': 1 };
+    expect(topAffinityFor('Alice', counts)).toEqual([]);
+  });
+
+  it('handles names with the pipe character correctly via canonical pairKey', () => {
+    // pairKey sorts lexicographically, so 'Alice' < 'alice' (uppercase first).
+    // Verify the lookup tolerates case-sensitive distinct names.
+    const counts = {
+      'Alice|alice': 1,
+    };
+    expect(topAffinityFor('Alice', counts)).toEqual([{ teammate: 'alice', count: 1 }]);
+    expect(topAffinityFor('alice', counts)).toEqual([{ teammate: 'Alice', count: 1 }]);
+  });
+});

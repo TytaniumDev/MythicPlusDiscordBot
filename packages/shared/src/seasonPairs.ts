@@ -33,3 +33,28 @@ export function bumpPairCounts(
   }
   return next;
 }
+
+/**
+ * Return the top `limit` teammates of `name` sorted by pair count descending,
+ * with ties broken alphabetically. Empty array when `name` has no pairings.
+ */
+export function topAffinityFor(
+  name: string,
+  counts: Record<string, number>,
+  limit = 5,
+): { teammate: string; count: number }[] {
+  const matches: { teammate: string; count: number }[] = [];
+  for (const [key, count] of Object.entries(counts)) {
+    const sep = key.indexOf('|');
+    if (sep === -1) continue;
+    const a = key.slice(0, sep);
+    const b = key.slice(sep + 1);
+    if (a === name) matches.push({ teammate: b, count });
+    else if (b === name) matches.push({ teammate: a, count });
+  }
+  matches.sort((x, y) => {
+    if (x.count !== y.count) return y.count - x.count;
+    return x.teammate < y.teammate ? -1 : x.teammate > y.teammate ? 1 : 0;
+  });
+  return matches.slice(0, limit);
+}
