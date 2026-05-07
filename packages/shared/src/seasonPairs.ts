@@ -12,6 +12,28 @@ export interface SeasonPairs {
 }
 
 /**
+ * Validate a raw Firestore value as a `SeasonPairs` shape. Returns the typed
+ * value when `raw` is an object with `seasonSlug: string` and a non-null
+ * `counts` object, or `null` otherwise. Values inside `counts` are assumed to
+ * be numbers without per-key validation (matches existing call-site behavior).
+ */
+export function parseSeasonPairs(raw: unknown): SeasonPairs | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const sp = raw as { seasonSlug?: unknown; counts?: unknown };
+  if (
+    typeof sp.seasonSlug !== 'string' ||
+    typeof sp.counts !== 'object' ||
+    sp.counts === null
+  ) {
+    return null;
+  }
+  return {
+    seasonSlug: sp.seasonSlug,
+    counts: sp.counts as Record<string, number>,
+  };
+}
+
+/**
  * Increment season pair counts by every pair in `round`. Returns a NEW map;
  * does not mutate `current`. Groups with fewer than 2 players are skipped
  * (degenerate remainders).

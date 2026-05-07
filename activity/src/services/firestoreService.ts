@@ -9,6 +9,7 @@ import {
   createMythicPlusGroups,
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
+  parseSeasonPairs,
   setGroupHistory,
   todayPST,
 } from '@mythicplus/shared';
@@ -104,22 +105,8 @@ class FirestoreSessionService implements SessionService {
         if (docSnap.exists()) {
           const data = docSnap.data() as GuildData;
           s.setGuildData(data);
-          const sp = (data as unknown as Record<string, unknown>).seasonPairs as
-            | { seasonSlug?: unknown; counts?: unknown }
-            | undefined;
-          if (
-            sp &&
-            typeof sp.seasonSlug === 'string' &&
-            typeof sp.counts === 'object' &&
-            sp.counts !== null
-          ) {
-            s.setSeasonPairs({
-              seasonSlug: sp.seasonSlug,
-              counts: sp.counts as Record<string, number>,
-            });
-          } else {
-            s.setSeasonPairs(null);
-          }
+          const rawSeasonPairs = (data as unknown as Record<string, unknown>).seasonPairs;
+          s.setSeasonPairs(parseSeasonPairs(rawSeasonPairs));
           s.setStatusMessage('');
           return;
         }
