@@ -4062,3 +4062,11 @@ button.role-section-header--collapsible {
   padding: 8px 0; border-bottom: 1px solid #333;
 }
 .connections-view__count { font-family: monospace; color: #888; }
+.connections-view__select {
+  display: block; width: 100%; padding: 8px;
+  background: #1a1a1f; color: #eee; border: 1px solid #333; border-radius: 6px;
+  margin-bottom: 12px;
+}
+.connections-view__path { padding: 8px 0; }
+.connections-view__arrow { color: #888; }
+.connections-view__sub { color: #aaa; font-size: 14px; margin-bottom: 8px; }
