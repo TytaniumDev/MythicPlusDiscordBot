@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildAffixDocument } from '../src/fetchWeeklyAffixes';
+import { writeSeasonConfig } from '../src/fetchWeeklyAffixes.js';
 
 describe('buildAffixDocument', () => {
   it('resolves affix IDs to display data and sorts by keystone level', () => {
@@ -50,5 +51,29 @@ describe('buildAffixDocument', () => {
     const fortIdx = result.affixes.findIndex(a => a.id === 10);
     const tyranIdx = result.affixes.findIndex(a => a.id === 9);
     expect(fortIdx).toBeLessThan(tyranIdx);
+  });
+});
+
+describe('writeSeasonConfig', () => {
+  it('writes slug, blizzardSeasonId, expansionId to config/season', async () => {
+    const docMock = vi.fn();
+    const setMock = vi.fn().mockResolvedValue(undefined);
+    const dbMock = {
+      doc: (path: string) => {
+        docMock(path);
+        return { set: setMock };
+      },
+    };
+    const seasonInfo = { slug: 'season-mn-1', blizzardSeasonId: 17, expansionId: 11 };
+
+    await writeSeasonConfig(dbMock as never, seasonInfo, () => 'TS');
+
+    expect(docMock).toHaveBeenCalledWith('config/season');
+    expect(setMock).toHaveBeenCalledWith({
+      slug: 'season-mn-1',
+      blizzardSeasonId: 17,
+      expansionId: 11,
+      fetchedAt: 'TS',
+    });
   });
 });
