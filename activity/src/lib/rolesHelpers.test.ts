@@ -130,6 +130,50 @@ describe('categorizeUnreadyPlayers', () => {
     const result = categorizeUnreadyPlayers(players, ['3']);
     expect(result.missingRole).toEqual([]);
   });
+
+  it('puts players with role + name but no mediaUrl in missingCharacterLookup', () => {
+    const broken = player({
+      mainRole: 'tank',
+      inGameName: 'Foo-Bar',
+      mediaUrl: null,
+    });
+    const result = categorizeUnreadyPlayers([broken], []);
+    expect(result.missingCharacterLookup).toEqual([broken]);
+    expect(result.missingRole).toEqual([]);
+    expect(result.missingNameOnly).toEqual([]);
+  });
+
+  it('does not flag players with role + name + mediaUrl', () => {
+    const ready = player({
+      mainRole: 'tank',
+      inGameName: 'Foo-Bar',
+      mediaUrl: 'https://example.com/x.jpg',
+    });
+    const result = categorizeUnreadyPlayers([ready], []);
+    expect(result.missingCharacterLookup).toEqual([]);
+  });
+
+  it('does not flag players missing the inGameName (those go to missingNameOnly)', () => {
+    const noName = player({
+      mainRole: 'tank',
+      inGameName: undefined,
+      mediaUrl: null,
+    });
+    const result = categorizeUnreadyPlayers([noName], []);
+    expect(result.missingCharacterLookup).toEqual([]);
+    expect(result.missingNameOnly).toEqual([noName]);
+  });
+
+  it('excludes sitting-out players from missingCharacterLookup', () => {
+    const broken = player({
+      discordId: 'sit-1',
+      mainRole: 'tank',
+      inGameName: 'Foo-Bar',
+      mediaUrl: null,
+    });
+    const result = categorizeUnreadyPlayers([broken], ['sit-1']);
+    expect(result.missingCharacterLookup).toEqual([]);
+  });
 });
 
 describe('playerRolesToStringArray / roleStringsToPlayerFields', () => {
