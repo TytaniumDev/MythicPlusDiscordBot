@@ -66,10 +66,10 @@ packages/
 ├── bot/                   # Discord bot (TypeScript)
 │   └── src/
 │       ├── main.ts        # Entry point (Discord.js client + command routing)
-│       ├── bot.ts         # Error handling class
 │       ├── commands/      # Slash commands (groups, roles, general, debug)
 │       ├── services/      # GroupService, SessionService
 │       └── core/          # Config, Firebase, UI formatting
+├── functions/             # Firebase Cloud Functions: affix sync, character lookup, GitHub webhook
 └── activity/              # TypeScript/Vite frontend (separate workspace)
     └── src/
         ├── services/      # Firestore + Demo session services
@@ -83,7 +83,7 @@ packages/
 ### Data Flow for `/activity`
 
 1. User runs `/activity` in a voice channel
-2. Bot collects players from channel via Discord roles
+2. Bot collects players from voice channel members and resolves their roles from the preferences collection (with Discord role fallback)
 3. Bot creates Firestore document (status: `lobby`)
 4. Bot listens to Firestore doc; frontend subscribes via `onSnapshot`
 5. Voice state changes → bot updates `players` in Firestore → frontend rerenders
@@ -113,7 +113,8 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 
 - Bot tests use `vitest` and are in `packages/bot/tests/`
 - Frontend E2E tests use Playwright and are in `activity/tests/`
-- Shared package test helpers: `packages/bot/tests/prebuiltClasses.ts`
+- Shared package tests live in `packages/shared/tests/`
+- Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 
 ### Visual Snapshot Tests
 
@@ -129,9 +130,9 @@ Then commit the updated screenshots in `activity/tests/__screenshots__/` alongsi
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
 Required for Firebase features: `FIREBASE_CREDENTIALS_JSON`
-Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, role name overrides (see `packages/bot/src/core/config.ts`)
+Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `BOT_INVITE_PERMISSIONS`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
 
-When touching GitHub Actions workflows: read the **Secrets in workflows** section in [AGENTS.md](AGENTS.md). Never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
+When touching GitHub Actions workflows: read the **Secrets in Workflows** section in [docs/CI_STANDARDS.md](docs/CI_STANDARDS.md). Never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
 **CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines three jobs: `Lint`, `Build`, `Test`. It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection requires. `deploy.yml` also calls `ci-shared.yml`. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
 
