@@ -347,6 +347,75 @@ describe('WoWPlayer', () => {
       expect(restored.offmelee).toBe(original.offmelee);
     });
   });
+
+  describe('toTestString', () => {
+    it('renders a tank with brez utility', () => {
+      const player = WoWPlayer.create('TankBrez', [ROLE_TANK, ROLE_BREZ]);
+      expect(player.toTestString()).toBe('WoWPlayer.create("TankBrez", ["Tank", "Brez"])');
+    });
+
+    it('renders a ranged DPS with lust', () => {
+      const player = WoWPlayer.create('Mage', [ROLE_RANGED, ROLE_LUST]);
+      expect(player.toTestString()).toBe('WoWPlayer.create("Mage", ["Ranged", "Lust"])');
+    });
+
+    it('renders a melee main with offtank and offhealer in canonical order', () => {
+      const player = WoWPlayer.create('Flex', [
+        ROLE_MELEE,
+        ROLE_TANK_OFFSPEC,
+        ROLE_HEALER_OFFSPEC,
+      ]);
+      expect(player.toTestString()).toBe(
+        'WoWPlayer.create("Flex", ["Melee", "Tank Offspec", "Healer Offspec"])',
+      );
+    });
+
+    it('renders the full role set in canonical order regardless of input order', () => {
+      const player = WoWPlayer.create('MaxRoles', [
+        // Provide roles in scrambled order to confirm output ordering is stable.
+        ROLE_LUST,
+        ROLE_MELEE_OFFSPEC,
+        ROLE_BREZ,
+        ROLE_RANGED_OFFSPEC,
+        ROLE_HEALER_OFFSPEC,
+        ROLE_TANK,
+        ROLE_TANK_OFFSPEC,
+      ]);
+      // tankMain is set; ranged/melee main flags are not (mutually exclusive).
+      // Field order: tank, healer, ranged, melee, then offtank, offhealer,
+      // offranged, offmelee, then brez, lust.
+      expect(player.toTestString()).toBe(
+        'WoWPlayer.create("MaxRoles", ["Tank", "Tank Offspec", "Healer Offspec", "Ranged Offspec", "Melee Offspec", "Brez", "Lust"])',
+      );
+    });
+
+    it('renders an empty role list for a player with no roles', () => {
+      const player = WoWPlayer.create('NoRole', []);
+      expect(player.toTestString()).toBe('WoWPlayer.create("NoRole", [])');
+    });
+  });
+
+  describe('toUtilitiesString', () => {
+    it('renders Name(brez, lust) when the player has both utilities', () => {
+      const player = WoWPlayer.create('Hunter', [ROLE_RANGED, ROLE_BREZ, ROLE_LUST]);
+      expect(player.toUtilitiesString()).toBe('Hunter(Brez, Lust)');
+    });
+
+    it('renders Name(brez) when the player has only brez', () => {
+      const player = WoWPlayer.create('Druid', [ROLE_HEALER, ROLE_BREZ]);
+      expect(player.toUtilitiesString()).toBe('Druid(Brez)');
+    });
+
+    it('renders Name(lust) when the player has only lust', () => {
+      const player = WoWPlayer.create('Shaman', [ROLE_RANGED, ROLE_LUST]);
+      expect(player.toUtilitiesString()).toBe('Shaman(Lust)');
+    });
+
+    it('renders the bare name when the player has no utilities', () => {
+      const player = WoWPlayer.create('Rogue', [ROLE_MELEE]);
+      expect(player.toUtilitiesString()).toBe('Rogue');
+    });
+  });
 });
 
 describe('WoWGroup', () => {
@@ -419,5 +488,50 @@ describe('WoWGroup', () => {
     expect(restored.tank).toBeNull();
     expect(restored.healer).toBeNull();
     expect(restored.dps).toEqual([]);
+  });
+
+  describe('toTestString', () => {
+    it('renders a complete group with all roles and mixed utilities', () => {
+      const group = new WoWGroup(tank, healer, [dps1, dps2, dps3]);
+      // tank/healer have no utilities, dps3 has brez. Names are bare except dps3.
+      expect(group.toTestString()).toBe(
+        'WoWGroup(Tank="Tank", Healer="Healer", DPS="DPS1", "DPS2", "DPS3(Brez)")',
+      );
+    });
+
+    it('renders None for a missing tank', () => {
+      const group = new WoWGroup(null, healer, [dps1, dps2, dps3]);
+      expect(group.toTestString()).toBe(
+        'WoWGroup(Tank=None, Healer="Healer", DPS="DPS1", "DPS2", "DPS3(Brez)")',
+      );
+    });
+
+    it('renders None for a missing healer', () => {
+      const group = new WoWGroup(tank, null, [dps1, dps2, dps3]);
+      expect(group.toTestString()).toBe(
+        'WoWGroup(Tank="Tank", Healer=None, DPS="DPS1", "DPS2", "DPS3(Brez)")',
+      );
+    });
+
+    it('renders an empty DPS section as just the label and no players', () => {
+      const group = new WoWGroup(tank, healer, []);
+      expect(group.toTestString()).toBe(
+        'WoWGroup(Tank="Tank", Healer="Healer", DPS=)',
+      );
+    });
+
+    it('renders a fully-empty group', () => {
+      const group = new WoWGroup();
+      expect(group.toTestString()).toBe('WoWGroup(Tank=None, Healer=None, DPS=)');
+    });
+
+    it('renders utility annotations on tank and healer when present', () => {
+      const tankWithBrez = WoWPlayer.create('TankBrez', [ROLE_TANK, ROLE_BREZ]);
+      const healerWithLust = WoWPlayer.create('HealerLust', [ROLE_HEALER, ROLE_LUST]);
+      const group = new WoWGroup(tankWithBrez, healerWithLust, [lustPlayer]);
+      expect(group.toTestString()).toBe(
+        'WoWGroup(Tank="TankBrez(Brez)", Healer="HealerLust(Lust)", DPS="LustPlayer(Lust)")',
+      );
+    });
   });
 });
