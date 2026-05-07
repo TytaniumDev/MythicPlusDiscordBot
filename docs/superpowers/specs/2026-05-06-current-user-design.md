@@ -137,8 +137,11 @@ unchanged.
 
 **Write path:**
 
-1. Always update `wheelson-character` localStorage. The `currentCharacter`
-   slice updates reactively. Avatar updates immediately.
+1. Call a new `setCurrentCharacter(...)` store action. The action does two
+   things in one place: writes to `wheelson-character` localStorage AND
+   updates the `currentCharacter` slice. The slice update triggers React
+   rerender. localStorage is purely for persistence across reloads — there's
+   no auto-subscription from localStorage to the slice.
 2. **If** `currentPlayerId` is set (Discord ID known), mirror to
    `preferences/{discordId}` via the existing
    `firestoreService.saveLinkedCharacter` and `saveRoles` calls. Same calls
@@ -159,14 +162,27 @@ Two changes:
 
 1. The localStorage key it reads/writes is the new global
    `wheelson-discord-id` (not the per-guild key).
-2. When the Discord ID first resolves AND `currentCharacter` is populated AND
-   the resolved Discord ID has no `preferences/{discordId}` entry yet (or its
-   data differs), opportunistically write the local character to
-   `preferences/{discordId}`. This makes the bot aware of the local character
-   so other voice-channel members see the avatar in the lobby roster.
+2. When the Discord ID first resolves in a session, run an opportunistic
+   sync between localStorage and `preferences/{discordId}`:
 
-The opportunistic mirror is fire-and-forget — failures don't surface to the
-user, since the local character keeps working regardless.
+   - If `currentCharacter` is empty AND the just-resolved player record in
+     `channelData.players` has character data (`mediaUrl` or `inGameName`
+     populated by the bot from a prior `preferences/{discordId}` entry),
+     copy that record into `currentCharacter` and persist to
+     `wheelson-character`. This is a one-shot hydrate so returning users
+     who used Wheelson on this Discord account before don't have to
+     re-enter their character on this browser.
+   - If `currentCharacter` is populated, mirror it to
+     `preferences/{discordId}` via `saveLinkedCharacter` + `saveRoles`.
+     localStorage wins on conflict — the rationale is that ProfileModal is
+     the user's most recent intentional edit. (Last-write-wins is fine for
+     character data; conflicts are rare and the user can always re-edit.)
+   - If both are empty, no-op — user will set up via ProfileModal.
+
+This sync is fire-and-forget — failures don't surface to the user, since
+the local character keeps working regardless. Runs once per session per
+identity resolution; subsequent ProfileModal edits use the per-edit write
+path described above.
 
 ### Spin gate
 
@@ -190,6 +206,13 @@ already pulls character data from `preferences/{discordId}` via the bot. Users
 who never linked Discord ID won't have entries here for their character —
 they'd appear in the bucket. The opportunistic mirror in the identity flow
 addresses this for users who go through the picker.
+
+There's a transient state to be aware of: between voice-channel join and the
+first identity-mirror round-trip (picker resolves → mirror writes preferences
+→ bot reload → channelData refresh), the current user's own entry in the
+voice-channel roster may have no `mediaUrl`. They'd flag in the bucket for
+their own session momentarily. The override remains, so this is a UX wart
+rather than a correctness issue. We accept it for v1.
 
 We don't gate on Raider.io score. Raider.io is best-effort — fetched async in
 `useDungeonSuggestions`, with its own loading and error states. Blocking the
@@ -235,7 +258,7 @@ if (!localStorage.getItem('wheelson-discord-id')) {
 ```
 
 Old keys stay in place — they're a few bytes each and not worth a cleanup
-pass. They naturally become dead writes once the new code runs.
+pass. The new code never reads or writes them; they're just leftover values.
 
 `preferences/{discordId}` Firestore docs need no migration. Existing data is
 read by the bot exactly as before.
