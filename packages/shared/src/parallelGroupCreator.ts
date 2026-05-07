@@ -204,11 +204,13 @@ function tryThreeCycle(
     }
     | null = null;
 
+  // For any triple of groups (A, B, C) there are 6 ordered iterations but only
+  // 2 distinct cycles: (A→B→C→A) and (A→C→B→A). Constraining j > i and k > i
+  // (with k != j) hits both per triple while skipping the 4 duplicate rotations.
   for (let i = 0; i < groups.length; i++) {
-    for (let j = 0; j < groups.length; j++) {
-      if (j === i) continue;
-      for (let k = 0; k < groups.length; k++) {
-        if (k === i || k === j) continue;
+    for (let j = i + 1; j < groups.length; j++) {
+      for (let k = i + 1; k < groups.length; k++) {
+        if (k === j) continue;
         const gi = groups[i];
         const gj = groups[j];
         const gk = groups[k];
