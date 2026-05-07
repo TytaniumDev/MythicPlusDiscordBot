@@ -280,6 +280,12 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
 
   const isSittingOut = player.discordId ? sittingOut.includes(player.discordId) : false;
 
+  // In profile-edit mode without a Discord ID (truly outside Discord, first
+  // visit), there's nowhere to persist roles/utilities/sit-out — StoredCharacter
+  // doesn't carry them and saveRoles is gated on discordId. Hide those sections
+  // to avoid showing controls that silently drop their state.
+  const showRoleSections = !isProfileEdit || !!player.discordId;
+
   function renderSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
     return (
       <div className="role-editor-section">
@@ -325,11 +331,15 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
         )}
       </div>
 
-      {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
-      {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
-      {renderSection('Utilities', UTILITY_BUTTONS, false)}
+      {showRoleSections && (
+        <>
+          {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
+          {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
+          {renderSection('Utilities', UTILITY_BUTTONS, false)}
+        </>
+      )}
 
-      {!hideSitOut && (
+      {!hideSitOut && showRoleSections && (
         <div className="role-editor-section" style={{ marginTop: 4 }}>
           <div className="role-editor-row">
             <SecondaryButton

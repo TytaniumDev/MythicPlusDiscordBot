@@ -47,6 +47,24 @@ export const OutsideChannel_HasCharacter: Story = {
   })],
 };
 
+export const OutsideChannel_DiscordIdKnown: Story = {
+  decorators: [withStore({
+    isDemoMode: true,
+    currentPlayerId: '100000000000000007',
+    currentPlayerName: 'Fourseven',
+    identityResolved: false,
+    channelData: null,
+    currentCharacter: {
+      inGameName: 'Tytanium-Stormrage',
+      region: 'us',
+      mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
+      characterClass: 'Druid',
+      lookupStatus: 'ok',
+      lastUpdated: 1234567890,
+    },
+  })],
+};
+
 export const InsideChannel_LinkedCharacter: Story = {
   decorators: [withStore({
     isDemoMode: true,
