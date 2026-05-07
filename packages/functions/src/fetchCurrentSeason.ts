@@ -20,7 +20,9 @@ export async function fetchCurrentSeasonInfo(): Promise<SeasonInfo> {
   if (!response.ok) {
     throw new Error(`Raider.IO season request failed: ${response.status}`);
   }
-  const data = await response.json() as { seasons?: { slug: string; blizzard_season_id: number }[] };
+  const data = await response.json() as {
+    seasons?: { slug: string; blizzard_season_id: number; is_main_season?: boolean }[];
+  };
   if (!Array.isArray(data.seasons)) {
     throw new Error('Raider.IO response missing seasons array');
   }
@@ -30,7 +32,17 @@ export async function fetchCurrentSeasonInfo(): Promise<SeasonInfo> {
       + 'expansion_id needs to be bumped in fetchCurrentSeason.ts',
     );
   }
-  const season = data.seasons[0];
+  // raider.io returns ALL seasons for an expansion (including past "cutoffs",
+  // "post", and event variants), newest first. Pick the latest where
+  // `is_main_season: true` so we land on the live competitive season rather
+  // than a placeholder/cutoffs entry that happens to be at index 0.
+  const season = data.seasons.find((s) => s.is_main_season === true);
+  if (!season) {
+    throw new Error(
+      `Raider.IO returned no main season for expansion_id=${EXPANSION_ID} — `
+      + 'expansion_id needs to be bumped in fetchCurrentSeason.ts',
+    );
+  }
   return {
     slug: season.slug,
     blizzardSeasonId: season.blizzard_season_id,

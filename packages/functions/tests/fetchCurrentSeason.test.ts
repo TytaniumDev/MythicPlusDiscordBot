@@ -55,4 +55,34 @@ describe('fetchCurrentSeasonInfo', () => {
     });
     await expect(fetchCurrentSeasonInfo()).rejects.toThrow(/seasons/);
   });
+
+  it('selects the entry with is_main_season=true, ignoring cutoffs/event variants ahead of it', async () => {
+    // Mirror the real expansion_id=10 response shape: cutoffs + variant
+    // entries appear before the live main season at index 0.
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        seasons: [
+          { slug: 'season-mn-1-cutoffs', blizzard_season_id: 17, is_main_season: false },
+          { slug: 'season-mn-1', blizzard_season_id: 17, is_main_season: true },
+          { slug: 'season-mn-1-break-the-meta', blizzard_season_id: 17, is_main_season: false },
+        ],
+      }),
+    });
+
+    const result = await fetchCurrentSeasonInfo();
+    expect(result.slug).toBe('season-mn-1');
+  });
+
+  it('throws when no entry has is_main_season=true', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        seasons: [
+          { slug: 'season-mn-0-preseason', blizzard_season_id: 16, is_main_season: false },
+        ],
+      }),
+    });
+    await expect(fetchCurrentSeasonInfo()).rejects.toThrow(/no main season|expansion_id needs to be bumped/);
+  });
 });
