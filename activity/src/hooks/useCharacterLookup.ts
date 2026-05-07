@@ -21,7 +21,7 @@ function isExpectedLookupError(err: unknown): boolean {
   return typeof code === 'string' && EXPECTED_LOOKUP_CODES.has(code);
 }
 
-export interface CharacterData {
+interface CharacterData {
   name: string;
   realm: string;
   class: CharacterClass | null;

@@ -17,7 +17,7 @@ const NotReadyIcon = () => (
   </svg>
 );
 
-export interface PlayerChipProps {
+interface PlayerChipProps {
   name: string;
   roleKey: string;
   roleLabel: string;

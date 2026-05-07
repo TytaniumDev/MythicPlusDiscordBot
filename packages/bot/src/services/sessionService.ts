@@ -2,7 +2,7 @@ import { FirebaseService, ARRAY_UNION, ARRAY_REMOVE } from '../core/firebaseServ
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
 
-export interface ActiveChannel {
+interface ActiveChannel {
   docId: string;
   guildId: string;
 }

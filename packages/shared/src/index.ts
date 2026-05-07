@@ -26,7 +26,6 @@ export {
   bumpPairCounts,
   topAffinityFor,
   shortestPath,
-  type SeasonPairs,
 } from './seasonPairs.js';
 
 export { generateInviteCommand } from './inviteCommand.js';
@@ -56,5 +55,4 @@ export { todayPST } from './dateHelpers.js';
 export {
   encodeGroupHistoryRounds,
   decodeGroupHistoryRounds,
-  type WireRound,
 } from './groupHistoryWire.js';

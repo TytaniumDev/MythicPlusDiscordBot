@@ -5,7 +5,7 @@ import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay
 import { enforceRateLimit } from './rateLimit.js';
 import { fetchCurrentSeasonInfo, type SeasonInfo } from './fetchCurrentSeason.js';
 
-export interface AffixDocument {
+interface AffixDocument {
   period: number;
   region: string;
   lastUpdated: FieldValue | Date;

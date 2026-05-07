@@ -13,7 +13,7 @@ export function initSentry() {
   });
 }
 
-export interface ReportErrorContext {
+interface ReportErrorContext {
   tags?: Record<string, string | undefined>;
   user?: { id: string; username: string };
   extra?: Record<string, unknown>;
