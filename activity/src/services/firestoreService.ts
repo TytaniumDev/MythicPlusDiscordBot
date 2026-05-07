@@ -104,9 +104,7 @@ class FirestoreSessionService implements SessionService {
         if (docSnap.exists()) {
           const data = docSnap.data() as GuildData;
           s.setGuildData(data);
-          const sp = (data as unknown as Record<string, unknown>).seasonPairs as
-            | { seasonSlug?: unknown; counts?: unknown }
-            | undefined;
+          const sp = data.seasonPairs;
           if (
             sp &&
             typeof sp.seasonSlug === 'string' &&
