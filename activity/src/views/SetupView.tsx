@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { CharacterHeader } from '../components/CharacterHeader';
 import { Divider, PrimaryCTA } from '../components/ui';
 import { RoleEditor } from '../components/RoleEditor';
@@ -35,6 +36,7 @@ export function SetupView({ onNavigate }: SetupViewProps) {
           onBack={() => onNavigate('identity')}
           onTitleClick={() => onNavigate('home')}
           className="app-header"
+          avatar={<HeaderProfileSlot />}
         />
         <main className="content-area">
           <section id="view-setup" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
@@ -66,6 +68,7 @@ export function SetupView({ onNavigate }: SetupViewProps) {
         onBack={() => onNavigate('identity')}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-setup">

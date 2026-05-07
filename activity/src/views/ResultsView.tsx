@@ -4,6 +4,7 @@ import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
 import { GroupCarousel, type GroupCarouselItem } from '../components/GroupCarousel';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { ReportBadGroupDialog } from '../components/ReportBadGroupDialog';
 import { DungeonSuggestions } from '../components/DungeonSuggestions';
@@ -171,6 +172,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
             onClick={() => setShowReportDialog(true)}
           />
         }
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-results">
