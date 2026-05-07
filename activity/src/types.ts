@@ -57,3 +57,14 @@ export interface RecentGuild {
   guildIconUrl?: string;
   lastVisited: number;
 }
+
+export interface SeasonConfig {
+  slug: string;
+  blizzardSeasonId: number;
+  expansionId: number;
+}
+
+export interface SeasonPairs {
+  seasonSlug: string;
+  counts: Record<string, number>;
+}

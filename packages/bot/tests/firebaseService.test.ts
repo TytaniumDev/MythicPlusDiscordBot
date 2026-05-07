@@ -467,3 +467,210 @@ describe('FirebaseService.saveGroupHistory', () => {
     expect(result).toEqual({ date: '2026-04-07', rounds: [[groupDict]] });
   });
 });
+
+describe('FirebaseService.getSeasonConfig', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('returns null when db is null', async () => {
+    service.db = null;
+    const result = await service.getSeasonConfig();
+    expect(result).toBeNull();
+  });
+
+  it('returns null when config/season does not exist', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const result = await service.getSeasonConfig();
+    expect(result).toBeNull();
+    expect(db.collection).toHaveBeenCalledWith('config');
+    expect(db.collection('config').doc).toHaveBeenCalledWith('season');
+  });
+
+  it('returns slug, blizzardSeasonId, and expansionId', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        slug: 'season-mn-1',
+        blizzardSeasonId: 17,
+        expansionId: 11,
+      }),
+    });
+
+    const result = await service.getSeasonConfig();
+    expect(result).toEqual({
+      slug: 'season-mn-1',
+      blizzardSeasonId: 17,
+      expansionId: 11,
+    });
+  });
+
+  it('returns null when fields are missing or wrong type', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ slug: 'season-mn-1' }),
+    });
+
+    const result = await service.getSeasonConfig();
+    expect(result).toBeNull();
+  });
+});
+
+describe('FirebaseService.getSeasonPairs', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('returns null when db is null', async () => {
+    service.db = null;
+    const result = await service.getSeasonPairs('123');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when guild doc does not exist', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const result = await service.getSeasonPairs('123');
+    expect(result).toBeNull();
+    expect(db.collection).toHaveBeenCalledWith('guilds');
+    expect(db.collection('guilds').doc).toHaveBeenCalledWith('123');
+  });
+
+  it('returns null when guild has no seasonPairs field', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ guildId: '123' }),
+    });
+
+    const result = await service.getSeasonPairs('123');
+    expect(result).toBeNull();
+  });
+
+  it('returns seasonSlug and counts', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        seasonPairs: {
+          seasonSlug: 'season-mn-1',
+          counts: { 'Alice|Bob': 3 },
+        },
+      }),
+    });
+
+    const result = await service.getSeasonPairs('123');
+    expect(result).toEqual({
+      seasonSlug: 'season-mn-1',
+      counts: { 'Alice|Bob': 3 },
+    });
+  });
+});
+
+describe('FirebaseService.saveSeasonPairs', () => {
+  let service: FirebaseService;
+
+  function createMockDbWithDocRef() {
+    const mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn().mockResolvedValue(undefined),
+      update: vi.fn(),
+      delete: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const mockCollection = {
+      doc: vi.fn().mockReturnValue(mockDocRef),
+      where: vi.fn(),
+      get: vi.fn(),
+      onSnapshot: vi.fn(),
+    };
+    const db = {
+      collection: vi.fn().mockReturnValue(mockCollection),
+      batch: vi.fn(),
+    };
+    return { db, mockCollection, mockDocRef };
+  }
+
+  beforeEach(() => {
+    service = Object.create(FirebaseService.prototype);
+  });
+
+  it('does nothing when db is null', async () => {
+    service.db = null;
+    await service.saveSeasonPairs('123', { seasonSlug: 'season-mn-1', counts: {} });
+  });
+
+  it('upserts seasonPairs onto the guild doc with merge', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+
+    await service.saveSeasonPairs('123', {
+      seasonSlug: 'season-mn-1',
+      counts: { 'A|B': 2 },
+    });
+
+    expect(db.collection).toHaveBeenCalledWith('guilds');
+    expect(db.collection('guilds').doc).toHaveBeenCalledWith('123');
+    expect(mockDocRef.set).toHaveBeenCalledWith(
+      { seasonPairs: { seasonSlug: 'season-mn-1', counts: { 'A|B': 2 } } },
+      { merge: true },
+    );
+  });
+});

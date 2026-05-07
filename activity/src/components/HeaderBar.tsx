@@ -18,6 +18,8 @@ interface HeaderBarProps {
   titleColor?: string;
   /** Extra content rendered after the title area */
   extra?: ReactNode;
+  /** Right-anchored avatar / profile button */
+  avatar?: ReactNode;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function HeaderBar({
   onTitleClick,
   titleColor,
   extra,
+  avatar,
   className = '',
 }: HeaderBarProps) {
   return (<>
@@ -52,6 +55,16 @@ export function HeaderBar({
         style={{ cursor: onTitleClick ? 'pointer' : undefined }}
       />
 
+      <a
+        className="header-bar__hash"
+        target="_blank"
+        rel="noopener noreferrer"
+        href={`https://github.com/TytaniumDev/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`}
+        aria-label={`View commit ${__COMMIT_HASH__} on GitHub`}
+      >
+        {__COMMIT_HASH__}
+      </a>
+
       <div className="header-bar__center">
         <div
           className="header-bar__title"
@@ -66,15 +79,7 @@ export function HeaderBar({
 
       <div className="header-bar__right">
         {extra}
-        <a
-          className="header-bar__hash"
-          target="_blank"
-          rel="noopener noreferrer"
-          href={`https://github.com/TytaniumDev/MythicPlusDiscordBot/commit/${__COMMIT_HASH__}`}
-          aria-label={`View commit ${__COMMIT_HASH__} on GitHub`}
-        >
-          {__COMMIT_HASH__}
-        </a>
+        {avatar}
       </div>
     </header>
     <AffixBar />

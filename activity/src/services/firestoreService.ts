@@ -5,6 +5,7 @@ import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import {
   WoWGroup,
+  bumpPairCounts,
   createMythicPlusGroups,
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
@@ -101,7 +102,24 @@ class FirestoreSessionService implements SessionService {
       (docSnap) => {
         const s = useAppStore.getState();
         if (docSnap.exists()) {
-          s.setGuildData(docSnap.data() as GuildData);
+          const data = docSnap.data() as GuildData;
+          s.setGuildData(data);
+          const sp = (data as unknown as Record<string, unknown>).seasonPairs as
+            | { seasonSlug?: unknown; counts?: unknown }
+            | undefined;
+          if (
+            sp &&
+            typeof sp.seasonSlug === 'string' &&
+            typeof sp.counts === 'object' &&
+            sp.counts !== null
+          ) {
+            s.setSeasonPairs({
+              seasonSlug: sp.seasonSlug,
+              counts: sp.counts as Record<string, number>,
+            });
+          } else {
+            s.setSeasonPairs(null);
+          }
           s.setStatusMessage('');
           return;
         }
@@ -196,6 +214,33 @@ class FirestoreSessionService implements SessionService {
     }
   }
 
+  subscribeToSeasonConfig(): () => void {
+    const ref = doc(db, 'config', 'season');
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
+          useAppStore.getState().setSeasonConfig(null);
+          return;
+        }
+        const data = snap.data() as Record<string, unknown>;
+        if (
+          typeof data.slug === 'string' &&
+          typeof data.blizzardSeasonId === 'number' &&
+          typeof data.expansionId === 'number'
+        ) {
+          useAppStore.getState().setSeasonConfig({
+            slug: data.slug,
+            blizzardSeasonId: data.blizzardSeasonId,
+            expansionId: data.expansionId,
+          });
+        }
+      },
+      (err) => reportError(err, { tag: 'firestoreService.seasonConfig' }),
+    );
+    return () => unsub();
+  }
+
   async requestSpin(): Promise<void> {
     const { currentChannelId, channelData, guildData } = useAppStore.getState();
     if (!currentChannelId || !channelData) return;
@@ -232,6 +277,25 @@ class FirestoreSessionService implements SessionService {
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
+
+      // Bump season pair counts for cross-session affinity tracking. Skip
+      // for debug channels so test spins don't pollute the real tally.
+      if (!(channelData.isDebug ?? false)) {
+        const cfg = useAppStore.getState().seasonConfig;
+        if (cfg) {
+          const existing = useAppStore.getState().seasonPairs;
+          const baseCounts =
+            existing && existing.seasonSlug === cfg.slug ? existing.counts : {};
+          const newCounts = bumpPairCounts(baseCounts, groups);
+          setDoc(
+            guildDocRef,
+            { seasonPairs: { seasonSlug: cfg.slug, counts: newCounts } },
+            { merge: true },
+          ).catch((err) =>
+            reportError(err, { tag: 'firestoreService.saveSeasonPairs' }),
+          );
+        }
+      }
     }
 
     const channelRef = doc(db, 'channels', currentChannelId);

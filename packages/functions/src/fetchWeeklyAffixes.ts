@@ -3,6 +3,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES, type AffixDisplay } from './affixMetadata.js';
 import { enforceRateLimit } from './rateLimit.js';
+import { fetchCurrentSeasonInfo, type SeasonInfo } from './fetchCurrentSeason.js';
 
 export interface AffixDocument {
   period: number;
@@ -44,6 +45,24 @@ export function buildAffixDocument(
 
 const RAIDERIO_AFFIXES_URL = 'https://raider.io/api/v1/mythic-plus/affixes?region=us&locale=en';
 
+type SeasonDocFields = SeasonInfo & { fetchedAt: unknown };
+
+/**
+ * Persist `config/season` so consumers (bot, Activity) can detect season
+ * changes and lazy-reset per-guild pair counts. Written from the weekly
+ * affixes cron right after the affixes themselves are persisted.
+ */
+export async function writeSeasonConfig(
+  db: { doc: (path: string) => { set: (data: SeasonDocFields) => Promise<void> } },
+  info: SeasonInfo,
+  serverTimestamp: () => unknown,
+): Promise<void> {
+  await db.doc('config/season').set({
+    ...info,
+    fetchedAt: serverTimestamp(),
+  });
+}
+
 // Shared logic: fetch current affixes from Raider.IO and write to Firestore
 export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastUpdated'> & { lastUpdated: Date }> {
   const response = await fetch(RAIDERIO_AFFIXES_URL);
@@ -62,6 +81,15 @@ export async function fetchAndWriteAffixes(): Promise<Omit<AffixDocument, 'lastU
     ...doc,
     lastUpdated: FieldValue.serverTimestamp(),
   });
+
+  // Best-effort: surface a season change to consumers. Failure here must NOT
+  // fail the affixes write — the cron is the only writer for both.
+  try {
+    const seasonInfo = await fetchCurrentSeasonInfo();
+    await writeSeasonConfig(db as never, seasonInfo, () => FieldValue.serverTimestamp());
+  } catch (err) {
+    console.error('[fetchAndWriteAffixes] season config write failed:', err);
+  }
 
   return doc;
 }

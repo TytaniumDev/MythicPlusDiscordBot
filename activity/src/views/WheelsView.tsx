@@ -7,6 +7,7 @@ import { WheelsGridComponent, type WheelsGridRef } from '../components/WheelsGri
 import { GroupCard } from '../components/GroupCard';
 import { MobileGroupPager } from '../components/MobileGroupPager';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { ConfirmBackDialog } from '../components/ConfirmBackDialog';
 import { SpotlightCard } from '../components/SpotlightCard';
 import { SpinPrompt } from '../components/SpinPrompt';
@@ -362,6 +363,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
         onBack={requestBack}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-wheels">

@@ -70,6 +70,9 @@ export interface IFirebaseService {
   deleteGuildDoc(guildId: string): Promise<void>;
   getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null>;
   saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void>;
+  getSeasonConfig(): Promise<{ slug: string; blizzardSeasonId: number; expansionId: number } | null>;
+  getSeasonPairs(guildId: string): Promise<{ seasonSlug: string; counts: Record<string, number> } | null>;
+  saveSeasonPairs(guildId: string, pairs: { seasonSlug: string; counts: Record<string, number> }): Promise<void>;
   getOrCreateChannelDoc(
     channelId: string,
     guildId: string,
@@ -367,6 +370,58 @@ export class FirebaseService implements IFirebaseService {
       { groupHistory: { date: history.date, rounds: wireRounds } },
       { merge: true },
     );
+  }
+
+  async getSeasonConfig(): Promise<{ slug: string; blizzardSeasonId: number; expansionId: number } | null> {
+    if (!this.db) return null;
+    const docRef = this.db.collection('config').doc('season');
+    const doc = await docRef.get();
+    if (!doc.exists) return null;
+    const data = doc.data() ?? {};
+    if (
+      typeof data.slug !== 'string' ||
+      typeof data.blizzardSeasonId !== 'number' ||
+      typeof data.expansionId !== 'number'
+    ) {
+      return null;
+    }
+    return {
+      slug: data.slug,
+      blizzardSeasonId: data.blizzardSeasonId,
+      expansionId: data.expansionId,
+    };
+  }
+
+  async getSeasonPairs(
+    guildId: string,
+  ): Promise<{ seasonSlug: string; counts: Record<string, number> } | null> {
+    if (!this.db) return null;
+    const docRef = this.db.collection('guilds').doc(guildId);
+    const doc = await docRef.get();
+    if (!doc.exists) return null;
+    const data = doc.data() ?? {};
+    const sp = data.seasonPairs as { seasonSlug?: unknown; counts?: unknown } | undefined;
+    if (
+      !sp ||
+      typeof sp.seasonSlug !== 'string' ||
+      typeof sp.counts !== 'object' ||
+      sp.counts === null
+    ) {
+      return null;
+    }
+    return {
+      seasonSlug: sp.seasonSlug,
+      counts: sp.counts as Record<string, number>,
+    };
+  }
+
+  async saveSeasonPairs(
+    guildId: string,
+    pairs: { seasonSlug: string; counts: Record<string, number> },
+  ): Promise<void> {
+    if (!this.db) return;
+    const docRef = this.db.collection('guilds').doc(guildId);
+    await docRef.set({ seasonPairs: pairs }, { merge: true });
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/store';
 import { useIdentity } from '../hooks/useIdentity';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA } from '../components/ui';
 import type { WoWPlayer } from '../types';
 import { toAvatarUrl } from '../lib/characterMedia';
@@ -40,6 +41,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
           onBack={() => onNavigate('channels')}
           onTitleClick={() => onNavigate('home')}
           className="app-header"
+          avatar={<HeaderProfileSlot />}
         />
         <main className="content-area">
           <section id="view-identity" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
@@ -58,6 +60,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
         onBack={() => onNavigate('channels')}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-identity">

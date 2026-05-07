@@ -1,4 +1,11 @@
-import { WoWGroup, WoWPlayer, createMythicPlusGroups, setGroupHistory, todayPST } from '@mythicplus/shared';
+import {
+  WoWGroup,
+  WoWPlayer,
+  bumpPairCounts,
+  createMythicPlusGroups,
+  setGroupHistory,
+  todayPST,
+} from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { getDebugPlayers } from '../core/debugFixtures.js';
@@ -82,6 +89,7 @@ export class GroupService {
     firebase: FirebaseService,
     guildId: string,
     groups: WoWGroup[],
+    debug: boolean,
   ): Promise<void> {
     if (!firebase.isAvailable()) return;
 
@@ -93,11 +101,35 @@ export class GroupService {
         date: today,
         rounds: [...existingRounds, newRound],
       });
+
+      if (!debug) {
+        await this._bumpSeasonPairs(firebase, guildId, groups);
+      }
     } catch (err) {
       logger.warn(`Failed to save group history for guild ${guildId}: ${err}`);
     } finally {
       this.loadedRounds.delete(guildId);
     }
+  }
+
+  /**
+   * Increment per-guild season pair counts after a real spin. Lazy-resets
+   * counts when the stored seasonSlug differs from the current `config/season`
+   * slug. No-op when no season config has been written yet (the weekly cron
+   * hasn't run).
+   */
+  private async _bumpSeasonPairs(
+    firebase: FirebaseService,
+    guildId: string,
+    groups: WoWGroup[],
+  ): Promise<void> {
+    const config = await firebase.getSeasonConfig();
+    if (!config) return;
+    const existing = await firebase.getSeasonPairs(guildId);
+    const baseCounts =
+      existing && existing.seasonSlug === config.slug ? existing.counts : {};
+    const counts = bumpPairCounts(baseCounts, groups);
+    await firebase.saveSeasonPairs(guildId, { seasonSlug: config.slug, counts });
   }
 
   async getGroupsData(
@@ -119,7 +151,7 @@ export class GroupService {
     const groups = createMythicPlusGroups(players, debug, guildId);
 
     if (guildId && firebase) {
-      await this._saveGroupHistory(firebase, guildId, groups);
+      await this._saveGroupHistory(firebase, guildId, groups, debug);
     }
 
     return { players: [...players], groups: [...groups] };

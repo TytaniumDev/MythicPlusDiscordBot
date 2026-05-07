@@ -7,6 +7,7 @@ import { PlayerCard } from '../components/PlayerCard';
 import { EditPlayerModal } from '../components/EditPlayerModal';
 import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers, formatRoleName, getRoleTags, isPlayerReady } from '../lib/roles';
@@ -149,6 +150,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           onTitleClick={() => onNavigate('home')}
           className="app-header"
           subtitleId="player-count"
+          avatar={<HeaderProfileSlot />}
         />
         <main className="content-area">
           <section id="view-lobby">
@@ -180,6 +182,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
             {readyText}
           </span>
         }
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-lobby">

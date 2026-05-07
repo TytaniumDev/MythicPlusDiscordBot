@@ -17,7 +17,7 @@ export function statusToView(status: string): ViewName {
 
 export function routeToView(hash: string): { view: ViewName; guildId: string | null } {
   if (!hash || hash === '#/') return { view: 'home', guildId: null };
-  const match = hash.match(/^#\/guild\/([\w-]+)\/(channels|identity|setup|lobby|wheels|results)$/);
+  const match = hash.match(/^#\/guild\/([\w-]+)\/(channels|identity|setup|lobby|wheels|results|connections)$/);
   if (match) return { view: match[2] as ViewName, guildId: match[1] };
   return { view: 'home', guildId: null };
 }

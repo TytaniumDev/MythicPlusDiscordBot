@@ -2,6 +2,7 @@ import { useAppStore } from '../store/store';
 import { useRecentGuilds } from '../hooks/useRecentGuilds';
 import { GuildCard } from '../components/GuildCard';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA } from '../components/ui';
 import { mockGuildData } from '../lib/mockData';
 
@@ -36,6 +37,7 @@ export function HomeView({ onNavigate }: HomeViewProps) {
       <HeaderBar
         title="Recent Guilds"
         className="app-header"
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-home">

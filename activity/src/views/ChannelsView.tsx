@@ -4,6 +4,7 @@ import { useSessionService } from '../hooks/useSession';
 import { reportError } from '../lib/sentry';
 import { ChannelCard } from '../components/ChannelCard';
 import { HeaderBar } from '../components/HeaderBar';
+import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { SecondaryButton } from '../components/ui';
 
 const RefreshIcon = () => (
@@ -72,6 +73,7 @@ export function ChannelsView({ onNavigate }: ChannelsViewProps) {
         onBack={() => onNavigate('home')}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
+        avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-channels">

@@ -3,6 +3,7 @@ import { useAppStore } from './store/store';
 import { useGuildSubscription, useChannelSubscription } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
+import { firestoreService } from './services/firestoreService';
 import { statusToView, routeToView, viewToRoute } from './lib/routing';
 import type { ViewName } from './store/types';
 import { isPlayerReady } from './lib/roles';
@@ -14,6 +15,7 @@ import { SetupView } from './views/SetupView';
 import { LobbyView } from './views/LobbyView';
 import { WheelsView } from './views/WheelsView';
 import { ResultsView } from './views/ResultsView';
+import { ConnectionsView } from './views/ConnectionsView';
 
 /**
  * Gate lobby navigation behind identity + setup.
@@ -69,6 +71,14 @@ export function App() {
   // Subscribe to guild and channel Firestore docs
   useGuildSubscription();
   useChannelSubscription();
+
+  // Subscribe to global season config for affinity tracking. Independent of
+  // guild/channel — boots once with the app and stays current across sessions.
+  useEffect(() => {
+    if (isDemoMode) return;
+    const unsub = firestoreService.subscribeToSeasonConfig();
+    return unsub;
+  }, [isDemoMode]);
 
   // Warm browser cache with spotlight portraits while user is in lobby/setup,
   // so the wheel landing and results views render instantly.
@@ -188,6 +198,7 @@ export function App() {
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
       {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
+      {currentView === 'connections' && <ConnectionsView />}
     </Layout>
   );
 }
