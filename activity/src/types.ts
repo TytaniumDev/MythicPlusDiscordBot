@@ -1,4 +1,12 @@
-import type { WoWPlayerDict, WoWGroupDict, SessionStatus, CharacterClass } from '@mythicplus/shared';
+import type {
+  WoWPlayerDict,
+  WoWGroupDict,
+  SessionStatus,
+  CharacterClass,
+  SeasonPairs,
+} from '@mythicplus/shared';
+
+export type { SeasonPairs };
 
 export interface WheelEntry {
   name: string;
@@ -29,6 +37,7 @@ export interface GuildData {
     // through parseExistingRounds() in firestoreService.ts to normalize.
     rounds: unknown[];
   };
+  seasonPairs?: SeasonPairs;
   refreshRequest?: unknown;
   createdAt: unknown;
   lastActive: unknown;
@@ -64,7 +73,3 @@ export interface SeasonConfig {
   expansionId: number;
 }
 
-export interface SeasonPairs {
-  seasonSlug: string;
-  counts: Record<string, number>;
-}
