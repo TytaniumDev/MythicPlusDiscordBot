@@ -22,6 +22,13 @@ export {
   pairKey,
 } from './parallelGroupCreator.js';
 
+export {
+  bumpPairCounts,
+  topAffinityFor,
+  shortestPath,
+  type SeasonPairs,
+} from './seasonPairs.js';
+
 export { generateInviteCommand } from './inviteCommand.js';
 
 export { getUtilitiesForClass, getRoleForSpec } from './classData.js';
