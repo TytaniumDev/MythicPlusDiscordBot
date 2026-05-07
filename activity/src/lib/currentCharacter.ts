@@ -1,6 +1,11 @@
 import type { CharacterClass } from '@mythicplus/shared';
 import { toCharacterClass } from '@mythicplus/shared';
 
+// Re-exported for backward compatibility with existing activity callers that
+// import these from `lib/currentCharacter`. Canonical implementations live in
+// `@mythicplus/shared` (see packages/shared/src/realmSlug.ts).
+export { realmToSlug, parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
+
 export const CHARACTER_KEY = 'wheelson-character';
 export const DISCORD_ID_KEY = 'wheelson-discord-id';
 const LEGACY_PREFIX = 'wheelson-player-';
@@ -59,34 +64,6 @@ export function loadStoredDiscordId(): string | null {
 
 export function saveStoredDiscordId(discordId: string): void {
   localStorage.setItem(DISCORD_ID_KEY, discordId);
-}
-
-/**
- * Convert a realm display name to its slug form (lowercase, dash-separated,
- * no apostrophes). E.g. `"Kel'Thuzad"` → `"kelthuzad"`, `"Area 52"` → `"area-52"`.
- */
-export function realmToSlug(realm: string): string {
-  return realm
-    .trim()
-    .toLowerCase()
-    .replace(/'/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
-/**
- * Parse a "Name-Realm" combined input into the character name and realm slug.
- * Returns null when input has no dash, or either side is empty after trim.
- */
-export function parseInGameName(input: string | undefined | null): { name: string; realmSlug: string } | null {
-  if (!input) return null;
-  const trimmed = input.trim();
-  const dashIdx = trimmed.indexOf('-');
-  if (dashIdx === -1) return null;
-  const name = trimmed.slice(0, dashIdx).trim();
-  const realm = trimmed.slice(dashIdx + 1).trim();
-  if (!name || !realm) return null;
-  return { name, realmSlug: realmToSlug(realm) };
 }
 
 /**

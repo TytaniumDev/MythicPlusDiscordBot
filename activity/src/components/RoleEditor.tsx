@@ -14,7 +14,8 @@ import {
   type RoleButtonDef,
 } from '../lib/roles';
 import { reportError } from '../lib/sentry';
-import { saveStoredDiscordId, type StoredCharacter, parseInGameName } from '../lib/currentCharacter';
+import { saveStoredDiscordId, type StoredCharacter } from '../lib/currentCharacter';
+import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 
 interface RoleEditorProps {
   player: WoWPlayer;
@@ -30,7 +31,6 @@ interface RoleEditorProps {
 }
 
 const LOOKUP_DEBOUNCE_MS = 800;
-const DEFAULT_REGION = 'us';
 
 export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit }: RoleEditorProps) {
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];

@@ -53,6 +53,8 @@ export { CHARACTER_CLASSES, toCharacterClass, toRole, toUtility } from './types.
 
 export { todayPST } from './dateHelpers.js';
 
+export { realmToSlug, parseInGameName, DEFAULT_REGION } from './realmSlug.js';
+
 export {
   encodeGroupHistoryRounds,
   decodeGroupHistoryRounds,
