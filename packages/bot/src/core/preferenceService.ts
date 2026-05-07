@@ -49,6 +49,44 @@ export class PreferenceService implements IPreferenceService {
     return this.firebase.isAvailable();
   }
 
+  /**
+   * Hydrates all five preference caches (`_cache`, `_nameToId`,
+   * `_inGameNameCache`, `_mediaUrlCache`, `_characterClassCache`) from a
+   * Firestore preferences document.
+   *
+   * @param deleteEmpty When true, empty optional fields (inGameName, mediaUrl,
+   *   characterClass) cause the corresponding cache entry to be deleted —
+   *   used by `refreshPreference` to wipe stale values. When false, empty
+   *   fields are skipped — used by `loadCache` and `getPreference` where
+   *   there's nothing stale to remove.
+   * @returns The parsed roles array (used by `getPreference`).
+   */
+  private _hydrateCacheFromPrefData(
+    discordId: string,
+    data: Record<string, unknown>,
+    deleteEmpty: boolean,
+  ): string[] {
+    const roles = (data.roles as string[]) ?? [];
+    const name = (data.wowName as string) ?? '';
+    const inGameName = (data.inGameName as string) ?? '';
+    const mediaUrl = (data.mediaUrl as string) ?? '';
+    const characterClass = toCharacterClass(data.characterClass);
+
+    this._cache[discordId] = roles;
+    if (name) this._nameToId[name] = discordId;
+
+    if (inGameName) this._inGameNameCache[discordId] = inGameName;
+    else if (deleteEmpty) Reflect.deleteProperty(this._inGameNameCache, discordId);
+
+    if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
+    else if (deleteEmpty) Reflect.deleteProperty(this._mediaUrlCache, discordId);
+
+    if (characterClass) this._characterClassCache[discordId] = characterClass;
+    else if (deleteEmpty) Reflect.deleteProperty(this._characterClassCache, discordId);
+
+    return roles;
+  }
+
   // Async Methods (Firestore + fallback)
 
   async loadCache(): Promise<void> {
@@ -60,16 +98,7 @@ export class PreferenceService implements IPreferenceService {
     try {
       const docs = await this._fetchAllPreferences();
       for (const [discordId, data] of Object.entries(docs)) {
-        const roles = (data.roles as string[]) ?? [];
-        const name = (data.wowName as string) ?? '';
-        const inGameName = (data.inGameName as string) ?? '';
-        const mediaUrl = (data.mediaUrl as string) ?? '';
-        const characterClass = toCharacterClass(data.characterClass);
-        this._cache[discordId] = roles;
-        if (name) this._nameToId[name] = discordId;
-        if (inGameName) this._inGameNameCache[discordId] = inGameName;
-        if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
-        if (characterClass) this._characterClassCache[discordId] = characterClass;
+        this._hydrateCacheFromPrefData(discordId, data, false);
       }
       logger.info(`Loaded ${Object.keys(docs).length} preferences from Firestore`);
     } catch (err) {
@@ -112,17 +141,7 @@ export class PreferenceService implements IPreferenceService {
       try {
         const data = await this._readFirestorePref(discordId);
         if (data !== null) {
-          const roles = (data.roles as string[]) ?? [];
-          const name = (data.wowName as string) ?? '';
-          const inGameName = (data.inGameName as string) ?? '';
-          const mediaUrl = (data.mediaUrl as string) ?? '';
-          const characterClass = toCharacterClass(data.characterClass);
-          this._cache[discordId] = roles;
-          if (name) this._nameToId[name] = discordId;
-          if (inGameName) this._inGameNameCache[discordId] = inGameName;
-          if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
-          if (characterClass) this._characterClassCache[discordId] = characterClass;
-          return roles;
+          return this._hydrateCacheFromPrefData(discordId, data, false);
         }
       } catch (err) {
         reportError(err, {
@@ -201,20 +220,10 @@ export class PreferenceService implements IPreferenceService {
     try {
       const data = await this._readFirestorePref(discordId);
       if (data !== null) {
-        const roles = (data.roles as string[]) ?? [];
-        const name = (data.wowName as string) ?? '';
-        const inGameName = (data.inGameName as string) ?? '';
-        const mediaUrl = (data.mediaUrl as string) ?? '';
-        const characterClass = toCharacterClass(data.characterClass);
-        this._cache[discordId] = roles;
+        // Wipe any prior name->id binding before re-hydrating so a renamed
+        // character no longer resolves under its old wowName.
         this._clearNameMapping(discordId);
-        if (name) this._nameToId[name] = discordId;
-        if (inGameName) this._inGameNameCache[discordId] = inGameName;
-        else Reflect.deleteProperty(this._inGameNameCache, discordId);
-        if (mediaUrl) this._mediaUrlCache[discordId] = mediaUrl;
-        else Reflect.deleteProperty(this._mediaUrlCache, discordId);
-        if (characterClass) this._characterClassCache[discordId] = characterClass;
-        else Reflect.deleteProperty(this._characterClassCache, discordId);
+        this._hydrateCacheFromPrefData(discordId, data, true);
       } else {
         Reflect.deleteProperty(this._cache, discordId);
         Reflect.deleteProperty(this._inGameNameCache, discordId);
