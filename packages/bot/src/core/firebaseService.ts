@@ -68,8 +68,8 @@ export interface IFirebaseService {
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
   deleteGuildDoc(guildId: string): Promise<void>;
-  getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null>;
-  saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void>;
+  getGroupHistory(guildId: string): Promise<{ date: string; rounds: WoWGroupDict[][] } | null>;
+  saveGroupHistory(guildId: string, history: { date: string; rounds: WoWGroupDict[][] }): Promise<void>;
   getSeasonConfig(): Promise<{ slug: string; blizzardSeasonId: number; expansionId: number } | null>;
   getSeasonPairs(guildId: string): Promise<{ seasonSlug: string; counts: Record<string, number> } | null>;
   saveSeasonPairs(guildId: string, pairs: { seasonSlug: string; counts: Record<string, number> }): Promise<void>;
@@ -350,7 +350,7 @@ export class FirebaseService implements IFirebaseService {
     return { unsubscribe: unsubscribe as () => void };
   }
 
-  async getGroupHistory(guildId: string): Promise<{ date: string; rounds: Record<string, unknown>[][] } | null> {
+  async getGroupHistory(guildId: string): Promise<{ date: string; rounds: WoWGroupDict[][] } | null> {
     if (!this.db) return null;
     const docRef = this.db.collection('guilds').doc(guildId);
     const doc = await docRef.get();
@@ -359,13 +359,13 @@ export class FirebaseService implements IFirebaseService {
     const raw = data?.groupHistory as { date: string; rounds: unknown[] } | undefined;
     if (!raw) return null;
     const rounds = decodeGroupHistoryRounds(raw.rounds ?? []);
-    return { date: raw.date, rounds: rounds as Record<string, unknown>[][] };
+    return { date: raw.date, rounds };
   }
 
-  async saveGroupHistory(guildId: string, history: { date: string; rounds: Record<string, unknown>[][] }): Promise<void> {
+  async saveGroupHistory(guildId: string, history: { date: string; rounds: WoWGroupDict[][] }): Promise<void> {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
-    const wireRounds = encodeGroupHistoryRounds(history.rounds as WoWGroupDict[][]);
+    const wireRounds = encodeGroupHistoryRounds(history.rounds);
     await docRef.set(
       { groupHistory: { date: history.date, rounds: wireRounds } },
       { merge: true },

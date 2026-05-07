@@ -5,6 +5,7 @@ import {
   createMythicPlusGroups,
   setGroupHistory,
   todayPST,
+  type WoWGroupDict,
 } from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
 import { getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
@@ -59,7 +60,7 @@ export class GroupService {
   }
 
   /** Loaded history rounds for use in _saveGroupHistory. */
-  private loadedRounds: Map<string, Record<string, unknown>[][]> = new Map();
+  private loadedRounds: Map<string, WoWGroupDict[][]> = new Map();
 
   private async _loadGroupHistory(
     firebase: FirebaseService,
@@ -95,7 +96,7 @@ export class GroupService {
 
     try {
       const existingRounds = this.loadedRounds.get(guildId) ?? [];
-      const newRound = groups.map((g) => g.toDict() as Record<string, unknown>);
+      const newRound = groups.map((g) => g.toDict());
       const today = todayPST();
       await firebase.saveGroupHistory(guildId, {
         date: today,
