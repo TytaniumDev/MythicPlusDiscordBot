@@ -543,7 +543,9 @@ async function main() {
           .filter((ch) => ch.isVoiceBased())
           .map((ch) => {
             const vc = ch as import('discord.js').VoiceChannel;
-            const count = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot).length;
+            // ⚡ Bolt Optimization: Using .reduce() instead of map().filter().length
+            // prevents intermediate array allocations and unnecessary calls to adaptMember
+            const count = vc.members.reduce((acc, m) => acc + (m.user.bot ? 0 : 1), 0);
             return { id: ch.id, name: ch.name, userCount: count };
           })
           .sort((a, b) => {
@@ -604,7 +606,9 @@ async function main() {
         }
 
         const vc = voiceChannel as import('discord.js').VoiceChannel;
-        const members = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot);
+        // ⚡ Bolt Optimization: filtering out bots before the mapping step
+        // significantly reduces object allocations
+        const members = vc.members.filter((m) => !m.user.bot).map((m) => adaptMember(m));
 
         // Refresh preference cache for these members so roles are up-to-date
         const prefSvc = getPreferenceService();

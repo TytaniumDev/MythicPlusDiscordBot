@@ -32,3 +32,6 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## 2026-05-07 - [Optimize Discord.js Collection Filtering]
+**Learning:** When processing Discord member collections, calling `filter((m) => !m.user.bot)` before `.map((m) => adaptMember(m))` significantly reduces unnecessary object allocations by avoiding transformation logic on items that will ultimately be discarded.
+**Action:** Always filter collections *before* mapping when the mapping function performs non-trivial work or object creation, particularly in high-throughput handlers like voice state updates or channel refreshes.
