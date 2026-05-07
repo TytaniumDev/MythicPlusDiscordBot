@@ -9,28 +9,38 @@ interface ProfileAvatarProps {
 }
 
 export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
+  const currentCharacter = useAppStore((s) => s.currentCharacter);
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const currentPlayerName = useAppStore((s) => s.currentPlayerName);
   const channelData = useAppStore((s) => s.channelData);
 
-  const player = currentPlayerId && channelData
+  // Prefer the per-browser local character (works on every view, even
+  // outside a voice channel). Fall back to channelData lookup for
+  // returning users who haven't yet hydrated their local character.
+  const channelPlayer = currentPlayerId && channelData
     ? channelData.players.find((p) => p.discordId === currentPlayerId)
     : null;
 
-  const avatarUrl = toAvatarUrl(player?.mediaUrl ?? null);
-  const proxied = remapImageUrl(avatarUrl ?? undefined);
-  const ringColor = getClassColor(player?.characterClass) ?? '#888';
-  const initial = (currentPlayerName ?? '?').charAt(0).toUpperCase();
+  const mediaUrl = currentCharacter?.mediaUrl ?? channelPlayer?.mediaUrl ?? null;
+  const characterClass = currentCharacter?.characterClass ?? channelPlayer?.characterClass ?? null;
+  const displayName = currentCharacter?.inGameName || currentPlayerName || channelPlayer?.name || null;
 
-  const disabled = !currentPlayerId;
+  const proxied = remapImageUrl(toAvatarUrl(mediaUrl) ?? undefined);
+  const ringColor = getClassColor(characterClass) ?? '#888';
+  const initial = (displayName ?? '?').charAt(0).toUpperCase();
+
+  // Always actionable — even with no character set, the slot opens
+  // ProfileModal so users can set up.
+  const ariaLabel = displayName
+    ? `Profile of ${displayName}`
+    : 'Set up your character';
 
   return (
     <button
       type="button"
-      className="profile-avatar"
+      className={`profile-avatar${!displayName ? ' profile-avatar--placeholder' : ''}`}
       onClick={onClick}
-      disabled={disabled}
-      aria-label={disabled ? 'Profile (sign in to view)' : `Profile of ${currentPlayerName}`}
+      aria-label={ariaLabel}
       style={{ '--avatar-ring': ringColor } as CSSProperties}
     >
       {proxied ? (
