@@ -15,6 +15,7 @@ import { SetupView } from './views/SetupView';
 import { LobbyView } from './views/LobbyView';
 import { WheelsView } from './views/WheelsView';
 import { ResultsView } from './views/ResultsView';
+import { ConnectionsView } from './views/ConnectionsView';
 
 /**
  * Gate lobby navigation behind identity + setup.
@@ -197,6 +198,7 @@ export function App() {
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
       {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
+      {currentView === 'connections' && <ConnectionsView />}
     </Layout>
   );
 }
