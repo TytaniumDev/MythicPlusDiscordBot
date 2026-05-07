@@ -1068,7 +1068,11 @@ async function main() {
 
     if (customId === 'role:edit') {
       // Start role selection for the user who clicked
-      const member = interaction.member as import('discord.js').GuildMember;
+      const member = interaction.member as import('discord.js').GuildMember | null;
+      if (!member) {
+        await interaction.reply({ content: '❌ This must be used in a server.', ephemeral: true });
+        return;
+      }
       const discordId = interaction.user.id;
       const playerName = getWowName(adaptMember(member));
       const prefix = `role:${discordId}`;
