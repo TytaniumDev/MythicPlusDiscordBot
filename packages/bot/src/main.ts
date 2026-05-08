@@ -186,6 +186,56 @@ async function notifyReporterOfIssue(
 // out-of-band (cloud function / manual updates), so we can't trust the shape
 // blindly. Returns null on any malformed entry so the caller can fall back to
 // STATIC_AFFIXES rather than crash or render garbage.
+
+/**
+ * Handles the success response after a GitHub issue has been successfully created.
+ * It notifies the reporter (if possible via DM) and sends a confirmation message
+ * to the original interaction context.
+ *
+ * @param user - The Discord user who reported the issue.
+ * @param sendOrEdit - A bound async callback used to send or edit the reply.
+ * @param issue - The GitHub issue data returned after creation.
+ * @param successPrefix - The action that was performed (e.g. 'Bug reported').
+ */
+async function sendIssueSuccess(
+  user: import('discord.js').User,
+  sendOrEdit: (msg: string) => Promise<unknown>,
+  issue: GitHubIssueResponse,
+  successPrefix: string
+) {
+  const dmSent = await notifyReporterOfIssue(user, issue);
+  const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+  await sendOrEdit(`✅ ${successPrefix}: ${issue.html_url}${dmHint}`);
+}
+
+/**
+ * Handles the error response when a GitHub issue fails to be created.
+ * It reports the error to Sentry with contextual tags and replies to the user
+ * with an error message.
+ *
+ * @param e - The caught error object.
+ * @param sendOrEdit - A bound async callback used to send or edit the reply.
+ * @param kind - The type of issue being submitted (e.g., 'bug', 'feature').
+ * @param source - The interaction source ('quick' for command, 'modal' for modal submit).
+ */
+async function sendIssueError(
+  e: unknown,
+  sendOrEdit: (msg: string) => Promise<unknown>,
+  kind: string,
+  source: 'quick' | 'modal'
+) {
+  reportError(e, {
+    tags: {
+      handler: 'submitIssue',
+      kind,
+      source,
+      errorType: e instanceof GitHubError ? 'github' : 'unknown',
+    },
+  });
+  const msg = e instanceof Error ? e.message : String(e);
+  await sendOrEdit(`❌ Failed to create issue: ${msg}`);
+}
+
 function parseAffixDisplays(raw: unknown): AffixDisplay[] | null {
   if (!Array.isArray(raw)) return null;
   const out: AffixDisplay[] = [];
@@ -814,20 +864,9 @@ async function main() {
             players: lastResults.players,
             groups: lastResults.groups,
           });
-          const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-          const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-          await sender.send(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
+          await sendIssueSuccess(interaction.user, (msg) => sender.send(msg), issue, 'Bad group reported');
         } catch (e) {
-          reportError(e, {
-            tags: {
-              handler: 'submitIssue',
-              kind: 'badgroup',
-              source: 'quick',
-              errorType: e instanceof GitHubError ? 'github' : 'unknown',
-            },
-          });
-          const msg = e instanceof Error ? e.message : String(e);
-          await sender.send(`❌ Failed to create issue: ${msg}`);
+          await sendIssueError(e, (msg) => sender.send(msg), 'badgroup', 'quick');
         }
         break;
       }
@@ -853,20 +892,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-            await sender.send(`✅ Bug reported: ${issue.html_url}${dmHint}`);
+            await sendIssueSuccess(interaction.user, (msg) => sender.send(msg), issue, 'Bug reported');
           } catch (e) {
-            reportError(e, {
-              tags: {
-                handler: 'submitIssue',
-                kind: 'bug',
-                source: 'quick',
-                errorType: e instanceof GitHubError ? 'github' : 'unknown',
-              },
-            });
-            const msg = e instanceof Error ? e.message : String(e);
-            await sender.send(`❌ Failed to create issue: ${msg}`);
+            await sendIssueError(e, (msg) => sender.send(msg), 'bug', 'quick');
           }
           break;
         }
@@ -932,20 +960,9 @@ async function main() {
               reporterName,
               reporterId: interaction.user.id,
             });
-            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-            await sender.send(`✅ Feature request created: ${issue.html_url}${dmHint}`);
+            await sendIssueSuccess(interaction.user, (msg) => sender.send(msg), issue, 'Feature request created');
           } catch (e) {
-            reportError(e, {
-              tags: {
-                handler: 'submitIssue',
-                kind: 'feature',
-                source: 'quick',
-                errorType: e instanceof GitHubError ? 'github' : 'unknown',
-              },
-            });
-            const msg = e instanceof Error ? e.message : String(e);
-            await sender.send(`❌ Failed to create issue: ${msg}`);
+            await sendIssueError(e, (msg) => sender.send(msg), 'feature', 'quick');
           }
           break;
         }
@@ -1188,20 +1205,9 @@ async function main() {
           reporterName,
           reporterId,
         });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
+        await sendIssueSuccess(interaction.user, (msg) => interaction.editReply(msg), issue, 'Issue created');
       } catch (e) {
-        reportError(e, {
-          tags: {
-            handler: 'submitIssue',
-            kind: customId === 'bug_modal' ? 'bug' : 'feature',
-            source: 'modal',
-            errorType: e instanceof GitHubError ? 'github' : 'unknown',
-          },
-        });
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+        await sendIssueError(e, (msg) => interaction.editReply(msg), customId === 'bug_modal' ? 'bug' : 'feature', 'modal');
       }
       return;
     }
@@ -1227,20 +1233,9 @@ async function main() {
           players: lastResults.players,
           groups: lastResults.groups,
         });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
+        await sendIssueSuccess(interaction.user, (msg) => interaction.editReply(msg), issue, 'Bad group reported');
       } catch (e) {
-        reportError(e, {
-          tags: {
-            handler: 'submitIssue',
-            kind: 'badgroup',
-            source: 'modal',
-            errorType: e instanceof GitHubError ? 'github' : 'unknown',
-          },
-        });
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+        await sendIssueError(e, (msg) => interaction.editReply(msg), 'badgroup', 'modal');
       }
       return;
     }

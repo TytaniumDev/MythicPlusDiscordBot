@@ -13,3 +13,9 @@
 * **Pattern:** Extract repeated `embedMessage.edit()` and typing indicator loops into a helper function (e.g. `_animate_update`).
 * **Why:** The sequential reveal of complex Discord embeds clutters the main logic loop.
 * **Rule:** When multiple sequential embeds updates are tied to typing animations, move the boilerplate into a standalone helper method.
+
+### Callback Context Preservation
+* **Date:** 2024-10-24
+* **Pattern:** Always wrap discord.js object methods in arrow functions or bind them when passing as callbacks (e.g. `(msg) => sender.send(msg)` instead of `sender.send`).
+* **Why:** Passing `sender.send` as an unbound reference loses the `this` context, causing runtime crashes when `discord.js` tries to access internal properties.
+* **Rule:** When creating helper functions that take a send or edit callback, never pass unbound instance methods.
