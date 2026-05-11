@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { adaptGuild, buildVoiceChannelsSnapshot } from '../src/core/discordAdapters.js';
+import type { Guild as DjsGuild, VoiceChannel as DjsVoiceChannel } from 'discord.js';
+import type { VoiceChannel } from '../src/services/sessionService.js';
 
 describe('discordAdapters', () => {
   describe('buildVoiceChannelsSnapshot', () => {
@@ -32,11 +34,17 @@ describe('discordAdapters', () => {
 
   describe('adaptGuild', () => {
     it('returns null if djsGuild is null', () => {
-      expect(adaptGuild(null, vi.fn())).toBeNull();
+      expect(adaptGuild(null, vi.fn() as unknown as (ch: DjsVoiceChannel) => VoiceChannel)).toBeNull();
     });
 
     it('adapts a guild properly', () => {
-      const mockAdaptVoiceChannel = vi.fn((ch) => ({ id: ch.id, name: ch.name }));
+      const mockAdaptVoiceChannel = vi.fn((ch: DjsVoiceChannel) => ({
+        id: ch.id,
+        name: ch.name,
+        members: [],
+        send: vi.fn(),
+      } as unknown as VoiceChannel));
+
       const mockDjsGuild = {
         id: 'g1',
         name: 'My Guild',
@@ -46,17 +54,17 @@ describe('discordAdapters', () => {
             filter: vi.fn().mockReturnValue([
               { id: 'v1', name: 'Voice 1', isVoiceBased: () => true },
             ]),
-            map: vi.fn().mockImplementation(function (this: any, fn) {
-              return this.filter().map(fn);
+            map: vi.fn().mockImplementation(function (this: { filter: () => unknown[] }, fn: (val: unknown) => unknown) {
+              return this.filter().map((x) => fn(x));
             }),
-            get: vi.fn().mockImplementation((id) => {
+            get: vi.fn().mockImplementation((id: string) => {
               if (id === 'v1') return { id: 'v1', name: 'Voice 1', isVoiceBased: () => true };
               if (id === 't1') return { id: 't1', name: 'Text 1', isVoiceBased: () => false };
               return null;
             }),
           },
         },
-      } as any;
+      } as unknown as DjsGuild;
 
       const adapted = adaptGuild(mockDjsGuild, mockAdaptVoiceChannel);
       expect(adapted).not.toBeNull();
@@ -66,10 +74,10 @@ describe('discordAdapters', () => {
 
       // Test lazy getter
       const vc = adapted?.voice_channels;
-      expect(vc).toEqual([{ id: 'v1', name: 'Voice 1' }]);
+      expect(vc).toEqual([{ id: 'v1', name: 'Voice 1', members: [], send: expect.any(Function) }]);
 
       // Test get_channel
-      expect(adapted?.get_channel('v1')).toEqual({ id: 'v1', name: 'Voice 1' });
+      expect(adapted?.get_channel('v1')).toEqual({ id: 'v1', name: 'Voice 1', members: [], send: expect.any(Function) });
       expect(adapted?.get_channel('t1')).toBeNull();
       expect(adapted?.get_channel('unknown')).toBeNull();
     });
@@ -80,8 +88,8 @@ describe('discordAdapters', () => {
         name: 'My Guild',
         iconURL: () => null,
         channels: { cache: { filter: vi.fn(), map: vi.fn(), get: vi.fn() } },
-      } as any;
-      const adapted = adaptGuild(mockDjsGuild, vi.fn());
+      } as unknown as DjsGuild;
+      const adapted = adaptGuild(mockDjsGuild, vi.fn() as unknown as (ch: DjsVoiceChannel) => VoiceChannel);
       expect(adapted?.icon).toBeNull();
     });
   });
