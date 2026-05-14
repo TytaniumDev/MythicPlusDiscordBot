@@ -428,19 +428,35 @@ export function createMythicPlusGroups(
     group: WoWGroup,
     predicate?: (player: WoWPlayer) => boolean,
   ): WoWPlayer | null {
-    const teammates = group.players;
-
     let bestPlayer: WoWPlayer | null = null;
     let bestScore = Infinity;
+
+    const t = group.tank;
+    const h = group.healer;
+    const dps = group.dps;
 
     for (const player of availablePlayers) {
       if (usedPlayers.has(player.name)) continue;
       if (predicate && !predicate(player)) continue;
 
-      // Score = total times this player has been grouped with current teammates
       let score = 0;
-      for (const teammate of teammates) {
-        score += pairCounts.get(pairKey(player.name, teammate.name)) ?? 0;
+      const pname = player.name;
+
+      // ⚡ Bolt Opt: Inline property checks and avoid group.players array allocation
+      if (t) {
+        const tname = t.name;
+        const key = pname < tname ? pname + '|' + tname : tname + '|' + pname;
+        score += pairCounts.get(key) ?? 0;
+      }
+      if (h) {
+        const hname = h.name;
+        const key = pname < hname ? pname + '|' + hname : hname + '|' + pname;
+        score += pairCounts.get(key) ?? 0;
+      }
+      for (let i = 0; i < dps.length; i++) {
+        const dname = dps[i].name;
+        const key = pname < dname ? pname + '|' + dname : dname + '|' + pname;
+        score += pairCounts.get(key) ?? 0;
       }
 
       if (score < bestScore) {

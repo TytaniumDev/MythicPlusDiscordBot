@@ -32,3 +32,7 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+
+## 2026-05-14 - [O(1) Array Allocations in Group Creation loops]
+**Learning:** Calling a getter (`group.players`) that internally constructs and returns a new array inside a heavily executed inner loop (like `grabNextAvailablePlayer`) creates massive garbage collection overhead and slows down execution significantly.
+**Action:** When filtering or accessing combined object properties in hot paths, avoid getters that allocate intermediate arrays. Instead, access the primitive properties directly (e.g. `group.tank`, `group.healer`, `group.dps`) to save allocation time.
