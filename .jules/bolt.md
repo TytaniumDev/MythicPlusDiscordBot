@@ -32,3 +32,6 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## 2026-05-21 - [Map-Filter Order on Large Arrays]
+**Learning:** Found an inefficient pattern where `map` was called before `filter` on large arrays of objects (e.g. `vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot)`). This causes unnecessary object allocations and executes the map callback for elements that will be discarded.
+**Action:** Always filter arrays before mapping to minimize the number of elements passed to the mapping function, thus reducing overhead and object allocations.

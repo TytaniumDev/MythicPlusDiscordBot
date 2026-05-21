@@ -584,7 +584,8 @@ async function main() {
         }
 
         const vc = voiceChannel as import('discord.js').VoiceChannel;
-        const members = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot);
+        // ⚡ Bolt Opt: Filter bots before mapping to avoid unnecessary object allocations
+        const members = vc.members.filter((m) => !m.user.bot).map((m) => adaptMember(m));
 
         // Refresh preference cache for these members so roles are up-to-date
         const prefSvc = getPreferenceService();
