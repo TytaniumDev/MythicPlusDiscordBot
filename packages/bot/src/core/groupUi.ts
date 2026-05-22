@@ -144,24 +144,33 @@ async function announceGroupAnimated(
   };
 
   let embedMessage = await ctx.send({ embed });
-  embedMessage = await animateUpdate(
-    embedMessage, channel, embed, 0, 'Tank', names.tankName, debug,
-  );
-  embedMessage = await animateUpdate(
-    embedMessage, channel, embed, 1, 'Healer', names.healerName, debug,
-  );
-  embedMessage = await animateUpdate(
-    embedMessage, channel, embed, 2, 'DPS',
-    `${names.dps1Name}, ${getMaskedName(names.dps2Name)}, ${getMaskedName(names.dps3Name)}`, debug,
-  );
-  embedMessage = await animateUpdate(
-    embedMessage, channel, embed, 2, 'DPS',
-    `${names.dps1Name}, ${names.dps2Name}, ${getMaskedName(names.dps3Name)}`, debug,
-  );
-  embedMessage = await animateUpdate(
-    embedMessage, channel, embed, 2, 'DPS',
-    `${names.dps1Name}, ${names.dps2Name}, ${names.dps3Name}`, debug,
-  );
+
+  const animationSteps = [
+    { index: 0, name: 'Tank', value: names.tankName },
+    { index: 1, name: 'Healer', value: names.healerName },
+    {
+      index: 2,
+      name: 'DPS',
+      value: `${names.dps1Name}, ${getMaskedName(names.dps2Name)}, ${getMaskedName(names.dps3Name)}`,
+    },
+    {
+      index: 2,
+      name: 'DPS',
+      value: `${names.dps1Name}, ${names.dps2Name}, ${getMaskedName(names.dps3Name)}`,
+    },
+    {
+      index: 2,
+      name: 'DPS',
+      value: `${names.dps1Name}, ${names.dps2Name}, ${names.dps3Name}`,
+    },
+  ];
+
+  for (const step of animationSteps) {
+    embedMessage = await animateUpdate(
+      embedMessage, channel, embed, step.index, step.name, step.value, debug,
+    );
+  }
+
   embedMessage = await embedMessage.edit({
     embed: setFieldAt(embed, 3, 'Battle Res', names.brezPlayer),
   });

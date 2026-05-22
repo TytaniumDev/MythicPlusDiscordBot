@@ -13,3 +13,7 @@
 * **Pattern:** Extract repeated `embedMessage.edit()` and typing indicator loops into a helper function (e.g. `_animate_update`).
 * **Why:** The sequential reveal of complex Discord embeds clutters the main logic loop.
 * **Rule:** When multiple sequential embeds updates are tied to typing animations, move the boilerplate into a standalone helper method.
+## 2026-05-22 - Embed Animation Extraction
+**Pattern:** Extracted repeated `animateUpdate` calls inside `announceGroupAnimated` into a data-driven array and `for...of` loop.
+**Why:** The sequential manual reveal of complex Discord embeds clutters the main logic loop.
+**Rule:** When multiple sequential embed updates are tied to typing animations, move the step configurations into an array and loop through it.
