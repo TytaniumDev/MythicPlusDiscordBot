@@ -52,7 +52,7 @@ export class BattleNetClient {
   async getCharacterProfile(region: string, realmSlug: string, characterName: string) {
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterName.toLowerCase())}?namespace=profile-${encodeURIComponent(region)}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
@@ -61,7 +61,7 @@ export class BattleNetClient {
   async getCharacterMedia(region: string, realmSlug: string, characterName: string) {
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}/character-media?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterName.toLowerCase())}/character-media?namespace=profile-${encodeURIComponent(region)}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
@@ -70,7 +70,7 @@ export class BattleNetClient {
   async getCharacterSpecializations(region: string, realmSlug: string, characterName: string) {
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}/specializations?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterName.toLowerCase())}/specializations?namespace=profile-${encodeURIComponent(region)}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
@@ -79,7 +79,7 @@ export class BattleNetClient {
   async getMythicKeystonePeriodIndex(region: string) {
     const response = await this.apiCall(
       region,
-      `/data/wow/mythic-keystone/period/index?namespace=dynamic-${region}&locale=en_US`,
+      `/data/wow/mythic-keystone/period/index?namespace=dynamic-${encodeURIComponent(region)}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
