@@ -107,10 +107,10 @@ describe('discordAdapters', () => {
         iconURL: vi.fn().mockReturnValue(null),
         channels: {
           cache: {
-            filter: vi.fn().mockImplementation((predicate: any) => {
+            filter: vi.fn().mockImplementation((predicate: (ch: { isVoiceBased: () => boolean, id: string }) => boolean) => {
               const filtered = channelsCacheArray.filter(predicate);
               return {
-                map: vi.fn().mockImplementation((mapper: any) => filtered.map(mapper))
+                map: vi.fn().mockImplementation((mapper: (ch: { isVoiceBased: () => boolean, id: string }) => unknown) => filtered.map(mapper))
               };
             }),
             get: vi.fn(),
