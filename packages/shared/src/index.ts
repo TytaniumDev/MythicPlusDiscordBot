@@ -27,6 +27,7 @@ export {
   topAffinityFor,
   shortestPath,
   parseSeasonPairs,
+  type SeasonPairs,
 } from './seasonPairs.js';
 
 export { generateInviteCommand } from './inviteCommand.js';
