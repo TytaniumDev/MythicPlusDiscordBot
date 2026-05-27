@@ -26,7 +26,7 @@ flowchart TB
     end
 
     subgraph Bot["Discord Bot (TypeScript)"]
-        Cogs[Commands: groups, roles, general, debug]
+        Cogs[Commands: groups, general, debug]
         GroupService[GroupService]
         SessionService[SessionService]
         FirebaseService[FirebaseService]
@@ -217,8 +217,9 @@ The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes
 - **Role**: Securely handles background synchronization, external integrations, and API rate limiting outside the bot's hot path.
 - **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
 - **Key Functions**:
-  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts:70`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document.
-  - `refreshAffixes` (`fetchWeeklyAffixes.ts:83`): Callable counterpart (`onCall`) for on-demand manual refresh of affix data (e.g. after a deploy or if the scheduled run failed).
+  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document. Also triggers season sync.
+  - `refreshAffixes` (`fetchWeeklyAffixes.ts`): Callable counterpart (`onCall`) for on-demand manual refresh of affix data (e.g. after a deploy or if the scheduled run failed).
+  - `fetchCurrentSeasonInfo` (`fetchCurrentSeason.ts`): Helper function called during affix fetching to retrieve the active Mythic+ season from Raider.IO and sync it to the `config/season` Firestore document.
   - `lookupCharacter` (`lookupCharacter.ts:56`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
   - `refreshCharacterMedia` (`refreshCharacterMedia.ts:219`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
   - `refreshCharacterMediaNow` (`refreshCharacterMedia.ts:233`): Callable counterpart (`onCall`) for on-demand manual refresh of character media.

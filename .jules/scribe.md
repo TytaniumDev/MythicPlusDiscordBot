@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2024-05-27] Cloud Functions and Configuration Sync Drift
+**Context:** The `ARCHITECTURE.md` file listed `fetchWeeklyAffixes` as a Cloud Function that populated `config/affixes` but omitted how the `config/season` document was populated.
+**Learning:**
+1. **Implicit Dependencies:** `fetchWeeklyAffixes` relies on `fetchCurrentSeason.ts` to sync the `config/season` document during its execution.
+2. **Explicit Documentation:** When documenting background workers (like Cloud Functions), all resulting state changes in the database (e.g., both `config/affixes` and `config/season`) must be explicitly documented and linked to their executing functions, even if one is a sub-dependency of another.
