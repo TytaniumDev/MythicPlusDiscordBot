@@ -38,3 +38,6 @@
 6.  **Key Features** (Bullet points)
 7.  **Documentation Map** (Links to detailed docs)
 8.  **Contributing** (Link to CONTRIBUTING.md or equivalent)
+## 2026-05-28 - Environment Config Fix
+- Observed users facing environment setup issues. Ensure  instructions are highly specific, writing straight to the target location so the process is genuinely copy-paste ready and prevents initial setup abandonment.
+- Observed users facing environment setup issues. Ensure .env instructions are highly specific, writing straight to the target location so the process is genuinely copy-paste ready and prevents initial setup abandonment.
