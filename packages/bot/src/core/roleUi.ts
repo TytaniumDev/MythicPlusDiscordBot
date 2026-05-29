@@ -69,6 +69,17 @@ export interface ViewData {
 
 // -- Role button callback logic (pure, testable) --
 
+/**
+ * Processes a user's click on a role selection button.
+ * Toggles the requested role and enforces main-spec exclusivity rules
+ * (selecting a new main spec deselects the previous one). Also ensures
+ * that selecting a valid role deselects any active "None" buttons.
+ *
+ * @param {RoleSelectionState} state - The current state of the user's role selection.
+ * @param {ButtonData[]} viewButtons - The buttons currently visible in the user's active view.
+ * @param {string} roleName - The identifier of the role being toggled (e.g., 'tank', 'healer').
+ * @param {boolean} isMainSpec - Whether the selected role belongs to the mutually-exclusive main spec group.
+ */
 export function handleRoleButtonClick(
   state: RoleSelectionState,
   viewButtons: ButtonData[],
@@ -80,26 +91,30 @@ export function handleRoleButtonClick(
   );
   if (!btn) return;
 
+  // Toggle off if already selected
   if (state.selectedRoles.has(roleName)) {
     state.selectedRoles.delete(roleName);
     btn.style = 'secondary';
-  } else {
-    if (isMainSpec) {
-      for (const item of viewButtons) {
-        if (isRoleButton(item) && item.roleName !== roleName) {
-          state.selectedRoles.delete(item.roleName);
-          item.style = 'secondary';
-        }
-      }
-    }
-    state.selectedRoles.add(roleName);
-    btn.style = 'primary';
+    return;
+  }
 
-    // Deselect NoneButton sibling if present
+  // Toggle on: Enforce exclusivity for main specs
+  if (isMainSpec) {
     for (const item of viewButtons) {
-      if (isNoneButton(item)) {
+      if (isRoleButton(item) && item.roleName !== roleName) {
+        state.selectedRoles.delete(item.roleName);
         item.style = 'secondary';
       }
+    }
+  }
+
+  state.selectedRoles.add(roleName);
+  btn.style = 'primary';
+
+  // Deselect NoneButton sibling if present
+  for (const item of viewButtons) {
+    if (isNoneButton(item)) {
+      item.style = 'secondary';
     }
   }
 }
