@@ -50,27 +50,33 @@ export class BattleNetClient {
   }
 
   async getCharacterProfile(region: string, realmSlug: string, characterName: string) {
+    const encodedRealm = encodeURIComponent(realmSlug);
+    const encodedName = encodeURIComponent(characterName.toLowerCase());
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodedRealm}/${encodedName}?namespace=profile-${region}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
   }
 
   async getCharacterMedia(region: string, realmSlug: string, characterName: string) {
+    const encodedRealm = encodeURIComponent(realmSlug);
+    const encodedName = encodeURIComponent(characterName.toLowerCase());
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}/character-media?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodedRealm}/${encodedName}/character-media?namespace=profile-${region}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
   }
 
   async getCharacterSpecializations(region: string, realmSlug: string, characterName: string) {
+    const encodedRealm = encodeURIComponent(realmSlug);
+    const encodedName = encodeURIComponent(characterName.toLowerCase());
     const response = await this.apiCall(
       region,
-      `/profile/wow/character/${realmSlug}/${characterName.toLowerCase()}/specializations?namespace=profile-${region}&locale=en_US`,
+      `/profile/wow/character/${encodedRealm}/${encodedName}/specializations?namespace=profile-${region}&locale=en_US`,
     );
     if (!response.ok) return null;
     return response.json();
