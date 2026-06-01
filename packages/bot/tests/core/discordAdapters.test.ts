@@ -3,8 +3,9 @@ import {
   buildVoiceChannelsSnapshot,
   adaptGuild,
 } from '../../src/core/discordAdapters.js';
-import type { Guild as DjsGuild, VoiceChannel as DjsVoiceChannel, Collection } from 'discord.js';
+import type { Guild as DjsGuild, VoiceChannel as DjsVoiceChannel } from 'discord.js';
 import type { VoiceChannel } from '../../src/services/sessionService.js';
+import type { Mock } from 'vitest';
 
 describe('buildVoiceChannelsSnapshot', () => {
   it('builds a snapshot and excludes bots from userCount', () => {
@@ -66,7 +67,7 @@ describe('adaptGuild', () => {
   it('adapts a guild properly', () => {
     // Mock discord.js guild and channels cache
     const mockIconUrl = 'https://example.com/icon.png';
-    const mockChannelMap = new Map([
+    const mockChannelMap = new Map<string, { id: string; name: string; isVoiceBased: () => boolean }>([
       ['ch1', { id: 'ch1', name: 'V1', isVoiceBased: () => true }],
       ['ch2', { id: 'ch2', name: 'T1', isVoiceBased: () => false }],
       ['ch3', { id: 'ch3', name: 'V2', isVoiceBased: () => true }],
@@ -78,13 +79,13 @@ describe('adaptGuild', () => {
       iconURL: () => mockIconUrl,
       channels: {
         cache: {
-          filter: (predicate: any) => {
+          filter: (predicate: (v: { id: string; name: string; isVoiceBased: () => boolean }) => boolean) => {
             const result = new Map();
             for (const [k, v] of mockChannelMap.entries()) {
               if (predicate(v)) result.set(k, v);
             }
             return {
-              map: (mapFn: any) => Array.from(result.values()).map(mapFn),
+              map: (mapFn: (v: { id: string; name: string; isVoiceBased: () => boolean }) => unknown) => Array.from(result.values()).map(mapFn),
             };
           },
           get: (id: string) => mockChannelMap.get(id),
@@ -92,12 +93,12 @@ describe('adaptGuild', () => {
       },
     } as unknown as DjsGuild;
 
-    const adaptVoiceChannelMock = vi.fn((ch: any) => ({
+    const adaptVoiceChannelMock = vi.fn((ch: { id: string; name: string }) => ({
       id: ch.id,
       name: ch.name + '-adapted',
       members: [],
       send: vi.fn(),
-    })) as unknown as (ch: DjsVoiceChannel) => VoiceChannel;
+    })) as unknown as Mock<(ch: DjsVoiceChannel) => VoiceChannel>;
 
     const guild = adaptGuild(mockDjsGuild, adaptVoiceChannelMock);
 
