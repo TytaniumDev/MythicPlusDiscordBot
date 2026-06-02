@@ -7,6 +7,3 @@ sudo apt-get install -y ffmpeg libnacl-dev
 
 # Install project dependencies
 npm ci
-
-# Run verification to ensure setup
-./scripts/verify-ts.sh

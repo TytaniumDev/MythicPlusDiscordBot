@@ -26,26 +26,20 @@ To maintain consistency and prevent CI failures, you **MUST** run the appropriat
   Runs TypeScript typecheck, Vite build, and Playwright E2E Tests.
 - **Verification:** Do not submit code unless the relevant script passes successfully.
 
-### 2. TypeScript Conventions
-- Use strict TypeScript typing for all function arguments, return values, and interfaces.
-- Avoid `any` whenever possible.
-- Ensure all new features or logic changes are accompanied by Vitest unit tests.
-
-### 3. discord.js Implementation
-- All bot commands, events, and API interactions must be implemented using `async/await` syntax.
-- Extract complex UI generation logic (embeds, etc.) into dedicated UI modules (e.g., `roleUi.ts`) to decouple presentation from business logic.
-
-### 4. CI/CD & Security Standards
+### 2. CI/CD & Security Standards
 Detailed guidelines for writing GitHub Actions workflows and handling secrets are available in:
 - [**docs/CI_STANDARDS.md**](docs/CI_STANDARDS.md)
 
 **Key Rule:** Never log secrets or inline multi-line secrets in workflows.
 
+### 3. Domain-Specific Instructions
+- **Bot logic & Discord UI:** See [**packages/bot/AGENTS.md**](packages/bot/AGENTS.md)
+
 ## Task Execution Workflow
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
 2. **Environment:** Ensure the environment is set up and dependencies are installed.
    ```bash
-   npm ci
+   ./setup.sh
    ```
 3. **Develop:** Implement the requested changes.
 4. **Verify:** Execute the relevant verification script(s).

@@ -13,3 +13,7 @@
 ## 2026-03-10 - [TypeScript Migration & Tooling Synchronization]
 **Discovery:** After migrating from Python to a TypeScript monorepo, `AGENTS.md`, `setup.sh`, and `.github/workflows/ci-shared.yml` retained deprecated `uv`, `ruff`, and python unittest references. `scripts/verify-ts.sh` also lacked linting execution.
 **Action:** Overhauled `AGENTS.md` to reference precise `npm ci` and `./scripts/verify-ts.sh` commands. Refactored `ci-shared.yml` into a unified Verify job that identically runs `scripts/verify-ts.sh`, effectively syncing pipeline execution with the agent instructions. Modified `setup.sh` to use `npm ci` logic.
+
+## 2026-06-02 - [CI Pipeline Parity & AGENTS.md Optimization]
+**Infrastructure:** Refactored CI multi-line inline scripts into `scripts/` directory to ensure testability and compliance with no-inline-scripts rule. Standardized `./setup.sh` usage across all CI workflows in place of raw `npm ci` for parity.
+**Context:** Extracted bot-specific domain instructions from root `AGENTS.md` to `packages/bot/AGENTS.md` to strictly enforce the <150 lines standard and minimize root bloat.
