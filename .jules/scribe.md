@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2026-05-07] Discord Adapter Boundary and Error Reporting
+**Context:** Recent refactors introduced canonical boundaries for Discord.js data structures and error handling that were previously scattered or duplicated.
+**Learning:**
+1. **Discord.js -> Handler Boundary:** `packages/bot/src/core/discordAdapters.ts` is the single source of truth for converting Discord.js objects into internal handler shapes (e.g., `adaptGuild`, `buildVoiceChannelsSnapshot`). Do not hand-roll these structures in other services.
+2. **Standardized Error Reporting:** Both frontend and backend error handling have been standardized to wrap Sentry using a consistent `reportError` helper (`activity/src/lib/sentry.ts` and `packages/bot/src/core/sentry.ts`). New code must use this instead of raw `console.error` or direct `Sentry.captureException` calls.

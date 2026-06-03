@@ -84,6 +84,7 @@ flowchart TB
 - **Core** (in `packages/bot/src/core/`):
   - **firebaseService.ts**: initializes the Firebase Admin SDK and exposes typed CRUD for guild/channel/sidecar documents.
   - **preferenceService.ts**: reads/writes the `preferences` Firestore collection, with a local-JSON fallback when Firebase credentials are not configured.
+  - **discordAdapters.ts**: canonical Discord.js to handler shape boundary. Builds the `Guild` shape and voice channels snapshot.
   - **issues.ts**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
   - **roleUi.ts**: **UI Components**. Contains the Discord MessageActionRow, Buttons, and Modals for the interactive Role Board.
   - **storage.ts**: Local-JSON fallback used by `preferenceService.ts` when `FIREBASE_CREDENTIALS_JSON` is unset.
@@ -217,7 +218,7 @@ The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes
 - **Role**: Securely handles background synchronization, external integrations, and API rate limiting outside the bot's hot path.
 - **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
 - **Key Functions**:
-  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts:70`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document.
+  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts:70`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document. It also fetches the current season via `fetchCurrentSeasonInfo` and persists it to the `config/season` document so clients can react to season changes.
   - `refreshAffixes` (`fetchWeeklyAffixes.ts:83`): Callable counterpart (`onCall`) for on-demand manual refresh of affix data (e.g. after a deploy or if the scheduled run failed).
   - `lookupCharacter` (`lookupCharacter.ts:56`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
   - `refreshCharacterMedia` (`refreshCharacterMedia.ts:219`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
