@@ -38,3 +38,4 @@
 6.  **Key Features** (Bullet points)
 7.  **Documentation Map** (Links to detailed docs)
 8.  **Contributing** (Link to CONTRIBUTING.md or equivalent)
+- **[2026-06-04]** Standardized "Quick Start" to use `./setup.sh` instead of `npm ci`. This ensures critical system dependencies like ffmpeg and libnacl-dev are installed consistently for local development, mirroring the CI environment and preventing "works on my machine" failures.

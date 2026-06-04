@@ -33,7 +33,7 @@ Get up and running in less than 5 minutes.
 2.  **Install Dependencies**
     This project uses `npm` workspaces.
     ```bash
-    npm ci
+    ./setup.sh
     ```
 
 3.  **Configure Environment**
