@@ -32,3 +32,6 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## 2026-06-04 - [Getter Allocation Bottleneck in Group Creation]
+**Learning:** Found an O(N) array allocation overhead within `packages/shared/src/parallelGroupCreator.ts` caused by repeatedly accessing `group.players` in nested loops like `scoreGroups` and `grabNextAvailablePlayer`. The getter was allocating a new array every time it was called, causing a massive GC load and execution slowdown during group computation.
+**Action:** Unrolled object properties (e.g., iterating through `group.tank`, `group.healer`, and `group.dps` directly) or stack-allocated arrays where array sizes were bounded and known, bypassing the getter and avoiding intermediate array allocations in hot paths entirely.

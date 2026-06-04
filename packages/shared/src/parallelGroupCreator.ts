@@ -98,19 +98,33 @@ function scoreGroups(
 ): { maxPerPlayer: number; total: number } {
   let maxPerPlayer = 0;
   let perPlayerSum = 0;
-  for (const g of groups) {
-    const ms = g.players;
-    for (let i = 0; i < ms.length; i++) {
+
+  // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+  // We can just keep an array we reuse, or use direct property access. Since group max size is 5,
+  // we can stack-allocate an array of names.
+  const ms: string[] = new Array(5);
+
+  for (let gIdx = 0; gIdx < groups.length; gIdx++) {
+    const g = groups[gIdx];
+    let count = 0;
+    if (g.tank) ms[count++] = g.tank.name;
+    if (g.healer) ms[count++] = g.healer.name;
+    for (let d = 0; d < g.dps.length; d++) {
+      ms[count++] = g.dps[d].name;
+    }
+
+    for (let i = 0; i < count; i++) {
       let perPlayer = 0;
-      for (let j = 0; j < ms.length; j++) {
+      const nameI = ms[i];
+      for (let j = 0; j < count; j++) {
         if (i === j) continue;
-        perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+        const nameJ = ms[j];
+        perPlayer += pairCounts.get(nameI < nameJ ? nameI + '|' + nameJ : nameJ + '|' + nameI) ?? 0;
       }
       if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
       perPlayerSum += perPlayer;
     }
   }
-  // Each unique pair is summed twice across the players' perPlayer counts.
   return { maxPerPlayer, total: perPlayerSum / 2 };
 }
 
@@ -143,8 +157,16 @@ function trySingleSwap(
     for (let j = i + 1; j < groups.length; j++) {
       const gi = groups[i];
       const gj = groups[j];
-      const playersI = gi.players;
-      const playersJ = gj.players;
+      // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+      const playersI = [];
+      if (gi.tank) playersI.push(gi.tank);
+      if (gi.healer) playersI.push(gi.healer);
+      for (let d = 0; d < gi.dps.length; d++) playersI.push(gi.dps[d]);
+
+      const playersJ = [];
+      if (gj.tank) playersJ.push(gj.tank);
+      if (gj.healer) playersJ.push(gj.healer);
+      for (let d = 0; d < gj.dps.length; d++) playersJ.push(gj.dps[d]);
       for (const pa of playersI) {
         const sa = findSlot(gi, pa);
         if (!sa) continue;
@@ -214,9 +236,21 @@ function tryThreeCycle(
         const gi = groups[i];
         const gj = groups[j];
         const gk = groups[k];
-        const playersI = gi.players;
-        const playersJ = gj.players;
-        const playersK = gk.players;
+        // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+        const playersI = [];
+        if (gi.tank) playersI.push(gi.tank);
+        if (gi.healer) playersI.push(gi.healer);
+        for (let d = 0; d < gi.dps.length; d++) playersI.push(gi.dps[d]);
+
+        const playersJ = [];
+        if (gj.tank) playersJ.push(gj.tank);
+        if (gj.healer) playersJ.push(gj.healer);
+        for (let d = 0; d < gj.dps.length; d++) playersJ.push(gj.dps[d]);
+
+        const playersK = [];
+        if (gk.tank) playersK.push(gk.tank);
+        if (gk.healer) playersK.push(gk.healer);
+        for (let d = 0; d < gk.dps.length; d++) playersK.push(gk.dps[d]);
         for (const pi of playersI) {
           const si = findSlot(gi, pi);
           if (!si) continue;
@@ -343,10 +377,17 @@ export function createMythicPlusGroups(
   const pairCounts = new Map<string, number>();
   for (const round of rounds) {
     for (const group of round) {
-      const members = group.players;
+      // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+      const members = [];
+      if (group.tank) members.push(group.tank.name);
+      if (group.healer) members.push(group.healer.name);
+      for (let d = 0; d < group.dps.length; d++) members.push(group.dps[d].name);
+
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
-          const key = pairKey(members[i].name, members[j].name);
+          const a = members[i];
+          const b = members[j];
+          const key = a < b ? a + '|' + b : b + '|' + a;
           pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
         }
       }
@@ -428,7 +469,10 @@ export function createMythicPlusGroups(
     group: WoWGroup,
     predicate?: (player: WoWPlayer) => boolean,
   ): WoWPlayer | null {
-    const teammates = group.players;
+    // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+    const tTank = group.tank;
+    const tHealer = group.healer;
+    const tDps = group.dps;
 
     let bestPlayer: WoWPlayer | null = null;
     let bestScore = Infinity;
@@ -439,8 +483,18 @@ export function createMythicPlusGroups(
 
       // Score = total times this player has been grouped with current teammates
       let score = 0;
-      for (const teammate of teammates) {
-        score += pairCounts.get(pairKey(player.name, teammate.name)) ?? 0;
+      const pName = player.name;
+      if (tTank) {
+        const tName = tTank.name;
+        score += pairCounts.get(pName < tName ? pName + '|' + tName : tName + '|' + pName) ?? 0;
+      }
+      if (tHealer) {
+        const hName = tHealer.name;
+        score += pairCounts.get(pName < hName ? pName + '|' + hName : hName + '|' + pName) ?? 0;
+      }
+      for (let i = 0; i < tDps.length; i++) {
+        const dName = tDps[i].name;
+        score += pairCounts.get(pName < dName ? pName + '|' + dName : dName + '|' + pName) ?? 0;
       }
 
       if (score < bestScore) {
