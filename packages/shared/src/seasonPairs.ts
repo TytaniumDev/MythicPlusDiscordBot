@@ -1,5 +1,4 @@
 import { WoWGroup } from './models.js';
-import { pairKey } from './parallelGroupCreator.js';
 
 /**
  * Per-guild season-long pair counts. The `seasonSlug` field tags which raider.io
