@@ -36,11 +36,18 @@ export function bumpPairCounts(
 ): Record<string, number> {
   const next: Record<string, number> = { ...current };
   for (const group of round) {
-    const players = group.players;
+    // ⚡ Bolt Opt: Avoid allocating a new array via group.players getter on every call
+    const players = [];
+    if (group.tank) players.push(group.tank.name);
+    if (group.healer) players.push(group.healer.name);
+    for (let d = 0; d < group.dps.length; d++) players.push(group.dps[d].name);
+
     if (players.length < 2) continue;
     for (let i = 0; i < players.length; i++) {
       for (let j = i + 1; j < players.length; j++) {
-        const key = pairKey(players[i].name, players[j].name);
+        const a = players[i];
+        const b = players[j];
+        const key = a < b ? a + '|' + b : b + '|' + a;
         next[key] = (next[key] ?? 0) + 1;
       }
     }
