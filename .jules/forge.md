@@ -13,3 +13,7 @@
 ## 2026-03-10 - [TypeScript Migration & Tooling Synchronization]
 **Discovery:** After migrating from Python to a TypeScript monorepo, `AGENTS.md`, `setup.sh`, and `.github/workflows/ci-shared.yml` retained deprecated `uv`, `ruff`, and python unittest references. `scripts/verify-ts.sh` also lacked linting execution.
 **Action:** Overhauled `AGENTS.md` to reference precise `npm ci` and `./scripts/verify-ts.sh` commands. Refactored `ci-shared.yml` into a unified Verify job that identically runs `scripts/verify-ts.sh`, effectively syncing pipeline execution with the agent instructions. Modified `setup.sh` to use `npm ci` logic.
+
+## 2026-06-09 - [CI/AGENTS.md Calibration]
+**Discovery:** Workflow YAML files (`deploy.yml`, `deploy-activity.yml`) contained extensive inline `run:` blocks which violates the "no inline scripting" standard and prevents environment parity and testing. The setup instruction in `AGENTS.md` and across the workflows was referencing `npm ci` directly instead of leveraging the central `./setup.sh` Kickstart script.
+**Action:** Migrated all multiline inline scripts to standalone executable bash files in `scripts/ci-*.sh`. Replaced all `npm ci` references in GitHub actions and `AGENTS.md` with `./setup.sh`. Variable interpolation inside SSH heredocs (`$IMAGE_NAME`, `$GITHUB_SHA`) was updated to prevent early evaluation by escaping variables where necessary. Fixed typecheck export issue in `packages/shared/src/index.ts`.
