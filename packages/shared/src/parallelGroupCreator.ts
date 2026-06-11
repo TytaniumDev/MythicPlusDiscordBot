@@ -98,18 +98,37 @@ function scoreGroups(
 ): { maxPerPlayer: number; total: number } {
   let maxPerPlayer = 0;
   let perPlayerSum = 0;
-  for (const g of groups) {
-    const ms = g.players;
-    for (let i = 0; i < ms.length; i++) {
+
+  // ⚡ Bolt Opt: Pre-allocate array once outside the loop to avoid GC pressure
+  // A standard mythic+ group has 1 tank, 1 healer, and up to 3 DPS (5 max)
+  const ms: WoWPlayer[] = new Array(5);
+
+  for (let gIdx = 0; gIdx < groups.length; gIdx++) {
+    const g = groups[gIdx];
+
+    let len = 0;
+    if (g.tank) ms[len++] = g.tank;
+    if (g.healer) ms[len++] = g.healer;
+    for (let i = 0; i < g.dps.length; i++) {
+      ms[len++] = g.dps[i];
+    }
+
+    for (let i = 0; i < len; i++) {
       let perPlayer = 0;
-      for (let j = 0; j < ms.length; j++) {
+      const nameI = ms[i].name;
+
+      for (let j = 0; j < len; j++) {
         if (i === j) continue;
-        perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+        const nameJ = ms[j].name;
+
+        perPlayer += pairCounts.get(pairKey(nameI, nameJ)) ?? 0;
       }
+
       if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
       perPlayerSum += perPlayer;
     }
   }
+
   // Each unique pair is summed twice across the players' perPlayer counts.
   return { maxPerPlayer, total: perPlayerSum / 2 };
 }

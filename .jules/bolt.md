@@ -32,3 +32,10 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## $(date +%Y-%m-%d) - Array Allocation Overhead in Hot Loops
+**Learning:** In highly intensive multi-pass algorithms (like the permutations in \`parallelGroupCreator.ts\`), getter methods that dynamically instantiate arrays (e.g. \`group.players\`) introduce massive object allocation overhead and GC pressure. However, attempting to fix this by pre-allocating an array *inside* the outer iteration (e.g., \`const ms = new Array(5)\`) can actually perform worse due to V8 engine overhead.
+**Action:** When avoiding dynamic array getters in hot loops, always extract the fixed-size array allocation completely *outside* the outermost loop (e.g., \`const ms = new Array(5)\`) and manually bound inner loops using an explicit length counter.
+
+## $(date +%Y-%m-%d) - Breaking Encapsulation for Micro-Optimizations
+**Learning:** Replacing an object's equality method (e.g., \`player.equals(other)\`) with a direct property comparison (e.g., \`player.name === other.name\`) does yield measurable performance gains by avoiding function invocation overhead. However, it violates encapsulation principles, creating a brittle codebase if the definition of equality ever expands (e.g., to include server names).
+**Action:** Do not sacrifice class encapsulation and readability for marginal performance gains. Only optimize methods like \`equals()\` internally within the class itself, rather than bypassing them in external caller code.
