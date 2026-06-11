@@ -5,6 +5,8 @@
 - **[2024-05-24]** Standardized "Quick Start" on `npm ci` rather than `npm install` for the TS monorepo. This prevents unintended local `package-lock.json` mutations, reducing onboarding friction and unexpected local state issues.
 - **[2026-04-09]** Added `DISCORD_APPLICATION_ID` to Quick Start instructions. Users were encountering a startup crash when trying to run the bot with just `BOT_TOKEN` due to missing required application ID context, causing immediate abandonment.
 
+- **[2026-06-11]** Updated Quick Start instructions to explicitly direct users to write `.env` values to `packages/bot/.env`. The root `.env` file does not correctly surface variables when using workspace commands like `npm -w @mythicplus/bot run dev`, causing immediate startup crashes and onboarding friction.
+
 ## Showcase's Philosophy
 - The README is not documentation; it is a Landing Page.
 - If it takes more than 2 scrolls to find the "Run" command, it's failed.
