@@ -45,7 +45,7 @@ Detailed guidelines for writing GitHub Actions workflows and handling secrets ar
 1. **Analyze:** Understand the task requirements and review the relevant codebase.
 2. **Environment:** Ensure the environment is set up and dependencies are installed.
    ```bash
-   ./setup.sh
+   npm ci
    ```
 3. **Develop:** Implement the requested changes.
 4. **Verify:** Execute the relevant verification script(s).

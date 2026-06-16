@@ -12,7 +12,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: ./setup.sh --skip-verify
+      - run: npm ci
       - run: ./scripts/verify-ts.sh --lint
 
   Build:
@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: ./setup.sh --skip-verify
+      - run: npm ci
       - run: ./scripts/verify-ts.sh --build
 
   Test:
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: ./setup.sh --skip-verify
+      - run: npm ci
       - run: ./scripts/verify-ts.sh --test
 
   Integration:
@@ -52,5 +52,5 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - run: ./setup.sh --skip-verify
+      - run: npm ci
       - run: ./scripts/emulator-test.sh

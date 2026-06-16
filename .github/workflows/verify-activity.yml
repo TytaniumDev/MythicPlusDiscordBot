@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: ./setup.sh --skip-verify
+        run: npm ci
 
       - name: Verify Activity (typecheck, build, Storybook, Playwright)
         run: ./scripts/verify-activity.sh
