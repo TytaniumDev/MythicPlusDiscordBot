@@ -28,6 +28,7 @@ export {
   shortestPath,
   parseSeasonPairs,
 } from './seasonPairs.js';
+export type { SeasonPairs } from './seasonPairs.js';
 
 export { generateInviteCommand } from './inviteCommand.js';
 
