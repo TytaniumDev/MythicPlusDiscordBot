@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2026-05-07] Drift detected: Shared Architecture Extractions
+**Context:** Recent pull requests extracted significant logic into shared layers (e.g. `packages/bot/src/core/discordAdapters.ts` for handling Discord shapes, and `packages/shared/src/seasonPairs.ts` for validating wire fields), but the central `ARCHITECTURE.md` was not updated to document these new boundaries.
+**Learning:**
+1. **Architectural Quirks:** Any new utility that defines a boundary, especially for type coercion (Discord.js to inner-handlers, or wire-fields to frontend-types), must be mapped in the "Where Key Behaviors Live" table.
+2. **Action Item:** I have added the four new central utilities (`discordAdapters`, `realmSlug`, `dungeonScoreTypes`, and `seasonPairs` validator) to `ARCHITECTURE.md` to prevent "Documentation Drift".
