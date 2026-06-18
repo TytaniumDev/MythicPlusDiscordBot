@@ -83,6 +83,27 @@ function canFillSlot(player: WoWPlayer, slot: SlotInfo['slot']): boolean {
   return player.dpsMain || player.offdps;
 }
 
+// ⚡ Bolt Opt: Pre-allocate arrays for iterating group players without `group.players` array allocation per cycle.
+const _scorePlayers = new Array<WoWPlayer>(5);
+const _giPlayers = new Array<WoWPlayer>(5);
+const _gjPlayers = new Array<WoWPlayer>(5);
+const _gkPlayers = new Array<WoWPlayer>(5);
+const _tempPlayers = new Array<WoWPlayer>(5);
+
+/**
+ * Mutates an existing array up to its length by reference to bypass allocation.
+ * Returns the effective length populated.
+ */
+function populateGroupPlayers(g: WoWGroup, arr: WoWPlayer[]): number {
+  let len = 0;
+  if (g.tank) arr[len++] = g.tank;
+  if (g.healer) arr[len++] = g.healer;
+  for (let i = 0; i < g.dps.length; i++) {
+    arr[len++] = g.dps[i];
+  }
+  return len;
+}
+
 /**
  * Lexicographic score for a group set:
  *   - `maxPerPlayer`: worst-case count of repeat-teammates any single player has
@@ -98,13 +119,14 @@ function scoreGroups(
 ): { maxPerPlayer: number; total: number } {
   let maxPerPlayer = 0;
   let perPlayerSum = 0;
-  for (const g of groups) {
-    const ms = g.players;
-    for (let i = 0; i < ms.length; i++) {
+  for (let gIdx = 0; gIdx < groups.length; gIdx++) {
+    const g = groups[gIdx];
+    const len = populateGroupPlayers(g, _scorePlayers);
+    for (let i = 0; i < len; i++) {
       let perPlayer = 0;
-      for (let j = 0; j < ms.length; j++) {
+      for (let j = 0; j < len; j++) {
         if (i === j) continue;
-        perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+        perPlayer += pairCounts.get(pairKey(_scorePlayers[i].name, _scorePlayers[j].name)) ?? 0;
       }
       if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
       perPlayerSum += perPlayer;
@@ -143,12 +165,16 @@ function trySingleSwap(
     for (let j = i + 1; j < groups.length; j++) {
       const gi = groups[i];
       const gj = groups[j];
-      const playersI = gi.players;
-      const playersJ = gj.players;
-      for (const pa of playersI) {
+      const lenI = populateGroupPlayers(gi, _giPlayers);
+      const lenJ = populateGroupPlayers(gj, _gjPlayers);
+
+      for (let idxA = 0; idxA < lenI; idxA++) {
+        const pa = _giPlayers[idxA];
         const sa = findSlot(gi, pa);
         if (!sa) continue;
-        for (const pb of playersJ) {
+
+        for (let idxB = 0; idxB < lenJ; idxB++) {
+          const pb = _gjPlayers[idxB];
           const sb = findSlot(gj, pb);
           if (!sb) continue;
           if (!canFillSlot(pa, sb.slot) || !canFillSlot(pb, sa.slot)) continue;
@@ -214,17 +240,23 @@ function tryThreeCycle(
         const gi = groups[i];
         const gj = groups[j];
         const gk = groups[k];
-        const playersI = gi.players;
-        const playersJ = gj.players;
-        const playersK = gk.players;
-        for (const pi of playersI) {
+        const lenI = populateGroupPlayers(gi, _giPlayers);
+        const lenJ = populateGroupPlayers(gj, _gjPlayers);
+        const lenK = populateGroupPlayers(gk, _gkPlayers);
+
+        for (let idxI = 0; idxI < lenI; idxI++) {
+          const pi = _giPlayers[idxI];
           const si = findSlot(gi, pi);
           if (!si) continue;
-          for (const pj of playersJ) {
+
+          for (let idxJ = 0; idxJ < lenJ; idxJ++) {
+            const pj = _gjPlayers[idxJ];
             const sj = findSlot(gj, pj);
             if (!sj) continue;
             if (!canFillSlot(pi, sj.slot)) continue;
-            for (const pk of playersK) {
+
+            for (let idxK = 0; idxK < lenK; idxK++) {
+              const pk = _gkPlayers[idxK];
               const sk = findSlot(gk, pk);
               if (!sk) continue;
               if (!canFillSlot(pj, sk.slot) || !canFillSlot(pk, si.slot)) continue;
@@ -343,10 +375,10 @@ export function createMythicPlusGroups(
   const pairCounts = new Map<string, number>();
   for (const round of rounds) {
     for (const group of round) {
-      const members = group.players;
-      for (let i = 0; i < members.length; i++) {
-        for (let j = i + 1; j < members.length; j++) {
-          const key = pairKey(members[i].name, members[j].name);
+      const len = populateGroupPlayers(group, _tempPlayers);
+      for (let i = 0; i < len; i++) {
+        for (let j = i + 1; j < len; j++) {
+          const key = pairKey(_tempPlayers[i].name, _tempPlayers[j].name);
           pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
         }
       }
@@ -428,7 +460,7 @@ export function createMythicPlusGroups(
     group: WoWGroup,
     predicate?: (player: WoWPlayer) => boolean,
   ): WoWPlayer | null {
-    const teammates = group.players;
+    const len = populateGroupPlayers(group, _tempPlayers);
 
     let bestPlayer: WoWPlayer | null = null;
     let bestScore = Infinity;
@@ -439,8 +471,8 @@ export function createMythicPlusGroups(
 
       // Score = total times this player has been grouped with current teammates
       let score = 0;
-      for (const teammate of teammates) {
-        score += pairCounts.get(pairKey(player.name, teammate.name)) ?? 0;
+      for (let i = 0; i < len; i++) {
+        score += pairCounts.get(pairKey(player.name, _tempPlayers[i].name)) ?? 0;
       }
 
       if (score < bestScore) {

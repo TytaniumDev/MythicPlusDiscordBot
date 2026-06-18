@@ -32,3 +32,7 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+
+## 2026-06-18 - [Closure Overhead in Hot Loops]
+**Learning:** In JavaScript/TypeScript hot loops (like simulated annealing in group creation), attempting to eliminate array allocations by introducing higher-order functions (e.g. `iterateGroupMembers(..., callback)`) causes a severe performance regression due to closure allocations and function call overhead.
+**Action:** Always use flat loops and pre-allocated module-level tracking arrays (e.g., `const _tempPlayers = new Array(5)`) mapped via reference, rather than callback iteration when optimizing tight loops in JS.
