@@ -1161,6 +1161,107 @@ async function main() {
     }
   }
 
+  /**
+   * Handles the submission of bug and feature request modals.
+   * Extracts fields, submits the issue, and notifies the reporter.
+   *
+   * @param interaction - The modal submit interaction.
+   * @param reporterName - The resolved display name of the reporter.
+   * @param reporterId - The Discord user ID of the reporter.
+   */
+  async function handleBugFeatureModal(
+    interaction: ModalSubmitInteraction,
+    reporterName: string,
+    reporterId: string,
+  ): Promise<void> {
+    const customId = interaction.customId;
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const title = interaction.fields.getTextInputValue('title');
+      const description = interaction.fields.getTextInputValue('description');
+      const extraInfo = customId === 'bug_modal'
+        ? interaction.fields.getTextInputValue('steps')
+        : interaction.fields.getTextInputValue('impact');
+      const includeLogs = customId === 'bug_modal'
+        ? interaction.fields.getTextInputValue('include_logs').toLowerCase().startsWith('y')
+        : false;
+
+      const issue = await submitGithubIssueModal({
+        issueType: customId === 'bug_modal' ? 'bug' : 'feature',
+        title,
+        description,
+        extraInfo,
+        includeLogs,
+        reporterName,
+        reporterId,
+      });
+      const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+      const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+      await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
+    } catch (e) {
+      reportError(e, {
+        tags: {
+          handler: 'submitIssue',
+          kind: customId === 'bug_modal' ? 'bug' : 'feature',
+          source: 'modal',
+          errorType: e instanceof GitHubError ? 'github' : 'unknown',
+        },
+      });
+      const msg = e instanceof Error ? e.message : String(e);
+      await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+    }
+  }
+
+  /**
+   * Handles the submission of the bad group report modal.
+   * Retrieves the last wheel results for the guild and submits the issue.
+   *
+   * @param interaction - The modal submit interaction.
+   * @param reporterName - The resolved display name of the reporter.
+   * @param reporterId - The Discord user ID of the reporter.
+   */
+  async function handleBadGroupModal(
+    interaction: ModalSubmitInteraction,
+    reporterName: string,
+    reporterId: string,
+  ): Promise<void> {
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const guildId = interaction.guild?.id ?? null;
+      const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
+      if (!lastResults) {
+        await interaction.editReply('❌ No group data found. Run /wheel first.');
+        return;
+      }
+
+      const title = interaction.fields.getTextInputValue('title');
+      const description = interaction.fields.getTextInputValue('description');
+
+      const issue = await reportBadGroup({
+        reporterName,
+        reporterId,
+        title,
+        description,
+        players: lastResults.players,
+        groups: lastResults.groups,
+      });
+      const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+      const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+      await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
+    } catch (e) {
+      reportError(e, {
+        tags: {
+          handler: 'submitIssue',
+          kind: 'badgroup',
+          source: 'modal',
+          errorType: e instanceof GitHubError ? 'github' : 'unknown',
+        },
+      });
+      const msg = e instanceof Error ? e.message : String(e);
+      await interaction.editReply(`❌ Failed to create issue: ${msg}`);
+    }
+  }
+
   // -- Modal submit handler --
   async function handleModalSubmit(interaction: ModalSubmitInteraction) {
     const customId = interaction.customId;
@@ -1168,80 +1269,12 @@ async function main() {
     const reporterId = interaction.user.id;
 
     if (customId === 'bug_modal' || customId === 'feature_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        const title = interaction.fields.getTextInputValue('title');
-        const description = interaction.fields.getTextInputValue('description');
-        const extraInfo = customId === 'bug_modal'
-          ? interaction.fields.getTextInputValue('steps')
-          : interaction.fields.getTextInputValue('impact');
-        const includeLogs = customId === 'bug_modal'
-          ? interaction.fields.getTextInputValue('include_logs').toLowerCase().startsWith('y')
-          : false;
-
-        const issue = await submitGithubIssueModal({
-          issueType: customId === 'bug_modal' ? 'bug' : 'feature',
-          title,
-          description,
-          extraInfo,
-          includeLogs,
-          reporterName,
-          reporterId,
-        });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Issue created: ${issue.html_url}${dmHint}`);
-      } catch (e) {
-        reportError(e, {
-          tags: {
-            handler: 'submitIssue',
-            kind: customId === 'bug_modal' ? 'bug' : 'feature',
-            source: 'modal',
-            errorType: e instanceof GitHubError ? 'github' : 'unknown',
-          },
-        });
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
-      }
+      await handleBugFeatureModal(interaction, reporterName, reporterId);
       return;
     }
 
     if (customId === 'badgroup_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        const guildId = interaction.guild?.id ?? null;
-        const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
-        if (!lastResults) {
-          await interaction.editReply('❌ No group data found. Run /wheel first.');
-          return;
-        }
-
-        const title = interaction.fields.getTextInputValue('title');
-        const description = interaction.fields.getTextInputValue('description');
-
-        const issue = await reportBadGroup({
-          reporterName,
-          reporterId,
-          title,
-          description,
-          players: lastResults.players,
-          groups: lastResults.groups,
-        });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
-      } catch (e) {
-        reportError(e, {
-          tags: {
-            handler: 'submitIssue',
-            kind: 'badgroup',
-            source: 'modal',
-            errorType: e instanceof GitHubError ? 'github' : 'unknown',
-          },
-        });
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
-      }
+      await handleBadGroupModal(interaction, reporterName, reporterId);
       return;
     }
 
