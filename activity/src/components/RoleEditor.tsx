@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useId } from 'react';
 import { WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
@@ -47,6 +47,8 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
   const lookupAbortRef = useRef<AbortController | null>(null);
   const rolesRef = useRef<Set<string>>(new Set());
   const nameRef = useRef<string>('');
+
+  const inGameNameInputId = useId();
 
   const playerId = player.discordId ?? null;
 
@@ -289,10 +291,11 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
   return (
     <>
       <div className="role-editor-section">
-        <div className="role-editor-label">In-Game Name</div>
+        <label htmlFor={inGameNameInputId} className="role-editor-label">In-Game Name</label>
         <div className="role-editor-row">
           <div className="role-editor-name-input">
             <input
+              id={inGameNameInputId}
               type="text"
               className="role-editor-input"
               placeholder="PlayerName-ServerName"
