@@ -46,7 +46,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: ./setup.sh --skip-verify
 
       - name: Build shared + functions
         run: |
