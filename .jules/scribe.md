@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2026-05-07] Standardized Error Handling Pattern
+**Context:** A recent PR refactored error logging across the codebase to use a standardized wrapper (`reportError`) instead of raw `console.error`, `logger.warn`, or direct `Sentry.captureException` calls.
+**Learning:**
+1. **Error Handling Unification:** Both the Activity frontend and the Discord Bot backend now route errors through `reportError` (`activity/src/lib/sentry.ts` and `packages/bot/src/core/sentry.ts` respectively). This ensures tagged Sentry context is captured consistently.
+2. **Drift Prevention:** This requirement has been documented in `CONTRIBUTING.md` under Coding Standards to prevent future developers from introducing un-tagged or silent errors.

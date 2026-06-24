@@ -56,6 +56,7 @@ The project uses Playwright for visual regression testing.
 - **Type Safety**: Use strict TypeScript definitions. Avoid `any` whenever possible.
 - **Shared Code**: Business logic that can be reused (like group creation algorithms or shared models) should be placed in `packages/shared/`.
 - **Formatting**: Adhere to the existing linting and formatting rules enforced by `eslint`.
+- **Error Handling**: Use the standardized `reportError` wrappers (`activity/src/lib/sentry.ts` for the frontend and `packages/bot/src/core/sentry.ts` for the backend) instead of raw `console.error` or `Sentry.captureException()`.
 
 ## Security & CI Standards
 
