@@ -38,3 +38,5 @@
 6.  **Key Features** (Bullet points)
 7.  **Documentation Map** (Links to detailed docs)
 8.  **Contributing** (Link to CONTRIBUTING.md or equivalent)
+- **[2026-06-25]** Discovered friction for new developers during local setup. The "Quick Start" recommended running `npm ci`, which failed to install system dependencies like `ffmpeg` and `libnacl-dev` that are required. Updated `README.md` to instruct users to run `./setup.sh` instead to ensure environment parity with CI pipelines.
+- **[2026-06-25]** Discovered friction when users tried running the bot locally via `npm workspaces`. `dotenv` failed to load the `.env` variables when it was placed in the root directory. Updated `README.md` to mandate creating the `.env` file directly within `packages/bot/`.
