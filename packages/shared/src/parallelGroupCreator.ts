@@ -446,6 +446,7 @@ export function createMythicPlusGroups(
       if (score < bestScore) {
         bestScore = score;
         bestPlayer = player;
+        if (bestScore === 0) break; // ⚡ Bolt Opt: Short-circuit on best possible score
       }
     }
 

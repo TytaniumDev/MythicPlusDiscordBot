@@ -32,3 +32,6 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## 2026-06-25 - [Short-circuiting in Scoring Loops]
+**Learning:** In the parallel group creation algorithm, the `grabNextAvailablePlayer` function exhaustively calculated the score for every available player, even if it had already found a player with a perfect score of 0.
+**Action:** Utilize early loop termination (e.g., `if (bestScore === 0) break;`) to skip unnecessary iterations and save CPU cycles when an absolute optimal condition is met in scoring or search loops.
