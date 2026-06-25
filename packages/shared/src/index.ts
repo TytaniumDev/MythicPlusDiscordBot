@@ -49,6 +49,8 @@ export type {
   WoWGroupDict,
 } from './types.js';
 
+export type { SeasonPairs } from './seasonPairs.js';
+
 export { CHARACTER_CLASSES, toCharacterClass, toRole, toUtility } from './types.js';
 
 export { todayPST } from './dateHelpers.js';
