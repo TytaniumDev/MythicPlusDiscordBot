@@ -69,6 +69,16 @@ export interface ViewData {
 
 // -- Role button callback logic (pure, testable) --
 
+/**
+ * Handles toggling a specific role button in a role selection view.
+ * Mutates the provided state and button views directly.
+ *
+ * @param state - The current role selection state (selected roles set).
+ * @param viewButtons - The buttons for the current active view layer.
+ * @param roleName - The unique ID of the role being toggled.
+ * @param isMainSpec - Whether the view is operating in "Main Spec" mode
+ *                     (where only one selection is allowed at a time).
+ */
 export function handleRoleButtonClick(
   state: RoleSelectionState,
   viewButtons: ButtonData[],
@@ -83,23 +93,25 @@ export function handleRoleButtonClick(
   if (state.selectedRoles.has(roleName)) {
     state.selectedRoles.delete(roleName);
     btn.style = 'secondary';
-  } else {
-    if (isMainSpec) {
-      for (const item of viewButtons) {
-        if (isRoleButton(item) && item.roleName !== roleName) {
-          state.selectedRoles.delete(item.roleName);
-          item.style = 'secondary';
-        }
-      }
-    }
-    state.selectedRoles.add(roleName);
-    btn.style = 'primary';
+    return;
+  }
 
-    // Deselect NoneButton sibling if present
+  if (isMainSpec) {
     for (const item of viewButtons) {
-      if (isNoneButton(item)) {
+      if (isRoleButton(item) && item.roleName !== roleName) {
+        state.selectedRoles.delete(item.roleName);
         item.style = 'secondary';
       }
+    }
+  }
+
+  state.selectedRoles.add(roleName);
+  btn.style = 'primary';
+
+  // Deselect NoneButton sibling if present
+  for (const item of viewButtons) {
+    if (isNoneButton(item)) {
+      item.style = 'secondary';
     }
   }
 }

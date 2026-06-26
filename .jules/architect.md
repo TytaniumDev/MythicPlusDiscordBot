@@ -13,3 +13,9 @@
 * **Pattern:** Extract repeated `embedMessage.edit()` and typing indicator loops into a helper function (e.g. `_animate_update`).
 * **Why:** The sequential reveal of complex Discord embeds clutters the main logic loop.
 * **Rule:** When multiple sequential embeds updates are tied to typing animations, move the boilerplate into a standalone helper method.
+
+### Guard Clauses in roleUi.ts
+* **Date:** 2026-06-26
+* **Pattern:** Use early return guard clauses for toggling state rather than deep nesting (e.g. `if (state.has) { ... return; } else { ... }`).
+* **Why:** Deep nesting inside Discord UI interactions makes code harder to parse.
+* **Rule:** If an `if` condition represents a complete action that finishes the handler's work (like untoggling a role),  early.
