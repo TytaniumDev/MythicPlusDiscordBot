@@ -74,6 +74,12 @@ export const lookupCharacter = onCall(
       throw new HttpsError('invalid-argument', 'name, realm, and region must be strings');
     }
 
+    // Security Enhancement: Add input length limits to prevent DoS via ReDoS on the validation pattern
+    // or passing excessively large strings to Battle.net APIs. WoW names/realms max out well under 50 chars.
+    if (name.length > 50 || realm.length > 50 || region.length > 50) {
+      throw new HttpsError('invalid-argument', 'Input exceeds maximum allowed length');
+    }
+
     // Validate inputs contain only valid WoW name/realm slug characters (letters, digits, hyphens, spaces, apostrophes)
     const validPattern = /^[a-zA-Z0-9\s'-]+$/;
     if (!validPattern.test(name) || !validPattern.test(realm) || !validPattern.test(region)) {

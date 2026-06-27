@@ -18,3 +18,7 @@
 **Vulnerability:** `crypto.timingSafeEqual` throws an error if buffers are different lengths, which exposes the application to timing attacks because the error throwing takes a different amount of time than a successful byte-by-byte comparison.
 **Learning:** Always check buffer lengths before calling `timingSafeEqual`. To ensure constant time regardless of length, compare the expected buffer to itself when lengths don't match.
 **Prevention:** Compare lengths first, and use a dummy `timingSafeEqual(expected, expected)` on mismatch to mitigate timing leaks.
+## 2025-02-14 - [Input Length Limits (DoS prevention)]
+**Vulnerability:** External input APIs (`packages/functions/src/lookupCharacter.ts`) accepted unbounded string sizes which were then fed into regular expressions (`/^[a-zA-Z0-9\s'-]+$/`), exposing the environment to Regex Denial of Service (ReDoS) and unexpectedly large downstream requests to external APIs like Battle.net.
+**Learning:** Checking parameter types isn't enough; lengths must also be strictly bounded to mitigate resource exhaustion or ReDoS attacks.
+**Prevention:** Always add a maximum length constraint (e.g., `< 50`) immediately after type validation before applying regex on external endpoints.
