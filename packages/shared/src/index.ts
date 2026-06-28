@@ -59,3 +59,4 @@ export {
   encodeGroupHistoryRounds,
   decodeGroupHistoryRounds,
 } from './groupHistoryWire.js';
+export type { SeasonPairs } from './seasonPairs.js';
