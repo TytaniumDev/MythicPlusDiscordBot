@@ -303,6 +303,10 @@ sequenceDiagram
 | “Spin” handling | Frontend: `activity/src/services/firestoreService.ts` (`requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups` |
 | Activity UI and wheel | `activity/src/main.tsx`, `activity/src/views/WheelsView.tsx` |
 | Channel doc cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
+| Discord.js ↔ Internal Types adapters | `packages/bot/src/core/discordAdapters.ts` |
+| Season pair parsing logic | `packages/shared/src/seasonPairs.ts` |
+| Realm slug utilities | `packages/shared/src/realmSlug.ts` |
+| Raider.IO / Dungeon Score types | `activity/src/lib/dungeonScoreTypes.ts` |
 
 ---
 
