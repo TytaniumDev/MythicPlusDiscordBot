@@ -98,19 +98,36 @@ function scoreGroups(
 ): { maxPerPlayer: number; total: number } {
   let maxPerPlayer = 0;
   let perPlayerSum = 0;
+
+  // ⚡ Bolt Opt: Pre-allocate an array for the 5 slots to avoid inner loop allocations
+  const scores = new Array(5);
+
   for (const g of groups) {
     const ms = g.players;
-    for (let i = 0; i < ms.length; i++) {
-      let perPlayer = 0;
-      for (let j = 0; j < ms.length; j++) {
-        if (i === j) continue;
-        perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+    const len = ms.length;
+
+    // Reset scores for this group
+    for (let i = 0; i < len; i++) {
+      scores[i] = 0;
+    }
+
+    // ⚡ Bolt Opt: Use an upper-triangular loop to halve the pair iterations
+    for (let i = 0; i < len; i++) {
+      const p1 = ms[i].name;
+      for (let j = i + 1; j < len; j++) {
+        const count = pairCounts.get(pairKey(p1, ms[j].name)) ?? 0;
+        scores[i] += count;
+        scores[j] += count;
+        // The original code summed each unique pair twice across all players
+        perPlayerSum += count * 2;
       }
-      if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
-      perPlayerSum += perPlayer;
+    }
+
+    for (let i = 0; i < len; i++) {
+      if (scores[i] > maxPerPlayer) maxPerPlayer = scores[i];
     }
   }
-  // Each unique pair is summed twice across the players' perPlayer counts.
+
   return { maxPerPlayer, total: perPlayerSum / 2 };
 }
 

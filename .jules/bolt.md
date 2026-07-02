@@ -32,3 +32,7 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+
+## 2026-07-02 - [O(N^2) Iteration vs O(N(N-1)/2) in Pair Counting]
+**Learning:** In highly recursive inner loops, like the pairwise distance scoring in `parallelGroupCreator.ts`, checking all N×N combinations and skipping self-pairs (`if (i === j) continue`) wastes roughly 50% of CPU cycles and memory allocations for pair keys (e.g., `a|b` vs `b|a`).
+**Action:** Always optimize internal matrix operations to an upper-triangular loop (`i = 0; i < len; i++`, `j = i + 1; j < len; j++`) when relationships are commutative/undirected, accumulating the values into both the `i` and `j` indexes simultaneously.
