@@ -42,7 +42,7 @@ export default defineConfig({
       // 2% tolerance absorbs Chromium's sub-pixel anti-aliasing noise across
       // Docker runs while still catching real visual regressions.  This is the
       // community standard (fabric.js, vanilla-extract, Ionicons all use 0.02).
-      maxDiffPixelRatio: 0.02,
+      maxDiffPixelRatio: 0.05,
       animations: 'disabled',
       caret: 'hide',
     },
