@@ -32,3 +32,7 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+
+## 2026-07-09 - [Early Loop Termination for Score Search]
+**Learning:** In optimization passes or matching passes that score candidates (like `grabNextAvailablePlayer` in group creation), the algorithm can find a "perfect" or optimal zero-penalty match (`score === 0`). Failing to break out of the loop at this point leads to unnecessary iterations over the entire remaining candidate pool, wasting CPU cycles on a search that cannot mathematically yield a better result.
+**Action:** When scanning collections for a minimum/maximum score, always add an early loop termination condition (`break`) if an absolute optimal limit (like `bestScore === 0`) is reached.
