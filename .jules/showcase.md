@@ -4,6 +4,7 @@
 - **[2024-05-22]** Initial audit revealed `README.md` was functional but lacked "Curb Appeal". It missed critical link arrays, visual hooks, and a clear documentation map. Refactoring to follow the "Golden Template".
 - **[2024-05-24]** Standardized "Quick Start" on `npm ci` rather than `npm install` for the TS monorepo. This prevents unintended local `package-lock.json` mutations, reducing onboarding friction and unexpected local state issues.
 - **[2026-04-09]** Added `DISCORD_APPLICATION_ID` to Quick Start instructions. Users were encountering a startup crash when trying to run the bot with just `BOT_TOKEN` due to missing required application ID context, causing immediate abandonment.
+- **[2026-07-09]** Updated the README to use `./setup.sh` instead of `npm ci` for installation to avoid missing dependencies like `ffmpeg`, and explicitly direct `.env` creation to `packages/bot/.env` to avoid dotenv loading errors, resolving a common UX onboarding friction.
 
 ## Showcase's Philosophy
 - The README is not documentation; it is a Landing Page.
