@@ -146,6 +146,62 @@ function adaptVoiceChannel(ch: import('discord.js').VoiceChannel): VoiceChannel 
 // Issue tracking service + reporter notification helper
 // ---------------------------------------------------------------------------
 
+
+/**
+ * Helper method to handle inline quick issue submissions for bugs and feature requests.
+ *
+ * Why: Both `/bug` and `/featurerequest` slash commands duplicate the logic
+ * to truncate text, resolve the reporter's name, submit the payload via the
+ * issue tracking service, and handle errors.
+ * What: Consolidates the common Github issue creation logic into a single method
+ * that takes the interaction context, issue text, and the target issue type.
+ *
+ * @param sender The interaction sender abstraction used to defer and reply.
+ * @param interaction The original chat input command interaction.
+ * @param issueType The type of issue being submitted ('bug' | 'feature').
+ * @param quickText The short text provided by the user.
+ */
+async function submitQuickIssue(
+  sender: ReturnType<typeof createInteractionSender>,
+  interaction: ChatInputCommandInteraction,
+  issueType: 'bug' | 'feature',
+  quickText: string,
+): Promise<void> {
+  await sender.defer({ ephemeral: true });
+  try {
+    const maxTitle = 60;
+    const quickTitle = quickText.length > maxTitle
+      ? quickText.slice(0, maxTitle) + '...'
+      : quickText;
+    const reporterName = getReporterName(interaction);
+
+    const issue = await submitGithubIssueModal({
+      issueType,
+      title: quickTitle,
+      description: quickText,
+      extraInfo: '',
+      includeLogs: issueType === 'bug',
+      reporterName,
+      reporterId: interaction.user.id,
+    });
+    const dmSent = await notifyReporterOfIssue(interaction.user, issue);
+    const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
+    const issueTypeDisplay = issueType === 'bug' ? 'Bug reported' : 'Feature request created';
+    await sender.send(`✅ ${issueTypeDisplay}: ${issue.html_url}${dmHint}`);
+  } catch (e) {
+    reportError(e, {
+      tags: {
+        handler: 'submitIssue',
+        kind: issueType,
+        source: 'quick',
+        errorType: e instanceof GitHubError ? 'github' : 'unknown',
+      },
+    });
+    const msg = e instanceof Error ? e.message : String(e);
+    await sender.send(`❌ Failed to create issue: ${msg}`);
+  }
+}
+
 const issueTrackingService = new IssueTrackingService();
 
 async function notifyReporterOfIssue(
@@ -836,38 +892,7 @@ async function main() {
         const quickText = interaction.options.getString('text');
 
         if (quickText) {
-          await sender.defer({ ephemeral: true });
-          try {
-            const maxTitle = 60;
-            const quickTitle = quickText.length > maxTitle
-              ? quickText.slice(0, maxTitle) + '...'
-              : quickText;
-            const reporterName = getReporterName(interaction);
-
-            const issue = await submitGithubIssueModal({
-              issueType: 'bug',
-              title: quickTitle,
-              description: quickText,
-              extraInfo: '',
-              includeLogs: true,
-              reporterName,
-              reporterId: interaction.user.id,
-            });
-            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-            await sender.send(`✅ Bug reported: ${issue.html_url}${dmHint}`);
-          } catch (e) {
-            reportError(e, {
-              tags: {
-                handler: 'submitIssue',
-                kind: 'bug',
-                source: 'quick',
-                errorType: e instanceof GitHubError ? 'github' : 'unknown',
-              },
-            });
-            const msg = e instanceof Error ? e.message : String(e);
-            await sender.send(`❌ Failed to create issue: ${msg}`);
-          }
+          await submitQuickIssue(sender, interaction, 'bug', quickText);
           break;
         }
 
@@ -915,38 +940,7 @@ async function main() {
         const quickFeatureText = interaction.options.getString('text');
 
         if (quickFeatureText) {
-          await sender.defer({ ephemeral: true });
-          try {
-            const maxTitle = 60;
-            const quickTitle = quickFeatureText.length > maxTitle
-              ? quickFeatureText.slice(0, maxTitle) + '...'
-              : quickFeatureText;
-            const reporterName = getReporterName(interaction);
-
-            const issue = await submitGithubIssueModal({
-              issueType: 'feature',
-              title: quickTitle,
-              description: quickFeatureText,
-              extraInfo: '',
-              includeLogs: false,
-              reporterName,
-              reporterId: interaction.user.id,
-            });
-            const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-            const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-            await sender.send(`✅ Feature request created: ${issue.html_url}${dmHint}`);
-          } catch (e) {
-            reportError(e, {
-              tags: {
-                handler: 'submitIssue',
-                kind: 'feature',
-                source: 'quick',
-                errorType: e instanceof GitHubError ? 'github' : 'unknown',
-              },
-            });
-            const msg = e instanceof Error ? e.message : String(e);
-            await sender.send(`❌ Failed to create issue: ${msg}`);
-          }
+          await submitQuickIssue(sender, interaction, 'feature', quickFeatureText);
           break;
         }
 

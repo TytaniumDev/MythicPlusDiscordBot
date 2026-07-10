@@ -13,3 +13,9 @@
 * **Pattern:** Extract repeated `embedMessage.edit()` and typing indicator loops into a helper function (e.g. `_animate_update`).
 * **Why:** The sequential reveal of complex Discord embeds clutters the main logic loop.
 * **Rule:** When multiple sequential embeds updates are tied to typing animations, move the boilerplate into a standalone helper method.
+
+### Command Handler Refactoring
+* **Date:** 2026-07-10
+* **Pattern:** Extract identical inline command handler logic into a shared helper method (e.g., `submitQuickIssue`).
+* **Why:** Monolithic switch statements for Discord interaction routing grow unmanageable when complex logic (like truncating strings, interacting with GitHub APIs, and sending DMs) is duplicated inline.
+* **Rule:** If two or more commands share more than 10 lines of identical logic inside the main switch statement, extract the logic into a typed standalone function.
