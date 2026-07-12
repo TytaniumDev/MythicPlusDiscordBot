@@ -296,6 +296,7 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
               type="text"
               className="role-editor-input"
               placeholder="PlayerName-ServerName"
+              aria-label="In-Game Name"
               value={inGameName}
               onChange={(e) => handleNameChange(e.target.value)}
               maxLength={50}

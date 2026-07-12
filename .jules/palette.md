@@ -5,3 +5,7 @@
 ## 2026-04-12 - Focus Visible Styles
 **Learning:** In custom components, applying global `:focus-visible` to interactive elements improves keyboard accessibility natively without specific component overrides.
 **Action:** Use global pseudo selectors for standard interactive elements if component-level focus states are missing, ensuring accessibility without bloat.
+
+## 2026-07-12 - Unwrapped Native Form Inputs need explicit ARIA labels
+**Learning:** In custom views (like `RoleEditor.tsx` or `ReportBadGroupDialog.tsx`), raw inputs (`<input>`, `<textarea>`) often bypass generic wrapped components, causing them to lack proper accessibility. Specifically, depending solely on the `placeholder` attribute makes them less reliable for screen readers.
+**Action:** When working with raw `input` or `textarea` elements, always check for an explicit `aria-label` or an associated `id`/`<label>`. Add `aria-label` if they are missing.
