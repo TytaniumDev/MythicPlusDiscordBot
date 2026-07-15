@@ -300,6 +300,8 @@ sequenceDiagram
 | Voice → lobby sync | `packages/bot/src/commands/groups.ts` (`onVoiceStateUpdate`) → `SessionService.updateChannelPlayers` |
 | Channel/guild doc create/listen/update | `SessionService` + `FirebaseService` |
 | Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
+| Season Pair Tracker (Validation & Logic) | `packages/shared/src/seasonPairs.ts` (`parseSeasonPairs`) |
+| Discord.js → Handler Data Boundary | `packages/bot/src/core/discordAdapters.ts` (`adaptGuild`, `buildVoiceChannelsSnapshot`) |
 | “Spin” handling | Frontend: `activity/src/services/firestoreService.ts` (`requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups` |
 | Activity UI and wheel | `activity/src/main.tsx`, `activity/src/views/WheelsView.tsx` |
 | Channel doc cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
