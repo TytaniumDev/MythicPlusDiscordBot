@@ -32,3 +32,6 @@
 ## 2024-05-18 - Replacing O(N) array search inside nested loops with O(1) object properties
 **Learning:** During test optimizations, filtering candidate lists (like available tanks or healers) inside a heavy iterative loop using O(N) array checks (e.g. `Array.some()`) creates a severe performance bottleneck.
 **Action:** When filtering or excluding object references inside hot paths, prefer using inherent O(1) boolean properties on the object itself rather than building and parsing sub-arrays to check role inclusion.
+## 2026-07-16 - [Early Loop Termination in Group Scoring]
+**Learning:** Found a hot path in `parallelGroupCreator.ts` where we iterate over `availablePlayers` to find the one with the lowest historical pair count with current teammates. Once a player with a score of `0` is found, continuing the loop is unnecessary as `0` is the absolute optimal score (scores cannot be negative).
+**Action:** When optimizing scoring loops or hot paths, utilize early loop termination (e.g., `break` when an absolute optimal condition like `bestScore === 0` is met) to skip unnecessary iterations and save CPU cycles.
