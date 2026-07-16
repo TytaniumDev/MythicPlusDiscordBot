@@ -31,16 +31,16 @@ Get up and running in less than 5 minutes.
     ```
 
 2.  **Install Dependencies**
-    This project uses `npm` workspaces.
+    This project uses `npm` workspaces and requires system dependencies.
     ```bash
-    npm ci
+    ./setup.sh
     ```
 
 3.  **Configure Environment**
-    Create a `.env` file in the `packages/bot` directory (or the root directory):
+    Create a `.env` file in the `packages/bot` directory (it MUST be placed here, not the monorepo root, for `dotenv` to work):
     ```bash
-    echo "BOT_TOKEN=your_token_here" > .env
-    echo "DISCORD_APPLICATION_ID=your_app_id" >> .env
+    echo "BOT_TOKEN=your_token_here" > packages/bot/.env
+    echo "DISCORD_APPLICATION_ID=your_app_id" >> packages/bot/.env
     ```
 
 4.  **Run the Bot**
