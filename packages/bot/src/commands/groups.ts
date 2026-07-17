@@ -46,6 +46,58 @@ export class GroupsHandler {
     this.sessionService = sessionService ?? new SessionService(bot);
   }
 
+  /**
+   * Attempts to generate a Discord invite URL for the user's current voice channel.
+   * Fails gracefully if permissions, channel type, or rate limits prevent creation.
+   *
+   * @param voiceChannel - The voice channel object from the context
+   * @returns A string containing the URL, or 'N/A' if it could not be created
+   */
+  private async _generateInviteUrl(
+    voiceChannel: NonNullable<ActivityContext['author']['voice']>['channel'],
+  ): Promise<string> {
+    if (!DISCORD_APPLICATION_ID || !voiceChannel?.createInvite) {
+      return 'N/A';
+    }
+
+    try {
+      const invite = await voiceChannel.createInvite();
+      return invite.url;
+    } catch (e) {
+      // Invite creation can fail for many benign reasons (missing perms,
+      // channel type, rate limit). The activity link still works without
+      // it; surface to Sentry but don't break the response.
+      reportError(e, { tags: { handler: 'activity.createInvite' } });
+      return 'N/A';
+    }
+  }
+
+  /**
+   * Formats the response message for the /activity command.
+   *
+   * @param inviteUrl - The URL to join the Discord voice channel
+   * @param guildId - The ID of the Discord guild
+   * @param channelId - The ID of the Discord channel
+   * @returns The formatted markdown string to be sent to the channel
+   */
+  private _buildActivityMessage(
+    inviteUrl: string,
+    guildId: string,
+    channelId: string,
+  ): string {
+    let msg = '🎮 **Join the Activity!**\n';
+    msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
+
+    if (ACTIVITY_URL) {
+      const directLink = `${ACTIVITY_URL}?guildId=${guildId}&channelId=${channelId}`;
+      msg += `**Browser Link:** [Click Here](${directLink})\n`;
+    } else {
+      msg += '⚠️ `ACTIVITY_URL` not set in .env.';
+    }
+
+    return msg;
+  }
+
   // Errors propagate to the InteractionCreate wrapper in main.ts, which
   // reports to Sentry with command/guild tags and replies with a generic
   // ephemeral error message. Catching here would prevent that.
@@ -72,29 +124,8 @@ export class GroupsHandler {
 
     const [guildId, channelId] = result;
 
-    let inviteUrl = 'N/A';
-    if (DISCORD_APPLICATION_ID && ctx.author.voice.channel.createInvite) {
-      try {
-        const invite = await ctx.author.voice.channel.createInvite();
-        inviteUrl = invite.url;
-      } catch (e) {
-        // Invite creation can fail for many benign reasons (missing perms,
-        // channel type, rate limit). The activity link still works without
-        // it; surface to Sentry but don't break the response.
-        reportError(e, { tags: { handler: 'activity.createInvite' } });
-      }
-    }
-
-    const activityUrlBase = ACTIVITY_URL;
-    let msg = '🎮 **Join the Activity!**\n';
-    msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
-
-    if (activityUrlBase) {
-      const directLink = `${activityUrlBase}?guildId=${guildId}&channelId=${channelId}`;
-      msg += `**Browser Link:** [Click Here](${directLink})\n`;
-    } else {
-      msg += '⚠️ `ACTIVITY_URL` not set in .env.';
-    }
+    const inviteUrl = await this._generateInviteUrl(ctx.author.voice.channel);
+    const msg = this._buildActivityMessage(inviteUrl, guildId, channelId);
 
     await ctx.send(msg);
   }
