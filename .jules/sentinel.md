@@ -18,3 +18,7 @@
 **Vulnerability:** `crypto.timingSafeEqual` throws an error if buffers are different lengths, which exposes the application to timing attacks because the error throwing takes a different amount of time than a successful byte-by-byte comparison.
 **Learning:** Always check buffer lengths before calling `timingSafeEqual`. To ensure constant time regardless of length, compare the expected buffer to itself when lengths don't match.
 **Prevention:** Compare lengths first, and use a dummy `timingSafeEqual(expected, expected)` on mismatch to mitigate timing leaks.
+## 2026-07-18 - [Path Traversal in API Client via Client-Writable Database]
+**Vulnerability:** Path traversal / SSRF risk in the Battle.net API client (`packages/functions/src/battlenet.ts`) where `realmSlug` and `characterName` were directly interpolated into URL paths without URL-encoding.
+**Learning:** Scheduled backend jobs reading from client-writable databases (like Firestore, where `firestore.rules` allows clients to write to `preferences`) bypass upstream validation that might exist in typical REST API request handlers. Malicious data in the DB could be processed by backend jobs, manipulating downstream API requests.
+**Prevention:** Always apply defense-in-depth URL encoding (`encodeURIComponent`) when constructing URLs with data from external sources, even if that data is read from your own database, as the database itself might be populated by untrusted clients.
