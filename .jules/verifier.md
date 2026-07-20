@@ -23,3 +23,8 @@
 **Challenge:** Testing `FirebaseService` logic without hitting a real Firestore instance or initializing `firebase-admin`, while properly chaining mocked references (like `db.collection().doc().get()`).
 **Solution:** Create a custom mock object structure (`createMockDbWithDocRef`) that mimics the exact shape of the Firestore types (e.g. `FirebaseDb`, `FirebaseCollection`, `FirebaseDocRef`) using `vi.fn()` for each level. Cast the mocked structure using `as unknown as FirebaseService['db']` to satisfy TypeScript when setting `service.db`.
 **Guideline:** When mocking chained external APIs like Firestore in TypeScript with Vitest, construct the entire chain of returns using mocked functions and inject the root mock directly into the service instance, avoiding actual constructor initialization.
+
+## 2026-07-20 - [Mocking Discord.js Collections in Vitest]
+**Challenge:** Testing `adaptGuild`'s lazy evaluation required simulating a `discord.js` `Collection` (which extends `Map`), specifically its `.filter` and `.map` methods which return new Collections or Arrays, and `.get`.
+**Solution:** Mocked the `channels.cache` object with standard functions that mimic the Collection logic, ensuring we cast it properly without throwing TypeScript errors (e.g. `mockCache as unknown as typeof mockDjsGuild.channels.cache` doesn't work well due to readonly properties, instead cast the parent: `(mockDjsGuild as { channels: { cache: unknown } }).channels.cache = mockCache;`).
+**Guideline:** When mocking nested structures with strict types and readonly properties like Discord.js `Guild` -> `channels.cache`, bypass readonly constraints by casting the parent container to an object with an `unknown` typed child property before assignment.
