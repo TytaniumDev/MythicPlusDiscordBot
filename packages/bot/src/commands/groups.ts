@@ -85,6 +85,20 @@ export class GroupsHandler {
       }
     }
 
+    const msg = this._buildActivityMessage(inviteUrl, guildId, channelId);
+    await ctx.send(msg);
+  }
+
+  /**
+   * Constructs the activity response message for the user.
+   * Separates Discord message formatting from core command logic.
+   *
+   * @param inviteUrl - The URL to join the voice channel.
+   * @param guildId - The ID of the Discord guild.
+   * @param channelId - The ID of the voice channel.
+   * @returns The formatted Discord message.
+   */
+  private _buildActivityMessage(inviteUrl: string, guildId: string, channelId: string): string {
     const activityUrlBase = ACTIVITY_URL;
     let msg = '🎮 **Join the Activity!**\n';
     msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
@@ -96,7 +110,7 @@ export class GroupsHandler {
       msg += '⚠️ `ACTIVITY_URL` not set in .env.';
     }
 
-    await ctx.send(msg);
+    return msg;
   }
 
   async badgroup(
