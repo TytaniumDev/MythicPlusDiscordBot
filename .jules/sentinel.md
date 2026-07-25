@@ -18,3 +18,7 @@
 **Vulnerability:** `crypto.timingSafeEqual` throws an error if buffers are different lengths, which exposes the application to timing attacks because the error throwing takes a different amount of time than a successful byte-by-byte comparison.
 **Learning:** Always check buffer lengths before calling `timingSafeEqual`. To ensure constant time regardless of length, compare the expected buffer to itself when lengths don't match.
 **Prevention:** Compare lengths first, and use a dummy `timingSafeEqual(expected, expected)` on mismatch to mitigate timing leaks.
+## 2026-07-25 - [SSRF / Path Traversal in API Client]
+**Vulnerability:** Constructing external API URLs using dynamic segments (`region`, `realmSlug`, `characterName`) directly from a database without URI encoding.
+**Learning:** Even if data is structurally verified before inserting into a database, downstream consumers mapping that data to HTTP endpoints can still be vulnerable to path traversal or injection if parameters are not properly escaped when constructing request URIs.
+**Prevention:** Always apply `encodeURIComponent` to dynamically interpolated values in URLs, even if they originated from "trusted" database sources, as an application's perimeter and validation logic may change.
