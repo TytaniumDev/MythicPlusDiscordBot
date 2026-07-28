@@ -27,18 +27,7 @@ jobs:
       - name: Load Doppler secrets
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: |
-          DELIM=$(openssl rand -hex 16)
-          SECRETS=$(doppler secrets download --no-file --format json)
-          KEYS='["FIREBASE_CREDENTIALS_JSON","BNET_CLIENT_ID","BNET_CLIENT_SECRET"]'
-          echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
-            to_entries[] | select(.key | IN($keys[])) | .value
-          ' | while IFS= read -r val; do
-            [ -n "$val" ] && echo "::add-mask::$val"
-          done
-          echo "$SECRETS" | jq -r --argjson keys "$KEYS" --arg d "$DELIM" '
-            to_entries[] | select(.key | IN($keys[])) | "\(.key)<<\($d)\n\(.value)\n\($d)"
-          ' >> "$GITHUB_ENV"
+        run: ./scripts/doppler-deploy-firebase.sh
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,35 +35,13 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm ci
+        run: ./setup.sh --skip-verify
 
       - name: Build shared + functions
-        run: |
-          npm -w packages/shared run build
-          # Firebase loads shared via Node.js which can't resolve .ts sources,
-          # so point main at the compiled output for deploy only
-          jq '.main = "dist/index.js"' packages/shared/package.json > /tmp/pkg.json \
-            && mv /tmp/pkg.json packages/shared/package.json
-          npm -w packages/functions run build
-
-          # Firebase uploads only the functions dir to Cloud Build, which can't
-          # resolve workspace dependencies. Bundle shared as a local file dep.
-          cp -r packages/shared packages/functions/shared
-          jq '.dependencies["@mythicplus/shared"] = "file:./shared"' \
-            packages/functions/package.json > /tmp/fn-pkg.json \
-            && mv /tmp/fn-pkg.json packages/functions/package.json
+        run: ./scripts/build-firebase.sh
 
       - name: Deploy Firestore rules and Cloud Functions
-        run: |
-          echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-
-          # Write Battle.net secrets as runtime env vars for Cloud Functions
-          printf 'BNET_CLIENT_ID=%s\nBNET_CLIENT_SECRET=%s\n' \
-            "$BNET_CLIENT_ID" "$BNET_CLIENT_SECRET" \
-            > packages/functions/.env
-
-          npx firebase-tools@14 deploy --only firestore:rules,functions --non-interactive --force
+        run: ./scripts/deploy-firebase.sh
 
       - name: Clean up credentials
         if: always()
@@ -129,20 +96,7 @@ jobs:
       - name: Load Doppler secrets
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: |
-          DELIM=$(openssl rand -hex 16)
-          SECRETS=$(doppler secrets download --no-file --format json)
-          KEYS='["TS_OAUTH_CLIENT_ID","TS_OAUTH_SECRET","PI_SSH_KEY","PI_HOST","PI_USER","PI_APP_DIR","FIREBASE_CREDENTIALS_JSON","GH_ISSUE_TOKEN","GHCR_TOKEN","BOT_TOKEN","DISCORD_APPLICATION_ID"]'
-          # Mask each secret value so it cannot appear in workflow logs
-          echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
-            to_entries[] | select(.key | IN($keys[])) | .value
-          ' | while IFS= read -r val; do
-            [ -n "$val" ] && echo "::add-mask::$val"
-          done
-          # Export only the secrets needed by the deploy job
-          echo "$SECRETS" | jq -r --argjson keys "$KEYS" --arg d "$DELIM" '
-            to_entries[] | select(.key | IN($keys[])) | "\(.key)<<\($d)\n\(.value)\n\($d)"
-          ' >> "$GITHUB_ENV"
+        run: ./scripts/doppler-deploy.sh
 
       - name: Connect to Tailscale
         id: tailscale
@@ -153,31 +107,11 @@ jobs:
           oauth-secret: ${{ env.TS_OAUTH_SECRET }}
           tags: tag:ci-runner
       - name: Verify Tailscale connection
-        run: |
-          if [ "${{ steps.tailscale.outcome }}" != "success" ]; then
-            echo "::error::============================================"
-            echo "::error::TAILSCALE CONNECTION FAILED"
-            echo "::error::============================================"
-            echo "::error::The Tailscale OAuth credentials may be invalid!"
-            echo "::error::"
-            echo "::error::To fix this:"
-            echo "::error::1. Go to Tailscale Admin Console → Settings → OAuth clients"
-            echo "::error::2. Create/verify OAuth client with 'devices:write' scope"
-            echo "::error::3. Ensure TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET are set in Doppler"
-            echo "::error::4. Verify ACLs allow tag:ci-runner"
-            echo "::error::============================================"
-            exit 1
-          fi
-          echo "Tailscale connected successfully"
-          echo "Tailscale status:"
-          tailscale status
+        env:
+          TAILSCALE_OUTCOME: ${{ steps.tailscale.outcome }}
+        run: ./scripts/verify-tailscale.sh
       - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "$PI_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          # Add Pi to known hosts (get the host key)
-          ssh-keyscan -H "$PI_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+        run: ./scripts/setup-ssh.sh
       - name: Test SSH connection
         run: |
           echo "Testing SSH connection to $PI_HOST..."
@@ -185,57 +119,13 @@ jobs:
             "$PI_USER@$PI_HOST" "echo 'SSH connection successful!'"
       - name: Encode Firebase credentials
         id: firebase_b64
-        run: |
-          # Encode as single-line base64 so multiline JSON is not inlined in the deploy script
-          # (inlining would break bash and can leak secrets in error messages)
-          # We use an environment variable to avoid shell interpolation of the JSON content.
-          firebase_b64=$(echo "$FIREBASE_CREDENTIALS_JSON" | base64 -w0)
-          echo "firebase_b64<<OUTPUT_EOF" >> $GITHUB_OUTPUT
-          echo "$firebase_b64" >> $GITHUB_OUTPUT
-          echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
+        run: ./scripts/encode-firebase.sh
       - name: Deploy to Raspberry Pi
         env:
           GH_ISSUE_TOKEN: ${{ env.GH_ISSUE_TOKEN }}
-        run: |
-          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-            "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
-            set -e
-            echo "=== Deploy started ==="
-
-            # Login to GHCR
-            echo "Logging into GHCR..."
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-
-            # Update repo
-            cd "$PI_APP_DIR"
-            echo "Updating repo..."
-            git gc --auto 2>/dev/null || true
-            git fetch origin && git reset --hard origin/${{ github.ref_name }}
-
-            # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
-            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="$BOT_TOKEN"
-            export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
-            export GITHUB_TOKEN="$GH_ISSUE_TOKEN"
-            FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
-            export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
-
-            # Free disk space before pulling new image
-            echo "Cleaning up old Docker resources..."
-            docker system prune -af --filter "until=1h" > /dev/null 2>&1 || true
-
-            # Deploy
-            echo "Pulling image..."
-            docker compose pull --quiet
-            echo "Starting containers..."
-            docker compose up -d --remove-orphans
-
-            # Verify container is running
-            echo "Verifying deployment..."
-            docker compose ps
-
-            # Cleanup
-            docker image prune -f > /dev/null
-            echo "=== Deploy finished ==="
-          DEPLOY_SCRIPT
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          FIREBASE_B64_INPUT: ${{ steps.firebase_b64.outputs.firebase_b64 }}
+        run: ./scripts/deploy-pi.sh
