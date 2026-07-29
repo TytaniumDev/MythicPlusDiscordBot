@@ -57,6 +57,13 @@ The project uses Playwright for visual regression testing.
 - **Shared Code**: Business logic that can be reused (like group creation algorithms or shared models) should be placed in `packages/shared/`.
 - **Formatting**: Adhere to the existing linting and formatting rules enforced by `eslint`.
 
+## Error Handling
+
+Both the backend and frontend enforce a unified error reporting pattern via a `reportError(err, context)` wrapper. This ensures structured logging and safe telemetry capture (Sentry) without exposing sensitive data.
+- **Do not** use raw `console.error` or direct `Sentry.captureException` calls for handled errors.
+- **Bot/Backend**: Import and use `reportError` from `packages/bot/src/core/sentry.ts`.
+- **Activity/Frontend**: Import and use `reportError` from `activity/src/lib/sentry.ts`.
+
 ## Security & CI Standards
 
 This project has strict requirements to prevent secret leaks and ensure CI reliability.

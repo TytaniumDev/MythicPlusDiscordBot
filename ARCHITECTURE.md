@@ -294,6 +294,7 @@ sequenceDiagram
 
 | Concern | Where it lives |
 |--------|-----------------|
+| Discord.js → Domain Adaptation | `packages/bot/src/core/discordAdapters.ts` |
 | Slash commands (`/wheelson`, `/wheel`) | `packages/bot/src/commands/groups.ts` |
 | Role Board / Saved Roles | `packages/bot/src/core/roleUi.ts`, `packages/bot/src/core/preferenceService.ts` (Firestore + local fallback in `core/storage.ts`) |
 | GitHub Issues (`/bug`, `/badgroup`) | `packages/bot/src/core/issues.ts`, `packages/bot/src/commands/general.ts`, `packages/bot/src/commands/groups.ts` |

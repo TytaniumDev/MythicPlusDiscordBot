@@ -78,3 +78,9 @@ Any future updates to README must preserve this skeleton.
 **Learning:**
 1.  **Component Encapsulation:** The system shifted from explicit slash commands for user configuration to interactive message components (the "Role Board").
 2.  **Source of Truth:** `packages/bot/src/core/roleUi.ts` is now the exclusive entry point and source of truth for all role and utility selection flows, driven by Discord's Button and Modal interactions rather than traditional command execution.
+
+### [2026-05-08] Unified Error Reporting Pattern
+**Context:** The codebase recently consolidated error handling across both the backend (`packages/bot/src/core/sentry.ts`) and frontend (`activity/src/lib/sentry.ts`) into a unified `reportError` wrapper to ensure structured logging and safe telemetry capture (Sentry). However, this standard was not documented in `CONTRIBUTING.md`.
+**Learning:**
+1.  **Documentation of New Patterns:** When a codebase-wide pattern is established (especially for critical cross-cutting concerns like telemetry or error handling), it must be explicitly documented in the developer entry point (`CONTRIBUTING.md`) to prevent contributors from falling back to older habits (e.g., raw `console.error` or direct `Sentry.captureException` calls).
+2.  **Cross-Package Consistency:** The documentation must clearly outline how the standard is applied across the different packages (Bot/Backend vs Activity/Frontend) to avoid confusion.
