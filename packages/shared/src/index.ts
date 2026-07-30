@@ -1,3 +1,4 @@
+export type { SeasonPairs } from "./seasonPairs.js";
 export {
   ROLE_TANK,
   ROLE_HEALER,
