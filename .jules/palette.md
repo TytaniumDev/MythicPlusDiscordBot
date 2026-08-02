@@ -5,3 +5,7 @@
 ## 2026-04-12 - Focus Visible Styles
 **Learning:** In custom components, applying global `:focus-visible` to interactive elements improves keyboard accessibility natively without specific component overrides.
 **Action:** Use global pseudo selectors for standard interactive elements if component-level focus states are missing, ensuring accessibility without bloat.
+
+## 2026-08-02 - Custom Toggle Groups and Inputs Accessibility
+**Learning:** Custom UI groups (like multiple role buttons) and visually custom form fields in `RoleEditor.tsx` can lack proper semantics. Without `role="group"` and `aria-label` for button clusters, or `<label htmlFor>` paired with `id` for inputs, screen reader users miss crucial context.
+**Action:** When building or modifying custom form elements and custom button clusters, ensure they are semantically grouped and properly labeled using React's `useId` and standard ARIA grouping patterns.

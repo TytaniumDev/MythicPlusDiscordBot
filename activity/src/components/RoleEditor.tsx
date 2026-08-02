@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useId } from 'react';
 import { WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
@@ -264,10 +264,11 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
   // doesn't carry them and saveRoles is gated on discordId. Hide those sections
   // to avoid showing controls that silently drop their state.
   const showRoleSections = !isProfileEdit || !!player.discordId;
+  const nameInputId = useId();
 
   function renderSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
     return (
-      <div className="role-editor-section">
+      <div className="role-editor-section" role="group" aria-label={label}>
         <div className="role-editor-label">{label}</div>
         <div className="role-editor-row">
           {buttons.map((btnDef) => (
@@ -289,10 +290,11 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut, isProfileEdit
   return (
     <>
       <div className="role-editor-section">
-        <div className="role-editor-label">In-Game Name</div>
+        <label htmlFor={nameInputId} className="role-editor-label">In-Game Name</label>
         <div className="role-editor-row">
           <div className="role-editor-name-input">
             <input
+              id={nameInputId}
               type="text"
               className="role-editor-input"
               placeholder="PlayerName-ServerName"
