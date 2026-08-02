@@ -932,6 +932,7 @@ button:focus-visible,
 }
 
 .role-editor-label {
+  display: block;
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
