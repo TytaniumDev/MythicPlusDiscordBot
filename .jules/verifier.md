@@ -23,3 +23,7 @@
 **Challenge:** Testing `FirebaseService` logic without hitting a real Firestore instance or initializing `firebase-admin`, while properly chaining mocked references (like `db.collection().doc().get()`).
 **Solution:** Create a custom mock object structure (`createMockDbWithDocRef`) that mimics the exact shape of the Firestore types (e.g. `FirebaseDb`, `FirebaseCollection`, `FirebaseDocRef`) using `vi.fn()` for each level. Cast the mocked structure using `as unknown as FirebaseService['db']` to satisfy TypeScript when setting `service.db`.
 **Guideline:** When mocking chained external APIs like Firestore in TypeScript with Vitest, construct the entire chain of returns using mocked functions and inject the root mock directly into the service instance, avoiding actual constructor initialization.
+## 2024-03-24 - [Mocking discord.js Collection cache filtering]
+**Challenge:** Testing `djsGuild.channels.cache.filter()` natively requires robust mock implementation of Discord.js `Collection`.
+**Solution:** Pass in an object mimicking the structure `{ cache: { filter: (predicate: any) => any } }`, but verify `any` types aren't used in tests to avoid `@typescript-eslint/no-explicit-any` errors by using strict types `(value: unknown) => unknown`.
+**Guideline:** Provide explicit anonymous function types for mock iterables instead of casting to `any`.
