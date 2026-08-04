@@ -30,23 +30,7 @@ jobs:
       - name: Load Doppler secrets
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-        run: |
-          DELIM=$(openssl rand -hex 16)
-          SECRETS=$(doppler secrets download --no-file --format json)
-          # Mask each secret value so it cannot appear in workflow logs
-          echo "$SECRETS" | jq -r '
-            to_entries[]
-            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or .key == "SENTRY_AUTH_TOKEN" or (.key | startswith("VITE_FIREBASE_")))
-            | .value
-          ' | while IFS= read -r val; do
-            [ -n "$val" ] && echo "::add-mask::$val"
-          done
-          # Export filtered secrets
-          echo "$SECRETS" | jq -r --arg d "$DELIM" '
-            to_entries[]
-            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or .key == "SENTRY_AUTH_TOKEN" or (.key | startswith("VITE_FIREBASE_")))
-            | "\(.key)<<\($d)\n\(.value)\n\($d)"
-          ' >> "$GITHUB_ENV"
+        run: ./scripts/load-doppler-activity-secrets.sh
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -54,16 +38,14 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        run: npm ci
+        run: ./setup.sh --skip-verify
 
       - name: Build Activity
         env:
           VITE_DISCORD_CLIENT_ID: ${{ env.DISCORD_APPLICATION_ID }}
           VITE_SENTRY_DSN: ${{ env.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
-        run: |
-          cd activity
-          npm run build
+        run: npm -w activity run build
 
       - name: Build Storybook
         run: npm -w activity run build-storybook -- -o dist/storybook

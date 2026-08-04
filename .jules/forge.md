@@ -13,3 +13,7 @@
 ## 2026-03-10 - [TypeScript Migration & Tooling Synchronization]
 **Discovery:** After migrating from Python to a TypeScript monorepo, `AGENTS.md`, `setup.sh`, and `.github/workflows/ci-shared.yml` retained deprecated `uv`, `ruff`, and python unittest references. `scripts/verify-ts.sh` also lacked linting execution.
 **Action:** Overhauled `AGENTS.md` to reference precise `npm ci` and `./scripts/verify-ts.sh` commands. Refactored `ci-shared.yml` into a unified Verify job that identically runs `scripts/verify-ts.sh`, effectively syncing pipeline execution with the agent instructions. Modified `setup.sh` to use `npm ci` logic.
+
+## 2026-08-04 - [CI Workflow Inline Script Extraction]
+**Discovery:** GitHub Action workflows (`deploy.yml`, `deploy-activity.yml`) contained extensive inline bash scripting for Doppler secrets loading, Firebase deployments, Tailscale SSH connections, and project building. This violated the Forge boundary prohibiting multi-line inline scripting in YAML files. Furthermore, CI workflows were calling `npm ci` directly, bypassing the project's Kickstart script (`setup.sh`).
+**Action:** Extracted all multi-line `run:` blocks into dedicated, executable bash scripts within the `scripts/` directory (e.g., `load-doppler-activity-secrets.sh`, `deploy-firebase.sh`, `deploy-to-pi.sh`). Updated `setup.sh` to accept a `--skip-verify` flag to allow CI/CD to use it for parity without duplicate test execution. Swapped all `npm ci` calls in `.github/workflows/` and `AGENTS.md` to use `./setup.sh`.
