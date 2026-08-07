@@ -182,6 +182,37 @@ async function notifyReporterOfIssue(
 // Firestore payload validation
 // ---------------------------------------------------------------------------
 
+/**
+ * Fetches the current mythic+ affixes from Firestore.
+ *
+ * Extracts data retrieval logic to keep the command handler clean. If Firestore
+ * is unavailable, the data is malformed, or an error occurs during fetch,
+ * it will gracefully fall back to returning `STATIC_AFFIXES`.
+ *
+ * @param firebase The injected FirebaseService instance.
+ * @returns A promise that resolves to an array of AffixDisplay objects.
+ */
+async function fetchAffixes(firebase: FirebaseService): Promise<AffixDisplay[]> {
+  let affixes: AffixDisplay[] = STATIC_AFFIXES;
+  if (firebase.isAvailable() && firebase.db) {
+    try {
+      const snap = await firebase.db.collection('config').doc('affixes').get();
+      if (snap.exists) {
+        const data = snap.data();
+        const parsed = parseAffixDisplays(data?.affixes);
+        if (parsed) {
+          affixes = parsed;
+        } else if (data?.affixes !== undefined) {
+          logger.warn('Firestore affixes payload failed validation; falling back to STATIC_AFFIXES');
+        }
+      }
+    } catch (e) {
+      logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
+    }
+  }
+  return affixes;
+}
+
 // Validate an affixes payload coming from Firestore. The config doc is edited
 // out-of-band (cloud function / manual updates), so we can't trust the shape
 // blindly. Returns null on any malformed entry so the caller can fall back to
@@ -683,24 +714,7 @@ async function main() {
         break;
 
       case 'affixes': {
-        let affixes: AffixDisplay[] = STATIC_AFFIXES;
-        const firebase = FirebaseService.getInstance();
-        if (firebase.isAvailable() && firebase.db) {
-          try {
-            const snap = await firebase.db.collection('config').doc('affixes').get();
-            if (snap.exists) {
-              const data = snap.data();
-              const parsed = parseAffixDisplays(data?.affixes);
-              if (parsed) {
-                affixes = parsed;
-              } else if (data?.affixes !== undefined) {
-                logger.warn('Firestore affixes payload failed validation; falling back to STATIC_AFFIXES');
-              }
-            }
-          } catch (e) {
-            logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
-          }
-        }
+        const affixes = await fetchAffixes(FirebaseService.getInstance());
         await generalHandler.affixes({ guild: guildObj, send: sender.send }, affixes);
         break;
       }
