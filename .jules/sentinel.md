@@ -18,3 +18,7 @@
 **Vulnerability:** `crypto.timingSafeEqual` throws an error if buffers are different lengths, which exposes the application to timing attacks because the error throwing takes a different amount of time than a successful byte-by-byte comparison.
 **Learning:** Always check buffer lengths before calling `timingSafeEqual`. To ensure constant time regardless of length, compare the expected buffer to itself when lengths don't match.
 **Prevention:** Compare lengths first, and use a dummy `timingSafeEqual(expected, expected)` on mismatch to mitigate timing leaks.
+## 2026-08-08 - [SSRF / Path Traversal in BattleNetClient]
+**Vulnerability:** The `BattleNetClient.apiCall` implementations used template strings to build URL paths (e.g., `/profile/wow/character/${realmSlug}/${characterName}`) without URL-encoding user inputs.
+**Learning:** This could allow a malicious user to supply path traversal characters (like `..`) or special characters to alter the requested API endpoint and perform Server-Side Request Forgery.
+**Prevention:** Always use `encodeURIComponent` when dynamically inserting user-supplied values into URL paths or parameters, especially when querying external APIs.
