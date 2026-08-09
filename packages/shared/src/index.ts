@@ -26,6 +26,7 @@ export {
   bumpPairCounts,
   topAffinityFor,
   shortestPath,
+  type SeasonPairs,
   parseSeasonPairs,
 } from './seasonPairs.js';
 
