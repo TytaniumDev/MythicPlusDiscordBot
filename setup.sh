@@ -9,4 +9,6 @@ sudo apt-get install -y ffmpeg libnacl-dev
 npm ci
 
 # Run verification to ensure setup
-./scripts/verify-ts.sh
+if [ "$1" != "--skip-verify" ]; then
+  ./scripts/verify-ts.sh
+fi
