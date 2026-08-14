@@ -66,14 +66,38 @@ export class GeneralHandler {
     await ctx.send(`**Add this bot to a server:**\n${url}`);
   }
 
-  async status(ctx: GeneralContext): Promise<void> {
-    const now = Date.now() / 1000;
-    const uptimeSeconds = Math.floor(now - this.startTime);
-
+  /**
+   * Formats uptime in seconds into a HH:MM:SS string.
+   *
+   * @param uptimeSeconds - The total uptime in seconds.
+   * @returns A formatted string representing the uptime.
+   */
+  private _formatUptime(uptimeSeconds: number): string {
     const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
-    const uptimeStr = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  /**
+   * Safely retrieves the system load average, handling unsupported platforms gracefully.
+   *
+   * @returns A formatted string of load averages, or null if unsupported.
+   */
+  private _getSystemLoad(): string | null {
+    try {
+      const loadavg = os.loadavg();
+      return `${loadavg[0].toFixed(2)}, ${loadavg[1].toFixed(2)}, ${loadavg[2].toFixed(2)}`;
+    } catch {
+      // intentional: os.loadavg() is unsupported on Windows.
+      return null;
+    }
+  }
+
+  async status(ctx: GeneralContext): Promise<void> {
+    const now = Date.now() / 1000;
+    const uptimeSeconds = Math.floor(now - this.startTime);
+    const uptimeStr = this._formatUptime(uptimeSeconds);
 
     const pingMs = Math.round(this.latency * 1000);
 
@@ -87,17 +111,13 @@ export class GeneralHandler {
       ],
     };
 
-    try {
-      const loadavg = os.loadavg();
+    const systemLoad = this._getSystemLoad();
+    if (systemLoad) {
       embed.fields.push({
         name: 'System Load',
-        value: `${loadavg[0].toFixed(2)}, ${loadavg[1].toFixed(2)}, ${loadavg[2].toFixed(2)}`,
+        value: systemLoad,
         inline: false,
       });
-    } catch {
-      // intentional: os.loadavg() is unsupported on Windows.
-      // Omit the System Load field rather than failing the whole command.
-      void 0;
     }
 
     const serverId = ctx.guild?.id ?? 'DM';
