@@ -76,6 +76,7 @@ export function ConnectionsView() {
             value={target}
             onChange={(e) => setTarget(e.target.value)}
             className="connections-view__select"
+            aria-label="Target player to find shortest path to"
           >
             <option value="">Pick a player…</option>
             {allNames.filter((n) => n !== currentPlayerName).map((n) => (
