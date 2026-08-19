@@ -44,7 +44,7 @@ export function useCharacterLookup() {
     name: string,
     realm: string,
     region: string,
-    options?: { silent?: boolean },
+    options?: { silent?: boolean; forceRefresh?: boolean },
   ): Promise<CharacterData | null> {
     const silent = options?.silent === true;
     if (!silent) setLoading(true);
@@ -70,11 +70,11 @@ export function useCharacterLookup() {
       }
 
       const fn = httpsCallable<
-        { name: string; realm: string; region: string },
+        { name: string; realm: string; region: string; forceRefresh?: boolean },
         CharacterData
       >(functions, 'lookupCharacter');
 
-      const result = await fn({ name, realm, region });
+      const result = await fn({ name, realm, region, forceRefresh: options?.forceRefresh });
       return result.data;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Character lookup failed';

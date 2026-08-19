@@ -103,9 +103,11 @@ async function clearCharacterFields(db: Firestore, discordId: string): Promise<v
 
 async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promise<CharacterResult | null> {
   const { name, realm, region } = target.linkedCharacter;
-  const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
+  const [profile, media] = await Promise.all([
+    client.getCharacterProfile(region, realm.toLowerCase(), name),
+    client.getCharacterMedia(region, realm.toLowerCase(), name),
+  ]);
   if (!profile || !profile.character_class) return null;
-  const media = await client.getCharacterMedia(region, realm.toLowerCase(), name);
   return buildCharacterResult(profile, media);
 }
 

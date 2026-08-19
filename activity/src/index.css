@@ -2624,6 +2624,20 @@ button.role-section-header--collapsible {
 }
 .profile-modal__avatar img { width: 100%; height: 100%; object-fit: cover; }
 .profile-modal__name { text-align: center; font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+.profile-modal__refresh {
+  display: block; margin: -4px auto 12px; padding: 4px 14px;
+  border-radius: 4px; background: transparent; color: #aaa;
+  border: 1px solid #333; cursor: pointer; font-size: 12px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.profile-modal__refresh:hover:not(:disabled) { color: #fff; border-color: #555; }
+.profile-modal__refresh:disabled { opacity: 0.5; cursor: default; }
+.profile-modal__refresh-spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid #555; border-top-color: #ccc;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
 .profile-modal__field { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
 .profile-modal__label { color: #888; }
 .profile-modal__value { font-family: monospace; }

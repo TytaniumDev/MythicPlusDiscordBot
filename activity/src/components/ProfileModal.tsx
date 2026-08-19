@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useAppStore } from '../store/store';
 import { toAvatarUrl } from '../lib/characterMedia';
 import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
 import { RoleEditor } from './RoleEditor';
 import { Divider } from './ui';
+import { useCharacterLookup } from '../hooks/useCharacterLookup';
+import { useSessionService } from '../hooks/useSession';
+import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 import type { WoWPlayer } from '../types';
 import type { CharacterClass } from '@mythicplus/shared';
 
@@ -74,6 +77,44 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
     [channelPlayer, inGameName, mediaUrl, characterClass, currentPlayerId, currentPlayerName],
   );
 
+  const { lookup, loading: refreshLoading } = useCharacterLookup();
+  const service = useSessionService();
+
+  const handleRefresh = useCallback(async () => {
+    const name = inGameName ?? '';
+    const parsed = parseInGameName(name);
+    if (!parsed) return;
+
+    const character = await lookup(parsed.name, parsed.realmSlug, DEFAULT_REGION, { forceRefresh: true, silent: true });
+    if (!character) return;
+
+    // Update local slice
+    const store = useAppStore.getState();
+    const prev = store.currentCharacter;
+    if (prev) {
+      store.setCurrentCharacter({
+        ...prev,
+        mediaUrl: character.mediaUrl,
+        characterClass: character.class,
+        lookupStatus: 'ok',
+        lastUpdated: Date.now(),
+      });
+    }
+
+    // Persist to Firestore
+    if (currentPlayerId && parsed) {
+      await service.saveLinkedCharacter(
+        currentPlayerId,
+        { name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION },
+        character.mediaUrl,
+        character.class,
+      );
+    }
+  }, [inGameName, currentPlayerId, lookup, service]);
+
+  // Show refresh only when there's a valid character name (has realm component)
+  const canRefresh = !!inGameName && !!parseInGameName(inGameName);
+
   if (!open) return null;
 
   // The avatar mirrors ProfileAvatar's lookup priority — slice first, channel second.
@@ -107,6 +148,21 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
             : <span>{(displayName || '?').charAt(0).toUpperCase()}</span>}
         </div>
         <div className="profile-modal__name">{displayName}</div>
+        {canRefresh && (
+          <button
+            type="button"
+            className="profile-modal__refresh"
+            onClick={handleRefresh}
+            disabled={refreshLoading}
+            aria-label="Refresh character"
+          >
+            {refreshLoading ? (
+              <span className="profile-modal__refresh-spinner" />
+            ) : (
+              '⟳ Refresh'
+            )}
+          </button>
+        )}
         {currentPlayerId && (
           <div className="profile-modal__field">
             <span className="profile-modal__label">Discord ID</span>
