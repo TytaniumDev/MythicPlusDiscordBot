@@ -60,10 +60,11 @@ export const lookupCharacter = onCall(
       throw new HttpsError('unauthenticated', 'Authentication required');
     }
     await enforceRateLimit(request.auth.uid, 'lookupCharacter', 30, 60000);
-    const { name, realm, region } = request.data as {
+    const { name, realm, region, forceRefresh } = request.data as {
       name?: string;
       realm?: string;
       region?: string;
+      forceRefresh?: boolean;
     };
 
     if (!name || !realm || !region) {
@@ -84,13 +85,15 @@ export const lookupCharacter = onCall(
     const cacheRef = db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`);
 
     // Check cache
-    const cached = await cacheRef.get();
-    if (cached.exists) {
-      const data = cached.data();
-      if (data) {
-        const cachedAt = data.cachedAt as Timestamp;
-        if (cachedAt && Date.now() - cachedAt.toMillis() < CACHE_TTL_MS) {
-          return data.result as CharacterResult;
+    if (!forceRefresh) {
+      const cached = await cacheRef.get();
+      if (cached.exists) {
+        const data = cached.data();
+        if (data) {
+          const cachedAt = data.cachedAt as Timestamp;
+          if (cachedAt && Date.now() - cachedAt.toMillis() < CACHE_TTL_MS) {
+            return data.result as CharacterResult;
+          }
         }
       }
     }
@@ -98,12 +101,14 @@ export const lookupCharacter = onCall(
     // Fetch from Battle.net
     const client = getBattleNetClient();
 
-    const profile = await client.getCharacterProfile(region, realm.toLowerCase(), name);
+    const [profile, media] = await Promise.all([
+      client.getCharacterProfile(region, realm.toLowerCase(), name),
+      client.getCharacterMedia(region, realm.toLowerCase(), name),
+    ]);
     if (!profile || !profile.character_class) {
       throw new HttpsError('not-found', `Character "${name}" not found on ${realm}`);
     }
 
-    const media = await client.getCharacterMedia(region, realm.toLowerCase(), name);
     const result = buildCharacterResult(profile, media);
 
     // Write to cache
