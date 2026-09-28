@@ -21,7 +21,12 @@ export function useIsCompactPanel(): boolean {
   return useMediaQuery('(max-width: 899px)');
 }
 
-/** Use mobile drawer layout for lobby (at tablet breakpoint and below) */
+/** Collapsible roster sections in the lobby (tablet breakpoint and below) */
 export function useIsMobileLobby(): boolean {
   return useMediaQuery('(max-width: 899px)');
+}
+
+/** Phone lobby layout: character card leads the roster, no sidebar */
+export function useIsCompactLobby(): boolean {
+  return useMediaQuery('(max-width: 599px)');
 }

@@ -21,7 +21,8 @@ interface PlayerChipProps {
   roleKey: string;
   roleLabel: string;
   tags?: RoleTag[];
-  isSelected?: boolean;
+  /** The current user's own chip: highlighted and tagged "YOU". */
+  isSelf?: boolean;
   isSittingOut?: boolean;
   isReady?: boolean;
   mediaUrl?: string | null;
@@ -55,7 +56,7 @@ export function PlayerChip({
   roleKey,
   roleLabel,
   tags = [],
-  isSelected = false,
+  isSelf = false,
   isSittingOut = false,
   isReady = false,
   mediaUrl,
@@ -72,7 +73,7 @@ export function PlayerChip({
 
   return (
     <div
-      className={`player-chip${isSelected ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!isReady && !isSittingOut ? ' not-ready' : ''}`}
+      className={`player-chip${isSelf ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!isReady && !isSittingOut ? ' not-ready' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"
@@ -89,7 +90,10 @@ export function PlayerChip({
         characterClass={characterClass}
       />
       <div className="player-chip__body">
-        <span className="player-chip__name">{name}</span>
+        <div className="player-chip__name-row">
+          <span className="player-chip__name">{name}</span>
+          {isSelf && <span className="player-chip__you">You</span>}
+        </div>
         {tags.length > 0 && (
           <div className="chip-tags">
             {tags.map((tag, i) => (
