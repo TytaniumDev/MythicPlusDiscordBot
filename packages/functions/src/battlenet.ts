@@ -1,3 +1,5 @@
+import { defineSecret } from 'firebase-functions/params';
+
 const REGION_HOSTS: Record<string, string> = {
   us: 'us.api.blizzard.com',
   eu: 'eu.api.blizzard.com',
@@ -92,16 +94,22 @@ export class BattleNetClient {
   }
 }
 
+// Stored in Secret Manager. Every function that calls getBattleNetClient()
+// must list these in its `secrets` option, or value() is empty at runtime.
+const bnetClientId = defineSecret('BNET_CLIENT_ID');
+const bnetClientSecret = defineSecret('BNET_CLIENT_SECRET');
+export const battleNetSecrets = [bnetClientId, bnetClientSecret];
+
 // Module-scope singleton — survives across warm Cloud Function invocations,
 // allowing the OAuth token to be cached between requests.
 let _client: BattleNetClient | null = null;
 
 export function getBattleNetClient(): BattleNetClient {
   if (!_client) {
-    const clientId = process.env.BNET_CLIENT_ID;
-    const clientSecret = process.env.BNET_CLIENT_SECRET;
+    const clientId = bnetClientId.value();
+    const clientSecret = bnetClientSecret.value();
     if (!clientId || !clientSecret) {
-      throw new Error('BNET_CLIENT_ID and BNET_CLIENT_SECRET must be set');
+      throw new Error('BNET_CLIENT_ID and BNET_CLIENT_SECRET secrets are not available');
     }
     _client = new BattleNetClient(clientId, clientSecret);
   }
