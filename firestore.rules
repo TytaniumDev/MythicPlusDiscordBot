@@ -1,46 +1,162 @@
 rules_version = '2';
+
+// The activity (browser) writes through these rules after signing in
+// anonymously. The bot and Cloud Functions use the Admin SDK, which bypasses
+// them, so fields only they write (lobby players, guild name and icon) are
+// read-only here. Each collection lists exactly the fields the activity
+// writes; every client write shape is exercised by
+// packages/bot/tests/integration/firestoreRules.integration.test.ts.
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Keys this write touches: every key on create, changed keys on update.
+    function writtenKeys() {
+      return resource == null
+        ? request.resource.data.keys()
+        : request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function isServerTime(value) {
+      return value == request.time;
+    }
+
+    function isShortString(value, max) {
+      return value is string && value.size() <= max;
+    }
+
+    function isNumericId(id) {
+      return id is string && id.matches('^[0-9]+$');
+    }
+
+    function guildExists(guildId) {
+      return exists(/databases/$(database)/documents/guilds/$(guildId));
+    }
+
     // --- Guilds ---
-    // Clients can read, create, and update guild docs but never delete them.
-    // The bot (Admin SDK) bypasses these rules entirely.
+    // Clients set up a guild doc and record each spin's history and season
+    // pair counts. Name, icon and the voice channel list come from the bot.
     match /guilds/{guildId} {
       allow read: if true;
-      allow create: if guildId.matches('^[0-9]+$') || guildId == 'demo-guild';
-      allow update: if
-        // guildId field must not change
-        (!('guildId' in request.resource.data) || request.resource.data.guildId == resource.data.guildId);
+      allow create: if signedIn()
+        && (isNumericId(guildId) || guildId == 'demo-guild')
+        && validGuildWrite(guildId);
+      allow update: if signedIn() && validGuildWrite(guildId);
       allow delete: if false;
+    }
+
+    function validGuildWrite(guildId) {
+      let data = request.resource.data;
+      let keys = writtenKeys();
+      return keys.hasOnly(['guildId', 'voiceChannels', 'refreshRequest', 'createdAt', 'lastActive', 'groupHistory', 'seasonPairs'])
+        && (!('guildId' in keys) || data.guildId == guildId)
+        && (!('voiceChannels' in keys) || (data.voiceChannels is list && data.voiceChannels.size() == 0))
+        && (!('refreshRequest' in keys) || isServerTime(data.refreshRequest))
+        && (!('createdAt' in keys) || isServerTime(data.createdAt))
+        && (!('lastActive' in keys) || isServerTime(data.lastActive))
+        && (!('groupHistory' in keys) || isGroupHistory(data.groupHistory))
+        && (!('seasonPairs' in keys) || isSeasonPairs(data.seasonPairs));
+    }
+
+    function isGroupHistory(history) {
+      return history is map
+        && history.keys().hasOnly(['date', 'rounds'])
+        && history.date is string && history.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && history.rounds is list && history.rounds.size() <= 50;
+    }
+
+    function isSeasonPairs(pairs) {
+      return pairs is map
+        && pairs.keys().hasOnly(['seasonSlug', 'counts'])
+        && isShortString(pairs.seasonSlug, 100)
+        && pairs.counts is map && pairs.counts.size() <= 5000;
     }
 
     // --- Channels ---
-    // Clients can read, create, and update channel docs but never delete them.
-    // On create the guildId must reference an existing guild doc.
-    // On update the guildId cannot be changed and status must be a known value.
+    // One lobby per voice channel. The bot fills `players`; clients drive a
+    // round's status and groups.
     match /channels/{channelId} {
       allow read: if true;
-      allow create: if
-        request.resource.data.guildId is string &&
-        request.resource.data.status == 'lobby' &&
-        exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
-      allow update: if
-        // guildId must not change
-        request.resource.data.guildId == resource.data.guildId &&
-        // status must be a known value
-        request.resource.data.status in ['lobby', 'spinning', 'completed'];
+      allow create: if signedIn()
+        && request.resource.data.status == 'lobby'
+        && request.resource.data.guildId is string
+        && guildExists(request.resource.data.guildId)
+        && validChannelWrite(channelId);
+      allow update: if signedIn()
+        && request.resource.data.guildId == resource.data.guildId
+        && validChannelWrite(channelId)
+        && validStatusChange(resource.data.status, request.resource.data.status);
       allow delete: if false;
+    }
+
+    function validChannelWrite(channelId) {
+      let data = request.resource.data;
+      let keys = writtenKeys();
+      return keys.hasOnly(['channelId', 'channelName', 'guildId', 'status', 'players', 'groups', 'revealedGroups', 'sittingOut', 'claimedPlayers', 'refreshPlayers', 'isDebug', 'createdAt', 'lastActive'])
+        && (!('channelId' in keys) || data.channelId == channelId)
+        && (!('channelName' in keys) || isShortString(data.channelName, 100))
+        && (!('status' in keys) || data.status in ['lobby', 'spinning', 'completed'])
+        // Clients may only start a lobby with no players; the bot fills them in.
+        && (!('players' in keys) || (data.players is list && data.players.size() == 0))
+        && (!('groups' in keys) || (data.groups is list && data.groups.size() <= 20))
+        && (!('revealedGroups' in keys) || (data.revealedGroups is int && data.revealedGroups >= 0 && data.revealedGroups <= 20))
+        && (!('sittingOut' in keys) || (data.sittingOut is list && data.sittingOut.size() <= 100))
+        && (!('claimedPlayers' in keys) || (data.claimedPlayers is list && data.claimedPlayers.size() <= 100))
+        && (!('refreshPlayers' in keys) || data.refreshPlayers == true)
+        && (!('isDebug' in keys) || data.isDebug == false)
+        && (!('createdAt' in keys) || isServerTime(data.createdAt))
+        && (!('lastActive' in keys) || isServerTime(data.lastActive));
+    }
+
+    // A round goes lobby → spinning → completed, and any state can reset to
+    // lobby. Groups are only written when a spin starts and only cleared on a
+    // reset, so a second Spin click can't overwrite a round in progress.
+    function validStatusChange(from, to) {
+      let groupsChanged = 'groups' in writtenKeys();
+      return (from == to && !groupsChanged)
+        || (from == 'lobby' && to == 'spinning')
+        || (from == 'spinning' && to == 'completed' && !groupsChanged)
+        || (to == 'lobby' && (!groupsChanged || request.resource.data.groups.size() == 0));
     }
 
     // --- Preferences ---
-    // Clients can read and write preferences but never delete them.
-    match /preferences/{docId} {
+    // Per-player roles and character, keyed by Discord user ID.
+    match /preferences/{discordId} {
       allow read: if true;
-      allow create, update: if true;
+      allow create, update: if signedIn() && isNumericId(discordId) && validPreferenceWrite();
       allow delete: if false;
     }
 
+    function validPreferenceWrite() {
+      let data = request.resource.data;
+      let keys = writtenKeys();
+      return keys.hasOnly(['roles', 'wowName', 'inGameName', 'updatedAt', 'linkedCharacter', 'mediaUrl', 'mediaUrlUpdatedAt', 'characterClass'])
+        && (!('roles' in keys) || (data.roles is list && data.roles.hasOnly(['Tank', 'Healer', 'Ranged', 'Melee', 'Tank Offspec', 'Healer Offspec', 'Ranged Offspec', 'Melee Offspec', 'Brez', 'Lust'])))
+        && (!('wowName' in keys) || isShortString(data.wowName, 64))
+        && (!('inGameName' in keys) || isShortString(data.inGameName, 64))
+        && (!('updatedAt' in keys) || isServerTime(data.updatedAt))
+        && (!('mediaUrlUpdatedAt' in keys) || isServerTime(data.mediaUrlUpdatedAt))
+        && (!('linkedCharacter' in keys) || isLinkedCharacter(data.linkedCharacter))
+        // Portraits only ever come from Blizzard's render CDN.
+        && (!('mediaUrl' in keys) || data.mediaUrl == null
+            || (isShortString(data.mediaUrl, 300) && data.mediaUrl.matches('^https://render[.]worldofwarcraft[.]com/.+')))
+        && (!('characterClass' in keys) || data.characterClass == null
+            || data.characterClass in ['Death Knight', 'Demon Hunter', 'Druid', 'Evoker', 'Hunter', 'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior']);
+    }
+
+    function isLinkedCharacter(character) {
+      return character is map
+        && character.keys().hasOnly(['name', 'realm', 'region'])
+        && isShortString(character.name, 64)
+        && isShortString(character.realm, 64)
+        && isShortString(character.region, 8);
+    }
+
     // --- Config ---
+    // Written by Cloud Functions (affixes, season).
     match /config/{docId} {
       allow read: if true;
       allow write: if false;
@@ -52,18 +168,29 @@ service cloud.firestore {
     }
 
     // --- Characters ---
+    // Battle.net lookup cache; only the lookupCharacter function touches it.
     match /characters/{region}/{realm}/{name} {
       allow read: if false;
       allow write: if false;
     }
 
     // --- Bad Group Reports ---
-    // Clients can only create reports; the guildId must reference an existing guild
-    // to prevent rate-limit bypass via fake guild IDs. Reading/updating/deleting is forbidden.
+    // Clients file a report; the bot reads it, opens a GitHub issue and deletes
+    // it. The guild must exist so reports can't dodge the bot's per-guild rate
+    // limit with made-up guild IDs.
     match /badGroupReports/{docId} {
-      allow create: if
-        request.resource.data.guildId is string &&
-        exists(/databases/$(database)/documents/guilds/$(request.resource.data.guildId));
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['title', 'description', 'reporterName', 'reporterId', 'guildId', 'players', 'groups', 'priorRounds', 'createdAt'])
+        && isShortString(request.resource.data.title, 200)
+        && isShortString(request.resource.data.description, 2000)
+        && isShortString(request.resource.data.reporterName, 100)
+        && isShortString(request.resource.data.reporterId, 32)
+        && request.resource.data.guildId is string
+        && guildExists(request.resource.data.guildId)
+        && request.resource.data.players is list && request.resource.data.players.size() <= 100
+        && request.resource.data.groups is list && request.resource.data.groups.size() <= 30
+        && request.resource.data.priorRounds is list && request.resource.data.priorRounds.size() <= 50
+        && isServerTime(request.resource.data.createdAt);
       allow read, update, delete: if false;
     }
   }
