@@ -212,61 +212,47 @@ designViewportTests('Mobile',  DESIGN_VIEWPORTS.mobile);
 test.describe('Mobile Functional (393x852)', () => {
   test.use({ viewport: DESIGN_VIEWPORTS.mobile });
 
-  test('Lobby — drawer footer is visible and player list is scrollable', async ({ page }) => {
+  test('Lobby — character card leads the roster and spin stays reachable', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    // Click a player chip to select them
-    await page.locator('.player-chip').first().click();
+    const card = page.locator('[data-testid="my-character-card"]');
+    await expect(card).toBeInViewport();
+    await expect(card.getByRole('switch', { name: 'Sit out' })).toBeVisible();
+    await expect(card.getByRole('button', { name: '✎ Edit' })).toBeVisible();
 
-    // Drawer footer should be visible
-    await expect(page.locator('.mobile-drawer')).toBeVisible();
-    await expect(page.locator('.mobile-drawer__name')).toBeVisible();
+    // Editor stays tucked away until asked for when the character is ready
+    await expect(card.locator('.role-editor-input')).toHaveCount(0);
 
-    // Spin button should be visible (not pushed off-screen)
-    await expect(page.locator('#spin-btn')).toBeVisible();
     await expect(page.locator('#spin-btn')).toBeInViewport();
-
-    // Player list should be visible
     await expect(page.locator('#player-list')).toBeVisible();
 
-    await expect(page).toHaveScreenshot('lobby-mobile-drawer-collapsed.png');
+    await expect(page).toHaveScreenshot('lobby-mobile-character-card.png');
   });
 
-  test('Lobby — drawer expands and collapses', async ({ page }) => {
+  test('Lobby — Edit opens and closes the character editor', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
-    await expect(page.locator('#view-lobby')).toBeVisible();
+    const card = page.locator('[data-testid="my-character-card"]');
 
-    // Click a player chip to select them
-    await page.locator('.player-chip').first().click();
-    await expect(page.locator('.mobile-drawer')).toBeVisible();
+    await card.getByRole('button', { name: '✎ Edit' }).click();
+    await expect(card.locator('.role-editor-input')).toBeVisible();
+    await expect(card.locator('[data-role-id="Tank"]')).toBeVisible();
 
-    // Expand drawer
-    await page.locator('.mobile-drawer__header').click();
-    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
-    await expect(page.locator('[data-testid="player-card"]')).toBeVisible();
-
-    // Collapse by clicking header again
-    await page.locator('.mobile-drawer__header').click();
-    await expect(page.locator('.mobile-drawer--expanded')).not.toBeVisible();
+    await card.getByRole('button', { name: 'Done' }).click();
+    await expect(card.locator('.role-editor-input')).toHaveCount(0);
   });
 
-  test('Lobby — drawer collapses on backdrop click', async ({ page }) => {
+  test('Lobby — tapping your own chip opens your character editor', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
+    const card = page.locator('[data-testid="my-character-card"]');
 
-    // Click a player chip to select them
-    await page.locator('.player-chip').first().click();
-
-    // Expand drawer
-    await page.locator('.mobile-drawer__header').click();
-    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
-
-    // Click backdrop to collapse
-    await page.locator('.drawer-backdrop').click({ position: { x: 10, y: 10 } });
-    await expect(page.locator('.mobile-drawer--expanded')).not.toBeVisible();
+    await page.getByRole('button', { name: `Edit your character: ${mockPlayers[4].name}` }).click();
+    await expect(card.locator('.role-editor-input')).toBeVisible();
+    // Own chip never opens the edit-other-player modal
+    await expect(page.locator('.edit-modal')).toHaveCount(0);
   });
 
   test('Wheels — group pager appears below wheel, side column hidden', async ({ page }) => {

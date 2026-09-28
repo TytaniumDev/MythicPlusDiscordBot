@@ -640,6 +640,12 @@ button:focus-visible,
   gap: 6px;
 }
 
+.role-chip-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .dps-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2681,33 +2687,247 @@ button.role-section-header--collapsible {
 }
 
 /* ============================================
-   Design System: Player Card
+   Lobby: Your Character card
    ============================================ */
-.player-card {
-  background: var(--bg-secondary);
-  border: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);
+.my-character {
+  --mc-color: var(--color-tank);
+  text-align: left;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--mc-color) 16%, transparent), transparent 60%),
+    var(--bg-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 45%, transparent);
   border-radius: var(--radius-lg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  padding: 14px 14px 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.my-character--out {
+  border-color: var(--border-subtle);
+}
+
+.my-character--highlight {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 30%, transparent), 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.my-character__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+.my-character__status {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.my-character__status--ready {
+  color: var(--color-healer);
+  background: color-mix(in srgb, var(--color-healer) 16%, transparent);
+}
+
+.my-character__status--warn {
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 16%, transparent);
+}
+
+.my-character__status--out {
+  color: var(--text-secondary);
+  background: var(--bg-card-hover);
+}
+
+.my-character__main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.my-character--out .my-character__main {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+
+.my-character__portrait {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  border: 3px solid var(--mc-ring, var(--color-gold));
+  background: color-mix(in srgb, var(--mc-ring, var(--color-gold)) 18%, #0d0d1a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.player-card .ui-divider {
-  margin: 0 20px;
+.my-character__portrait-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
 }
 
-.player-card__form {
-  padding: 16px 20px 20px;
+.my-character__portrait-letter {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.my-character__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.my-character__name {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-character__ign {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mc-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-character__ign--missing {
+  color: var(--color-gold);
+}
+
+.my-character__info .chip-tags {
+  margin-top: 3px;
+}
+
+.my-character__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.my-character__actions--single {
+  grid-template-columns: 1fr;
+}
+
+.my-character__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.my-character__btn:hover {
+  border-color: color-mix(in srgb, var(--color-gold) 40%, transparent);
+}
+
+.my-character__btn[aria-checked="true"],
+.my-character__btn[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
+  color: var(--color-gold);
+}
+
+.my-character__switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.15s;
+}
+
+.my-character__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+
+.my-character__btn[aria-checked="true"] .my-character__switch {
+  background: var(--color-gold);
+}
+
+.my-character__btn[aria-checked="true"] .my-character__switch::after {
+  left: 14px;
+}
+
+.my-character__editor {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
 }
 
+.my-character--needs-name .role-editor-input {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 25%, transparent);
+}
+
+/* Sit-out button rendered by RoleEditor outside the lobby (e.g. edit modal) */
 .player-card__sit-out {
   width: 100%;
 }
 
-.player-card__save {
-  width: 100%;
+/* "YOU" pill on the current user's roster chip */
+.player-chip__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.player-chip__you {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1a1206;
+  background: var(--color-gold);
 }
 
 /* ============================================
@@ -2732,29 +2952,67 @@ button.role-section-header--collapsible {
   overflow-y: auto;
 }
 
-@media (max-width: 899px) {
+/* Tablet (600-899px): keep the sidebar, stack the roster into one column and
+   let chips flow two-up when there's room. */
+@media (min-width: 600px) and (max-width: 899px) {
+  .lobby-body {
+    gap: 14px;
+  }
+
+  .lobby-sidebar {
+    width: 290px;
+  }
+
+  #player-list {
+    grid-template-columns: 1fr;
+  }
+
+  .role-chip-grid,
+  .dps-grid,
+  .sitting-out-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 6px;
+  }
+
+  .my-character__portrait {
+    width: 52px;
+    height: 52px;
+  }
+
+  .my-character__name {
+    font-size: 18px;
+  }
+
+  /* Keep the four spec buttons on one row in the narrower sidebar */
+  .lobby-sidebar .my-character {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .lobby-sidebar .role-btn {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+}
+
+/* Phone (<600px): the character card leads the roster and the spin button
+   docks to the bottom of the screen. */
+@media (max-width: 599px) {
   .lobby-body {
     flex-direction: column;
   }
 
-  .lobby-sidebar {
-    width: 100%;
-    order: -1;
-  }
-
-  .lobby-players {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  /* Reserve space for fixed footer (spin btn + drawer) */
   .mobile-lobby .lobby-players {
-    padding-bottom: 150px;
+    padding-bottom: 88px;
   }
 
   .mobile-lobby #view-lobby {
     overflow: hidden;
+  }
+
+  .lobby-players > .my-character {
+    margin-bottom: 14px;
   }
 }
 
@@ -2805,15 +3063,15 @@ button.role-section-header--collapsible {
 }
 
 /* ============================================
-   Mobile Lobby Footer (Spin + Drawer)
+   Mobile Lobby Footer (Spin)
    ============================================ */
 .mobile-spin-btn {
   position: fixed;
-  bottom: 64px;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 99;
-  padding: 8px var(--page-gutter);
+  padding: 8px var(--page-gutter) 12px;
   background: linear-gradient(to top, var(--bg-primary) 60%, transparent);
   display: flex;
   justify-content: center;
@@ -2821,108 +3079,6 @@ button.role-section-header--collapsible {
 
 .mobile-spin-btn .btn {
   flex: 1;
-}
-
-/* ============================================
-   Mobile Player Drawer
-   ============================================ */
-.drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 90;
-}
-
-.mobile-drawer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-subtle);
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
-  max-height: 64px;
-  transition: max-height 0.3s ease;
-  overflow: hidden;
-}
-
-.mobile-drawer--expanded {
-  max-height: 70dvh;
-  overflow-y: auto;
-}
-
-.mobile-drawer__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-primary);
-  font-family: var(--font-family);
-  min-height: 64px;
-}
-
-.mobile-drawer__info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.mobile-drawer__name {
-  font-size: 0.9rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mobile-drawer__chips {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.mobile-drawer__chip {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid transparent;
-}
-
-.mobile-drawer__chip--tank { color: var(--color-tank); background: color-mix(in srgb, var(--color-tank) 20%, transparent); }
-.mobile-drawer__chip--healer { color: var(--color-healer); background: color-mix(in srgb, var(--color-healer) 20%, transparent); }
-.mobile-drawer__chip--ranged, .mobile-drawer__chip--melee { color: var(--color-dps); background: color-mix(in srgb, var(--color-dps) 20%, transparent); }
-
-.mobile-drawer__chip--offspec {
-  background: transparent;
-  border-color: currentColor;
-  opacity: 0.7;
-}
-
-.mobile-drawer__chevron {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.mobile-drawer__body {
-  padding: 0 8px 8px;
-}
-
-.mobile-drawer__body .player-card {
-  border: none;
-  box-shadow: none;
-  background: transparent;
 }
 
 /* ============================================
