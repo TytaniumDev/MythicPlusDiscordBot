@@ -1,6 +1,5 @@
 import { SessionService, type Bot, type Guild } from '../services/sessionService.js';
 import type { CommandContext, GroupService } from '../services/groupService.js';
-import { reportBadGroup } from '../core/issues.js';
 import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
 import { reportError } from '../core/sentry.js';
 
@@ -24,7 +23,6 @@ export interface GroupsContext {
   };
   send(content: string, options?: { ephemeral?: boolean }): Promise<unknown>;
   defer(options?: { ephemeral?: boolean }): Promise<void>;
-  interaction?: { response: { sendModal(modal: unknown): Promise<void> } } | null;
 }
 
 export type ActivityContext = Omit<GroupsContext, 'guild'> & {
@@ -97,49 +95,6 @@ export class GroupsHandler {
     }
 
     await ctx.send(msg);
-  }
-
-  async badgroup(
-    ctx: GroupsContext,
-    title?: string | null,
-    description?: string | null,
-  ): Promise<void> {
-    const guildId = ctx.guild?.id ?? null;
-    const lastResults = guildId ? this.groupService.lastResults.get(guildId) : undefined;
-    if (!lastResults) {
-      await ctx.send(
-        '❌ No group creation data found for this server. Run /wheel first.',
-        { ephemeral: true },
-      );
-      return;
-    }
-
-    // If slash command without arguments, send modal
-    if (ctx.interaction && title == null) {
-      // In actual discord.js: ctx.interaction.response.sendModal(...)
-      await ctx.interaction.response.sendModal(lastResults);
-      return;
-    }
-
-    if (!title || !description) {
-      await ctx.send(
-        '❌ Please provide both a title and a description when using the prefix command. ' +
-          'Usage: `!badgroup "Title" Description` or use `/badgroup` to open a modal.',
-        { ephemeral: true },
-      );
-      return;
-    }
-
-    await ctx.defer({ ephemeral: true });
-    const issue = await reportBadGroup({
-      reporterName: ctx.author.name,
-      reporterId: ctx.author.id,
-      title,
-      description,
-      players: lastResults.players,
-      groups: lastResults.groups,
-    });
-    await ctx.send(`✅ Bad group reported successfully: ${issue.html_url}`, { ephemeral: true });
   }
 
   async onVoiceStateUpdate(
