@@ -1,11 +1,9 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
-import { getBattleNetClient, type BattleNetClient } from './battlenet.js';
+import { battleNetSecrets, getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
-import { enforceRateLimit } from './rateLimit.js';
 
 interface LinkedCharacter {
   name: string;
@@ -198,27 +196,16 @@ export async function runRefresh(): Promise<RefreshSummary> {
 
 // Scheduled: Tuesday 18:00 PT, 2h after the affixes job at 16:00 PT.
 // Runs after the NA weekly reset so portraits reflect the new week's gear.
+// To run it on demand, use "Force run" on its job in Cloud Scheduler.
 export const refreshCharacterMedia = onSchedule(
   {
     schedule: 'every tuesday 18:00',
     timeZone: 'America/Los_Angeles',
     timeoutSeconds: 540,
+    secrets: battleNetSecrets,
   },
   async () => {
     await runRefresh();
   },
 );
 
-// On-demand: callable for manual refresh (e.g. after deploy, or if scheduled run failed).
-// enforceAppCheck=false matches lookupCharacter — the activity does not initialize
-// App Check, so enforcing it would silently reject every call.
-export const refreshCharacterMediaNow = onCall(
-  { enforceAppCheck: false, timeoutSeconds: 540 },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Authentication required');
-    }
-    await enforceRateLimit(request.auth.uid, 'refreshCharacterMediaNow', 2, 3600000);
-    return runRefresh();
-  },
-);

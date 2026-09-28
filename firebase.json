@@ -6,7 +6,18 @@
     {
       "source": "packages/functions",
       "codebase": "default",
-      "runtime": "nodejs22"
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+        "src",
+        "tests",
+        "build.mjs",
+        "tsconfig.json"
+      ]
     }
   ],
   "emulators": {
