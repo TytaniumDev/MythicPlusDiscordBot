@@ -57,8 +57,10 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 
 ## 6. Document cleanup (database growth)
 
-Guild and channel documents are cleaned up so the database does not grow indefinitely:
+Channel documents are ephemeral lobbies and are cleaned up; guild documents are durable and never deleted:
 
-- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The documents stay active so the web page remains valid (e.g. you can keep viewing results).
+- **Guild docs persist.** `guilds/{guildId}` is one small doc per server holding `groupHistory` and `seasonPairs`. Group history resets itself each day at midnight Pacific (it is stamped with `todayPST()` and ignored on any other date), and season pair counts reset when `config/season` changes.
+- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the channel doc stays so results remain visible.
+- **Empty lobby.** When the last person leaves a tracked voice channel, the bot deletes its channel doc.
 - **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
 - **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `lastActive` is older than **24 hours**.

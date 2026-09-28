@@ -152,7 +152,7 @@ export class SessionService {
     }
 
     await this.firebase.deleteChannelDoc(active.docId);
-    await this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: true });
+    this._cleanupGuildIfEmpty(active.guildId);
   }
 
   handleCollectionRemoved(change: {
@@ -169,23 +169,22 @@ export class SessionService {
         this.channelListeners.delete(channelId);
       }
       logger.info(`Channel ${channelId} removed from tracking`);
-      void this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: false });
+      this._cleanupGuildIfEmpty(active.guildId);
     }
   }
 
-  private async _cleanupGuildIfEmpty(
-    guildId: string,
-    { deleteFirestoreDoc }: { deleteFirestoreDoc: boolean },
-  ): Promise<void> {
+  /**
+   * Stop tracking a guild once none of its channels are active. The guild doc
+   * itself is never deleted: it holds today's group history and the season's
+   * pair counts, which must survive the lobby emptying between rounds.
+   */
+  private _cleanupGuildIfEmpty(guildId: string): void {
     const guildHasChannels = [...this.activeChannels.values()].some(
       (ac) => ac.guildId === guildId,
     );
     if (guildHasChannels) return;
 
     this.activeGuilds.delete(guildId);
-    if (deleteFirestoreDoc) {
-      await this.firebase.deleteGuildDoc(guildId);
-    }
     if (this.guildListeners.has(guildId)) {
       const watch = this.guildListeners.get(guildId);
       watch?.unsubscribe();

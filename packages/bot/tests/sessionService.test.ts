@@ -58,7 +58,6 @@ interface MockFirebase {
   updateGuildDoc: ReturnType<typeof vi.fn>;
   updateChannelDoc: ReturnType<typeof vi.fn>;
   deleteChannelDoc: ReturnType<typeof vi.fn>;
-  deleteGuildDoc: ReturnType<typeof vi.fn>;
 }
 
 function createMockFirebase(): MockFirebase {
@@ -69,7 +68,6 @@ function createMockFirebase(): MockFirebase {
     updateGuildDoc: vi.fn().mockResolvedValue(undefined),
     updateChannelDoc: vi.fn().mockResolvedValue(undefined),
     deleteChannelDoc: vi.fn().mockResolvedValue(undefined),
-    deleteGuildDoc: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -338,7 +336,7 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
 // ---------- cleanupChannel ----------
 
 describe('SessionService.cleanupChannel', () => {
-  it('removes tracking, deletes docs, and cleans up guild', async () => {
+  it('removes tracking, deletes the channel doc, and keeps the guild doc', async () => {
     const firebase = createMockFirebase();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new SessionService(makeBot(), firebase as any);
@@ -356,9 +354,11 @@ describe('SessionService.cleanupChannel', () => {
     expect(mockWatch.unsubscribe).toHaveBeenCalledOnce();
     expect(firebase.deleteChannelDoc).toHaveBeenCalledWith('42');
 
-    // Last channel for guild → guild also cleaned up
+    // Last channel for guild → guild untracked, but its doc (group history,
+    // season pairs) must survive the lobby emptying between rounds. The mock
+    // has no guild-delete method, so an attempt to delete it would throw.
     expect(service.activeGuilds.has('1')).toBe(false);
-    expect(firebase.deleteGuildDoc).toHaveBeenCalledWith('1');
+    expect(service.guildListeners.has('1')).toBe(false);
   });
 
   it('keeps guild when other channels exist', async () => {
@@ -376,7 +376,6 @@ describe('SessionService.cleanupChannel', () => {
     expect(service.activeChannels.has('42')).toBe(false);
     expect(service.activeChannels.has('43')).toBe(true);
     expect(service.activeGuilds.has('1')).toBe(true);
-    expect(firebase.deleteGuildDoc).not.toHaveBeenCalled();
   });
 
   it('is a no-op for nonexistent channels', async () => {

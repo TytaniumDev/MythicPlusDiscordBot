@@ -68,7 +68,6 @@ export interface IFirebaseService {
     guildIconUrl?: string,
   ): Promise<string>;
   updateGuildDoc(guildId: string, data: Record<string, unknown>): Promise<void>;
-  deleteGuildDoc(guildId: string): Promise<void>;
   getGroupHistory(guildId: string): Promise<{ date: string; rounds: WoWGroupDict[][] } | null>;
   saveGroupHistory(guildId: string, history: { date: string; rounds: WoWGroupDict[][] }): Promise<void>;
   getSeasonConfig(): Promise<{ slug: string; blizzardSeasonId: number; expansionId: number } | null>;
@@ -206,13 +205,6 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection('guilds').doc(guildId);
     await docRef.update(data);
-  }
-
-  async deleteGuildDoc(guildId: string): Promise<void> {
-    if (!this.db) return;
-    const docRef = this.db.collection('guilds').doc(guildId);
-    await docRef.delete();
-    logger.debug(`Deleted guild doc ${guildId} from Firestore`);
   }
 
   // Channel Doc Operations
