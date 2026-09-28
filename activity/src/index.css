@@ -557,13 +557,12 @@ button:focus-visible,
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0;
-  padding: 6px 24px;
+  column-gap: 14px;
+  row-gap: 4px;
+  padding: 8px 24px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
   margin: 0 -12px 10px;
-  column-gap: 20px;
-  row-gap: 8px;
   flex-shrink: 0;
 }
 
@@ -576,30 +575,13 @@ button:focus-visible,
   flex-shrink: 0;
 }
 
-.affix-bar-group {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.affix-bar-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--border-subtle);
-  flex-shrink: 0;
-}
-
 .affix-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-}
-
-.affix-item-top {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .affix-dot {
@@ -610,9 +592,9 @@ button:focus-visible,
 }
 
 .affix-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   text-decoration: none;
   transition: color 0.15s;
 }
@@ -623,21 +605,20 @@ button:focus-visible,
   text-underline-offset: 2px;
 }
 
-.affix-item-bottom {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+/* The mechanic players actually need to act on — the focal point of the bar. */
+.affix-description {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-heading);
 }
 
 .affix-keystone {
-  font-size: 10px;
+  font-size: 11px;
   font-family: 'IBM Plex Mono', monospace;
   color: var(--text-secondary);
-}
-
-.affix-nickname {
-  font-size: 10px;
-  color: var(--text-secondary);
+  padding: 1px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
 }
 
 #player-list {
