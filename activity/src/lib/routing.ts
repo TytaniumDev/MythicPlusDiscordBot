@@ -3,7 +3,6 @@ import type { ViewName } from '../store/types';
 export function statusToView(status: string): ViewName {
   switch (status) {
     case 'lobby':
-    case 'request_spin':
       return 'lobby';
     case 'spinning':
       return 'wheels';

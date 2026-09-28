@@ -17,11 +17,6 @@ export let SERVER_TIMESTAMP: unknown = { __sentinel: 'serverTimestamp' };
 // Replaced with FieldValue.delete() at initialization time.
 export let DELETE_FIELD: unknown = null;
 
-// Atomic array operations.
-// Replaced with FieldValue.arrayUnion/arrayRemove at initialization time.
-export let ARRAY_UNION: (...elements: unknown[]) => unknown = (...elements) => elements;
-export let ARRAY_REMOVE: (...elements: unknown[]) => unknown = (...elements) => elements;
-
 // Firebase Admin SDK types — imported dynamically to allow mocking
 type FirebaseDb = {
   collection: (name: string) => FirebaseCollection;
@@ -82,7 +77,6 @@ export interface IFirebaseService {
   updateChannelDoc(channelId: string, data: Record<string, unknown>): Promise<void>;
   deleteChannelDoc(channelId: string): Promise<void>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
-  deleteAllInCollection(collection: string): Promise<number>;
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
@@ -152,8 +146,6 @@ export class FirebaseService implements IFirebaseService {
       this.db = admin.firestore() as FirebaseDb;
       SERVER_TIMESTAMP = admin.firestore.FieldValue.serverTimestamp();
       DELETE_FIELD = admin.firestore.FieldValue.delete();
-      ARRAY_UNION = (...elements: unknown[]) => admin.firestore.FieldValue.arrayUnion(...elements);
-      ARRAY_REMOVE = (...elements: unknown[]) => admin.firestore.FieldValue.arrayRemove(...elements);
       logger.info('Firebase initialized successfully.');
     } catch (e) {
       const errType = e instanceof Error ? e.constructor.name : String(e);
@@ -485,17 +477,4 @@ export class FirebaseService implements IFirebaseService {
     return count;
   }
 
-  async deleteAllInCollection(collection: string): Promise<number> {
-    if (!this.db) return 0;
-
-    const db = this.db;
-    const snapshot = await db.collection(collection).get();
-    const count = await this._deleteDocumentsInBatches(snapshot.docs);
-
-    if (count > 0) {
-      logger.info(`Deleted all ${count} doc(s) from ${collection} collection`);
-    }
-
-    return count;
-  }
 }

@@ -14,7 +14,7 @@ npx -w packages/bot tsx src/main.ts
 # Verify everything (preferred over running tools individually)
 ./scripts/verify-ts.sh                   # Backend: lint + typecheck + tests (flags: --lint --build --test)
 ./scripts/verify-activity.sh             # Frontend: typecheck + build + Storybook + Playwright (Docker)
-./scripts/emulator-test.sh               # Backend integration tests against the Firestore emulator
+./scripts/emulator-test.sh               # Firestore emulator: bot wire-format tests + firestore.rules tests
 ./scripts/smoke-test.sh                  # End-to-end: real activity build + Firebase emulators, full spin (needs Java + `npx -w activity playwright install chromium`)
 
 # Individual backend steps
@@ -49,7 +49,7 @@ It reimplements the group formation algorithm from `packages/shared/src/parallel
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
 
 1. **Discord-only** (`/wheel`): Bot computes groups and posts results directly in Discord
-2. **Activity mode** (`/activity`, `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side
+2. **Activity mode** (the Wheelson Discord Activity, or `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side
 
 See `ARCHITECTURE.md` for the deep dive.
 
@@ -80,9 +80,9 @@ activity/                  # React/Vite frontend (npm workspace)
     └── lib/               # Role utilities, mock data, audio
 ```
 
-### Data Flow for `/activity`
+### Data Flow for the Activity
 
-1. User runs `/activity` in a voice channel
+1. Users join a voice channel and launch the Wheelson activity (or run `/wheelson`)
 2. Bot collects players from voice channel members and resolves their roles from the preferences collection (with Discord role fallback)
 3. Bot creates Firestore documents in `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
 4. Bot listens to Firestore; frontend subscribes via `onSnapshot`
@@ -90,7 +90,7 @@ activity/                  # React/Vite frontend (npm workspace)
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
 8. Frontend animates the wheel reveal sequence
-9. Frontend sets status: `completed` → bot posts embed to Discord channel
+9. Frontend sets status: `completed`; every client shows the results
 
 ### Domain Model
 
@@ -110,13 +110,13 @@ These serve different input shapes — don't unify them.
 
 `lobby` → `spinning` → `completed`
 
-The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot listens and announces results to Discord on `completed`.
+The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot doesn't act on status changes; it keeps `players` in sync with the voice channel.
 
 ## Conventions
 
 - Strict TypeScript: type all arguments, return values, and interfaces; avoid `any`.
 - New features and logic changes come with Vitest tests.
-- Keep Discord embed/component building in dedicated UI modules (e.g. `packages/bot/src/core/roleUi.ts`, `groupUi.ts`), not in command handlers.
+- Keep Discord embed/component building in dedicated UI modules (e.g. `packages/bot/src/core/groupUi.ts`), not in command handlers.
 - Adapt discord.js objects through the adapter helpers (`adaptGuild` / `buildVoiceChannelsSnapshot` in `packages/bot/src/core/discordAdapters.ts`, `adaptMember` in `main.ts`) rather than reading raw discord.js fields.
 - Error reporting:
   - Bot: `reportError(err, { tags, user, extra })` from `packages/bot/src/core/sentry.ts`.
@@ -132,6 +132,7 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 - Shared package tests live in `packages/shared/tests/`
 - Frontend E2E tests use Playwright and are in `activity/tests/`. Import `test`/`expect` from `activity/tests/fixtures.ts`, not `@playwright/test`: it stubs Blizzard character renders and holds Firestore requests open so screenshots don't depend on the network.
 - The end-to-end smoke test (`activity/smoke/`, run by `./scripts/smoke-test.sh`) drives the production activity build against the Firestore and Auth emulators. It seeds a lobby with the admin SDK as the bot would, spins twice through the real UI, and checks the groups, group history, and season pairs in Firestore. Keep it passing whenever the spin flow, wire format, or `firestore.rules` change.
+- `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production.
 - Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 
 ### Visual Snapshot Tests
@@ -150,7 +151,7 @@ If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whos
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
 Required for Firebase features: `FIREBASE_CREDENTIALS_JSON`
-Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `BOT_INVITE_PERMISSIONS`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
+Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
 
 Production secrets live in Doppler. For production host access and logs, see the `pi-ops` skill.
 
@@ -158,7 +159,7 @@ Production secrets live in Doppler. For production host access and logs, see the
 
 When touching GitHub Actions workflows: read the **Secrets in Workflows** section in [docs/CI_STANDARDS.md](docs/CI_STANDARDS.md). Never log secrets, and never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
-**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` also calls `ci-shared.yml`. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
+**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests, including `firestore.rules`), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` also calls `ci-shared.yml`. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
 
 ## Git Workflow
 

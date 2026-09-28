@@ -20,7 +20,7 @@ The source of truth for shapes is `packages/bot/src/core/firebaseService.ts` and
 
 | Collection | Doc ID | Contents |
 |---|---|---|
-| `channels` | voice channel ID | Session: `status` (`lobby` \| `request_spin` \| `spinning` \| `completed`), `players`, `groups`, `guildId`, `channelName`, `isDebug`, `createdAt`, `lastActive` |
+| `channels` | voice channel ID | Session: `status` (`lobby` \| `spinning` \| `completed`), `players`, `groups`, `guildId`, `channelName`, `isDebug`, `createdAt`, `lastActive` |
 | `guilds` | guild ID | `guildName`, `voiceChannels`, group history (`groupHistory`), `seasonPairs`, `lastActive` |
 | `preferences` | Discord user ID | Saved player roles / character |
 | `badGroupReports` | auto | User-submitted bad-group reports |

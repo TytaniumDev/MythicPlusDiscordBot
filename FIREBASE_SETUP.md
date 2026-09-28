@@ -44,14 +44,18 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 4. After the database is created, open the **Rules** tab.
 5. The canonical security rules for this project live in [`firestore.rules`](firestore.rules) at the repo root. Copy that file into the Rules tab in the Firebase Console (or deploy via `firebase deploy --only firestore:rules`). It covers all collections used at runtime:
 
-   - `guilds/{guildId}` — public read, create, update; no delete. `guildId` field is immutable.
-   - `channels/{channelId}` — public read, create (only with status `lobby` and a real parent guild), update (status restricted to `lobby` / `spinning` / `completed`); no delete. The bot's Admin SDK bypasses these rules and handles deletes/cleanup.
-   - `preferences/{docId}` — public read, create, update; no delete.
+   Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). The bot and Cloud Functions use the Admin SDK, which bypasses the rules.
+
+   - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs` / `refreshRequest`; `guildName`, `guildIconUrl` and `voiceChannels` are bot-owned. No delete.
+   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `players` is bot-owned (clients may only start it empty). No delete.
+   - `preferences/{discordId}` — doc ID must be a numeric Discord ID; roles must be known role names, `mediaUrl` must be a `render.worldofwarcraft.com` URL, `characterClass` a known class. No delete.
    - `config/{docId}` — public read; writes are server-only (Cloud Functions populate `config/affixes` and `config/season`).
    - `rateLimits/{docId}` — server-only (read and write deny).
    - `characters/{region}/{realm}/{name}` — server-only; reads/writes go through the `lookupCharacter` Cloud Function.
-   - `badGroupReports/{docId}` — clients can `create` only (and the doc must reference a real guild via `guildId`); read/update/delete are server-only. The bot listens server-side and files GitHub issues.
+   - `badGroupReports/{docId}` — clients can `create` a report with the exact report shape, for a guild that exists; read/update/delete are server-only. The bot listens server-side and files GitHub issues.
    - `issueTracking/{issueNumber}` — implicitly server-only (no rule grants client access); written by the bot and consumed by the GitHub close webhook Cloud Function.
+
+   The rules are tested against the emulator in `activity/rules/firestore.rules.test.ts` (run by `./scripts/emulator-test.sh`): every write the activity makes must stay allowed, and the tampering cases must stay rejected.
 
    If you need to deviate from the canonical rules, treat `firestore.rules` as the source of truth and keep your Console copy in sync.
 

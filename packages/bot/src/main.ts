@@ -10,14 +10,11 @@ import {
   Routes,
   EmbedBuilder,
   ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle as DjsButtonStyle,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
   InviteTargetType,
   type ChatInputCommandInteraction,
-  type ButtonInteraction,
   type ModalSubmitInteraction,
   type Message as DjsMessage,
   type Interaction,
@@ -27,27 +24,16 @@ import logger from './core/logger.js';
 import { GroupService } from './services/groupService.js';
 import { SessionService, type Bot, type Guild, type VoiceChannel } from './services/sessionService.js';
 import { adaptGuild, buildVoiceChannelsSnapshot } from './core/discordAdapters.js';
-import { GeneralHandler } from './commands/general.js';
 import { GroupsHandler } from './commands/groups.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
-import { getWowName, getPlayerList, type DiscordMember } from './core/utils.js';
+import { getPlayerList, type DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
-import { WoWPlayer, WoWGroup, STATIC_AFFIXES, decodeGroupHistoryRounds } from '@mythicplus/shared';
-import type { AffixDisplay } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, decodeGroupHistoryRounds } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal, GitHubError } from './core/issues.js';
 import type { GitHubIssueResponse } from './core/issues.js';
 import { getPreferenceService } from './core/preferenceService.js';
 import { IssueTrackingService } from './services/issueTrackingService.js';
-import {
-  createMainSpecView,
-  createOffspecView,
-  createUtilitiesView,
-  handleRoleButtonClick,
-  handleNoneButtonClick,
-  handleNextButtonClick,
-  type RoleSelectionState,
-} from './core/roleUi.js';
 
 // ---------------------------------------------------------------------------
 // Helpers: convert plain embed objects → discord.js EmbedBuilder
@@ -179,38 +165,6 @@ async function notifyReporterOfIssue(
 }
 
 // ---------------------------------------------------------------------------
-// Firestore payload validation
-// ---------------------------------------------------------------------------
-
-// Validate an affixes payload coming from Firestore. The config doc is edited
-// out-of-band (cloud function / manual updates), so we can't trust the shape
-// blindly. Returns null on any malformed entry so the caller can fall back to
-// STATIC_AFFIXES rather than crash or render garbage.
-function parseAffixDisplays(raw: unknown): AffixDisplay[] | null {
-  if (!Array.isArray(raw)) return null;
-  const out: AffixDisplay[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== 'object') return null;
-    const e = entry as Record<string, unknown>;
-    if (typeof e.id !== 'number') return null;
-    if (typeof e.name !== 'string') return null;
-    if (typeof e.keystoneLevel !== 'string') return null;
-    if (typeof e.wowheadUrl !== 'string') return null;
-    if (typeof e.color !== 'string') return null;
-    if (e.nickname !== null && typeof e.nickname !== 'string') return null;
-    out.push({
-      id: e.id,
-      name: e.name,
-      nickname: e.nickname as string | null,
-      keystoneLevel: e.keystoneLevel,
-      wowheadUrl: e.wowheadUrl,
-      color: e.color,
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Context factories: interaction → handler context objects
 // ---------------------------------------------------------------------------
 
@@ -225,12 +179,11 @@ function createInteractionSender(interaction: ChatInputCommandInteraction) {
     },
     async send(
       content: string | { embed: PlainEmbed },
-      opts?: { embed?: PlainEmbed; ephemeral?: boolean; view?: string },
+      opts?: { embed?: PlainEmbed; ephemeral?: boolean },
     ) {
       // Build payload
       const payload: Record<string, unknown> = {};
       const embeds: EmbedBuilder[] = [];
-      const components: ActionRowBuilder<ButtonBuilder>[] = [];
 
       if (typeof content === 'string') {
         if (content) payload.content = content;
@@ -240,19 +193,7 @@ function createInteractionSender(interaction: ChatInputCommandInteraction) {
         embeds.push(toDiscordEmbed(content.embed));
       }
 
-      // Add "Edit My Roles" button for role board views
-      if (opts?.view === 'role_board') {
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId('role:edit')
-            .setLabel('Edit My Roles')
-            .setStyle(DjsButtonStyle.Success),
-        );
-        components.push(row);
-      }
-
       if (embeds.length) payload.embeds = embeds;
-      if (components.length) payload.components = components;
 
       let msg: DjsMessage;
       if (deferred && !firstSent) {
@@ -275,18 +216,8 @@ function createInteractionSender(interaction: ChatInputCommandInteraction) {
 // ---------------------------------------------------------------------------
 
 const commands = [
-  new SlashCommandBuilder().setName('version').setDescription('Show the bot version'),
-  new SlashCommandBuilder().setName('status').setDescription('Show bot status and uptime'),
-  new SlashCommandBuilder().setName('invite').setDescription('Get the bot invite link'),
   new SlashCommandBuilder().setName('wheel').setDescription('Create Mythic+ groups from voice channel members'),
   new SlashCommandBuilder().setName('wheelson').setDescription('Start a Mythic+ lobby activity'),
-  new SlashCommandBuilder()
-    .setName('badgroup')
-    .setDescription('Report a bad group formation')
-    .addStringOption((opt) => opt.setName('title').setDescription('Issue title').setRequired(false))
-    .addStringOption((opt) =>
-      opt.setName('description').setDescription('Issue description').setRequired(false),
-    ),
   new SlashCommandBuilder()
     .setName('bug')
     .setDescription('Report a bug')
@@ -299,64 +230,8 @@ const commands = [
     .addStringOption((opt) =>
       opt.setName('text').setDescription('Quick feature description (skips the form)').setRequired(false),
     ),
-  new SlashCommandBuilder().setName('affixes').setDescription("Show this week's Mythic+ affixes"),
-  new SlashCommandBuilder().setName('sitout').setDescription('Toggle sitting out of the current wheel spin round'),
   new SlashCommandBuilder().setName('test').setDescription('[Debug] Run wheel with mock players'),
 ];
-
-// ---------------------------------------------------------------------------
-// Role selection button state
-// ---------------------------------------------------------------------------
-
-const activeRoleSelections = new Map<string, RoleSelectionState & { currentViewIndex: number }>();
-
-function buildRoleButtons(
-  state: RoleSelectionState & { currentViewIndex: number },
-): ActionRowBuilder<ButtonBuilder>[] {
-  const view = state.views[state.currentViewIndex];
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  const groups = new Map<number, ButtonBuilder[]>();
-
-  for (const btn of view.buttons) {
-    const row = btn.row;
-    let arr = groups.get(row);
-    if (!arr) { arr = []; groups.set(row, arr); }
-
-    let style: DjsButtonStyle;
-    switch (btn.style) {
-      case 'primary': style = DjsButtonStyle.Primary; break;
-      case 'success': style = DjsButtonStyle.Success; break;
-      default: style = DjsButtonStyle.Secondary; break;
-    }
-
-    const b = new ButtonBuilder()
-      .setCustomId(btn.customId)
-      .setLabel(btn.label)
-      .setStyle(style);
-
-    if ('disabled' in btn && btn.disabled) b.setDisabled(true);
-    arr.push(b);
-  }
-
-  // Add save button on last view
-  if (state.currentViewIndex === state.views.length - 1) {
-    const saveRow = state.views.length; // use a new row number
-    let saveArr = groups.get(saveRow);
-    if (!saveArr) { saveArr = []; groups.set(saveRow, saveArr); }
-    saveArr.push(
-      new ButtonBuilder()
-        .setCustomId(`role:${state.discordId}:save`)
-        .setLabel('Save')
-        .setStyle(DjsButtonStyle.Success),
-    );
-  }
-
-  for (const [, btns] of [...groups.entries()].sort(([a], [b]) => a - b)) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...btns));
-  }
-
-  return rows;
-}
 
 // ---------------------------------------------------------------------------
 // Main
@@ -388,7 +263,6 @@ async function main() {
   const botAdapter = createBotAdapter(client);
   const sessionService = new SessionService(botAdapter);
 
-  const generalHandler = new GeneralHandler(0, config.DISCORD_APPLICATION_ID);
   const groupsHandler = new GroupsHandler(botAdapter, groupService, sessionService);
   const debugHandler = new DebugHandler(groupService);
 
@@ -401,9 +275,6 @@ async function main() {
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
     logger.info(`Logged in as ${readyClient.user.tag}`);
-
-    // Update latency
-    generalHandler.latency = readyClient.ws.ping / 1000;
 
     // Register slash commands globally
     const rest = new REST({ version: '10' }).setToken(botToken);
@@ -628,8 +499,6 @@ async function main() {
     try {
       if (interaction.isChatInputCommand()) {
         await handleSlashCommand(interaction);
-      } else if (interaction.isButton()) {
-        await handleButton(interaction);
       } else if (interaction.isModalSubmit()) {
         await handleModalSubmit(interaction);
       }
@@ -637,7 +506,7 @@ async function main() {
       reportError(e, {
         tags: {
           handler: 'interaction',
-          command: interaction.isChatInputCommand() ? interaction.commandName : 'button',
+          command: interaction.isChatInputCommand() ? interaction.commandName : 'modal',
           guild: interaction.guildId ?? 'DM',
         },
         user: { id: interaction.user.id, username: interaction.user.username },
@@ -669,42 +538,6 @@ async function main() {
       : null;
 
     switch (interaction.commandName) {
-      case 'version':
-        await generalHandler.version({ guild: guildObj, send: sender.send });
-        break;
-
-      case 'status':
-        generalHandler.latency = client.ws.ping / 1000;
-        await generalHandler.status({ guild: guildObj, send: sender.send });
-        break;
-
-      case 'invite':
-        await generalHandler.invite({ guild: guildObj, send: sender.send });
-        break;
-
-      case 'affixes': {
-        let affixes: AffixDisplay[] = STATIC_AFFIXES;
-        const firebase = FirebaseService.getInstance();
-        if (firebase.isAvailable() && firebase.db) {
-          try {
-            const snap = await firebase.db.collection('config').doc('affixes').get();
-            if (snap.exists) {
-              const data = snap.data();
-              const parsed = parseAffixDisplays(data?.affixes);
-              if (parsed) {
-                affixes = parsed;
-              } else if (data?.affixes !== undefined) {
-                logger.warn('Firestore affixes payload failed validation; falling back to STATIC_AFFIXES');
-              }
-            }
-          } catch (e) {
-            logger.warn(`Failed to fetch affixes from Firestore: ${e}`);
-          }
-        }
-        await generalHandler.affixes({ guild: guildObj, send: sender.send }, affixes);
-        break;
-      }
-
       case 'wheel': {
         const voiceChannel = member?.voice.channel;
         const voiceMembers = voiceChannel
@@ -751,84 +584,6 @@ async function main() {
             defer: sender.defer,
           },
         );
-        break;
-      }
-
-      case 'badgroup': {
-        const title = interaction.options.getString('title');
-        const description = interaction.options.getString('description');
-
-        // If no title provided, show a modal for the user to fill in
-        if (title == null) {
-          const guildId = guildObj?.id ?? null;
-          const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
-          if (!lastResults) {
-            await sender.send(
-              '❌ No group creation data found for this server. Run /wheel first.',
-            );
-            break;
-          }
-
-          const modal = new ModalBuilder()
-            .setCustomId('badgroup_modal')
-            .setTitle('Report Bad Group');
-
-          modal.addComponents(
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('title')
-                .setLabel('Title')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true),
-            ),
-            new ActionRowBuilder<TextInputBuilder>().addComponents(
-              new TextInputBuilder()
-                .setCustomId('description')
-                .setLabel('Description')
-                .setStyle(TextInputStyle.Paragraph)
-                .setRequired(true),
-            ),
-          );
-
-          await interaction.showModal(modal);
-          break;
-        }
-
-        if (!title) break;
-
-        await sender.defer({ ephemeral: true });
-        try {
-          const guildId = guildObj?.id ?? null;
-          const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
-          if (!lastResults) {
-            await sender.send('❌ No group creation data found for this server. Run /wheel first.');
-            break;
-          }
-
-          const reporterName = getReporterName(interaction);
-          const issue = await reportBadGroup({
-            reporterName,
-            reporterId: interaction.user.id,
-            title,
-            description: description ?? title,
-            players: lastResults.players,
-            groups: lastResults.groups,
-          });
-          const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-          const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-          await sender.send(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
-        } catch (e) {
-          reportError(e, {
-            tags: {
-              handler: 'submitIssue',
-              kind: 'badgroup',
-              source: 'quick',
-              errorType: e instanceof GitHubError ? 'github' : 'unknown',
-            },
-          });
-          const msg = e instanceof Error ? e.message : String(e);
-          await sender.send(`❌ Failed to create issue: ${msg}`);
-        }
         break;
       }
 
@@ -982,28 +737,6 @@ async function main() {
         break;
       }
 
-      case 'sitout': {
-        const voiceChannel = member?.voice.channel;
-        if (!voiceChannel) {
-          await interaction.reply({ content: 'You must be in a voice channel with an active session.', ephemeral: true });
-          break;
-        }
-        if (!sessionService.activeChannels.has(voiceChannel.id)) {
-          await interaction.reply({ content: 'No active session in your voice channel. Start one with /wheelson first.', ephemeral: true });
-          break;
-        }
-        const result = await sessionService.toggleSitOut(voiceChannel.id, interaction.user.id);
-        if (!result.active) {
-          await interaction.reply({ content: 'No active session found.', ephemeral: true });
-          break;
-        }
-        const msg = result.sittingOut
-          ? "You're **sitting out** this round. You won't be included in the next spin."
-          : "You're **back in**! You'll be included in the next spin.";
-        await interaction.reply({ content: msg, ephemeral: true });
-        break;
-      }
-
       case 'test': {
         await debugHandler.test({
           guild: guildObj,
@@ -1023,141 +756,6 @@ async function main() {
         break;
       }
 
-    }
-  }
-
-  // -- Button handler --
-  async function handleButton(interaction: ButtonInteraction) {
-    const customId = interaction.customId;
-
-    if (customId === 'role:edit') {
-      // Start role selection for the user who clicked
-      const member = interaction.member as import('discord.js').GuildMember | null;
-      if (!member) {
-        await interaction.reply({ content: '❌ This must be used in a server.', ephemeral: true });
-        return;
-      }
-      const discordId = interaction.user.id;
-      const playerName = getWowName(adaptMember(member));
-      const prefix = `role:${discordId}`;
-
-      const state: RoleSelectionState & { currentViewIndex: number } = {
-        playerName,
-        discordId,
-        selectedRoles: new Set<string>(),
-        views: [],
-        stepContents: [
-          `**${playerName}** — Select your **main spec**:`,
-          `**${playerName}** — Select your **offspecs** (optional):`,
-          `**${playerName}** — Select your **utilities**:`,
-        ],
-        currentViewIndex: 0,
-      };
-
-      // Load existing preferences
-      const prefSvc = getPreferenceService();
-      const existing = prefSvc.getPreferenceSync(discordId);
-      if (existing) {
-        for (const r of existing) state.selectedRoles.add(r);
-      }
-
-      state.views.push(createMainSpecView(state, prefix));
-      state.views.push(createOffspecView(state, prefix));
-      state.views.push(createUtilitiesView(state, prefix));
-
-      activeRoleSelections.set(discordId, state);
-
-      const rows = buildRoleButtons(state);
-      await interaction.reply({
-        content: state.stepContents[0],
-        components: rows,
-        ephemeral: true,
-      });
-      return;
-    }
-
-    // Handle role selection buttons: role:<discordId>:<action>
-    const match = customId.match(/^role:(\d+):(.+)$/);
-    if (!match) return;
-
-    const [, targetId, action] = match;
-    if (targetId !== interaction.user.id) {
-      await interaction.reply({ content: '❌ This is not your role selection.', ephemeral: true });
-      return;
-    }
-
-    const state = activeRoleSelections.get(targetId);
-    if (!state) {
-      await interaction.reply({ content: '❌ Role selection expired. Click "Edit My Roles" again.', ephemeral: true });
-      return;
-    }
-
-    const currentView = state.views[state.currentViewIndex];
-
-    if (action === 'next') {
-      const result = handleNextButtonClick(state, currentView.buttons);
-      if (result) {
-        state.currentViewIndex++;
-        const rows = buildRoleButtons(state);
-        await interaction.update({
-          content: result.content,
-          components: rows,
-        });
-      }
-      return;
-    }
-
-    if (action === 'none') {
-      const noneBtn = currentView.buttons.find((b) => 'clearRoles' in b);
-      if (noneBtn && 'clearRoles' in noneBtn) {
-        handleNoneButtonClick(state, currentView.buttons, noneBtn.clearRoles);
-      }
-      const rows = buildRoleButtons(state);
-      await interaction.update({ components: rows });
-      return;
-    }
-
-    if (action === 'save') {
-      // Save roles
-      const prefSvc = getPreferenceService();
-      const roles = [...state.selectedRoles];
-      await prefSvc.setPreference(targetId, state.playerName, roles);
-      activeRoleSelections.delete(targetId);
-
-      await interaction.update({
-        content: `Saved roles for **${state.playerName}**: ${roles.length > 0 ? roles.join(', ') : 'none'}`,
-        components: [],
-      });
-
-      // Sync updated roles to Firebase for any active sessions in this guild
-      try {
-        const guild = interaction.guild;
-        if (guild) {
-          const channelIds = sessionService.getActiveChannelIdsForGuild(guild.id);
-          if (channelIds.length > 0) {
-            const guildAdapter = createBotAdapter(client).get_guild(guild.id);
-            if (guildAdapter) {
-              await Promise.all(
-                channelIds.map((chId) => sessionService.updateChannelPlayers(chId, guildAdapter)),
-              );
-            }
-          }
-        }
-      } catch (syncErr) {
-        // Role desync is user-visible (the activity will show stale roles
-        // until the next refresh), worth surfacing to Sentry even though
-        // local role state was already saved successfully.
-        reportError(syncErr, { tags: { handler: 'roleSyncAfterSave' } });
-      }
-      return;
-    }
-
-    // It's a role toggle
-    const btn = currentView.buttons.find((b) => 'roleName' in b && b.roleName === action);
-    if (btn && 'roleName' in btn) {
-      handleRoleButtonClick(state, currentView.buttons, btn.roleName, btn.isMainSpec);
-      const rows = buildRoleButtons(state);
-      await interaction.update({ components: rows });
     }
   }
 
@@ -1196,45 +794,6 @@ async function main() {
           tags: {
             handler: 'submitIssue',
             kind: customId === 'bug_modal' ? 'bug' : 'feature',
-            source: 'modal',
-            errorType: e instanceof GitHubError ? 'github' : 'unknown',
-          },
-        });
-        const msg = e instanceof Error ? e.message : String(e);
-        await interaction.editReply(`❌ Failed to create issue: ${msg}`);
-      }
-      return;
-    }
-
-    if (customId === 'badgroup_modal') {
-      await interaction.deferReply({ ephemeral: true });
-      try {
-        const guildId = interaction.guild?.id ?? null;
-        const lastResults = guildId ? groupService.lastResults.get(guildId) : undefined;
-        if (!lastResults) {
-          await interaction.editReply('❌ No group data found. Run /wheel first.');
-          return;
-        }
-
-        const title = interaction.fields.getTextInputValue('title');
-        const description = interaction.fields.getTextInputValue('description');
-
-        const issue = await reportBadGroup({
-          reporterName,
-          reporterId,
-          title,
-          description,
-          players: lastResults.players,
-          groups: lastResults.groups,
-        });
-        const dmSent = await notifyReporterOfIssue(interaction.user, issue);
-        const dmHint = dmSent ? '' : '\n(Enable DMs to get notified when this is resolved)';
-        await interaction.editReply(`✅ Bad group reported: ${issue.html_url}${dmHint}`);
-      } catch (e) {
-        reportError(e, {
-          tags: {
-            handler: 'submitIssue',
-            kind: 'badgroup',
             source: 'modal',
             errorType: e instanceof GitHubError ? 'github' : 'unknown',
           },
