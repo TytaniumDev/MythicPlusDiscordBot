@@ -54,3 +54,30 @@ jobs:
           java-version: '21'
       - run: npm ci
       - run: ./scripts/emulator-test.sh
+
+  Smoke:
+    # End-to-end: the production activity build against the Firestore (with
+    # firestore.rules) and Auth emulators. Playwright plays a full session —
+    # lobby, spin, results, new round, spin — and checks the groups and history
+    # written to Firestore. See activity/smoke/.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npx -w activity playwright install --with-deps chromium
+      - run: ./scripts/smoke-test.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-test-results
+          path: activity/test-results/
+          retention-days: 7

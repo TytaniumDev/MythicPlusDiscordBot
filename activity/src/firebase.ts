@@ -1,8 +1,8 @@
 // Initialize Firebase
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { connectAuthEmulator, getAuth, signInAnonymously } from 'firebase/auth';
 import { reportError } from './lib/sentry';
 
 const firebaseConfig = {
@@ -14,8 +14,17 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// host:port of local Firebase emulators. Set only by the end-to-end smoke
+// tests (scripts/smoke-test.sh); undefined in real builds.
+const firestoreEmulatorHost = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST as string | undefined;
+const authEmulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST as string | undefined;
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+if (firestoreEmulatorHost) {
+  const sep = firestoreEmulatorHost.lastIndexOf(':');
+  connectFirestoreEmulator(db, firestoreEmulatorHost.slice(0, sep), Number(firestoreEmulatorHost.slice(sep + 1)));
+}
 const functions = getFunctions(app);
 
 // Auth is optional — getAuth() throws when the API key is missing (e.g. Storybook).
@@ -27,6 +36,9 @@ let auth: ReturnType<typeof getAuth> | null = null;
 let authReady: Promise<void> = Promise.resolve();
 try {
   auth = getAuth(app);
+  if (authEmulatorHost) {
+    connectAuthEmulator(auth, `http://${authEmulatorHost}`, { disableWarnings: true });
+  }
 
   // Sign in anonymously so Cloud Function callables receive request.auth.
   authReady = signInAnonymously(auth).then(
