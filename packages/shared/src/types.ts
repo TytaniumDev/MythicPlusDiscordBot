@@ -1,4 +1,4 @@
-export type SessionStatus = 'lobby' | 'request_spin' | 'spinning' | 'completed';
+export type SessionStatus = 'lobby' | 'spinning' | 'completed';
 
 export type Role = 'tank' | 'healer' | 'ranged' | 'melee';
 export type Utility = 'brez' | 'lust';

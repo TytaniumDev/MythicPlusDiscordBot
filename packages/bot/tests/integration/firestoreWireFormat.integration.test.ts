@@ -30,7 +30,7 @@ describe.skipIf(!shouldRun)('FirebaseService against real Firestore emulator', (
     // Bypass the real constructor because it requires a production-shape
     // FIREBASE_CREDENTIALS_JSON (service account PEM) that the emulator
     // doesn't need. Limitation: the module-level FieldValue sentinels
-    // (SERVER_TIMESTAMP, DELETE_FIELD, ARRAY_UNION, ARRAY_REMOVE) stay at
+    // (SERVER_TIMESTAMP, DELETE_FIELD) stay at
     // their default dummy values. Tests here only exercise saveGroupHistory
     // and getGroupHistory which don't use those sentinels. If tests are
     // added for methods that do, refactor the constructor to accept an

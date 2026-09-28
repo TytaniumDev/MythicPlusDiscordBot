@@ -49,7 +49,7 @@ It reimplements the group formation algorithm from `packages/shared/src/parallel
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
 
 1. **Discord-only** (`/wheel`): Bot computes groups and posts results directly in Discord
-2. **Activity mode** (`/activity`, `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side
+2. **Activity mode** (the Wheelson Discord Activity, or `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side
 
 See `ARCHITECTURE.md` for the deep dive.
 
@@ -80,9 +80,9 @@ activity/                  # React/Vite frontend (npm workspace)
     └── lib/               # Role utilities, mock data, audio
 ```
 
-### Data Flow for `/activity`
+### Data Flow for the Activity
 
-1. User runs `/activity` in a voice channel
+1. Users join a voice channel and launch the Wheelson activity (or run `/wheelson`)
 2. Bot collects players from voice channel members and resolves their roles from the preferences collection (with Discord role fallback)
 3. Bot creates Firestore documents in `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
 4. Bot listens to Firestore; frontend subscribes via `onSnapshot`
@@ -90,7 +90,7 @@ activity/                  # React/Vite frontend (npm workspace)
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
 8. Frontend animates the wheel reveal sequence
-9. Frontend sets status: `completed` → bot posts embed to Discord channel
+9. Frontend sets status: `completed`; every client shows the results
 
 ### Domain Model
 
@@ -110,13 +110,13 @@ These serve different input shapes — don't unify them.
 
 `lobby` → `spinning` → `completed`
 
-The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot listens and announces results to Discord on `completed`.
+The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot doesn't act on status changes; it keeps `players` in sync with the voice channel.
 
 ## Conventions
 
 - Strict TypeScript: type all arguments, return values, and interfaces; avoid `any`.
 - New features and logic changes come with Vitest tests.
-- Keep Discord embed/component building in dedicated UI modules (e.g. `packages/bot/src/core/roleUi.ts`, `groupUi.ts`), not in command handlers.
+- Keep Discord embed/component building in dedicated UI modules (e.g. `packages/bot/src/core/groupUi.ts`), not in command handlers.
 - Adapt discord.js objects through the adapter helpers (`adaptGuild` / `buildVoiceChannelsSnapshot` in `packages/bot/src/core/discordAdapters.ts`, `adaptMember` in `main.ts`) rather than reading raw discord.js fields.
 - Error reporting:
   - Bot: `reportError(err, { tags, user, extra })` from `packages/bot/src/core/sentry.ts`.
@@ -151,7 +151,7 @@ If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whos
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
 Required for Firebase features: `FIREBASE_CREDENTIALS_JSON`
-Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `BOT_INVITE_PERMISSIONS`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
+Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
 
 Production secrets live in Doppler. For production host access and logs, see the `pi-ops` skill.
 
