@@ -1,81 +1,40 @@
 ---
 name: firebase-debug
-description: Query Firestore sessions and inspect WoW Mythic+ group data
-user-invocable: true
-disable-model-invocation: false
+description: Inspect production Firestore data (active lobbies, players, formed groups, guild history, preferences) to debug Mythic+ sessions. Read-only.
 ---
 
-# Firebase Debug Skill
+# Firebase Debug
 
-Query and debug Firestore session data for the Mythic+ Discord Bot.
+Query Firestore with the bundled read-only script. It needs `npm ci` at the repo root and `FIREBASE_CREDENTIALS_JSON` in the environment (service-account JSON, stored in Doppler). If the variable isn't set, ask the user for access rather than guessing data.
 
-## Session Schema
-
-Sessions are stored in Firestore with:
-- **session_id**: Unique identifier
-- **status**: `lobby | request_spin | spinning | completed`
-- **players**: Array of WoWPlayer objects with roles (tankMain, healerMain, dpsMain, etc.)
-- **groups**: Array of formed groups (populated after spin)
-- **guild_id**: Discord guild ID
-- **channel_id**: Discord voice channel ID
-- **created_at**: Timestamp
-- **updated_at**: Timestamp
-
-## Common Queries
-
-When invoked, use the Firebase MCP to perform queries like:
-
-### List Active Sessions
-```
-Show all sessions with status "lobby" or "spinning"
+```bash
+node .claude/skills/firebase-debug/query.mjs get  <collection> <docId>
+node .claude/skills/firebase-debug/query.mjs list <collection> [--status <s>] [--hours <n>] [--limit <n>]
 ```
 
-### Inspect Session Details
-```
-Get session {session_id} and show:
-- Status
-- Number of players (with role breakdown)
-- Number of groups formed
-- Created/updated timestamps
-```
+Never write to or delete from Firestore from this skill. For data fixes, propose the change and ask first.
 
-### Debug Player Data
-```
-For session {session_id}, show player array with:
-- Player names
-- Main roles (tank/healer/dps)
-- Offspecs
-- Utilities (brez, lust)
-```
+## Collections
 
-### Find Recent Sessions
-```
-List sessions modified in the last {N} hours
-Sort by updated_at descending
-```
+The source of truth for shapes is `packages/bot/src/core/firebaseService.ts` and `packages/shared/src/types.ts`.
 
-### Check Empty Groups
-```
-Find sessions with status "completed" but empty groups array
-(Indicates a potential spin failure)
-```
+| Collection | Doc ID | Contents |
+|---|---|---|
+| `channels` | voice channel ID | Session: `status` (`lobby` \| `request_spin` \| `spinning` \| `completed`), `players`, `groups`, `guildId`, `channelName`, `isDebug`, `createdAt`, `lastActive` |
+| `guilds` | guild ID | `guildName`, `voiceChannels`, group history (`groupHistory`), `seasonPairs`, `lastActive` |
+| `preferences` | Discord user ID | Saved player roles / character |
+| `badGroupReports` | auto | User-submitted bad-group reports |
+| `issueTracking` | GitHub issue number | Issue-reporter notification state |
+| `config` | `season` | Current season config |
 
-## Output Format
+Players are serialized `WoWPlayer` dicts (`mainRole`, `offspecs`, `utilities`); decode legacy shapes with `WoWPlayer.fromDict` semantics in mind. Group history uses the wire codec in `@mythicplus/shared` (`decodeGroupHistoryRounds`).
 
-Format results as readable tables:
-```
-Session: abc123
-Status: lobby
-Players: 15 (2 tanks, 3 healers, 10 dps)
-Groups: 0
-Created: 2026-02-16 14:30 UTC
-Updated: 2026-02-16 14:45 UTC
-```
+## Common checks
 
-For player listings:
-```
-Players (15):
-1. PlayerName (Tank Main, Offhealer) - Brez
-2. PlayerName (Healer Main, Offdps-Ranged) - Lust
-...
-```
+- Active lobbies: `list channels --status lobby`
+- Recently active sessions: `list channels --hours 6`
+- One session: `get channels <channelId>` → summarize status, player count with role breakdown, group count
+- Spin failure: `completed` channel docs with an empty `groups` array
+- Guild history: `get guilds <guildId>`
+
+Summarize results as short tables (status, player count by role, group count, lastActive) rather than dumping raw JSON.
