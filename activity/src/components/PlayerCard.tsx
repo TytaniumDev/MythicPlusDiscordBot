@@ -32,7 +32,7 @@ export function PlayerCard({ player, className = '' }: PlayerCardProps) {
         name={player.name}
         subtitle={classSubtitle}
         color={color}
-        imageUrl={mediaUrl}
+        mediaUrl={mediaUrl}
       />
 
       <Divider />

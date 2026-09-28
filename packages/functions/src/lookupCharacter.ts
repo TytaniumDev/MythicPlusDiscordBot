@@ -14,6 +14,35 @@ export interface CharacterResult {
   mediaUrl: string | null;
 }
 
+// Character-media asset keys in order of preference. All variants share one
+// render path, so the activity derives the size it needs from whichever URL is
+// stored (activity/src/lib/characterMedia.ts). `inset` is last: Blizzard
+// stopped regenerating it in mid-2026, so it only serves characters that have
+// no other asset.
+const MEDIA_ASSET_KEYS = ['avatar', 'main-raw', 'inset'] as const;
+
+/**
+ * Pick the render URL to store for a character. Blizzard overwrites renders in
+ * place at a fixed URL and sends no Cache-Control, so browsers and Discord's
+ * proxy keep serving old copies. Appending the last-login timestamp changes
+ * the URL whenever the character has played since the last lookup, which
+ * busts those caches (Blizzard's CDN ignores the query string).
+ */
+export function pickMediaUrl(
+  media: { assets?: Array<{ key: string; value: string }> } | null,
+  lastLoginTimestamp: number | undefined,
+): string | null {
+  const assets = media?.assets ?? [];
+  for (const key of MEDIA_ASSET_KEYS) {
+    const asset = assets.find(a => a.key === key);
+    if (!asset) continue;
+    const url = new URL(asset.value);
+    if (lastLoginTimestamp !== undefined) url.searchParams.set('v', String(lastLoginTimestamp));
+    return url.toString();
+  }
+  return null;
+}
+
 // Pure logic — testable without Firebase
 export function buildCharacterResult(
   profile: {
@@ -22,15 +51,14 @@ export function buildCharacterResult(
     character_class: { name: string };
     active_specialization?: { name: string };
     active_spec?: { name: string };
+    last_login_timestamp?: number;
   },
-  media: { assets: Array<{ key: string; value: string }> } | null,
+  media: { assets?: Array<{ key: string; value: string }> } | null,
 ): CharacterResult {
   const className = profile.character_class.name;
   const spec = profile.active_specialization ?? profile.active_spec;
   const specName = spec?.name ?? 'Unknown';
-
-  const insetAsset = media?.assets?.find(a => a.key === 'inset');
-  const mediaUrl = insetAsset?.value ?? null;
+  const mediaUrl = pickMediaUrl(media, profile.last_login_timestamp);
 
   return {
     name: profile.name,
@@ -84,18 +112,18 @@ export const lookupCharacter = onCall(
     const db = getFirestore();
     const cacheRef = db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`);
 
-    // Check cache
-    if (!forceRefresh) {
-      const cached = await cacheRef.get();
-      if (cached.exists) {
-        const data = cached.data();
-        if (data) {
-          const cachedAt = data.cachedAt as Timestamp;
-          if (cachedAt && Date.now() - cachedAt.toMillis() < CACHE_TTL_MS) {
-            return data.result as CharacterResult;
-          }
-        }
-      }
+    // Read the cache even on forceRefresh: its mediaUrl is the fallback when
+    // the media call fails below.
+    const cached = (await cacheRef.get()).data() as
+      | { result?: CharacterResult; cachedAt?: Timestamp }
+      | undefined;
+    if (
+      !forceRefresh &&
+      cached?.result &&
+      cached.cachedAt &&
+      Date.now() - cached.cachedAt.toMillis() < CACHE_TTL_MS
+    ) {
+      return cached.result;
     }
 
     // Fetch from Battle.net
@@ -110,6 +138,11 @@ export const lookupCharacter = onCall(
     }
 
     const result = buildCharacterResult(profile, media);
+    // A transient media failure shouldn't erase this character's portrait —
+    // callers write mediaUrl straight to preferences/{discordId}.
+    if (result.mediaUrl === null && cached?.result?.mediaUrl) {
+      result.mediaUrl = cached.result.mediaUrl;
+    }
 
     // Write to cache
     await cacheRef.set({

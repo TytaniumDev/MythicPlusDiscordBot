@@ -1,8 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '../store/store';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
+import { CharacterImage } from './CharacterImage';
 import { RoleEditor } from './RoleEditor';
 import { Divider } from './ui';
 import { useCharacterLookup } from '../hooks/useCharacterLookup';
@@ -125,7 +124,6 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
     || channelPlayer?.name
     || 'You';
 
-  const proxied = remapImageUrl(toAvatarUrl(avatarMediaUrl) ?? undefined);
   const ring = getClassColor(avatarCharacterClass) ?? '#888';
 
   // Always treat ProfileModal edits as profile edits so the persistent
@@ -143,9 +141,11 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
         aria-label="Profile"
       >
         <div className="profile-modal__avatar" style={{ borderColor: ring }}>
-          {proxied
-            ? <img src={proxied} alt="" />
-            : <span>{(displayName || '?').charAt(0).toUpperCase()}</span>}
+          <CharacterImage
+            mediaUrl={avatarMediaUrl}
+            variant="avatar"
+            fallback={<span>{(displayName || '?').charAt(0).toUpperCase()}</span>}
+          />
         </div>
         <div className="profile-modal__name">{displayName}</div>
         {canRefresh && (

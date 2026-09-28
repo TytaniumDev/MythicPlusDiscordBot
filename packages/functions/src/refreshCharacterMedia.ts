@@ -175,11 +175,14 @@ export async function runRefresh(): Promise<RefreshSummary> {
       const batch = db.batch();
       batch.set(db.doc(`preferences/${target.discordId}`), payload, { merge: true });
       // Also refresh the lookupCharacter cache doc so subsequent UI lookups
-      // don't reintroduce stale mediaUrl within the 24h cache TTL.
-      batch.set(
-        db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`),
-        { result, cachedAt: FieldValue.serverTimestamp() },
-      );
+      // don't reintroduce stale mediaUrl within the 24h cache TTL. Skipped on
+      // a media failure so the cache keeps the URL lookupCharacter falls back to.
+      if (result.mediaUrl != null) {
+        batch.set(
+          db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`),
+          { result, cachedAt: FieldValue.serverTimestamp() },
+        );
+      }
       await batch.commit();
 
       summary.refreshed += 1;

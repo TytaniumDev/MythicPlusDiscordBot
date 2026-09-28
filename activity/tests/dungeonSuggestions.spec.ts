@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 import { mockRaiderio } from './helpers/raiderio';
 

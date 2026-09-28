@@ -40,7 +40,7 @@ export function EditPlayerModal({ player, onClose }: EditPlayerModalProps) {
           name={player.name}
           subtitle={player.inGameName || undefined}
           color={color}
-          imageUrl={mediaUrl}
+          mediaUrl={mediaUrl}
         />
         <Divider />
         <div className="edit-modal__form">

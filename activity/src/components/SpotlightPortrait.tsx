@@ -15,9 +15,8 @@ import {
 } from '@floating-ui/react';
 import type { CharacterClass } from '@mythicplus/shared';
 import type { CharacterDungeonScores } from '../lib/dungeonScoreTypes';
-import { remapImageUrl } from '../discordSdk';
-import { toMainBodyUrl } from '../lib/characterMedia';
 import { getClassColor } from '../lib/classColors';
+import { CharacterImage } from './CharacterImage';
 
 interface SpotlightPortraitProps {
   name: string;
@@ -43,11 +42,7 @@ function FallbackAvatar({ color }: { color: string }) {
 }
 
 export function SpotlightPortrait({ name, characterClass, mediaUrl, scores }: SpotlightPortraitProps) {
-  const fullBodyUrl = toMainBodyUrl(mediaUrl);
-  const proxiedUrl = remapImageUrl(fullBodyUrl);
   const color = getClassColor(characterClass) ?? DEFAULT_COLOR;
-  const [failed, setFailed] = useState(false);
-  const showImage = proxiedUrl && !failed;
   const hasTooltip = Boolean(scores);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -76,16 +71,13 @@ export function SpotlightPortrait({ name, characterClass, mediaUrl, scores }: Sp
       {...getReferenceProps()}
     >
       <div className="spotlight-portrait__stage">
-        {showImage ? (
-          <img
-            src={proxiedUrl}
-            alt={`${name} character portrait`}
-            className="spotlight-portrait__img"
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <FallbackAvatar color={color} />
-        )}
+        <CharacterImage
+          mediaUrl={mediaUrl}
+          variant="body"
+          alt={`${name} character portrait`}
+          className="spotlight-portrait__img"
+          fallback={<FallbackAvatar color={color} />}
+        />
         <div className="spotlight-portrait__name">{name}</div>
       </div>
       {hasTooltip && scores && isMounted && (

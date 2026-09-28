@@ -21,18 +21,23 @@ const functions = getFunctions(app);
 // Auth is optional — getAuth() throws when the API key is missing (e.g. Storybook).
 // Guard it so non-auth features keep working without Firebase credentials.
 let auth: ReturnType<typeof getAuth> | null = null;
+// Resolves once anonymous sign-in settles. Callables attach whichever user is
+// signed in at call time (the SDK does not wait for sign-in), so anything that
+// needs request.auth must await this first.
+let authReady: Promise<void> = Promise.resolve();
 try {
   auth = getAuth(app);
 
   // Sign in anonymously so Cloud Function callables receive request.auth.
-  // The promise is not awaited here — Firebase SDK queues callable requests
-  // until auth resolves, so functions called after import will work correctly.
-  signInAnonymously(auth).catch((err) => {
-    reportError(err, { tag: 'firebase.signIn' });
-  });
+  authReady = signInAnonymously(auth).then(
+    () => undefined,
+    (err) => {
+      reportError(err, { tag: 'firebase.signIn' });
+    },
+  );
 } catch {
   // No valid Firebase config (e.g. Storybook) — auth features are unavailable.
   console.info('[Wheelson] Firebase Auth not initialized; auth features will be unavailable.');
 }
 
-export { db, functions, auth };
+export { db, functions, auth, authReady };

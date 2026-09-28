@@ -1,8 +1,7 @@
 import type { CSSProperties } from 'react';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
 import { useAppStore } from '../store/store';
+import { CharacterImage } from './CharacterImage';
 
 interface ProfileAvatarProps {
   onClick: () => void;
@@ -25,7 +24,6 @@ export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
   const characterClass = currentCharacter?.characterClass ?? channelPlayer?.characterClass ?? null;
   const displayName = (currentCharacter?.inGameName?.split('-')[0]) || currentPlayerName || channelPlayer?.name || null;
 
-  const proxied = remapImageUrl(toAvatarUrl(mediaUrl) ?? undefined);
   const ringColor = getClassColor(characterClass) ?? '#888';
   const initial = (displayName ?? '?').charAt(0).toUpperCase();
 
@@ -43,11 +41,12 @@ export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
       aria-label={ariaLabel}
       style={{ '--avatar-ring': ringColor } as CSSProperties}
     >
-      {proxied ? (
-        <img src={proxied} alt="" className="profile-avatar__img" />
-      ) : (
-        <span className="profile-avatar__initial">{initial}</span>
-      )}
+      <CharacterImage
+        mediaUrl={mediaUrl}
+        variant="avatar"
+        className="profile-avatar__img"
+        fallback={<span className="profile-avatar__initial">{initial}</span>}
+      />
     </button>
   );
 }

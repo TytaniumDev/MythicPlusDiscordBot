@@ -129,7 +129,7 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 
 - Bot tests use `vitest` and are in `packages/bot/tests/`
 - Shared package tests live in `packages/shared/tests/`
-- Frontend E2E tests use Playwright and are in `activity/tests/`
+- Frontend E2E tests use Playwright and are in `activity/tests/`. Import `test`/`expect` from `activity/tests/fixtures.ts`, not `@playwright/test`: it stubs Blizzard character renders and holds Firestore requests open so screenshots don't depend on the network.
 - Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 
 ### Visual Snapshot Tests

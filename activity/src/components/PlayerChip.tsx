@@ -1,8 +1,7 @@
 import type { CharacterClass } from '@mythicplus/shared';
 import { type RoleTag, getRoleColor } from '../lib/roles';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
+import { CharacterImage } from './CharacterImage';
 
 const ReadyIcon = () => (
   <svg className="ready-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -38,8 +37,6 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
   characterClass?: CharacterClass | null;
 }) {
   const ringColor = getClassColor(characterClass) ?? getRoleColor(roleKey);
-  const avatarUrl = toAvatarUrl(mediaUrl);
-  const proxied = remapImageUrl(avatarUrl ?? undefined);
 
   return (
     <div
@@ -48,16 +45,7 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
       aria-hidden="true"
     >
       <span className="player-chip__portrait-letter">{name.charAt(0).toUpperCase() || '?'}</span>
-      {proxied && (
-        <img
-          src={proxied}
-          alt=""
-          className="player-chip__portrait-img"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      )}
+      <CharacterImage mediaUrl={mediaUrl} variant="avatar" className="player-chip__portrait-img" />
     </div>
   );
 }
