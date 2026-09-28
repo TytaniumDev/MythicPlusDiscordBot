@@ -61,6 +61,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // The app registers a service worker that fetches Blizzard renders itself,
+    // which would bypass page.route mocks (tests/helpers/characterRenders.ts).
+    serviceWorkers: 'block',
   },
   webServer: {
     command: 'npm run dev',

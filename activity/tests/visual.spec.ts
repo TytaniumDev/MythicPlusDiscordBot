@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 import { mockRaiderio } from './helpers/raiderio';
+import { mockCharacterRenders } from './helpers/characterRenders';
 
 test.beforeEach(async ({ page }) => {
   await mockRaiderio(page);
+  await mockCharacterRenders(page);
 });
 
 // Helper to encode data for URL

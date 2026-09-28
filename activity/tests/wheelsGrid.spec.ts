@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockCharacterRenders } from './helpers/characterRenders';
+
+test.beforeEach(async ({ page }) => {
+  await mockCharacterRenders(page);
+});
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
