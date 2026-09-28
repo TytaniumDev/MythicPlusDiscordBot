@@ -62,7 +62,7 @@ Get up and running in less than 5 minutes.
 *   **🔥 Firebase Setup**: [Firebase Configuration](./FIREBASE_SETUP.md) - Database and Auth configuration.
 *   **👨‍💻 Contributing**: [Development Standards](./CONTRIBUTING.md) - Development standards and guidelines.
 *   **🛡️ CI Standards**: [CI & Security Standards](./docs/CI_STANDARDS.md) - CI and security standards.
-*   **🤖 AI Agents**: [Agent Instructions](./AGENTS.md) - Instructions and standards for AI agents.
+*   **🤖 AI Agents**: [Agent Instructions](./AGENTS.md) - Instructions for AI coding agents (also loaded via `CLAUDE.md`).
 
 ## 🤝 Contributing
 
