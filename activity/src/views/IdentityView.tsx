@@ -5,9 +5,8 @@ import { HeaderBar } from '../components/HeaderBar';
 import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA } from '../components/ui';
 import type { WoWPlayer } from '../types';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
+import { CharacterImage } from '../components/CharacterImage';
 
 interface IdentityViewProps {
   onNavigate: (view: 'channels' | 'setup' | 'home', opts?: { replace?: boolean }) => void;
@@ -72,7 +71,6 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                 const id = player.discordId ?? player.name;
                 const isClaimed = player.discordId != null && claimedPlayers.includes(player.discordId);
                 const isSelected = player.discordId === selectedId;
-                const avatarUrl = remapImageUrl(toAvatarUrl(player.mediaUrl) ?? undefined);
                 const ringColor = getClassColor(player.characterClass) ?? 'var(--color-gold)';
                 return (
                   <button
@@ -88,14 +86,11 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
                       <span className="identity-card__avatar-letter">
                         {player.name.charAt(0).toUpperCase()}
                       </span>
-                      {avatarUrl && (
-                        <img
-                          src={avatarUrl}
-                          alt=""
-                          className="identity-card__avatar-img"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      )}
+                      <CharacterImage
+                        mediaUrl={player.mediaUrl}
+                        variant="avatar"
+                        className="identity-card__avatar-img"
+                      />
                     </div>
                     <span className="identity-card__name">{player.name}</span>
                     {isSelected && <span className="identity-card__check">{'✓'}</span>}

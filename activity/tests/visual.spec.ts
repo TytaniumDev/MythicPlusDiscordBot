@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 import { mockRaiderio } from './helpers/raiderio';
 

@@ -35,17 +35,12 @@ export async function lookupCharacterProfile(
 
     const data: RaiderioProfileResponse = await response.json();
 
-    // Convert the small avatar thumbnail to a larger inset render
-    const thumbnailUrl = data.thumbnail_url
-      ? data.thumbnail_url.replace('-avatar.jpg', '-inset.jpg')
-      : '';
-
     return {
       name: data.name,
       realm: data.realm,
       className: data.class,
       role: data.active_spec_role?.toLowerCase() ?? '',
-      thumbnailUrl,
+      thumbnailUrl: data.thumbnail_url ?? '',
     };
   } catch (err) {
     // Don't report environment failures (offline, abort, generic fetch failure).

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');

@@ -330,12 +330,18 @@ class FirestoreSessionService implements SessionService {
       inGameName: inGameName ?? '',
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    await this.requestPlayerRefresh();
+  }
 
-    const { currentChannelId } = useAppStore.getState();
-    if (currentChannelId) {
-      const channelRef = doc(db, 'channels', currentChannelId);
-      await updateDoc(channelRef, { refreshPlayers: true });
-    }
+  /**
+   * Ask the bot to re-read preferences and republish the channel's players,
+   * so every client sees the change. Skipped until the channel doc has loaded:
+   * updateDoc fails on a doc that doesn't exist yet.
+   */
+  private async requestPlayerRefresh(): Promise<void> {
+    const { currentChannelId, channelData } = useAppStore.getState();
+    if (!currentChannelId || !channelData) return;
+    await updateDoc(doc(db, 'channels', currentChannelId), { refreshPlayers: true });
   }
 
   async saveLinkedCharacter(
@@ -352,6 +358,7 @@ class FirestoreSessionService implements SessionService {
     }
     if (characterClass !== undefined) payload.characterClass = characterClass;
     await setDoc(prefRef, payload, { merge: true });
+    await this.requestPlayerRefresh();
   }
 
   async refreshChannels(guildId: string): Promise<void> {

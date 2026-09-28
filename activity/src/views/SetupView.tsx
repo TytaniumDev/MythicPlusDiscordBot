@@ -77,7 +77,7 @@ export function SetupView({ onNavigate }: SetupViewProps) {
               name={player.name}
               subtitle={player.inGameName || undefined}
               color={color}
-              imageUrl={mediaUrl}
+              mediaUrl={mediaUrl}
             />
             <Divider />
             <div className="setup-view__form">
