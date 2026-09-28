@@ -12,20 +12,21 @@ npm ci
 npx -w packages/bot tsx src/main.ts
 
 # Verify everything (preferred over running tools individually)
-./scripts/verify-ts.sh                   # Backend: lint + typecheck + tests (flags: --lint --build --test)
+./scripts/verify-ts.sh                   # Backend lint + typecheck + tests, plus activity typecheck + unit tests (flags: --lint --build --test)
 ./scripts/verify-activity.sh             # Frontend: typecheck + build + Storybook + Playwright (Docker)
 ./scripts/emulator-test.sh               # Firestore emulator: bot wire-format tests + firestore.rules tests
 ./scripts/smoke-test.sh                  # End-to-end: real activity build + Firebase emulators, full spin (needs Java + `npx -w activity playwright install chromium`)
 
 # Individual backend steps
 npm run lint                             # ESLint over packages/
-npm run typecheck                        # shared + bot + functions
-npm run test                             # shared + functions + bot (vitest)
+npm run typecheck                        # shared + bot + functions + activity
+npm run test                             # shared + functions + bot + activity unit tests (vitest)
 
 # Frontend (activity/)
 npm -w activity run dev                  # Dev server
 npm -w activity run build                # Production build
 npm -w activity run typecheck            # TypeScript check
+npm -w activity exec -- vitest run --project unit  # Unit tests (jsdom; the `storybook` project needs Playwright)
 ./scripts/playwright-docker.sh                     # E2E tests (Docker, from project root)
 ./scripts/playwright-docker.sh --update-snapshots  # Regenerate screenshots
 ```
@@ -159,7 +160,7 @@ Production secrets live in Doppler. For production host access and logs, see the
 
 When touching GitHub Actions workflows: read the **Secrets in Workflows** section in [docs/CI_STANDARDS.md](docs/CI_STANDARDS.md). Never log secrets, and never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
-**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests, including `firestore.rules`), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` also calls `ci-shared.yml`. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
+**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests, including `firestore.rules`), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` and `deploy-activity.yml` also call `ci-shared.yml`, and their deploy jobs wait on it, so nothing reaches production (Pi, Firebase, or GitHub Pages) unless CI passes on the merged commit. The required `CI / Build` and `CI / Test` checks also cover the activity typecheck and its jsdom unit tests (through `./scripts/verify-ts.sh`); the Playwright screenshot tests run only in the non-required `Verify Activity` workflow, and no CI job runs the Storybook vitest project. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
 
 ## Git Workflow
 

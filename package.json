@@ -13,8 +13,8 @@
   },
   "scripts": {
     "lint": "eslint packages/ --max-warnings 0",
-    "typecheck": "npm -w packages/shared run typecheck && npm -w packages/bot run typecheck && npm -w packages/functions run typecheck",
-    "test": "npm -w packages/shared run test && npm -w packages/functions run test && npm -w packages/bot run test",
+    "typecheck": "npm -w packages/shared run typecheck && npm -w packages/bot run typecheck && npm -w packages/functions run typecheck && npm -w activity run typecheck",
+    "test": "npm -w packages/shared run test && npm -w packages/functions run test && npm -w packages/bot run test && npm -w activity exec -- vitest run --project unit",
     "verify": "./scripts/verify-ts.sh"
   }
 }
