@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveAffixDisplay, STATIC_AFFIXES, BARGAIN_AFFIXES } from '@mythicplus/shared';
+import { resolveAffixDisplay, findWeeklyAffix, STATIC_AFFIXES, BARGAIN_AFFIXES } from '@mythicplus/shared';
 
 describe('resolveAffixDisplay', () => {
   it('returns the static affix entry for a known static ID', () => {
@@ -33,5 +33,19 @@ describe('resolveAffixDisplay', () => {
     expect(resolveAffixDisplay(0)).toBeNull();
     expect(resolveAffixDisplay(9999)).toBeNull();
     expect(resolveAffixDisplay(-1)).toBeNull();
+  });
+});
+
+describe('findWeeklyAffix', () => {
+  it('picks the Bargain variant out of the full weekly list', () => {
+    const affixes = [165, 158, 9, 10, 147]
+      .map((id) => resolveAffixDisplay(id))
+      .filter((a) => a !== null);
+    expect(findWeeklyAffix(affixes)?.id).toBe(158);
+  });
+
+  it('returns null when no Bargain variant is present', () => {
+    expect(findWeeklyAffix(STATIC_AFFIXES)).toBeNull();
+    expect(findWeeklyAffix([])).toBeNull();
   });
 });

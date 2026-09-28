@@ -1,6 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getBattleNetClient } from './battlenet.js';
+import { battleNetSecrets, getBattleNetClient } from './battlenet.js';
 import { getUtilitiesForClass, getRoleForSpec, toCharacterClass } from '@mythicplus/shared';
 import { enforceRateLimit } from './rateLimit.js';
 import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
@@ -82,7 +82,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 // do not "fix" it. Re-enable only alongside frontend App Check init.
 // Anonymous auth + per-user rate limiting below provides abuse protection.
 export const lookupCharacter = onCall(
-  { enforceAppCheck: false },
+  { enforceAppCheck: false, secrets: battleNetSecrets },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Authentication required');

@@ -61,14 +61,15 @@ export const MeleeDPS: Story = {
   },
 };
 
+/** The current user's own chip */
 export const Selected: Story = {
   args: {
-    name: 'You',
+    name: 'Gazzi',
     roleKey: 'tank',
     roleLabel: 'Tank',
     tags: [{ label: 'Tank', cssClass: 'tag-tank' }],
     isReady: true,
-    isSelected: true,
+    isSelf: true,
   },
 };
 

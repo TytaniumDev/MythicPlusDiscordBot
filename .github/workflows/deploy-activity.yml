@@ -7,15 +7,25 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Workflow-level (not job-level) so a newer merge's deploy can never finish
+# before an older one's and publish stale content.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
+  # Same checks as PRs (Lint, Build, Test, Integration, Smoke) against the
+  # merged commit, so a broken main never reaches Pages. Mirrors deploy.yml.
+  ci:
+    uses: ./.github/workflows/ci-shared.yml
+
   deploy:
+    needs: [ci]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -51,7 +61,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 22
+          cache: npm
 
       - name: Install Dependencies
         run: npm ci

@@ -5,7 +5,7 @@ import { splitPlayers } from './profiles';
 // with Discord IDs anonymized. Media URLs point at Battle.net's CDN and are
 // stable across the season. Indices are load-bearing for Storybook stories
 // and Playwright tests — see grep "mockPlayers\[" before reordering:
-//   [0]  healer archetype with offspecs     (PlayerCard/EditPlayerModal/MobilePlayerDrawer stories)
+//   [0]  healer archetype with offspecs     (MyCharacterCard/EditPlayerModal stories)
 //   [4]  tank with inGameName               (lobbyIdentity in visual/pages/a11y/roleEditor tests)
 //   [5]  sit-out target                     (visual/pages tests)
 //   [6]  currentUser with inGameName        (RoleEditor.CurrentUser, EditPlayerModal.CurrentUser)

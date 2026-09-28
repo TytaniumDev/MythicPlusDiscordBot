@@ -68,3 +68,31 @@ Channel documents are ephemeral lobbies and are cleaned up; guild documents are 
 - **Empty lobby.** When the last person leaves a tracked voice channel, the bot deletes its channel doc.
 - **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
 - **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `lastActive` is older than **24 hours**.
+
+## 7. Cloud Functions secrets
+
+Cloud Functions read their credentials from Google Secret Manager (`defineSecret` in `packages/functions/src`), not from environment variables. The deploy fails if a secret a function declares doesn't exist, so create every secret before the first deploy that uses it.
+
+| Secret | Used by |
+|--------|---------|
+| `BNET_CLIENT_ID`, `BNET_CLIENT_SECRET` | `lookupCharacter`, `refreshCharacterMedia` (Battle.net API client from https://develop.battle.net) |
+| `BOT_TOKEN`, `GITHUB_WEBHOOK_SECRET` | `onGithubIssueWebhook` |
+
+The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:
+
+```bash
+doppler secrets get BNET_CLIENT_ID --plain \
+  | npx firebase-tools@14 functions:secrets:set BNET_CLIENT_ID --data-file=- --project mythicplusdiscordbot
+```
+
+Functions bind the latest secret version when they deploy, so after a rotation, redeploy (re-run the Deploy workflow) to pick up the new value.
+
+The deploy service account (`FIREBASE_CREDENTIALS_JSON`) needs to read each secret and to grant the functions' runtime service account `roles/secretmanager.secretAccessor` on it. `roles/secretmanager.admin` covers both. If you'd rather not give it that role, grant the accessor binding yourself; the deploy only checks for it:
+
+```bash
+gcloud secrets add-iam-policy-binding BNET_CLIENT_ID --project mythicplusdiscordbot \
+  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+`gcloud secrets get-iam-policy BOT_TOKEN --project mythicplusdiscordbot` shows the bindings an already-working secret has, so you can mirror them.

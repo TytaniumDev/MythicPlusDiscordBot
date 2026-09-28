@@ -46,6 +46,7 @@ export { getUtilitiesForClass, getRoleForSpec } from './classData.js';
 export {
   STATIC_AFFIXES,
   BARGAIN_AFFIXES,
+  findWeeklyAffix,
   resolveAffixDisplay,
 } from './affixMetadata.js';
 
