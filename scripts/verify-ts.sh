@@ -50,6 +50,10 @@ if [ "$RUN_BUILD" -eq 1 ]; then
   echo ""
   echo "--- Typecheck: packages/functions ---"
   npx -w packages/functions tsc --noEmit
+
+  echo ""
+  echo "--- Typecheck: activity ---"
+  npm -w activity run typecheck
 fi
 
 if [ "$RUN_TEST" -eq 1 ]; then
@@ -64,6 +68,12 @@ if [ "$RUN_TEST" -eq 1 ]; then
   echo ""
   echo "--- Tests: packages/bot ---"
   npm -w packages/bot run test
+
+  echo ""
+  echo "--- Tests: activity (unit) ---"
+  # Only the jsdom `unit` project; the `storybook` project needs a Playwright
+  # browser, so it is deliberately left out of this script.
+  npm -w activity exec -- vitest run --project unit
 fi
 
 echo ""
