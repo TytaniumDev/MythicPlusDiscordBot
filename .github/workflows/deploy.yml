@@ -64,6 +64,13 @@ jobs:
             packages/functions/package.json > /tmp/fn-pkg.json \
             && mv /tmp/fn-pkg.json packages/functions/package.json
 
+          # Code is prebuilt above, so Cloud Build only needs runtime deps.
+          # Its lockfile-less `npm install` of vitest 4 devDeps crashes npm
+          # ("Cannot read properties of null (reading 'edgesOut')").
+          for pkg in packages/functions/package.json packages/functions/shared/package.json; do
+            jq 'del(.devDependencies)' "$pkg" > /tmp/strip-pkg.json && mv /tmp/strip-pkg.json "$pkg"
+          done
+
       - name: Deploy Firestore rules and Cloud Functions
         run: |
           echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
