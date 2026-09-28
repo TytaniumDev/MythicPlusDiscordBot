@@ -160,4 +160,5 @@ When touching GitHub Actions workflows: read the **Secrets in Workflows** sectio
 
 - **Never push directly to `main`.** Always work on a feature branch and open a PR for review.
 - There is no code review step. Once `CI / Lint`, `CI / Build`, and `CI / Test` pass on a PR by the repo owner, `auto-approve.yml` approves it to satisfy branch protection. Green CI is the merge gate, so run the verify scripts before pushing.
+- When you open a PR, enable auto-merge on it with the squash method (`gh pr merge --auto --squash`, or the equivalent GitHub API/MCP call) so it merges itself once required checks pass.
 - Merging to `main` deploys (`deploy.yml`, `deploy-activity.yml`).
