@@ -1,8 +1,7 @@
 import type { CharacterClass } from '@mythicplus/shared';
 import { type RoleTag, getRoleColor } from '../lib/roles';
-import { toAvatarUrl } from '../lib/characterMedia';
-import { remapImageUrl } from '../discordSdk';
 import { getClassColor } from '../lib/classColors';
+import { CharacterImage } from './CharacterImage';
 
 const ReadyIcon = () => (
   <svg className="ready-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -22,7 +21,8 @@ interface PlayerChipProps {
   roleKey: string;
   roleLabel: string;
   tags?: RoleTag[];
-  isSelected?: boolean;
+  /** The current user's own chip: highlighted and tagged "YOU". */
+  isSelf?: boolean;
   isSittingOut?: boolean;
   isReady?: boolean;
   mediaUrl?: string | null;
@@ -38,8 +38,6 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
   characterClass?: CharacterClass | null;
 }) {
   const ringColor = getClassColor(characterClass) ?? getRoleColor(roleKey);
-  const avatarUrl = toAvatarUrl(mediaUrl);
-  const proxied = remapImageUrl(avatarUrl ?? undefined);
 
   return (
     <div
@@ -48,16 +46,7 @@ function ChipPortrait({ name, roleKey, mediaUrl, characterClass }: {
       aria-hidden="true"
     >
       <span className="player-chip__portrait-letter">{name.charAt(0).toUpperCase() || '?'}</span>
-      {proxied && (
-        <img
-          src={proxied}
-          alt=""
-          className="player-chip__portrait-img"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      )}
+      <CharacterImage mediaUrl={mediaUrl} variant="avatar" className="player-chip__portrait-img" />
     </div>
   );
 }
@@ -67,7 +56,7 @@ export function PlayerChip({
   roleKey,
   roleLabel,
   tags = [],
-  isSelected = false,
+  isSelf = false,
   isSittingOut = false,
   isReady = false,
   mediaUrl,
@@ -84,7 +73,7 @@ export function PlayerChip({
 
   return (
     <div
-      className={`player-chip${isSelected ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!isReady && !isSittingOut ? ' not-ready' : ''}`}
+      className={`player-chip${isSelf ? ' is-selected' : ''}${isSittingOut ? ' sitting-out' : ''}${!isReady && !isSittingOut ? ' not-ready' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role="button"
@@ -101,7 +90,10 @@ export function PlayerChip({
         characterClass={characterClass}
       />
       <div className="player-chip__body">
-        <span className="player-chip__name">{name}</span>
+        <div className="player-chip__name-row">
+          <span className="player-chip__name">{name}</span>
+          {isSelf && <span className="player-chip__you">You</span>}
+        </div>
         {tags.length > 0 && (
           <div className="chip-tags">
             {tags.map((tag, i) => (

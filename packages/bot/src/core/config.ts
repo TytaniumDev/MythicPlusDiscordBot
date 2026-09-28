@@ -5,7 +5,6 @@ const envSchema = z.object({
   BOT_TOKEN: z.string().optional(),
   DISCORD_APPLICATION_ID: z.string().optional(),
   DEVELOPER_ID: z.coerce.number().default(0),
-  BOT_INVITE_PERMISSIONS: z.coerce.number().default(551903415361),
   GITHUB_TOKEN: z.string().trim().optional(),
   GITHUB_REPO_OWNER: z.string().trim().default('TytaniumDev'),
   GITHUB_REPO_NAME: z.string().trim().default('MythicPlusDiscordBot'),
@@ -24,7 +23,6 @@ const env = envSchema.parse(process.env);
 export const BOT_TOKEN = env.BOT_TOKEN;
 export const DISCORD_APPLICATION_ID = env.DISCORD_APPLICATION_ID;
 export const DEVELOPER_ID = env.DEVELOPER_ID;
-export const BOT_INVITE_PERMISSIONS = env.BOT_INVITE_PERMISSIONS;
 
 // GitHub Issue Integration
 export const GITHUB_TOKEN = env.GITHUB_TOKEN;

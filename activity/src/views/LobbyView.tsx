@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { reportError } from '../lib/sentry';
 import { PlayerChip } from '../components/PlayerChip';
-import { PlayerCard } from '../components/PlayerCard';
+import { MyCharacterCard, type MyCharacterCardHandle } from '../components/MyCharacterCard';
 import { EditPlayerModal } from '../components/EditPlayerModal';
 import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { HeaderBar } from '../components/HeaderBar';
@@ -11,8 +11,7 @@ import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA, RoleSectionHeader } from '../components/ui';
 import { CollapsibleRoleSection } from '../components/CollapsibleRoleSection';
 import { getPrimaryRole, hasAnyRole, getReadyCount, categorizeUnreadyPlayers, formatRoleName, getRoleTags, isPlayerReady } from '../lib/roles';
-import { useIsMobileLobby } from '../hooks/useMediaQuery';
-import { MobilePlayerDrawer } from '../components/MobilePlayerDrawer';
+import { useIsCompactLobby } from '../hooks/useMediaQuery';
 
 const SpinIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -29,7 +28,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const service = useSessionService();
   const players = channelData?.players || [];
 
-  const isMobile = useIsMobileLobby();
+  const isMobile = useIsCompactLobby();
+  const myCharacterRef = useRef<MyCharacterCardHandle>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<typeof players[number] | null>(null);
   const [showSpinWarning, setShowSpinWarning] = useState(false);
@@ -90,6 +90,8 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     [players, currentPlayerId],
   );
 
+  const isMyPlayerSittingOut = myPlayer?.discordId != null && sittingOut.includes(myPlayer.discordId);
+
   const { ready, total } = getReadyCount(players, sittingOut);
   const allReady = ready === total && total > 0;
   const readyText = `${ready}/${total} Ready`;
@@ -103,7 +105,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     currentPlayerId != null && p.discordId === currentPlayerId;
 
   const handleChipClick = (player: typeof players[number]) => {
-    if (!isSelfPlayer(player)) {
+    if (isSelfPlayer(player)) {
+      myCharacterRef.current?.reveal();
+    } else {
       setEditingPlayer(player);
     }
   };
@@ -119,13 +123,13 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         roleKey={roleKey}
         roleLabel={formatRoleName(roleKey)}
         tags={getRoleTags(p)}
-        isSelected={isSelf}
+        isSelf={isSelf}
         isSittingOut={isSittingOut}
         isReady={isPlayerReady(p)}
         mediaUrl={p.mediaUrl}
         characterClass={p.characterClass}
         onClick={() => handleChipClick(p)}
-        ariaLabel={isSelf ? `Your character: ${p.name}` : `Edit ${p.name} roles`}
+        ariaLabel={isSelf ? `Edit your character: ${p.name}` : `Edit ${p.name} roles`}
       />
     );
   };
@@ -189,17 +193,29 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
           <div className="lobby-body">
             <div className="lobby-players">
+              {isMobile && myPlayer && (
+                <MyCharacterCard
+                  ref={myCharacterRef}
+                  player={myPlayer}
+                  isSittingOut={isMyPlayerSittingOut}
+                  collapsible
+                />
+              )}
               <div id="player-list">
                 {/* Left column: Tank + Heal sections stacked */}
                 <div className="role-column">
                   <div className="role-section">
                     <CollapsibleRoleSection label="Tanks" count={tanks.length} color="tank">
-                      {tanks.map(renderChip)}
+                      <div className="role-chip-grid">
+                        {tanks.map(renderChip)}
+                      </div>
                     </CollapsibleRoleSection>
                   </div>
                   <div className="role-section">
                     <CollapsibleRoleSection label="Heal" count={healers.length} color="healer">
-                      {healers.map(renderChip)}
+                      <div className="role-chip-grid">
+                        {healers.map(renderChip)}
+                      </div>
                     </CollapsibleRoleSection>
                   </div>
                 </div>
@@ -243,7 +259,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
             {!isMobile && myPlayer && (
               <div className="lobby-sidebar">
-                <PlayerCard player={myPlayer} />
+                <MyCharacterCard
+                  ref={myCharacterRef}
+                  player={myPlayer}
+                  isSittingOut={isMyPlayerSittingOut}
+                />
               </div>
             )}
           </div>
@@ -261,7 +281,6 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         </section>
       </main>
 
-      {isMobile && myPlayer && <MobilePlayerDrawer player={myPlayer} />}
       {isMobile && (
         <div className="mobile-spin-btn">
           <PrimaryCTA

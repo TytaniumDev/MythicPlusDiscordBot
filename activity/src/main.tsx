@@ -3,14 +3,16 @@
 import { initSentry, Sentry, reportError } from './lib/sentry';
 initSentry();
 
-// Register the Blizzard render cache service worker. Fire-and-forget; we
-// don't block bootstrap on it and cache misses just fall through to network.
+// Remove the Blizzard render-cache service worker that older builds installed:
+// deleting sw.js alone leaves existing registrations running and serving their
+// cached portraits. Safe to delete once clients have loaded a build with this.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      reportError(err, { tag: 'sw.register' });
+  navigator.serviceWorker.getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((r) => r.unregister())))
+    .then(() => caches.delete('bnet-renders-v1'))
+    .catch((err) => {
+      reportError(err, { tag: 'sw.unregister' });
     });
-  });
 }
 
 // Discord SDK must be imported first — it patches fetch/WebSocket for the

@@ -9,7 +9,7 @@ import {
   loadStoredDiscordId,
   saveStoredDiscordId,
   parseInGameName,
-  type StoredCharacter,
+  DEFAULT_REGION,
 } from '../lib/currentCharacter';
 import { toCharacterClass } from '@mythicplus/shared';
 
@@ -47,14 +47,13 @@ function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
 }
 
 /**
- * One-shot opportunistic sync between localStorage character and
- * preferences/{discordId} when an identity first resolves.
+ * One-shot sync between the localStorage character and preferences/{discordId}
+ * (surfaced here as the channel's player record) when an identity resolves.
  *
- * - If localStorage is empty AND channelData has character data for this
- *   user, hydrate localStorage so returning users see their avatar without
- *   re-entering it.
- * - If localStorage has data, mirror it to preferences/{discordId} so the
- *   bot can populate channelData for other voice members. Last-write-wins.
+ * preferences is the source of truth — the weekly refresh job and other
+ * devices update it — so when it has a character, it overwrites the local
+ * copy. Only when it has none do we seed it from a character set up locally
+ * (e.g. in the profile modal before joining voice).
  *
  * Fire-and-forget: failures don't surface; the local character keeps
  * working regardless.
@@ -63,45 +62,29 @@ function syncCharacterAcrossLayers(player: WoWPlayer): void {
   const store = useAppStore.getState();
   const local = store.currentCharacter;
 
-  if (!local) {
-    // Hydrate from channel record if it has anything useful.
-    if (player.inGameName || player.mediaUrl) {
-      const region = parseRegionFromInGameName(player.inGameName);
-      const hydrated: StoredCharacter = {
-        inGameName: player.inGameName ?? '',
-        region,
-        mediaUrl: player.mediaUrl ?? null,
-        characterClass: toCharacterClass(player.characterClass),
-        lookupStatus: player.mediaUrl ? 'ok' : (player.inGameName ? 'pending' : 'no_name'),
-        lastUpdated: Date.now(),
-      };
-      store.setCurrentCharacter(hydrated);
-    }
+  if (player.inGameName || player.mediaUrl) {
+    store.setCurrentCharacter({
+      inGameName: player.inGameName ?? '',
+      region: DEFAULT_REGION,
+      mediaUrl: player.mediaUrl ?? null,
+      characterClass: toCharacterClass(player.characterClass),
+      lookupStatus: player.mediaUrl ? 'ok' : (player.inGameName ? 'pending' : 'no_name'),
+      lastUpdated: Date.now(),
+    });
     return;
   }
 
-  // Mirror localStorage → preferences. Fire-and-forget.
-  if (!player.discordId) return;
-  const service = getSessionService();
-  if (local.inGameName) {
-    const parsed = parseInGameName(local.inGameName);
-    if (parsed) {
-      service.saveLinkedCharacter(
-        player.discordId,
-        { name: parsed.name, realm: parsed.realmSlug, region: local.region },
-        local.mediaUrl,
-        local.characterClass,
-      ).catch((err) => {
-        reportError(err, { tag: 'useIdentity.syncMirror' });
-      });
-    }
-  }
-}
-
-function parseRegionFromInGameName(_inGameName: string | undefined): string {
-  // No region in the player record today — default to "us".
-  // Existing RoleEditor also defaults to "us"; keeping consistent.
-  return 'us';
+  if (!player.discordId || !local?.inGameName) return;
+  const parsed = parseInGameName(local.inGameName);
+  if (!parsed) return;
+  getSessionService().saveLinkedCharacter(
+    player.discordId,
+    { name: parsed.name, realm: parsed.realmSlug, region: local.region },
+    local.mediaUrl,
+    local.characterClass,
+  ).catch((err) => {
+    reportError(err, { tag: 'useIdentity.seedPreferences' });
+  });
 }
 
 export function useIdentity() {

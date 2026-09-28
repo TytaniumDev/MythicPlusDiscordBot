@@ -44,21 +44,27 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 4. After the database is created, open the **Rules** tab.
 5. The canonical security rules for this project live in [`firestore.rules`](firestore.rules) at the repo root. Copy that file into the Rules tab in the Firebase Console (or deploy via `firebase deploy --only firestore:rules`). It covers all collections used at runtime:
 
-   - `guilds/{guildId}` — public read, create, update; no delete. `guildId` field is immutable.
-   - `channels/{channelId}` — public read, create (only with status `lobby` and a real parent guild), update (status restricted to `lobby` / `spinning` / `completed`); no delete. The bot's Admin SDK bypasses these rules and handles deletes/cleanup.
-   - `preferences/{docId}` — public read, create, update; no delete.
+   Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). The bot and Cloud Functions use the Admin SDK, which bypasses the rules.
+
+   - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs` / `refreshRequest`; `guildName`, `guildIconUrl` and `voiceChannels` are bot-owned. No delete.
+   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `players` is bot-owned (clients may only start it empty). No delete.
+   - `preferences/{discordId}` — doc ID must be a numeric Discord ID; roles must be known role names, `mediaUrl` must be a `render.worldofwarcraft.com` URL, `characterClass` a known class. No delete.
    - `config/{docId}` — public read; writes are server-only (Cloud Functions populate `config/affixes` and `config/season`).
    - `rateLimits/{docId}` — server-only (read and write deny).
    - `characters/{region}/{realm}/{name}` — server-only; reads/writes go through the `lookupCharacter` Cloud Function.
-   - `badGroupReports/{docId}` — clients can `create` only (and the doc must reference a real guild via `guildId`); read/update/delete are server-only. The bot listens server-side and files GitHub issues.
+   - `badGroupReports/{docId}` — clients can `create` a report with the exact report shape, for a guild that exists; read/update/delete are server-only. The bot listens server-side and files GitHub issues.
    - `issueTracking/{issueNumber}` — implicitly server-only (no rule grants client access); written by the bot and consumed by the GitHub close webhook Cloud Function.
+
+   The rules are tested against the emulator in `activity/rules/firestore.rules.test.ts` (run by `./scripts/emulator-test.sh`): every write the activity makes must stay allowed, and the tampering cases must stay rejected.
 
    If you need to deviate from the canonical rules, treat `firestore.rules` as the source of truth and keep your Console copy in sync.
 
 ## 6. Document cleanup (database growth)
 
-Guild and channel documents are cleaned up so the database does not grow indefinitely:
+Channel documents are ephemeral lobbies and are cleaned up; guild documents are durable and never deleted:
 
-- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the bot only announces results to Discord. The documents stay active so the web page remains valid (e.g. you can keep viewing results).
+- **Guild docs persist.** `guilds/{guildId}` is one small doc per server holding `groupHistory` and `seasonPairs`. Group history resets itself each day at midnight Pacific (it is stamped with `todayPST()` and ignored on any other date), and season pair counts reset when `config/season` changes.
+- **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the channel doc stays so results remain visible.
+- **Empty lobby.** When the last person leaves a tracked voice channel, the bot deletes its channel doc.
 - **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
 - **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `lastActive` is older than **24 hours**.

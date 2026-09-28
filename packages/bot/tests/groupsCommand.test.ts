@@ -13,17 +13,6 @@ vi.mock('../src/core/config.js', () => ({
   DISCORD_APPLICATION_ID: '12345',
   ACTIVITY_URL: 'https://tytaniumdev.github.io/MythicPlusDiscordBot/',
   PLACEHOLDER_CHAR: '❓',
-  BOT_INVITE_PERMISSIONS: 0,
-}));
-
-vi.mock('../src/core/issues.js', () => ({
-  reportBadGroup: vi.fn(),
-  createErrorIssue: vi.fn(),
-  createGithubIssue: vi.fn(),
-  searchGithubIssues: vi.fn(),
-  submitGithubIssueModal: vi.fn(),
-  getVersionString: vi.fn(),
-  GitHubError: class extends Error {},
 }));
 
 vi.mock('../src/core/logger.js', () => ({
@@ -63,7 +52,6 @@ vi.mock('../src/core/preferenceService.js', () => ({
 import { GroupsHandler, type GroupsContext, type ActivityContext } from '../src/commands/groups.js';
 import { GroupService } from '../src/services/groupService.js';
 import type { SessionService } from '../src/services/sessionService.js';
-import { reportBadGroup } from '../src/core/issues.js';
 import logger from '../src/core/logger.js';
 
 function makeMockSessionService() {
@@ -98,65 +86,11 @@ function makeCtx(overrides: Partial<GroupsContext> = {}): GroupsContext {
     },
     send: vi.fn().mockResolvedValue(undefined),
     defer: vi.fn().mockResolvedValue(undefined),
-    interaction: overrides.interaction === undefined ? null : overrides.interaction,
   } as unknown as GroupsContext;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe('GroupsHandler.badgroup', () => {
-  it('opens modal when called via slash command without arguments', async () => {
-    const groupService = new GroupService();
-    groupService.lastResults.set('123', { players: [], groups: [] });
-
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    const mockSendModal = vi.fn().mockResolvedValue(undefined);
-    const ctx = makeCtx({
-      interaction: { response: { sendModal: mockSendModal } },
-    });
-
-    await handler.badgroup(ctx, null, null);
-
-    expect(mockSendModal).toHaveBeenCalledOnce();
-    expect(mockSendModal).toHaveBeenCalledWith({ players: [], groups: [] });
-  });
-
-  it('reports directly with title and description', async () => {
-    const groupService = new GroupService();
-    groupService.lastResults.set('123', { players: [], groups: [] });
-
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    vi.mocked(reportBadGroup).mockResolvedValue({ number: 1, html_url: 'http://url', title: 'Title' });
-
-    const ctx = makeCtx();
-
-    await handler.badgroup(ctx, 'Title', 'Desc');
-
-    expect(reportBadGroup).toHaveBeenCalledOnce();
-    expect(ctx.send).toHaveBeenCalledWith(
-      '✅ Bad group reported successfully: http://url',
-      { ephemeral: true },
-    );
-  });
-
-  it('reports no data when no previous results', async () => {
-    const groupService = new GroupService();
-    // No results set
-
-    const handler = new GroupsHandler(makeMockBot() as any, groupService, makeMockSessionService()); // eslint-disable-line @typescript-eslint/no-explicit-any
-    const ctx = makeCtx();
-
-    await handler.badgroup(ctx, null, null);
-
-    expect(ctx.send).toHaveBeenCalledWith(
-      '❌ No group creation data found for this server. Run /wheel first.',
-      { ephemeral: true },
-    );
-  });
 });
 
 describe('GroupsHandler.activity', () => {

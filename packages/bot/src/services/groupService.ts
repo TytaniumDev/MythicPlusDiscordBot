@@ -18,13 +18,12 @@ export interface CommandContext extends Sendable {
   guild: { id: string } | null;
 }
 
-export interface LastResults {
+export interface GroupsData {
   players: WoWPlayer[];
   groups: WoWGroup[];
 }
 
 export class GroupService {
-  lastResults: Map<string, LastResults> = new Map();
   private serverLocks: Map<string, boolean> = new Map();
 
   /**
@@ -142,7 +141,7 @@ export class GroupService {
   async getGroupsData(
     ctx: CommandContext,
     debug = false,
-  ): Promise<LastResults | null> {
+  ): Promise<GroupsData | null> {
     const players = await this._getEligiblePlayers(ctx, debug);
     if (!players) {
       return null;
@@ -181,7 +180,7 @@ export class GroupService {
 
     this.serverLocks.set(guildId, true);
     try {
-      await this._executeCoreWheel(ctx, ctx.channel, guildId, debug);
+      await this._executeCoreWheel(ctx, ctx.channel, debug);
     } finally {
       this.serverLocks.set(guildId, false);
     }
@@ -190,13 +189,10 @@ export class GroupService {
   async _executeCoreWheel(
     ctx: CommandContext,
     channel: TypingChannel,
-    guildId: string,
     debug: boolean,
   ): Promise<void> {
     const result = await this.getGroupsData(ctx, debug);
     if (!result) return;
-
-    this.lastResults.set(guildId, result);
 
     for (let i = 0; i < result.groups.length; i++) {
       await announceGroup(ctx, channel, result.groups[i], i + 1, debug);

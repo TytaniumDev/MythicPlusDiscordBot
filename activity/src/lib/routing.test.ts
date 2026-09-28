@@ -2,9 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { statusToView, routeToView, viewToRoute } from './routing';
 
 describe('statusToView', () => {
-  it('maps lobby/request_spin to lobby', () => {
+  it('maps lobby to lobby', () => {
     expect(statusToView('lobby')).toBe('lobby');
-    expect(statusToView('request_spin')).toBe('lobby');
   });
   it('maps spinning to wheels', () => {
     expect(statusToView('spinning')).toBe('wheels');

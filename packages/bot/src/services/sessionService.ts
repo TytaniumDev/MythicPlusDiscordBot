@@ -1,4 +1,4 @@
-import { FirebaseService, ARRAY_UNION, ARRAY_REMOVE } from '../core/firebaseService.js';
+import { FirebaseService } from '../core/firebaseService.js';
 import logger from '../core/logger.js';
 import { getPlayerList, type DiscordMember } from '../core/utils.js';
 import { buildVoiceChannelsSnapshot } from '../core/discordAdapters.js';
@@ -31,10 +31,7 @@ export interface Bot {
 export class SessionService {
   bot: Bot;
   firebase: FirebaseService;
-  activeGuilds = new Set<string>();
   activeChannels = new Map<string, ActiveChannel>();
-  channelListeners = new Map<string, { unsubscribe(): void }>();
-  guildListeners = new Map<string, { unsubscribe(): void } | null>();
 
   constructor(bot: Bot, firebase?: FirebaseService) {
     this.bot = bot;
@@ -42,30 +39,18 @@ export class SessionService {
   }
 
   /**
-   * Mark a channel as active and its guild as having an active session.
+   * Start tracking a channel's voice members for its lobby doc.
    * Idempotent — re-registering an already-active channel is a no-op
    * regardless of which side calls it (refresh listener, command handler).
    */
   registerChannel(channelId: string, guildId: string, docId: string): void {
     if (this.activeChannels.has(channelId)) return;
     this.activeChannels.set(channelId, { docId, guildId });
-    this.activeGuilds.add(guildId);
   }
 
   shutdown(): void {
-    for (const watch of this.channelListeners.values()) {
-      watch?.unsubscribe();
-    }
-    this.channelListeners.clear();
-
-    for (const watch of this.guildListeners.values()) {
-      watch?.unsubscribe();
-    }
-    this.guildListeners.clear();
-
     this.activeChannels.clear();
-    this.activeGuilds.clear();
-    logger.info('SessionService shutdown complete — all listeners unsubscribed.');
+    logger.info('SessionService shutdown complete.');
   }
 
   async getOrCreateSession(
@@ -87,7 +72,6 @@ export class SessionService {
       guildName,
       guildIconUrl ?? undefined,
     );
-    this.activeGuilds.add(guildId);
 
     await this.refreshGuildVoiceChannels(ctx.guild);
 
@@ -139,86 +123,24 @@ export class SessionService {
     });
   }
 
+  /**
+   * The lobby emptied: delete its channel doc. The guild doc stays — it holds
+   * today's group history and the season's pair counts.
+   */
   async cleanupChannel(channelId: string): Promise<void> {
     const active = this.activeChannels.get(channelId);
     if (!active) return;
 
     this.activeChannels.delete(channelId);
-
-    if (this.channelListeners.has(active.docId)) {
-      const watch = this.channelListeners.get(active.docId);
-      watch?.unsubscribe();
-      this.channelListeners.delete(active.docId);
-    }
-
     await this.firebase.deleteChannelDoc(active.docId);
-    await this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: true });
   }
 
   handleCollectionRemoved(change: {
     document: { id: string };
   }): void {
     const channelId = change.document.id;
-
-    const active = this.activeChannels.get(channelId);
-    if (active) {
-      this.activeChannels.delete(channelId);
-      if (this.channelListeners.has(channelId)) {
-        const watch = this.channelListeners.get(channelId);
-        watch?.unsubscribe();
-        this.channelListeners.delete(channelId);
-      }
+    if (this.activeChannels.delete(channelId)) {
       logger.info(`Channel ${channelId} removed from tracking`);
-      void this._cleanupGuildIfEmpty(active.guildId, { deleteFirestoreDoc: false });
     }
-  }
-
-  private async _cleanupGuildIfEmpty(
-    guildId: string,
-    { deleteFirestoreDoc }: { deleteFirestoreDoc: boolean },
-  ): Promise<void> {
-    const guildHasChannels = [...this.activeChannels.values()].some(
-      (ac) => ac.guildId === guildId,
-    );
-    if (guildHasChannels) return;
-
-    this.activeGuilds.delete(guildId);
-    if (deleteFirestoreDoc) {
-      await this.firebase.deleteGuildDoc(guildId);
-    }
-    if (this.guildListeners.has(guildId)) {
-      const watch = this.guildListeners.get(guildId);
-      watch?.unsubscribe();
-      this.guildListeners.delete(guildId);
-    }
-  }
-
-  async toggleSitOut(channelId: string, discordId: string): Promise<{ active: boolean; sittingOut: boolean }> {
-    const entry = this.activeChannels.get(channelId);
-    if (!entry || !this.firebase.db) return { active: false, sittingOut: false };
-
-    // Read current state to determine toggle direction (for the reply message)
-    const docRef = this.firebase.db.collection('channels').doc(entry.docId);
-    const snap = await docRef.get();
-    if (!snap.exists) return { active: false, sittingOut: false };
-
-    const data = snap.data();
-    const current: string[] = (data?.sittingOut as string[] | undefined) ?? [];
-    const isCurrentlySittingOut = current.includes(discordId);
-
-    // Use atomic arrayUnion/arrayRemove to avoid race conditions
-    // when multiple players toggle simultaneously
-    if (isCurrentlySittingOut) {
-      await this.firebase.updateChannelDoc(entry.docId, { sittingOut: ARRAY_REMOVE(discordId) });
-    } else {
-      await this.firebase.updateChannelDoc(entry.docId, { sittingOut: ARRAY_UNION(discordId) });
-    }
-    return { active: true, sittingOut: !isCurrentlySittingOut };
-  }
-
-  getActiveChannelIdsForGuild(guildId: string): string[] {
-    return [...this.activeChannels.entries()]
-      .filter(([, ac]) => ac.guildId === guildId)
-      .map(([chId]) => chId);
   }
 }

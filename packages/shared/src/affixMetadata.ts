@@ -34,6 +34,15 @@ const FORT_TYRAN_AFFIXES: Record<number, AffixDisplay> = {
   9: { id: 9, name: 'Tyrannical', nickname: null, keystoneLevel: '+7', wowheadUrl: 'https://www.wowhead.com/affix=9/tyrannical', color: '#ef4444' },
 };
 
+/**
+ * The week's rotating Xal'atath's Bargain affix — the only one that changes
+ * week to week; the rest are fixed for the season. Null when none is present
+ * (e.g. the static fallback before the weekly sync has run).
+ */
+export function findWeeklyAffix(affixes: AffixDisplay[]): AffixDisplay | null {
+  return affixes.find(a => a.id in BARGAIN_AFFIXES) ?? null;
+}
+
 export function resolveAffixDisplay(affixId: number): AffixDisplay | null {
   return STATIC_AFFIXES.find(a => a.id === affixId)
     ?? BARGAIN_AFFIXES[affixId]

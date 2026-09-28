@@ -69,16 +69,6 @@ export default tseslint.config(eslint.configs.recommended, ...tseslint.configs.s
     '@typescript-eslint/no-non-null-assertion': 'off',
   },
 }, {
-  files: ['activity/src/public/sw.js'],
-  languageOptions: {
-    globals: {
-      self: 'readonly',
-      caches: 'readonly',
-      fetch: 'readonly',
-      URL: 'readonly',
-    },
-  },
-}, {
   files: ['activity/src/**/*.{ts,tsx}'],
   plugins: { 'react-hooks': reactHooks },
   rules: {

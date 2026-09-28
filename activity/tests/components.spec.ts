@@ -1,10 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
-import { mockCharacterRenders } from './helpers/characterRenders';
-
-test.beforeEach(async ({ page }) => {
-  await mockCharacterRenders(page);
-});
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
@@ -132,38 +127,30 @@ test.describe('Component: GroupSlide', () => {
   });
 });
 
-// ── Component: PlayerCard ────────────────────────────────────
-test.describe('Component: PlayerCard', () => {
-  test('Player card in lobby sidebar', async ({ page }) => {
+// ── Component: MyCharacterCard ───────────────────────────────
+test.describe('Component: MyCharacterCard', () => {
+  test('Character card in lobby sidebar', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    // Click a player chip to select them and show the PlayerCard
-    await page.locator('.player-chip').first().click();
-    const card = page.locator('[data-testid="player-card"]');
+    const card = page.locator('[data-testid="my-character-card"]');
     await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('player-card.png');
+    await expect(card).toHaveScreenshot('my-character-card.png');
   });
 
-  test('Player card on mobile (via drawer)', async ({ page }) => {
+  test('Character card on mobile, editor open', async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    // Click a player chip to select them
-    await page.locator('.player-chip').first().click();
-
-    // Expand the mobile drawer to reveal the player card
-    await page.locator('.mobile-drawer__header').click();
-    await expect(page.locator('.mobile-drawer--expanded')).toBeVisible();
-
-    const card = page.locator('[data-testid="player-card"]');
-    await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('player-card-mobile.png');
+    const card = page.locator('[data-testid="my-character-card"]');
+    await card.getByRole('button', { name: '✎ Edit' }).click();
+    await expect(card.locator('.role-editor-input')).toBeVisible();
+    await expect(card).toHaveScreenshot('my-character-card-mobile.png');
   });
 });
 

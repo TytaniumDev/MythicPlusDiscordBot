@@ -1,5 +1,5 @@
 import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
-import { db } from '../firebase';
+import { authReady, db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
@@ -50,6 +50,8 @@ function parseExistingRounds(
   return decodeGroupHistoryRounds(history.rounds);
 }
 
+// Every write awaits `authReady` first: firestore.rules reject writes from a
+// client that hasn't finished its anonymous sign-in.
 class FirestoreSessionService implements SessionService {
   private guildUnsub: (() => void) | null = null;
   private channelUnsub: (() => void) | null = null;
@@ -255,6 +257,17 @@ class FirestoreSessionService implements SessionService {
     const groups = createMythicPlusGroups(players, true, guildId);
     const groupDicts = groups.map(g => g.toDict());
 
+    // Start the round first. The rules reject it if a round is already
+    // spinning (e.g. a second Spin click), and in that case nothing below
+    // should be recorded.
+    await authReady;
+    const channelRef = doc(db, 'channels', currentChannelId);
+    await updateDoc(channelRef, {
+      status: 'spinning',
+      groups: groupDicts,
+      revealedGroups: 0,
+    });
+
     // Persist group history to guild doc for cross-session diversity.
     // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
@@ -283,18 +296,12 @@ class FirestoreSessionService implements SessionService {
         }
       }
     }
-
-    const channelRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(channelRef, {
-      status: 'spinning',
-      groups: groupDicts,
-      revealedGroups: 0,
-    });
   }
 
   async revealAllGroups(): Promise<void> {
     const { currentChannelId, fullGroups } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { revealedGroups: fullGroups.length });
   }
@@ -302,6 +309,7 @@ class FirestoreSessionService implements SessionService {
   async finishSequence(): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { status: 'completed' });
   }
@@ -309,6 +317,7 @@ class FirestoreSessionService implements SessionService {
   async newRound(): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
@@ -316,6 +325,7 @@ class FirestoreSessionService implements SessionService {
   async cancelToLobby(): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
     // round that was cancelled, so players re-enter the pool for the next attempt.
@@ -323,6 +333,7 @@ class FirestoreSessionService implements SessionService {
   }
 
   async saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void> {
+    await authReady;
     const prefRef = doc(db, 'preferences', playerId);
     await setDoc(prefRef, {
       roles,
@@ -330,12 +341,18 @@ class FirestoreSessionService implements SessionService {
       inGameName: inGameName ?? '',
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    await this.requestPlayerRefresh();
+  }
 
-    const { currentChannelId } = useAppStore.getState();
-    if (currentChannelId) {
-      const channelRef = doc(db, 'channels', currentChannelId);
-      await updateDoc(channelRef, { refreshPlayers: true });
-    }
+  /**
+   * Ask the bot to re-read preferences and republish the channel's players,
+   * so every client sees the change. Skipped until the channel doc has loaded:
+   * updateDoc fails on a doc that doesn't exist yet.
+   */
+  private async requestPlayerRefresh(): Promise<void> {
+    const { currentChannelId, channelData } = useAppStore.getState();
+    if (!currentChannelId || !channelData) return;
+    await updateDoc(doc(db, 'channels', currentChannelId), { refreshPlayers: true });
   }
 
   async saveLinkedCharacter(
@@ -344,6 +361,7 @@ class FirestoreSessionService implements SessionService {
     mediaUrl?: string | null,
     characterClass?: CharacterClass | null,
   ): Promise<void> {
+    await authReady;
     const prefRef = doc(db, 'preferences', playerId);
     const payload: Record<string, unknown> = { linkedCharacter, updatedAt: serverTimestamp() };
     if (mediaUrl !== undefined) {
@@ -352,14 +370,17 @@ class FirestoreSessionService implements SessionService {
     }
     if (characterClass !== undefined) payload.characterClass = characterClass;
     await setDoc(prefRef, payload, { merge: true });
+    await this.requestPlayerRefresh();
   }
 
   async refreshChannels(guildId: string): Promise<void> {
+    await authReady;
     const docRef = doc(db, 'guilds', guildId);
     await updateDoc(docRef, { refreshRequest: serverTimestamp() });
   }
 
   async selectChannel(channelId: string, channelName: string, guildId: string): Promise<void> {
+    await authReady;
     const channelDocRef = doc(db, 'channels', channelId);
     await setDoc(channelDocRef, {
       channelId,
@@ -413,6 +434,7 @@ class FirestoreSessionService implements SessionService {
     const allRounds = parseExistingRounds(freshGuildData, todayPST());
     const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
 
+    await authReady;
     await addDoc(collection(db, 'badGroupReports'), {
       title,
       description,
@@ -429,6 +451,7 @@ class FirestoreSessionService implements SessionService {
   async claimPlayer(playerId: string): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayUnion(playerId) });
   }
@@ -436,6 +459,7 @@ class FirestoreSessionService implements SessionService {
   async unclaimPlayer(playerId: string): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
     await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
   }
@@ -443,6 +467,7 @@ class FirestoreSessionService implements SessionService {
   async toggleSitOut(discordId: string): Promise<void> {
     const { currentChannelId } = useAppStore.getState();
     if (!currentChannelId) return;
+    await authReady;
     const docRef = doc(db, 'channels', currentChannelId);
 
     // Use a transaction to read authoritative Firestore state and toggle atomically,
@@ -469,6 +494,10 @@ class FirestoreSessionService implements SessionService {
       return;
     }
 
+    await authReady;
+    // Merge (here and for the channel): the "missing" snapshot that triggers
+    // this can come from the local cache, and an overwrite would wipe the
+    // guild's group history and season pair counts.
     const guildDocRef = doc(db, 'guilds', guildId);
     await setDoc(guildDocRef, {
       guildId,
@@ -476,7 +505,7 @@ class FirestoreSessionService implements SessionService {
       refreshRequest: serverTimestamp(),
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
-    });
+    }, { merge: true });
 
     if (discordChannelId) {
       const channelDocRef = doc(db, 'channels', discordChannelId);
@@ -491,7 +520,7 @@ class FirestoreSessionService implements SessionService {
         refreshPlayers: true,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
-      });
+      }, { merge: true });
     }
   }
 }

@@ -175,7 +175,7 @@ describe('GroupService.coreWheel', () => {
     await service.coreWheel(ctx);
 
     expect(executeSpy).toHaveBeenCalledOnce();
-    expect(executeSpy).toHaveBeenCalledWith(ctx, ctx.channel, '123', false);
+    expect(executeSpy).toHaveBeenCalledWith(ctx, ctx.channel, false);
 
     // Lock should be released — a second call should succeed
     await service.coreWheel(ctx);
@@ -249,8 +249,8 @@ describe('GroupService.coreWheel', () => {
     const callB = service.coreWheel(ctxB);
 
     expect(executeSpy).toHaveBeenCalledTimes(2);
-    expect(executeSpy).toHaveBeenNthCalledWith(1, ctxA, ctxA.channel, 'guild-a', false);
-    expect(executeSpy).toHaveBeenNthCalledWith(2, ctxB, ctxB.channel, 'guild-b', false);
+    expect(executeSpy).toHaveBeenNthCalledWith(1, ctxA, ctxA.channel, false);
+    expect(executeSpy).toHaveBeenNthCalledWith(2, ctxB, ctxB.channel, false);
 
     resolveA();
     resolveB();
@@ -260,10 +260,9 @@ describe('GroupService.coreWheel', () => {
 });
 
 describe('GroupService._executeCoreWheel', () => {
-  it('stores results and announces groups', async () => {
+  it('announces each group', async () => {
     const service = new GroupService();
     const ctx = makeCtx();
-    const guildId = '123';
 
     const players = [WoWPlayer.create('P1', ['Tank'])];
     const groups = [
@@ -273,23 +272,20 @@ describe('GroupService._executeCoreWheel', () => {
 
     vi.spyOn(service, 'getGroupsData').mockResolvedValue({ players, groups });
 
-    await service._executeCoreWheel(ctx, ctx.channel, guildId, false);
+    await service._executeCoreWheel(ctx, ctx.channel, false);
 
     expect(service.getGroupsData).toHaveBeenCalledWith(ctx, false);
-    expect(service.lastResults.get(guildId)).toEqual({ players, groups });
     expect(announceGroup).toHaveBeenCalledTimes(2);
   });
 
   it('does nothing when getGroupsData returns null', async () => {
     const service = new GroupService();
     const ctx = makeCtx();
-    const guildId = '123';
 
     vi.spyOn(service, 'getGroupsData').mockResolvedValue(null);
 
-    await service._executeCoreWheel(ctx, ctx.channel, guildId, false);
+    await service._executeCoreWheel(ctx, ctx.channel, false);
 
-    expect(service.lastResults.has(guildId)).toBe(false);
     expect(announceGroup).not.toHaveBeenCalled();
   });
 });

@@ -263,56 +263,6 @@ describe('FirebaseService.deleteDoc', () => {
   });
 });
 
-describe('FirebaseService.deleteAllInCollection', () => {
-  let service: FirebaseService;
-
-  function createMockDb() {
-    const mockBatch = {
-      delete: vi.fn(),
-      commit: vi.fn().mockResolvedValue(undefined),
-    };
-    const mockCollection = {
-      get: vi.fn().mockResolvedValue({ docs: [] }),
-      doc: vi.fn(),
-      where: vi.fn(),
-    };
-    return {
-      db: {
-        collection: vi.fn().mockReturnValue(mockCollection),
-        batch: vi.fn().mockReturnValue(mockBatch),
-      },
-      mockCollection,
-      mockBatch,
-    };
-  }
-
-  it('handles empty collection', async () => {
-    service = Object.create(FirebaseService.prototype);
-    const mockDb = createMockDb();
-    service.db = mockDb.db as unknown as FirebaseService['db'];
-    mockDb.mockCollection.get.mockResolvedValue({ docs: [] });
-
-    const deleted = await service.deleteAllInCollection('sessions');
-    expect(deleted).toBe(0);
-  });
-
-  it('deletes all docs', async () => {
-    service = Object.create(FirebaseService.prototype);
-    const mockDb = createMockDb();
-    service.db = mockDb.db as unknown as FirebaseService['db'];
-
-    const docs = Array.from({ length: 3 }, () => ({
-      ref: { delete: vi.fn() },
-    }));
-    mockDb.mockCollection.get.mockResolvedValue({ docs });
-
-    const deleted = await service.deleteAllInCollection('sessions');
-    expect(deleted).toBe(3);
-    expect(mockDb.mockBatch.delete).toHaveBeenCalledTimes(3);
-    expect(mockDb.mockBatch.commit).toHaveBeenCalled();
-  });
-});
-
 describe('FirebaseService.getGroupHistory', () => {
   let service: FirebaseService;
 

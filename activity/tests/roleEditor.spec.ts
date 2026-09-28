@@ -1,10 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mockChannelData, mockPlayers } from '../src/lib/mockData';
-import { mockCharacterRenders } from './helpers/characterRenders';
-
-test.beforeEach(async ({ page }) => {
-  await mockCharacterRenders(page);
-});
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
@@ -18,31 +13,28 @@ const lobbyData = {
   identity: lobbyIdentity,
 };
 
-test.describe('PlayerCard Inline Editor', () => {
+test.describe('MyCharacterCard Inline Editor', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('PlayerCard visible in lobby sidebar', async ({ page }) => {
+  test('Character card visible in lobby sidebar', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    // Click a player chip to select them and show the PlayerCard
-    await page.locator('.player-chip').first().click();
-
-    const playerCard = page.locator('[data-testid="player-card"]');
+    const playerCard = page.locator('[data-testid="my-character-card"]');
     await expect(playerCard).toBeVisible();
 
-    // Character header name visible
-    await expect(playerCard.locator('.character-header__name')).toBeVisible();
+    // Character name visible
+    await expect(playerCard.locator('.my-character__name')).toBeVisible();
 
     await expect(page).toHaveScreenshot('player-card-sidebar.png');
   });
 
-  test('PlayerCard shows role buttons', async ({ page }) => {
+  test('Character card shows role buttons', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="player-card"]');
+    const playerCard = page.locator('[data-testid="my-character-card"]');
 
     // Main spec section exists
     const mainSpecLabel = playerCard.locator('.role-editor-label', { hasText: 'Main Spec' });
@@ -55,12 +47,12 @@ test.describe('PlayerCard Inline Editor', () => {
     await expect(playerCard.locator('[data-role-id="Melee"]')).toBeVisible();
   });
 
-  test('PlayerCard shows offspec and utility sections', async ({ page }) => {
+  test('Character card shows offspec and utility sections', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="player-card"]');
+    const playerCard = page.locator('[data-testid="my-character-card"]');
 
     await expect(playerCard.locator('.role-editor-label', { hasText: 'Offspec' })).toBeVisible();
     await expect(playerCard.locator('.role-editor-label', { hasText: 'Utilities' })).toBeVisible();
@@ -68,12 +60,12 @@ test.describe('PlayerCard Inline Editor', () => {
     await expect(playerCard.locator('[data-role-id="Lust"]')).toBeVisible();
   });
 
-  test('PlayerCard has in-game name input', async ({ page }) => {
+  test('Character card has in-game name input', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="player-card"]');
+    const playerCard = page.locator('[data-testid="my-character-card"]');
     const input = playerCard.locator('.role-editor-input');
     await expect(input).toBeVisible();
     await expect(input).toHaveAttribute('placeholder', 'PlayerName-ServerName');
@@ -88,14 +80,16 @@ test.describe('PlayerCard Inline Editor', () => {
     await expect(firstChip).toHaveAttribute('tabindex', '0');
   });
 
-  test('PlayerCard on mobile viewport', async ({ page }) => {
+  test('Character card on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 393, height: 852 });
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
+    // Tapping your own chip opens the editor in the card
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="player-card"]');
-    await expect(playerCard).toBeVisible();
+    const playerCard = page.locator('[data-testid="my-character-card"]');
+    await expect(playerCard.locator('.role-editor-input')).toBeVisible();
+    await expect(playerCard).not.toHaveClass(/my-character--highlight/);
 
     await expect(page).toHaveScreenshot('player-card-mobile-lobby.png');
   });

@@ -16,7 +16,6 @@ import logger from '../src/core/logger.js';
 function makeMockGroupService() {
   return {
     coreWheel: vi.fn().mockResolvedValue(undefined),
-    lastResults: new Map(),
   } as unknown as GroupService;
 }
 

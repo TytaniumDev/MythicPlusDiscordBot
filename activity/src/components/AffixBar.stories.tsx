@@ -11,5 +11,5 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Displays the current week's affixes with color dots and wowhead links */
+/** Displays only the week's rotating affix, with its short description and Wowhead link */
 export const Default: Story = {};

@@ -1,30 +1,27 @@
-import { remapImageUrl } from '../discordSdk';
+import { CharacterImage } from './CharacterImage';
 
 interface CharacterHeaderProps {
   name: string;
   subtitle?: string;
   color?: string;
-  imageUrl?: string | null;
+  mediaUrl?: string | null;
 }
 
-export function CharacterHeader({ name, subtitle, color = 'var(--color-tank)', imageUrl }: CharacterHeaderProps) {
-  const proxiedUrl = remapImageUrl(imageUrl);
-
+export function CharacterHeader({ name, subtitle, color = 'var(--color-tank)', mediaUrl }: CharacterHeaderProps) {
   return (
     <div className="character-header" style={{ '--ch-color': color } as React.CSSProperties}>
       <div className="character-header__avatar">
-        {proxiedUrl ? (
-          <img
-            src={proxiedUrl}
-            alt=""
-            className="character-header__img"
-          />
-        ) : (
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke={`${color}54`} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        )}
+        <CharacterImage
+          mediaUrl={mediaUrl}
+          variant="avatar"
+          className="character-header__img"
+          fallback={
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke={`${color}54`} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          }
+        />
       </div>
       <div className="character-header__name">{name}</div>
       {subtitle && (

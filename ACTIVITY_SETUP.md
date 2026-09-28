@@ -71,7 +71,7 @@ and the service account credentials.
 
 1.  Start your bot.
 2.  Join a Voice Channel in Discord.
-3.  Run the command: `/wheelson` (the legacy `/activity` alias also works).
+3.  Run the command: `/wheelson`.
 4.  The bot should reply with a "Join Activity" link.
 5.  Clicking the link will open the Wheelson activity directly inside Discord!
 

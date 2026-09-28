@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase';
+import { functions, authReady } from '../firebase';
 import { useAppStore } from '../store/store';
 import { lookupCharacterProfile } from '../services/raiderioService';
 import { reportError } from '../lib/sentry';
@@ -74,6 +74,7 @@ export function useCharacterLookup() {
         CharacterData
       >(functions, 'lookupCharacter');
 
+      await authReady;
       const result = await fn({ name, realm, region, forceRefresh: options?.forceRefresh });
       return result.data;
     } catch (err: unknown) {
