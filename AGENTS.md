@@ -142,6 +142,8 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 
 Then commit the updated screenshots in `activity/tests/__screenshots__/` alongside your code changes. CI will fail if committed snapshots don't match what the Docker Playwright run produces. Never commit snapshots generated outside Docker.
 
+If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment, commits them to the branch, and re-dispatches `CI Retrigger` and `Verify Activity` so the new head gets its checks. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
+
 ## Environment Variables
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
