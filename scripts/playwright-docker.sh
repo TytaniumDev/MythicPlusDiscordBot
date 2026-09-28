@@ -6,9 +6,12 @@ if ! command -v docker &>/dev/null; then
   exit 1
 fi
 
-# --update-and-verify: run --update-snapshots=all then a clean verify pass,
+# --update-and-verify: run --update-snapshots then a clean verify pass,
 # all inside a single Docker container (one npm ci instead of two).
+# PW_UPDATE_MODE picks the update mode: all (default) rewrites every snapshot,
+# changed rewrites only the ones that no longer match.
 UPDATE_AND_VERIFY=false
+PW_UPDATE_MODE="${PW_UPDATE_MODE:-all}"
 ARGS=()
 for arg in "$@"; do
   if [[ "$arg" == "--update-and-verify" ]]; then
@@ -34,6 +37,7 @@ if [[ "$UPDATE_AND_VERIFY" == true ]]; then
     -w /work \
     -e CI="${CI:-}" \
     -e PLAYWRIGHT_TEST=1 \
+    -e PW_UPDATE_MODE="$PW_UPDATE_MODE" \
     "$IMAGE" \
     bash -c '
       npm ci --ignore-scripts
@@ -45,7 +49,7 @@ if [[ "$UPDATE_AND_VERIFY" == true ]]; then
         npm install --no-save --install-strategy=nested "$pkg@$VER"
       done
       echo "==> Updating snapshots..."
-      npx playwright test --update-snapshots=all "$@"
+      npx playwright test --update-snapshots="$PW_UPDATE_MODE" "$@"
       echo "==> Verifying snapshots are stable..."
       npx playwright test "$@"
     ' bash "${ARGS[@]}"

@@ -1,0 +1,66 @@
+name: Update Snapshots
+
+# Regenerates Playwright visual snapshots in CI's own environment and commits
+# them to the branch it runs on. Run it from the Actions tab ("Run workflow",
+# pick your branch) when snapshots drift for reasons outside the UI code, such
+# as a dependency bump.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'changed = only rewrite snapshots that no longer match; all = rewrite every snapshot'
+        type: choice
+        options: [changed, all]
+        default: changed
+
+concurrency:
+  group: update-snapshots-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update-snapshots:
+    if: github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Update and verify snapshots (Docker)
+        env:
+          PW_UPDATE_MODE: ${{ inputs.mode }}
+        run: ./scripts/playwright-docker.sh --update-and-verify
+
+      - name: Commit and push snapshots
+        id: commit
+        run: |
+          git add activity/tests/__screenshots__
+          if git diff --cached --quiet; then
+            echo "Snapshots already up to date."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --cached --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(activity): update visual snapshots"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # Pushes made with GITHUB_TOKEN don't trigger workflows, so the new head
+      # would have no required CI checks. Dispatch them explicitly.
+      - name: Re-run CI on the new commit
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run ci-retrigger.yml --ref "$GITHUB_REF_NAME"
+          gh workflow run verify-activity.yml --ref "$GITHUB_REF_NAME"
