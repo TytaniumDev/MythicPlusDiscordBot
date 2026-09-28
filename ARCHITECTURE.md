@@ -216,12 +216,13 @@ The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes
 - **Role**: Securely handles background synchronization, external integrations, and API rate limiting outside the bot's hot path.
 - **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
 - **Key Functions**:
-  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts:70`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` Firestore document.
-  - `refreshAffixes` (`fetchWeeklyAffixes.ts:83`): Callable counterpart (`onCall`) for on-demand manual refresh of affix data (e.g. after a deploy or if the scheduled run failed).
-  - `lookupCharacter` (`lookupCharacter.ts:56`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
-  - `refreshCharacterMedia` (`refreshCharacterMedia.ts:219`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
-  - `refreshCharacterMediaNow` (`refreshCharacterMedia.ts:233`): Callable counterpart (`onCall`) for on-demand manual refresh of character media.
-  - `onGithubIssueWebhook` (`githubWebhook.ts:101`): An HTTP (`onRequest`) webhook that receives GitHub issue closed events and notifies the reporting Discord user directly.
+  - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` and `config/season` Firestore documents.
+  - `lookupCharacter` (`lookupCharacter.ts`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
+  - `refreshCharacterMedia` (`refreshCharacterMedia.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
+  - `onGithubIssueWebhook` (`githubWebhook.ts`): An HTTP (`onRequest`) webhook that receives GitHub issue closed events and notifies the reporting Discord user directly.
+- **Manual runs**: There are no callable "refresh now" functions. To run a scheduled function on demand, use **Force run** on its job in Cloud Scheduler (Google Cloud console).
+- **Secrets**: Credentials live in Google Secret Manager and are read with `defineSecret` from `firebase-functions/params`. Each function lists the secrets it uses in its `secrets` option (`battleNetSecrets` from `battlenet.ts` for the Battle.net callers). See `FIREBASE_SETUP.md` section 7.
+- **Build and deploy**: `npm -w packages/functions run build` bundles `src/` with esbuild (`build.mjs`) into `dist/index.js`, inlining `@mythicplus/shared`; `firebase-admin` and `firebase-functions` stay external runtime dependencies. `tsc` is typecheck-only. The `deploy-firebase` job in `deploy.yml` builds the bundle, strips `devDependencies` from `package.json` (Cloud Build runs a lockfile-less `npm install`, and the workspace-only `@mythicplus/shared` isn't on npm), then runs `firebase deploy`.
 
 #### Webhook Notification Flow
 

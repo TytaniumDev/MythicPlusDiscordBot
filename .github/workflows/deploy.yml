@@ -30,7 +30,7 @@ jobs:
         run: |
           DELIM=$(openssl rand -hex 16)
           SECRETS=$(doppler secrets download --no-file --format json)
-          KEYS='["FIREBASE_CREDENTIALS_JSON","BNET_CLIENT_ID","BNET_CLIENT_SECRET"]'
+          KEYS='["FIREBASE_CREDENTIALS_JSON"]'
           echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
             to_entries[] | select(.key | IN($keys[])) | .value
           ' | while IFS= read -r val; do
@@ -48,38 +48,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build shared + functions
+      - name: Build functions
         run: |
-          npm -w packages/shared run build
-          # Firebase loads shared via Node.js which can't resolve .ts sources,
-          # so point main at the compiled output for deploy only
-          jq '.main = "dist/index.js"' packages/shared/package.json > /tmp/pkg.json \
-            && mv /tmp/pkg.json packages/shared/package.json
+          # Bundles src/ into dist/index.js with @mythicplus/shared inlined, so
+          # Cloud Build only has to install the runtime dependencies.
           npm -w packages/functions run build
 
-          # Firebase uploads only the functions dir to Cloud Build, which can't
-          # resolve workspace dependencies. Bundle shared as a local file dep.
-          cp -r packages/shared packages/functions/shared
-          jq '.dependencies["@mythicplus/shared"] = "file:./shared"' \
-            packages/functions/package.json > /tmp/fn-pkg.json \
-            && mv /tmp/fn-pkg.json packages/functions/package.json
-
-          # Code is prebuilt above, so Cloud Build only needs runtime deps.
-          # Its lockfile-less `npm install` of vitest 4 devDeps crashes npm
-          # ("Cannot read properties of null (reading 'edgesOut')").
-          for pkg in packages/functions/package.json packages/functions/shared/package.json; do
-            jq 'del(.devDependencies)' "$pkg" > /tmp/strip-pkg.json && mv /tmp/strip-pkg.json "$pkg"
-          done
+          # Cloud Build runs a lockfile-less `npm install` in packages/functions.
+          # The devDependencies aren't needed at runtime: @mythicplus/shared is
+          # a workspace package that isn't on npm, and vitest 4 crashes that
+          # install ("Cannot read properties of null (reading 'edgesOut')").
+          jq 'del(.devDependencies)' packages/functions/package.json > "$RUNNER_TEMP/fn-pkg.json" \
+            && mv "$RUNNER_TEMP/fn-pkg.json" packages/functions/package.json
 
       - name: Deploy Firestore rules and Cloud Functions
         run: |
           echo "$FIREBASE_CREDENTIALS_JSON" > "$RUNNER_TEMP/firebase-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
-
-          # Write Battle.net secrets as runtime env vars for Cloud Functions
-          printf 'BNET_CLIENT_ID=%s\nBNET_CLIENT_SECRET=%s\n' \
-            "$BNET_CLIENT_ID" "$BNET_CLIENT_SECRET" \
-            > packages/functions/.env
 
           npx firebase-tools@14 deploy --only firestore:rules,functions --non-interactive --force
 
@@ -87,7 +72,6 @@ jobs:
         if: always()
         run: |
           rm -f "$RUNNER_TEMP/firebase-sa.json"
-          rm -f packages/functions/.env
 
   build-and-push:
     needs: [ci]

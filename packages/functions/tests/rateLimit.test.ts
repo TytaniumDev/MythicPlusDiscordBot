@@ -91,11 +91,11 @@ describe('enforceRateLimit', () => {
   it('increments the counter when within the window and below the limit', async () => {
     setupTransaction({ count: 5, resetAt: FIXED_NOW + 30000 });
 
-    await expect(enforceRateLimit('user-4', 'refreshCharacterMediaNow')).resolves.toBeUndefined();
+    await expect(enforceRateLimit('user-4', 'lookupCharacter')).resolves.toBeUndefined();
 
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockUpdate).toHaveBeenCalledWith(
-      { __ref: 'rateLimits/user-4_refreshCharacterMediaNow' },
+      { __ref: 'rateLimits/user-4_lookupCharacter' },
       { count: incrementSentinel },
     );
     expect(mockSet).not.toHaveBeenCalled();
