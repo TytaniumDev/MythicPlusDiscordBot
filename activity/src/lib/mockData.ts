@@ -1,4 +1,5 @@
 import { GuildData, ChannelData, WoWGroup, WoWPlayer } from '../types';
+import { splitPlayers } from './profiles';
 
 // Real characters sampled from the production Firestore `preferences` pool,
 // with Discord IDs anonymized. Media URLs point at Battle.net's CDN and are
@@ -186,12 +187,15 @@ export const mockGuildData: GuildData = {
   lastActive: { seconds: Date.now() / 1000, nanoseconds: 0 },
 };
 
+/** `mockPlayers` as the lobby doc and preferences docs hold them. */
+export const { members: mockMembers, profiles: mockProfiles } = splitPlayers(mockPlayers);
+
 export const mockChannelData: ChannelData = {
   channelId: 'vc-1',
   channelName: 'Mythic+ Lobby',
   guildId: 'demo-guild',
   status: 'lobby',
-  players: mockPlayers,
+  members: mockMembers,
   groups: [],
   revealedGroups: 0,
   isDebug: false,

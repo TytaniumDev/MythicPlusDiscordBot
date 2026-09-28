@@ -2,10 +2,10 @@ rules_version = '2';
 
 // The activity (browser) writes through these rules after signing in
 // anonymously. The bot and Cloud Functions use the Admin SDK, which bypasses
-// them, so fields only they write (lobby players, guild name and icon) are
+// them, so fields only they write (lobby members, guild name and icon) are
 // read-only here. Each collection lists exactly the fields the activity
 // writes; every client write shape is exercised by
-// packages/bot/tests/integration/firestoreRules.integration.test.ts.
+// activity/rules/firestore.rules.test.ts.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -76,8 +76,9 @@ service cloud.firestore {
     }
 
     // --- Channels ---
-    // One lobby per voice channel. The bot fills `players`; clients drive a
-    // round's status and groups.
+    // One lobby per voice channel. Only the bot writes `members` (who is in
+    // voice); clients drive a round's status and groups. Player profiles live
+    // in preferences, never on the lobby.
     match /channels/{channelId} {
       allow read: if true;
       allow create: if signedIn()
@@ -95,17 +96,14 @@ service cloud.firestore {
     function validChannelWrite(channelId) {
       let data = request.resource.data;
       let keys = writtenKeys();
-      return keys.hasOnly(['channelId', 'channelName', 'guildId', 'status', 'players', 'groups', 'revealedGroups', 'sittingOut', 'claimedPlayers', 'refreshPlayers', 'isDebug', 'createdAt', 'lastActive'])
+      return keys.hasOnly(['channelId', 'channelName', 'guildId', 'status', 'groups', 'revealedGroups', 'sittingOut', 'claimedPlayers', 'isDebug', 'createdAt', 'lastActive'])
         && (!('channelId' in keys) || data.channelId == channelId)
         && (!('channelName' in keys) || isShortString(data.channelName, 100))
         && (!('status' in keys) || data.status in ['lobby', 'spinning', 'completed'])
-        // Clients may only start a lobby with no players; the bot fills them in.
-        && (!('players' in keys) || (data.players is list && data.players.size() == 0))
         && (!('groups' in keys) || (data.groups is list && data.groups.size() <= 20))
         && (!('revealedGroups' in keys) || (data.revealedGroups is int && data.revealedGroups >= 0 && data.revealedGroups <= 20))
         && (!('sittingOut' in keys) || (data.sittingOut is list && data.sittingOut.size() <= 100))
         && (!('claimedPlayers' in keys) || (data.claimedPlayers is list && data.claimedPlayers.size() <= 100))
-        && (!('refreshPlayers' in keys) || data.refreshPlayers == true)
         && (!('isDebug' in keys) || data.isDebug == false)
         && (!('createdAt' in keys) || isServerTime(data.createdAt))
         && (!('lastActive' in keys) || isServerTime(data.lastActive));
@@ -133,9 +131,8 @@ service cloud.firestore {
     function validPreferenceWrite() {
       let data = request.resource.data;
       let keys = writtenKeys();
-      return keys.hasOnly(['roles', 'wowName', 'inGameName', 'updatedAt', 'linkedCharacter', 'mediaUrl', 'mediaUrlUpdatedAt', 'characterClass'])
+      return keys.hasOnly(['roles', 'inGameName', 'updatedAt', 'linkedCharacter', 'mediaUrl', 'mediaUrlUpdatedAt', 'characterClass'])
         && (!('roles' in keys) || (data.roles is list && data.roles.hasOnly(['Tank', 'Healer', 'Ranged', 'Melee', 'Tank Offspec', 'Healer Offspec', 'Ranged Offspec', 'Melee Offspec', 'Brez', 'Lust'])))
-        && (!('wowName' in keys) || isShortString(data.wowName, 64))
         && (!('inGameName' in keys) || isShortString(data.inGameName, 64))
         && (!('updatedAt' in keys) || isServerTime(data.updatedAt))
         && (!('mediaUrlUpdatedAt' in keys) || isServerTime(data.mediaUrlUpdatedAt))

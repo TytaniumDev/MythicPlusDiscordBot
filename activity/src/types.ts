@@ -3,6 +3,7 @@ import type {
   WoWGroupDict,
   SessionStatus,
   CharacterClass,
+  LobbyMember,
   SeasonPairs,
 } from '@mythicplus/shared';
 
@@ -48,10 +49,10 @@ export interface ChannelData {
   channelName: string;
   guildId: string;
   status: SessionStatus;
-  players: WoWPlayer[];
+  /** Who is in the voice channel. Written only by the bot; absent until it does. */
+  members?: LobbyMember[];
   groups: WoWGroup[];
   revealedGroups?: number;
-  refreshPlayers?: boolean;
   claimedPlayers?: string[];
   sittingOut?: string[];
   staticWheel?: boolean;

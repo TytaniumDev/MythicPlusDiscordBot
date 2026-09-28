@@ -33,12 +33,16 @@ const GUILD_ID = '900000000000000001';
 const CHANNEL_ID = '900000000000000002';
 const SEASON_SLUG = 'smoke-season';
 
+/** Each player's preferences roles, by Discord ID. */
+const ROLES = new Map<string, string[]>();
+
 function player(
   id: number,
   name: string,
   roles: string[],
   characterClass: CharacterClass,
 ): WoWPlayer {
+  ROLES.set(String(id), roles);
   const mediaUrl = `https://render.worldofwarcraft.com/us/character/stormrage/1/${id}-avatar.jpg`;
   return WoWPlayer.create(name, roles, String(id), `${name}-Stormrage`, mediaUrl, characterClass);
 }
@@ -57,7 +61,11 @@ const ROSTER = [
   player(1010, 'Meleethree', [ROLE_MELEE], 'Monk'),
 ];
 
-/** Write what the bot and Cloud Functions would have: config, guild, and a lobby. */
+/**
+ * Write what the bot, Cloud Functions and earlier activity sessions would
+ * have: config, guild, each player's preferences, and a lobby listing who is
+ * in voice. The activity joins the last two itself.
+ */
 async function seedLobby(): Promise<void> {
   const now = FieldValue.serverTimestamp();
   await db.doc('config/season').set({ slug: SEASON_SLUG, blizzardSeasonId: 1, expansionId: 11 });
@@ -73,13 +81,20 @@ async function seedLobby(): Promise<void> {
     channelName: 'Mythic+ Lobby',
     guildId: GUILD_ID,
     status: 'lobby',
-    players: ROSTER.map((p) => p.toDict()),
+    members: ROSTER.map((p) => ({ discordId: p.discordId, name: p.name })),
     groups: [],
     sittingOut: [],
     isDebug: false,
     createdAt: now,
     lastActive: now,
   });
+  await Promise.all(ROSTER.map((p) => db.doc(`preferences/${p.discordId}`).set({
+    roles: ROLES.get(p.discordId),
+    inGameName: p.inGameName,
+    mediaUrl: p.mediaUrl,
+    characterClass: p.characterClass,
+    updatedAt: now,
+  })));
 }
 
 function canPlay(p: WoWPlayerDict, role: Role): boolean {
@@ -142,6 +157,23 @@ test('a lobby spins into valid groups, and history carries into the next round',
     await page.locator('#identity-continue-btn').click();
     await page.locator('#setup-ready-btn').click();
     await expect(page.locator('#view-lobby')).toBeVisible();
+  });
+
+  await test.step('a returning player with a complete profile goes straight to the lobby', async () => {
+    // Same browser context, so the Discord ID remembered above is in localStorage.
+    const returning = await page.context().newPage();
+    await mockCharacterRenders(returning);
+    await mockRaiderio(returning);
+    await returning.goto(`/?guildId=${GUILD_ID}&channelId=${CHANNEL_ID}`);
+    await expect(returning.locator('#view-lobby')).toBeVisible();
+    await returning.close();
+  });
+
+  await test.step('a profile edit on another client reaches the lobby', async () => {
+    const chip = page.locator('.player-chip', { hasText: 'Meleethree' });
+    await expect(chip.locator('.tag-lust')).toHaveCount(0);
+    await db.doc('preferences/1010').update({ roles: [ROLE_MELEE, ROLE_LUST] });
+    await expect(chip.locator('.tag-lust')).toBeVisible();
   });
 
   const round1 = await test.step('first spin forms valid groups', () => spinFromLobby(page));

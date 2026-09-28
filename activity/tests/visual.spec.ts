@@ -386,33 +386,29 @@ test.describe('Home View Tests', () => {
   });
 });
 
-// ── Profile Avatar from localStorage Tests ───────────────────
-test.describe('Profile avatar from localStorage', () => {
-  test('home view shows avatar when wheelson-character is set', async ({ page }) => {
+// ── Profile Avatar Tests ─────────────────────────────────────
+// The profile comes from the user's preferences doc, never localStorage.
+test.describe('Profile avatar', () => {
+  test('with no identity, the profile asks the user to pick themselves first', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop);
-
-    // Seed localStorage BEFORE the app boots — currentCharacter hydrates from
-    // this in the store's initial state.
-    await page.addInitScript(() => {
-      localStorage.setItem('wheelson-character', JSON.stringify({
-        inGameName: 'Tytanium-Stormrage',
-        region: 'us',
-        // mediaUrl null so we get the deterministic initial-letter rendering
-        // (avoids cross-platform image-load flake in the snapshot)
-        mediaUrl: null,
-        characterClass: 'Druid',
-        lookupStatus: 'ok',
-        lastUpdated: 1234567890,
-      }));
-    });
-
     await page.goto('/');
 
-    // Wait for the avatar button to be in the DOM
-    const avatar = page.locator('.profile-avatar');
-    await avatar.waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'Set up your character' }).click();
 
-    await expect(avatar).toHaveScreenshot('profile-avatar-from-current-character.png');
+    const dialog = page.getByRole('dialog', { name: 'Profile' });
+    await expect(dialog.getByText('Pick yourself in a lobby to set up your profile.')).toBeVisible();
+    await expect(dialog.locator('.role-editor-input')).toHaveCount(0);
+  });
+
+  test('in a lobby, the profile edits the player shown in the roster', async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+
+    await page.getByRole('button', { name: 'Profile of Gazzi' }).click();
+
+    const dialog = page.getByRole('dialog', { name: 'Profile' });
+    await expect(dialog.locator('.role-editor-input')).toHaveValue('Gazzi-Uldum');
+    await expect(dialog.locator('[data-role-id="Tank"]')).toHaveAttribute('aria-pressed', 'true');
   });
 });
 

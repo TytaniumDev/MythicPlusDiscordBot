@@ -22,18 +22,36 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { useAppStore } from './store/store';
 import { setupDiscordSdk } from './discordSdk';
-import { migrateLegacyDiscordId } from './lib/currentCharacter';
+import { migrateLegacyStorage } from './lib/storedDiscordId';
+import { splitPlayers } from './lib/profiles';
 import { statusToView, routeToView } from './lib/routing';
 import { isPlayerReady } from './lib/roles';
-import type { ChannelData, GuildData } from './types';
+import type { ChannelData, GuildData, WoWPlayer } from './types';
 import './index.css';
 
 // ── Pre-render initialization ──────────────────────────────
 
+/**
+ * Load a `?data=` test fixture's channel. Fixtures describe the lobby as a
+ * `players` list (what the screens show); it is split into the lobby doc's
+ * `members` and the preferences docs, as Firestore would deliver them.
+ */
+function loadFixtureChannel(raw: ChannelData & { players?: WoWPlayer[] }): ChannelData {
+  const { players, ...channel } = raw;
+  const store = useAppStore.getState();
+  if (players) {
+    const { members, profiles } = splitPlayers(players);
+    store.setProfiles(profiles);
+    channel.members = members;
+  }
+  store.setChannelData(channel);
+  return channel;
+}
+
 async function init() {
-  // Migrate any legacy per-guild Discord ID keys to the new global key before
-  // any code reads wheelson-discord-id (e.g. resolveLobbyGate in App.tsx).
-  migrateLegacyDiscordId();
+  // Migrate legacy localStorage keys before any code reads
+  // wheelson-discord-id (e.g. resolveLobbyGate in App.tsx).
+  migrateLegacyStorage();
   const urlParams = new URLSearchParams(window.location.search);
 
   // Check for injected mock data (testing via ?data=)
@@ -52,19 +70,18 @@ async function init() {
         store.setGuildData(data.guild);
         const view = statusToView((data.channel as ChannelData).status);
         store.setView(view);
-        store.setChannelData(data.channel);
+        loadFixtureChannel(data.channel);
       } else if ('voiceChannels' in data && !('status' in data)) {
         store.setGuildData(data as GuildData);
         store.setView('channels');
       } else {
-        const cd = data as ChannelData;
-        store.setChannelData(cd);
+        const cd = loadFixtureChannel(data);
         // If identity is injected, use statusToView; otherwise gate to identity for lobby
         if (data.identity) {
           let view = statusToView(cd.status);
           // Gate lobby behind setup when player isn't ready
           if (view === 'lobby') {
-            const me = cd.players.find(p => p.discordId === data.identity.id);
+            const me = useAppStore.getState().players.find(p => p.discordId === data.identity.id);
             if (me && !isPlayerReady(me)) {
               view = 'setup';
             }

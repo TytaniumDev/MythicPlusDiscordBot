@@ -27,7 +27,7 @@ interface LobbyViewProps {
 export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
-  const players = channelData?.players || [];
+  const players = useAppStore((s) => s.players);
 
   const isMobile = useIsMobileLobby();
   const [isCalculating, setIsCalculating] = useState(false);

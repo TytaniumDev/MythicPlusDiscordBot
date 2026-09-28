@@ -5,13 +5,7 @@ import { WoWPlayer } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
 import { reportError } from '../lib/sentry';
-import {
-  loadStoredDiscordId,
-  saveStoredDiscordId,
-  parseInGameName,
-  DEFAULT_REGION,
-} from '../lib/currentCharacter';
-import { toCharacterClass } from '@mythicplus/shared';
+import { loadStoredDiscordId, saveStoredDiscordId } from '../lib/storedDiscordId';
 
 function getSessionService() {
   return useAppStore.getState().isDemoMode ? demoService : firestoreService;
@@ -42,48 +36,6 @@ function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
   }
   getSessionService().claimPlayer(player.discordId).catch((err) => {
     reportError(err, { tag: 'useIdentity.claimPlayer' });
-  });
-  syncCharacterAcrossLayers(player);
-}
-
-/**
- * One-shot sync between the localStorage character and preferences/{discordId}
- * (surfaced here as the channel's player record) when an identity resolves.
- *
- * preferences is the source of truth — the weekly refresh job and other
- * devices update it — so when it has a character, it overwrites the local
- * copy. Only when it has none do we seed it from a character set up locally
- * (e.g. in the profile modal before joining voice).
- *
- * Fire-and-forget: failures don't surface; the local character keeps
- * working regardless.
- */
-function syncCharacterAcrossLayers(player: WoWPlayer): void {
-  const store = useAppStore.getState();
-  const local = store.currentCharacter;
-
-  if (player.inGameName || player.mediaUrl) {
-    store.setCurrentCharacter({
-      inGameName: player.inGameName ?? '',
-      region: DEFAULT_REGION,
-      mediaUrl: player.mediaUrl ?? null,
-      characterClass: toCharacterClass(player.characterClass),
-      lookupStatus: player.mediaUrl ? 'ok' : (player.inGameName ? 'pending' : 'no_name'),
-      lastUpdated: Date.now(),
-    });
-    return;
-  }
-
-  if (!player.discordId || !local?.inGameName) return;
-  const parsed = parseInGameName(local.inGameName);
-  if (!parsed) return;
-  getSessionService().saveLinkedCharacter(
-    player.discordId,
-    { name: parsed.name, realm: parsed.realmSlug, region: local.region },
-    local.mediaUrl,
-    local.characterClass,
-  ).catch((err) => {
-    reportError(err, { tag: 'useIdentity.seedPreferences' });
   });
 }
 

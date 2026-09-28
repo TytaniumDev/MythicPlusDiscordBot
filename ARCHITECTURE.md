@@ -8,7 +8,7 @@ This document gives a high-level picture of how the **Discord bot**, **Firebase 
 
 **MythicPlusDiscordBot** helps a WoW guild form Mythic+ groups. It:
 
-1. Uses Discord roles to know who can tank, heal, or DPS.
+1. Remembers who can tank, heal, or DPS in each player's profile (`preferences/{discordId}`), edited in the Activity.
 2. Can form balanced groups and show them in Discord (`/wheel`).
 3. Can run an **Activity**: a shared lobby + “wheel” experience backed by Firebase. Players launch the Wheelson activity in a voice channel (or someone runs `/wheelson`); others join via a Discord Activity or a browser link. The lobby stays in sync with who’s in voice; when someone clicks “Spin,” the frontend computes groups and runs a wheel animation, then everyone sees the final groups.
 
@@ -30,7 +30,7 @@ flowchart TB
         GroupService[GroupService]
         SessionService[SessionService]
         FirebaseService[FirebaseService]
-        Core[Core: models, issues, storage]
+        Core[Core: models, issues, UI]
         Cogs --> GroupService
         Cogs --> SessionService
         Cogs --> Core
@@ -54,18 +54,18 @@ flowchart TB
     Channel -->|commands, events| Bot
     Bot -->|read/write, real-time listener| Guilds
     Bot -->|read/write, real-time listener| Channels
-    Bot -->|read/write| Preferences
+    Bot -->|read| Preferences
     Bot -->|listen/write| Sidecars
     FirestoreClient -->|read/write, onSnapshot| Guilds
     FirestoreClient -->|read/write, onSnapshot| Channels
-    FirestoreClient -->|read/write| Preferences
+    FirestoreClient -->|read/write, onSnapshot| Preferences
     User -->|open link with guildId/channelId| UI
 ```
 
 - **Discord**: users run commands and join voice; the bot reacts to commands and voice state.
 - **Bot**: handles commands, builds groups, and owns the lobby/channel lifecycle; it talks to Firestore via `FirebaseService` and `SessionService`.
-- **Firestore**: shared real-time state. Per-guild docs (`guilds/`) hold voice channel lists, group history, and refresh requests; per-channel docs (`channels/`) hold the live lobby (players, status, groups). Sidecar collections (`preferences`, `badGroupReports`, `issueTracking`, `config`) handle role memory, user-submitted reports, GitHub issue tracking, and shared config (affixes, season).
-- **Activity frontend**: a web app (Discord Activity or standalone URL) that subscribes to one guild + channel document pair and drives the lobby → wheel → results flow.
+- **Firestore**: shared real-time state. Per-guild docs (`guilds/`) hold voice channel lists, group history, and refresh requests; per-channel docs (`channels/`) hold the live lobby (voice `members`, status, groups). `preferences/` holds each player's profile (roles, character) and is its single source of truth. Sidecar collections (`badGroupReports`, `issueTracking`, `config`) handle user-submitted reports, GitHub issue tracking, and shared config (affixes, season).
+- **Activity frontend**: a web app (Discord Activity or standalone URL) that subscribes to one guild + channel document pair plus the members' preferences docs, and drives the lobby → wheel → results flow.
 
 ---
 
@@ -75,35 +75,24 @@ flowchart TB
 
 - **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, syncs slash commands, and on startup cleans up old Firestore channel documents (e.g. older than 24 hours).
 - **Commands** (in `packages/bot/src/commands/`):
-  - **groups**: `/wheel` (text groups), `/wheelson` (interactive wheel), and `onVoiceStateUpdate` (lobby sync).
+  - **groups**: `/wheel` (text groups) and `/wheelson` (interactive wheel).
   - `/bug` & `/featurerequest` (GitHub integration) are handled in `main.ts`.
   - **debug**: Debugging utilities.
 - **Services** (in `packages/bot/src/services/`):
-  - **GroupService**: gets players from a channel (using Discord roles), runs the group-creation algorithm (`createMythicPlusGroups`), and handles the “wheel” flows.
-  - **SessionService**: creates the Firestore guild+channel docs when `/wheelson` is run, keeps a map of voice channel → channel doc, subscribes to those documents, and reacts to status changes.
+  - **GroupService**: for `/wheel`, reads the voice members' `preferences` docs on demand, builds players with `WoWPlayer.fromPreferences`, runs the group-creation algorithm (`createMythicPlusGroups`), and announces the groups.
+  - **SessionService**: creates the Firestore guild+channel docs when `/wheelson` is run, and follows the `channels` collection so every lobby doc (created by the bot or the Activity, or already there after a restart) is tracked. On voice join/leave it rewrites that lobby's `members`, and deletes the lobby when its last human leaves.
 - **Core** (in `packages/bot/src/core/`):
   - **firebaseService.ts**: initializes the Firebase Admin SDK and exposes typed CRUD for guild/channel/sidecar documents.
-  - **preferenceService.ts**: reads/writes the `preferences` Firestore collection, with a local-JSON fallback when Firebase credentials are not configured.
   - **issues.ts**: **GitHub Integration**. Bridges Discord Modals to the GitHub API to automatically create issues for bugs, feature requests, and bad group reports.
-  - **storage.ts**: Local-JSON fallback used by `preferenceService.ts` when `FIREBASE_CREDENTIALS_JSON` is unset.
 - **Shared** (in `packages/shared/src/`):
-  - **parallelGroupCreator**, **models**: shared group algorithm and data models used by both the bot and frontend mock data.
+  - **parallelGroupCreator**, **models**: shared group algorithm and data models used by both the bot and the frontend.
+  - **profiles**: the `LobbyMember` / `PlayerPreferences` wire shapes and their parsers. `WoWPlayer.fromPreferences(member, prefs)` is the one factory that joins them, used by both `/wheel` and the Activity lobby.
 
-The bot does **not** serve the Activity UI; it creates the guild/channel docs, keeps lobby players in sync with voice, and reacts to Firestore requests (player refreshes, bad-group reports).
+The bot does **not** serve the Activity UI; it creates the guild/channel docs, keeps lobby `members` in sync with voice, and reacts to Firestore requests (voice channel list refreshes, bad-group reports). It keeps no player data in memory or on disk.
 
-### 2. Data Persistence (Firestore-first with local fallback)
+### 2. Data Persistence
 
-The system uses Firestore as the primary store, with a local-JSON fallback for preferences when Firebase credentials are not configured:
-
-1.  **Firebase Firestore (Cloud)**:
-    *   **Purpose**: Real-time synchronization between the bot and the Activity frontend, plus durable storage for user preferences and operational metadata.
-    *   **Scope**: Per-channel `channels/` docs are ephemeral (cleaned up after 24h on startup); per-guild `guilds/` docs and `preferences/` docs persist.
-    *   **Collections**: `guilds`, `channels`, `preferences`, `badGroupReports`, `issueTracking`, `config` (see Section 3 below).
-
-2.  **Local JSON (Disk, fallback only)**:
-    *   **Purpose**: Used by `core/storage.ts` and `core/preferenceService.ts` as a fallback for role preferences when `FIREBASE_CREDENTIALS_JSON` is unset.
-    *   **Scope**: Persistent across restarts (volume mounted in Docker).
-    *   **File**: `player_preferences.json` (the canonical source is the Firestore `preferences` collection in normal operation).
+Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted when a lobby empties, and swept after 24h on startup); per-guild `guilds/` docs and `preferences/` docs persist. The bot keeps nothing on disk.
 
 ### 3. Firebase (Firestore)
 
@@ -115,8 +104,8 @@ The system uses Firestore as the primary store, with a local-JSON fallback for p
 | Collection         | Doc ID            | Owner / Notes |
 |--------------------|-------------------|---------------|
 | `guilds`           | `{guildId}`       | Per-guild state: `voiceChannels` list, `groupHistory`, `seasonPairs`, `refreshRequest`, plus guild metadata. |
-| `channels`         | `{channelId}`     | Per-voice-channel lobby: `players`, `status`, `groups`, `sittingOut`, `guildId` back-reference. Cleaned up after 24h on startup. |
-| `preferences`      | `{discordId}`     | Per-user saved roles, in-game name, character class, and media URL. Written by both the bot (`PreferenceService`) and the frontend. |
+| `channels`         | `{channelId}`     | Per-voice-channel lobby: `members` (bot-only), `status`, `groups`, `sittingOut`, `guildId` back-reference. Cleaned up after 24h on startup. |
+| `preferences`      | `{discordId}`     | Each player's profile: roles, in-game name, linked character, character class, and media URL. The single source of truth for profiles; written by the Activity and the weekly `refreshCharacterMedia` function, read by the bot and the Activity. |
 | `badGroupReports`  | auto-id           | Frontend writes a doc when a user clicks "report bad group"; the bot listens and files a GitHub issue. |
 | `issueTracking`    | `{issueNumber}`   | Bot writes a tracking doc per `/bug` or `/featurerequest` so the GitHub close webhook can DM the reporter. |
 | `config`           | `affixes`, `season` | Read-only at runtime; populated by Cloud Functions. |
@@ -129,7 +118,7 @@ The system uses Firestore as the primary store, with a local-JSON fallback for p
 | `guildId`  | string    | Back-reference to the parent guild doc |
 | `channelName` | string | Voice channel display name |
 | `status`   | string    | `lobby` → `spinning` → `completed` |
-| `players`  | array     | List of player objects (name, roles, etc.) for the lobby |
+| `members`  | array     | `{ discordId, name }` for everyone in the voice channel (name = display name, dots stripped). Written only by the bot; clients join it with `preferences` |
 | `groups`   | array     | Computed groups (tank, healer, dps); filled by the frontend on transition to `spinning` |
 | `sittingOut` | array   | IDs of players sitting out the current round |
 | `isDebug`  | boolean   | Whether this lobby is from `/test` |
@@ -151,7 +140,7 @@ erDiagram
         string channelId
         string guildId
         string status
-        array players
+        array members
         array groups
         array sittingOut
         timestamp createdAt
@@ -160,7 +149,6 @@ erDiagram
     preferences {
         string discordId
         array roles
-        string wowName
         string inGameName
         string characterClass
         string mediaUrl
@@ -176,8 +164,8 @@ erDiagram
     }
 ```
 
-- **Bot**: creates the channel doc (status `lobby`) and keeps `players` in sync with the voice channel via `SessionService`. It also listens to `badGroupReports` and the per-guild `refreshRequest` field. It doesn't post anything when a round completes.
-- **Frontend**: subscribes with `onSnapshot` to a `guilds/{guildId}` doc and a `channels/{channelId}` doc (using `guildId` and `channelId` from the URL). When the user clicks Spin it runs `createMythicPlusGroups` client-side, writes the computed `groups` plus `status: spinning` directly, then writes `status: completed` after the animation finishes. The bot does **not** compute groups in Activity mode.
+- **Bot**: creates the channel doc (status `lobby`) and keeps `members` in sync with the voice channel via `SessionService`. It also listens to `badGroupReports` and the per-guild `refreshRequest` field. It doesn't post anything when a round completes.
+- **Frontend**: subscribes with `onSnapshot` to a `guilds/{guildId}` doc and a `channels/{channelId}` doc (using `guildId` and `channelId` from the URL), plus the `preferences` docs of the lobby members and the current user (`where(documentId(), 'in', ids)`, 30 IDs per query). The store joins them into the `players` roster every view reads. Profile edits write only `preferences`; every client's roster follows. When the user clicks Spin it runs `createMythicPlusGroups` client-side, writes the computed `groups` plus `status: spinning` directly, then writes `status: completed` after the animation finishes. The bot does **not** compute groups in Activity mode.
 
 Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonical `firestore.rules` at the repo root.
 
@@ -185,10 +173,11 @@ Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonica
 
 - **Role**: Provides the lobby and “wheel” experience for an Activity session. It is a **client-only** app that reads and writes Firestore; it never calls the bot.
 - **Entry**: `activity/src/main.tsx`. On load it reads `guildId` and `channelId` from the query string (the Discord SDK can also supply them when launched as an Activity). `?sessionId=` is accepted as a deprecated alias for `guildId`. If neither is present, the app shows a message prompting the user to run `/wheelson` in Discord.
-- **Firebase**: Uses the Firebase JS SDK (see `activity/src/firebase.ts`) with config from `VITE_FIREBASE_*` env vars. It uses Firestore only (no Auth in the minimal setup).
+- **Firebase**: Uses the Firebase JS SDK (see `activity/src/firebase.ts`) with config from `VITE_FIREBASE_*` env vars. It signs in anonymously so `firestore.rules` can check its writes.
 - **Flow**:
-  1. Subscribe to `guilds/{guildId}` and `channels/{channelId}` with `onSnapshot`.
-  2. **Lobby**: Always render the current `players` list; show/hide lobby vs wheel vs results based on `status`.
+  1. Subscribe to `guilds/{guildId}`, `channels/{channelId}` and the members' `preferences` docs with `onSnapshot`.
+  2. **Lobby**: Always render the joined roster (`members` + `preferences`); show/hide lobby vs wheel vs results based on `status`.
+  - **Profile**: the header avatar and profile modal read the current user's `preferences` doc (their Discord ID is remembered in localStorage between visits; nothing else is). Without a known ID, the modal asks the user to pick themselves in a lobby first.
   3. **Spin**: User clicks “Spin” → frontend runs `createMythicPlusGroups` client-side and writes both `groups` and `status: 'spinning'` to the channel doc in one update.
   4. **Spinning**: Frontend animates the reveal in `activity/src/views/WheelsView.tsx`, then writes `status: 'completed'`.
   5. **Completed**: Show final groups; if the channel doc is deleted (e.g. new `/wheelson` in same channel), show “Activity ended.”
@@ -259,19 +248,22 @@ sequenceDiagram
 
     User->>Discord: /wheelson (in voice channel)
     Discord->>Bot: command
-    Bot->>Bot: GroupService.getGroupsData (players from channel)
     Bot->>Firestore: getOrCreate guilds/{guildId} and channels/{channelId}
     Firestore-->>Bot: ack
     Bot->>Discord: reply with Activity link + browser link (?guildId=..&channelId=..)
     User->>Frontend: open link (Discord Activity or browser)
-    Frontend->>Firestore: onSnapshot(guilds/{guildId}, channels/{channelId})
+    Frontend->>Firestore: onSnapshot(guilds/{guildId}, channels/{channelId}, members' preferences)
 
     loop Lobby
         User->>Discord: join/leave voice
         Discord->>Bot: onVoiceStateUpdate
-        Bot->>Firestore: updateChannelDoc(players)
+        Bot->>Firestore: setChannelMembers(members)
         Firestore-->>Frontend: snapshot → update lobby
     end
+
+    User->>Frontend: edit roles in the profile
+    Frontend->>Firestore: setDoc(preferences/{discordId})
+    Firestore-->>Frontend: snapshot → every client's lobby updates
 
     User->>Frontend: click "Spin the wheel"
     Frontend->>Frontend: createMythicPlusGroups (client-side)
@@ -283,7 +275,7 @@ sequenceDiagram
 ```
 
 - **Creation**: Bot creates the guild + channel docs and returns links; frontend only needs the URL with `guildId`/`channelId`.
-- **Lobby**: Bot keeps `players` on the channel doc in sync with voice; frontend only reads and renders.
+- **Lobby**: Bot keeps `members` on the channel doc in sync with voice; the frontend joins them with `preferences` and renders.
 - **Spin**: Frontend computes `groups` client-side and writes `spinning` + `groups` to the channel doc; frontend animates and writes `completed`; every client shows the results.
 
 ---
@@ -293,9 +285,10 @@ sequenceDiagram
 | Concern | Where it lives |
 |--------|-----------------|
 | Slash commands (`/wheelson`, `/wheel`) | `packages/bot/src/commands/groups.ts` |
-| Saved Roles | Activity `RoleEditor` → `preferences/`; bot reads them via `packages/bot/src/core/preferenceService.ts` (Firestore + local fallback in `core/storage.ts`) |
+| Player profiles | Activity `RoleEditor` → `preferences/`; the Activity joins them in `activity/src/lib/profiles.ts`, the bot reads them in `FirebaseService.getPreferences`; both build players with `WoWPlayer.fromPreferences` |
 | GitHub Issues (`/bug`, `/featurerequest`, activity bad-group reports) | `packages/bot/src/core/issues.ts`, `packages/bot/src/main.ts` |
-| Voice → lobby sync | `packages/bot/src/commands/groups.ts` (`onVoiceStateUpdate`) → `SessionService.updateChannelPlayers` |
+| Voice → lobby sync | `packages/bot/src/main.ts` (`VoiceStateUpdate`) → `SessionService.onVoiceStateUpdate` → `syncMembers` |
+| Lobby tracking (survives restarts) | `SessionService.listen` → `FirebaseService.listenForChannels` |
 | Channel/guild doc create/listen/update | `SessionService` + `FirebaseService` |
 | Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
 | “Spin” handling | Frontend: `activity/src/services/firestoreService.ts` (`requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups` |
@@ -306,7 +299,7 @@ sequenceDiagram
 
 ## Configuration That Ties Everything Together
 
-- **Bot ↔ Firebase**: `FIREBASE_CREDENTIALS_JSON` (service account JSON). If unset, the bot runs but Activity/lobby and Firestore-backed preference features are disabled (preferences fall back to local JSON).
+- **Bot ↔ Firebase**: `FIREBASE_CREDENTIALS_JSON` (service account JSON). If unset, the bot runs but the Activity/lobby is disabled and `/wheel` sees every player as having no roles.
 - **Frontend ↔ Firebase**: `VITE_FIREBASE_*` (apiKey, authDomain, projectId, etc.) in the Activity build.
 - **Activity link**: Bot builds the browser link as `${ACTIVITY_URL}?guildId={guildId}&channelId={channelId}` (e.g. `ACTIVITY_URL` from env or default GitHub Pages URL). The frontend also accepts `?sessionId=` as a deprecated alias for `guildId`.
 - **Discord Activity**: `DISCORD_APPLICATION_ID` is used when creating the embedded application invite for the voice channel.
@@ -331,7 +324,6 @@ flowchart LR
         GS[GroupService]
         SS[SessionService]
         FS[FirebaseService]
-        PS[PreferenceService]
         Issues[GitHub Issues]
     end
 
@@ -352,7 +344,7 @@ flowchart LR
     SS --> FS
     FS <--> G
     FS <--> C
-    PS <--> P
+    FS --> P
     FS <--> Side
     G <--> UI
     C <--> UI
@@ -360,14 +352,15 @@ flowchart LR
     Click --> UI
     UI --> C
     SS --> C
-    Role --> PS
+    Role --> UI
+    UI --> P
     Cmd --> Issues
 ```
 
 - **Bot**: commands and voice events → GroupService + SessionService → FirebaseService → Firestore (`guilds/`, `channels/`, sidecars).
 - **Firestore**: shared real-time state plus durable `preferences/` and operational sidecars.
-- **Activity**: URL with `guildId`/`channelId` → subscribe to guild + channel docs → user clicks Spin → write status → read updates and drive UI.
-- **Preferences**: User role preferences are persisted in the Firestore `preferences/` collection by `PreferenceService`, with local JSON as a fallback.
+- **Activity**: URL with `guildId`/`channelId` → subscribe to guild + channel docs and the members' preferences → user clicks Spin → write status → read updates and drive UI.
+- **Preferences**: each player's profile lives only in `preferences/{discordId}`. The Activity writes it; the bot and every Activity client read it.
 - **Issues**: Bug reports are sent to GitHub.
 
 This should be enough to get a clear mental model of how the bot, Firebase, and Activity frontend work together. For implementation details, use this doc as a map and then open the referenced files.

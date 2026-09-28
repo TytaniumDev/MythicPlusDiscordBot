@@ -27,12 +27,11 @@ import { adaptGuild, buildVoiceChannelsSnapshot } from './core/discordAdapters.j
 import { GroupsHandler } from './commands/groups.js';
 import { DebugHandler } from './commands/debug.js';
 import { onReady } from './events/ready.js';
-import { getPlayerList, type DiscordMember } from './core/utils.js';
+import type { DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup, decodeGroupHistoryRounds } from '@mythicplus/shared';
 import { reportBadGroup, submitGithubIssueModal, GitHubError } from './core/issues.js';
 import type { GitHubIssueResponse } from './core/issues.js';
-import { getPreferenceService } from './core/preferenceService.js';
 import { IssueTrackingService } from './services/issueTrackingService.js';
 
 // ---------------------------------------------------------------------------
@@ -269,8 +268,7 @@ async function main() {
   // Track listeners for shutdown cleanup
   let badGroupReportListener: { unsubscribe(): void } | null = null;
   let guildRefreshListener: { unsubscribe(): void } | null = null;
-  let channelRefreshListener: { unsubscribe(): void } | null = null;
-  let channelRemovedListener: { unsubscribe(): void } | null = null;
+  let channelListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -305,7 +303,7 @@ async function main() {
       logger.error(`Failed to register slash commands: ${e}`);
     }
 
-    // Run ready handler (preference cache, cleanup old docs)
+    // Run ready handler (sweeps abandoned lobbies before we start tracking them)
     await onReady();
 
     // Listen for bad group reports from the activity frontend
@@ -427,70 +425,12 @@ async function main() {
       logger.info('Listening for guild refresh requests from activity frontend');
     }
 
-    // Listen for channel player refresh requests from the activity frontend.
-    // When a user selects a voice channel in the embedded app, the frontend
-    // creates a channel doc with refreshPlayers=true. The bot responds by
-    // populating the players array from the Discord voice channel.
-    channelRefreshListener = firebase.listenForChannelPlayerRefreshRequests(async (channelId, data) => {
-      try {
-        const guildId = String(data.guildId ?? '');
-        if (!guildId) {
-          logger.warn(`Channel ${channelId} refresh request missing guildId`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
-          return;
-        }
+    // Track every lobby doc and keep its voice members in sync. Existing docs
+    // arrive as 'added' on startup, so tracking survives restarts.
+    channelListener = sessionService.listen();
 
-        const discordGuild = readyClient.guilds.cache.get(guildId);
-        if (!discordGuild) {
-          logger.warn(`Guild ${guildId} not found in cache for channel player refresh`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
-          return;
-        }
-
-        const voiceChannel = discordGuild.channels.cache.get(channelId);
-        if (!voiceChannel || !voiceChannel.isVoiceBased()) {
-          logger.warn(`Voice channel ${channelId} not found in guild ${guildId}`);
-          await firebase.updateChannelDoc(channelId, { refreshPlayers: DELETE_FIELD });
-          return;
-        }
-
-        const vc = voiceChannel as import('discord.js').VoiceChannel;
-        const members = vc.members.map((m) => adaptMember(m)).filter((m) => !m.bot);
-
-        // Refresh preference cache for these members so roles are up-to-date
-        const prefSvc = getPreferenceService();
-        await Promise.all(
-          members.map((m) => prefSvc.refreshPreference(m.id)),
-        );
-
-        const players = getPlayerList(members);
-        const playersData = players.map((p) => p.toDict());
-
-        await firebase.updateChannelDoc(channelId, {
-          players: playersData,
-          refreshPlayers: DELETE_FIELD,
-        });
-
-        // Register the channel as active so voice state changes are tracked.
-        sessionService.registerChannel(channelId, guildId, channelId);
-
-        logger.debug(`Refreshed players for channel ${channelId} (${playersData.length} players)`);
-      } catch (e) {
-        reportError(e, { tags: { handler: 'channelPlayerRefresh' }, extra: { channelId } });
-      }
-    });
-
-    if (channelRefreshListener) {
-      logger.info('Listening for channel player refresh requests from activity frontend');
-    }
-
-    // Listen for channel docs being removed (e.g. frontend cleanup or TTL expiry)
-    channelRemovedListener = firebase.listenForChannelRemovedDocs((docId) => {
-      sessionService.handleCollectionRemoved({ document: { id: docId } });
-    });
-
-    if (channelRemovedListener) {
-      logger.info('Listening for channel doc removals');
+    if (channelListener) {
+      logger.info('Tracking lobby docs');
     }
   });
 
@@ -811,12 +751,6 @@ async function main() {
   // -- Voice state update --
   client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     try {
-      const member = newState.member ?? oldState.member;
-      if (!member) return;
-
-      const guildAdapter = adaptGuild(member.guild, adaptVoiceChannel);
-      if (!guildAdapter) return;
-
       const before = {
         channel: oldState.channel
           ? {
@@ -835,11 +769,7 @@ async function main() {
           : null,
       };
 
-      await groupsHandler.onVoiceStateUpdate(
-        { bot: member.user.bot, guild: guildAdapter },
-        before,
-        after,
-      );
+      await sessionService.onVoiceStateUpdate(before, after);
     } catch (e) {
       reportError(e, { tags: { handler: 'voiceStateUpdate' } });
     }
@@ -850,8 +780,7 @@ async function main() {
     logger.info('Shutting down...');
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
-    channelRefreshListener?.unsubscribe();
-    channelRemovedListener?.unsubscribe();
+    channelListener?.unsubscribe();
     sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);

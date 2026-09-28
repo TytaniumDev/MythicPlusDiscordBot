@@ -1,5 +1,6 @@
 import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer, SeasonConfig, SeasonPairs } from '../types';
-import type { StoredCharacter } from '../lib/currentCharacter';
+import type { PlayerPreferences } from '@mythicplus/shared';
+import type { Profiles } from '../lib/profiles';
 
 export function isCompleteGroup(group: WoWGroup): boolean {
   return group.tank !== null && group.healer !== null && group.dps.length === 3;
@@ -31,8 +32,11 @@ export interface AppState {
   currentPlayerName: string | null;
   identityResolved: boolean;
 
-  // Current-user character (independent of channelData; hydrated from localStorage)
-  currentCharacter: StoredCharacter | null;
+  // preferences docs for the lobby members and the current user, by Discord ID
+  profiles: Profiles;
+  // The lobby roster: channelData.members joined with profiles. Derived —
+  // recomputed whenever either changes; never written directly.
+  players: WoWPlayer[];
 
   // Spin sequence
   fullGroups: WoWGroup[];
@@ -70,8 +74,9 @@ export interface AppState {
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
-  setCurrentCharacter: (character: StoredCharacter | null) => void;
-  updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => void;
+  setProfiles: (profiles: Profiles) => void;
+  /** Demo mode only: edit a profile in memory (real edits go through Firestore). */
+  updateProfile: (discordId: string, fields: Partial<PlayerPreferences>) => void;
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) => void;
   setCurrentGroupIndex: (index: number) => void;
   setSpinAnimating: (val: boolean) => void;

@@ -29,10 +29,6 @@ export type ActivityContext = Omit<GroupsContext, 'guild'> & {
   guild: Guild | null;
 };
 
-export interface VoiceState {
-  channel: { id: string; members: { bot: boolean }[] } | null;
-}
-
 export class GroupsHandler {
   bot: Bot;
   sessionService: SessionService;
@@ -95,26 +91,5 @@ export class GroupsHandler {
     }
 
     await ctx.send(msg);
-  }
-
-  async onVoiceStateUpdate(
-    member: { bot: boolean; guild: Guild },
-    before: VoiceState,
-    after: VoiceState,
-  ): Promise<void> {
-    if (before.channel?.id === after.channel?.id) return;
-
-    if (before.channel && this.sessionService.activeChannels.has(before.channel.id)) {
-      const humans = before.channel.members.filter((m) => !m.bot);
-      if (humans.length === 0) {
-        await this.sessionService.cleanupChannel(before.channel.id);
-      } else {
-        await this.sessionService.updateChannelPlayers(before.channel.id, member.guild);
-      }
-    }
-
-    if (after.channel && this.sessionService.activeChannels.has(after.channel.id)) {
-      await this.sessionService.updateChannelPlayers(after.channel.id, member.guild);
-    }
   }
 }
