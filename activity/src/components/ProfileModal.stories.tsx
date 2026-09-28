@@ -18,49 +18,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const NoIdentity_Empty: Story = {
+export const NoIdentity: Story = {
   decorators: [withStore({
     isDemoMode: true,
     currentPlayerId: null,
     currentPlayerName: null,
     identityResolved: false,
     channelData: null,
-    currentCharacter: null,
-  })],
-};
-
-export const OutsideChannel_HasCharacter: Story = {
-  decorators: [withStore({
-    isDemoMode: true,
-    currentPlayerId: null,
-    currentPlayerName: null,
-    identityResolved: false,
-    channelData: null,
-    currentCharacter: {
-      inGameName: 'Tytanium-Stormrage',
-      region: 'us',
-      mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
-      characterClass: 'Druid',
-      lookupStatus: 'ok',
-      lastUpdated: 1234567890,
-    },
   })],
 };
 
 export const OutsideChannel_DiscordIdKnown: Story = {
   decorators: [withStore({
     isDemoMode: true,
-    currentPlayerId: '100000000000000007',
-    currentPlayerName: 'Fourseven',
+    currentPlayerId: '100000000000000099',
+    currentPlayerName: 'Tytanium',
     identityResolved: false,
     channelData: null,
-    currentCharacter: {
-      inGameName: 'Tytanium-Stormrage',
-      region: 'us',
-      mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
-      characterClass: 'Druid',
-      lookupStatus: 'ok',
-      lastUpdated: 1234567890,
+    profiles: {
+      '100000000000000099': {
+        roles: ['Healer', 'Brez'],
+        inGameName: 'Tytanium-Stormrage',
+        mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
+        characterClass: 'Druid',
+      },
     },
   })],
 };
@@ -72,7 +53,6 @@ export const InsideChannel_LinkedCharacter: Story = {
     currentPlayerName: 'Fourseven',
     identityResolved: true,
     channelData: mockChannelData,
-    currentCharacter: null,
   })],
 };
 

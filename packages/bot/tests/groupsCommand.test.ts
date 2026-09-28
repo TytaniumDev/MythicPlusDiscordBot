@@ -42,13 +42,6 @@ vi.mock('../src/core/groupUi.js', () => ({
   buildGroupEmbed: vi.fn(),
 }));
 
-vi.mock('../src/core/preferenceService.js', () => ({
-  getPreferenceService: vi.fn().mockReturnValue({
-    getPreferenceSync: vi.fn().mockReturnValue(null),
-    getPreferenceByNameSync: vi.fn().mockReturnValue(null),
-  }),
-}));
-
 import { GroupsHandler, type GroupsContext, type ActivityContext } from '../src/commands/groups.js';
 import { GroupService } from '../src/services/groupService.js';
 import type { SessionService } from '../src/services/sessionService.js';
@@ -57,9 +50,6 @@ import logger from '../src/core/logger.js';
 function makeMockSessionService() {
   return {
     getOrCreateSession: vi.fn().mockResolvedValue(['123', '456']),
-    activeChannels: new Map(),
-    updateChannelPlayers: vi.fn().mockResolvedValue(undefined),
-    cleanupChannel: vi.fn().mockResolvedValue(undefined),
   } as unknown as SessionService;
 }
 
@@ -198,97 +188,6 @@ describe('GroupsHandler.activity', () => {
     );
     expect(msgCall).toBeTruthy();
     expect(msgCall![0]).toContain('**Voice Channel Activity:** N/A');
-  });
-});
-
-describe('GroupsHandler.onVoiceStateUpdate', () => {
-  it('updates tracked channels on join', async () => {
-    const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
-
-    const handler = new GroupsHandler(
-      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      new GroupService(),
-      sessionService,
-    );
-
-    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
-    const member = { bot: false, guild };
-
-    // Join a tracked channel
-    const before = { channel: null };
-    const after = { channel: { id: '123', members: [member] } };
-
-    await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith('123', guild);
-  });
-
-  it('updates tracked channels on leave with humans remaining', async () => {
-    const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
-
-    const handler = new GroupsHandler(
-      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      new GroupService(),
-      sessionService,
-    );
-
-    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
-    const member = { bot: false, guild };
-    const human = { bot: false };
-
-    const before = { channel: { id: '123', members: [human] } };
-    const after = { channel: null };
-
-    await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    expect(sessionService.updateChannelPlayers).toHaveBeenCalledWith('123', guild);
-    expect(sessionService.cleanupChannel).not.toHaveBeenCalled();
-  });
-
-  it('cleans up when last human leaves', async () => {
-    const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
-
-    const handler = new GroupsHandler(
-      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      new GroupService(),
-      sessionService,
-    );
-
-    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
-    const member = { bot: false, guild };
-    const botMember = { bot: true };
-
-    const before = { channel: { id: '123', members: [botMember] } };
-    const after = { channel: null };
-
-    await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    expect(sessionService.cleanupChannel).toHaveBeenCalledWith('123');
-  });
-
-  it('ignores same-channel events (mute/unmute)', async () => {
-    const sessionService = makeMockSessionService();
-    sessionService.activeChannels.set('123', { docId: '123', guildId: '456' });
-
-    const handler = new GroupsHandler(
-      makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      new GroupService(),
-      sessionService,
-    );
-
-    const guild = { id: '456', name: 'G', voice_channels: [], get_channel: vi.fn() };
-    const member = { bot: false, guild };
-    const channel = { id: '123', members: [member] };
-
-    const before = { channel };
-    const after = { channel };
-
-    await handler.onVoiceStateUpdate(member as any, before, after); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    expect(sessionService.updateChannelPlayers).not.toHaveBeenCalled();
   });
 });
 

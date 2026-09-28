@@ -26,7 +26,7 @@ interface LobbyViewProps {
 export function LobbyView({ onNavigate }: LobbyViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const service = useSessionService();
-  const players = channelData?.players || [];
+  const players = useAppStore((s) => s.players);
 
   const isMobile = useIsCompactLobby();
   const myCharacterRef = useRef<MyCharacterCardHandle>(null);

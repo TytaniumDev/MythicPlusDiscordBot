@@ -8,7 +8,7 @@ export interface SessionService {
   finishSequence(): Promise<void>;
   newRound(): Promise<void>;
   cancelToLobby(): Promise<void>;
-  saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void>;
+  saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void>;
   saveLinkedCharacter(playerId: string, linkedCharacter: { name: string; realm: string; region: string }, mediaUrl?: string | null, characterClass?: CharacterClass | null): Promise<void>;
   refreshChannels(guildId: string): Promise<void>;
   selectChannel(channelId: string, channelName: string, guildId: string): Promise<void>;

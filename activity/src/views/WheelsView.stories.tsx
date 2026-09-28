@@ -8,14 +8,17 @@ import {
   showcaseGroups,
   SHOWCASE_CURRENT_PLAYER_ID,
 } from '../lib/showcaseFixtures';
+import { splitPlayers } from '../lib/profiles';
 import { WheelsView } from './WheelsView';
 import type { ChannelData } from '../types';
 import type { ViewName } from '../store/types';
 
+const showcaseLobby = splitPlayers(showcasePlayers);
+
 const spinningChannelData: ChannelData = {
   ...mockChannelData,
   status: 'spinning',
-  players: showcasePlayers,
+  members: showcaseLobby.members,
   groups: showcaseGroups,
   revealedGroups: 0,
 };
@@ -62,6 +65,7 @@ const meta = {
       currentPlayerName: 'Kaelith',
       identityResolved: true,
       channelData: spinningChannelData,
+      profiles: showcaseLobby.profiles,
     }),
   ],
 } satisfies Meta<typeof WheelsViewHarness>;

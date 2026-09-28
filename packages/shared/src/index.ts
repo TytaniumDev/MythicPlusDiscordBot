@@ -16,6 +16,15 @@ export {
 export { WoWPlayer, WoWGroup } from './models.js';
 
 export {
+  parsePlayerPreferences,
+  parseLobbyMembers,
+  chunkIds,
+  PREFERENCES_QUERY_CHUNK_SIZE,
+  type LobbyMember,
+  type PlayerPreferences,
+} from './profiles.js';
+
+export {
   clear,
   setGroupHistory,
   createMythicPlusGroups,

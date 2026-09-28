@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WoWPlayer, WoWGroup, todayPST } from '@mythicplus/shared';
+import { WoWPlayer, WoWGroup, todayPST, type PlayerPreferences } from '@mythicplus/shared';
 
 const { mockFirebaseInstance } = vi.hoisted(() => {
   const mockFirebaseInstance = {
@@ -9,6 +9,11 @@ const { mockFirebaseInstance } = vi.hoisted(() => {
     getSeasonConfig: vi.fn().mockResolvedValue(null),
     getSeasonPairs: vi.fn().mockResolvedValue(null),
     saveSeasonPairs: vi.fn().mockResolvedValue(undefined),
+    // Every requested player has a Tank preference unless a test overrides it.
+    getPreferences: vi.fn(async (ids: string[]) => new Map<string, PlayerPreferences>(ids.map((id) => [
+      id,
+      { roles: ['Tank'], inGameName: '', mediaUrl: null, characterClass: null },
+    ]))),
   };
   return { mockFirebaseInstance };
 });
@@ -37,11 +42,8 @@ vi.mock('../src/core/logger.js', () => ({
   },
 }));
 
-vi.mock('../src/core/utils.js', () => ({
-  getPlayerList: vi.fn(),
-  getPlayerFromMember: vi.fn(),
-  getWowName: vi.fn(),
-  getMaskedName: vi.fn((n: string) => '?'.repeat(n.length)),
+vi.mock('../src/core/utils.js', async () => ({
+  ...(await vi.importActual('../src/core/utils.js')),
   showLongTyping: vi.fn().mockResolvedValue(undefined),
   showShortTyping: vi.fn().mockResolvedValue(undefined),
 }));
@@ -55,15 +57,7 @@ vi.mock('../src/core/groupUi.js', () => ({
   buildGroupEmbed: vi.fn(),
 }));
 
-vi.mock('../src/core/preferenceService.js', () => ({
-  getPreferenceService: vi.fn().mockReturnValue({
-    getPreferenceSync: vi.fn().mockReturnValue(null),
-    getPreferenceByNameSync: vi.fn().mockReturnValue(null),
-  }),
-}));
-
 import { GroupService, type CommandContext } from '../src/services/groupService.js';
-import { getPlayerList } from '../src/core/utils.js';
 import { getDebugPlayers } from '../src/core/debugFixtures.js';
 import { announceGroup } from '../src/core/groupUi.js';
 import { createMythicPlusGroups, setGroupHistory } from '@mythicplus/shared';
@@ -116,27 +110,30 @@ describe('GroupService.getGroupsData', () => {
     expect(createMythicPlusGroups).toHaveBeenCalledOnce();
   });
 
-  it('uses player list in normal mode', async () => {
+  it('builds players from the voice members\' preferences in normal mode', async () => {
     const service = new GroupService();
     const member1 = { bot: false, nick: 'P1', id: '1', toString: () => 'P1' };
-    const member2 = { bot: false, nick: 'P2', id: '2', toString: () => 'P2' };
-    const ctx = makeCtx({ members: [member1, member2] });
+    const member2 = { bot: false, nick: 'P.2', id: '2', toString: () => 'P.2' };
+    const bot = { bot: true, nick: 'Music', id: '3', toString: () => 'Music' };
+    const ctx = makeCtx({ members: [member1, member2, bot] });
 
-    const players = [
-      WoWPlayer.create('Player1', ['Tank']),
-      WoWPlayer.create('Player2', ['Melee']),
-    ];
-    vi.mocked(getPlayerList).mockReturnValue(players);
-    vi.mocked(createMythicPlusGroups).mockReturnValue([
-      new WoWGroup(players[0], null, [players[1]]),
-    ]);
+    mockFirebaseInstance.getPreferences.mockResolvedValueOnce(new Map([
+      ['1', { roles: ['Tank'], inGameName: 'P1-Illidan', mediaUrl: null, characterClass: 'Paladin' }],
+      ['2', { roles: ['Melee', 'Lust'], inGameName: '', mediaUrl: null, characterClass: null }],
+    ]));
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup()]);
 
     const result = await service.getGroupsData(ctx, false);
 
-    expect(result).not.toBeNull();
-    expect(result!.players).toHaveLength(2);
-    expect(result!.groups).toHaveLength(1);
-    expect(getPlayerList).toHaveBeenCalledWith([member1, member2]);
+    expect(mockFirebaseInstance.getPreferences).toHaveBeenCalledWith(['1', '2']);
+    expect(result!.players.map((p) => p.toDict())).toEqual([
+      WoWPlayer.fromPreferences({ discordId: '1', name: 'P1' }, {
+        roles: ['Tank'], inGameName: 'P1-Illidan', mediaUrl: null, characterClass: 'Paladin',
+      }).toDict(),
+      WoWPlayer.fromPreferences({ discordId: '2', name: 'P2' }, {
+        roles: ['Melee', 'Lust'], inGameName: '', mediaUrl: null, characterClass: null,
+      }).toDict(),
+    ]);
     expect(createMythicPlusGroups).toHaveBeenCalledOnce();
   });
 
@@ -145,7 +142,8 @@ describe('GroupService.getGroupsData', () => {
     const member1 = { bot: false, nick: 'P1', id: '1', toString: () => 'P1' };
     const ctx = makeCtx({ members: [member1] });
 
-    vi.mocked(getPlayerList).mockReturnValue([WoWPlayer.create('Roleless', [])]);
+    // No preferences doc: the member has no roles.
+    mockFirebaseInstance.getPreferences.mockResolvedValueOnce(new Map());
 
     const result = await service.getGroupsData(ctx, false);
 
@@ -494,7 +492,6 @@ describe('GroupService season pair bumping', () => {
     });
 
     const group = fivePlayerGroup();
-    vi.mocked(getPlayerList).mockReturnValue(group.players);
     vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
 
     await service.getGroupsData(ctx, false);
@@ -547,7 +544,6 @@ describe('GroupService season pair bumping', () => {
     });
 
     const group = fivePlayerGroup();
-    vi.mocked(getPlayerList).mockReturnValue(group.players);
     vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
 
     await service.getGroupsData(ctx, false);
@@ -569,7 +565,6 @@ describe('GroupService season pair bumping', () => {
     mockFirebaseInstance.getSeasonConfig.mockResolvedValue(null);
 
     const group = fivePlayerGroup();
-    vi.mocked(getPlayerList).mockReturnValue(group.players);
     vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
 
     await service.getGroupsData(ctx, false);

@@ -50,18 +50,20 @@ const unmappedB = basePlayer({
   discordId: '100000000000000005',
 });
 
-const buildChannelData = (players: WoWPlayer[], claimed: string[] = []) => ({
-  channelId: 'vc-1',
-  channelName: 'Mythic Plus',
-  guildId: 'demo-guild',
-  status: 'lobby' as const,
+const buildLobby = (players: WoWPlayer[], claimed: string[] = []) => ({
   players,
-  groups: [],
-  claimedPlayers: claimed,
-  sittingOut: [],
-  isDebug: false,
-  createdAt: Date.now(),
-  lastActive: Date.now(),
+  channelData: {
+    channelId: 'vc-1',
+    channelName: 'Mythic Plus',
+    guildId: 'demo-guild',
+    status: 'lobby' as const,
+    groups: [],
+    claimedPlayers: claimed,
+    sittingOut: [],
+    isDebug: false,
+    createdAt: Date.now(),
+    lastActive: Date.now(),
+  },
 });
 
 const meta = {
@@ -83,7 +85,7 @@ export const AllMapped: Story = {
       isDemoMode: true,
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
-      channelData: buildChannelData([tytanium, martz, pandemonium]),
+      ...buildLobby([tytanium, martz, pandemonium]),
     }),
   ],
 };
@@ -94,7 +96,7 @@ export const MixedMapping: Story = {
       isDemoMode: true,
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
-      channelData: buildChannelData([tytanium, unmappedA, martz, unmappedB, pandemonium]),
+      ...buildLobby([tytanium, unmappedA, martz, unmappedB, pandemonium]),
     }),
   ],
 };
@@ -105,7 +107,7 @@ export const WithClaimed: Story = {
       isDemoMode: true,
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
-      channelData: buildChannelData([tytanium, martz, pandemonium], [martz.discordId!]),
+      ...buildLobby([tytanium, martz, pandemonium], [martz.discordId!]),
     }),
   ],
 };

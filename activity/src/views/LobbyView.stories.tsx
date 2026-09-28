@@ -39,10 +39,8 @@ export const FewPlayers: Story = {
       currentPlayerId: '100000000000000001',
       currentPlayerName: 'Quill',
       identityResolved: true,
-      channelData: {
-        ...mockChannelData,
-        players: mockPlayers.slice(0, 5),
-      },
+      channelData: mockChannelData,
+      players: mockPlayers.slice(0, 5),
     }),
   ],
 };
@@ -53,10 +51,8 @@ export const EmptyLobby: Story = {
       isDemoMode: true,
       currentGuildId: 'demo-guild',
       currentChannelId: 'vc-1',
-      channelData: {
-        ...mockChannelData,
-        players: [],
-      },
+      channelData: mockChannelData,
+      players: [],
     }),
   ],
 };

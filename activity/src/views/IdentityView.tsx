@@ -15,7 +15,7 @@ interface IdentityViewProps {
 export function IdentityView({ onNavigate }: IdentityViewProps) {
   const channelData = useAppStore((s) => s.channelData);
   const claimedPlayers = channelData?.claimedPlayers ?? [];
-  const players = channelData?.players ?? [];
+  const players = useAppStore((s) => s.players);
   const { selectPlayer } = useIdentity();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 

@@ -90,7 +90,7 @@ async function seedChannel(status: 'lobby' | 'spinning' | 'completed'): Promise<
     channelName: 'Lobby',
     guildId: GUILD_ID,
     status,
-    players: [tank, healer, ...dps],
+    members: [tank, healer, ...dps].map((p) => ({ discordId: p.discordId, name: p.name })),
     groups: status === 'lobby' ? [] : [GROUP],
     revealedGroups: 0,
     sittingOut: [],
@@ -187,16 +187,14 @@ describe('channels', () => {
       channelName: '',
       guildId: GUILD_ID,
       status: 'lobby',
-      players: [],
       groups: [],
       isDebug: false,
-      refreshPlayers: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true }));
   });
 
-  it('allows selecting an existing lobby without touching its players (selectChannel)', async () => {
+  it('allows selecting an existing lobby without touching its members (selectChannel)', async () => {
     await seedGuild();
     await seedChannel('completed');
     await allowed(setDoc(channelRef(), {
@@ -207,11 +205,10 @@ describe('channels', () => {
       groups: [],
       sittingOut: [],
       isDebug: false,
-      refreshPlayers: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true }));
-    expect((await admin.doc(`channels/${CHANNEL_ID}`).get()).get('players')).toHaveLength(5);
+    expect((await admin.doc(`channels/${CHANNEL_ID}`).get()).get('members')).toHaveLength(5);
   });
 
   it('allows a full round: spin, reveal, finish (from every client), new round', async () => {
@@ -230,7 +227,7 @@ describe('channels', () => {
     await allowed(updateDoc(channelRef(), { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] }));
   });
 
-  it('allows claiming a player, sitting out and asking for a player refresh', async () => {
+  it('allows claiming a player and sitting out', async () => {
     await seedGuild();
     await seedChannel('lobby');
     await allowed(updateDoc(channelRef(), { claimedPlayers: arrayUnion('1001') }));
@@ -238,7 +235,6 @@ describe('channels', () => {
       await tx.get(channelRef());
       tx.update(channelRef(), { sittingOut: arrayUnion('1002') });
     }));
-    await allowed(updateDoc(channelRef(), { refreshPlayers: true }));
   });
 
   it('rejects a second spin over a round in progress', async () => {
@@ -255,10 +251,24 @@ describe('channels', () => {
     await denied(updateDoc(channelRef(), { status: 'spinning', groups: [GROUP] }));
   });
 
-  it('rejects clients editing the lobby players', async () => {
+  it('rejects clients writing the lobby members, even empty', async () => {
     await seedGuild();
     await seedChannel('lobby');
-    await denied(updateDoc(channelRef(), { players: [tank] }));
+    await denied(updateDoc(channelRef(), { members: [{ discordId: '1001', name: 'Tankone' }] }));
+    await denied(updateDoc(channelRef(), { members: [] }));
+    await denied(setDoc(doc(db, 'channels', '200000000000000009'), {
+      channelId: '200000000000000009',
+      guildId: GUILD_ID,
+      status: 'lobby',
+      members: [],
+    }));
+  });
+
+  it('rejects the retired players and refreshPlayers fields', async () => {
+    await seedGuild();
+    await seedChannel('lobby');
+    await denied(updateDoc(channelRef(), { players: [] }));
+    await denied(updateDoc(channelRef(), { refreshPlayers: true }));
   });
 
   it('rejects moving a lobby to another guild, unknown fields and unsigned clients', async () => {
@@ -276,7 +286,6 @@ describe('channels', () => {
       guildId: GUILD_ID,
       status: 'lobby',
       groups: [],
-      refreshPlayers: true,
     }));
   });
 });
@@ -287,7 +296,6 @@ describe('preferences', () => {
   it('allows saving every role the activity offers (saveRoles)', async () => {
     await allowed(setDoc(prefRef(), {
       roles: [...ALL_ROLES],
-      wowName: 'Tankone',
       inGameName: 'Tankone-Stormrage',
       updatedAt: serverTimestamp(),
     }, { merge: true }));
@@ -313,8 +321,8 @@ describe('preferences', () => {
   });
 
   it('allows updating roles on a doc that has fields clients never write', async () => {
-    await admin.doc(`preferences/${PLAYER_ID}`).set({ roles: ['Tank'], legacyField: 'kept' });
-    await allowed(setDoc(prefRef(), { roles: ['Healer'], wowName: 'Healone', inGameName: '', updatedAt: serverTimestamp() }, { merge: true }));
+    await admin.doc(`preferences/${PLAYER_ID}`).set({ roles: ['Tank'], wowName: 'Legacy', legacyField: 'kept' });
+    await allowed(setDoc(prefRef(), { roles: ['Healer'], inGameName: '', updatedAt: serverTimestamp() }, { merge: true }));
   });
 
   it('rejects unknown roles, off-CDN portraits and unknown fields', async () => {
@@ -322,6 +330,7 @@ describe('preferences', () => {
     await denied(setDoc(prefRef(), { mediaUrl: 'https://example.com/face.jpg' }, { merge: true }));
     await denied(setDoc(prefRef(), { characterClass: 'Bard' }, { merge: true }));
     await denied(setDoc(prefRef(), { isAdmin: true }, { merge: true }));
+    await denied(setDoc(prefRef(), { wowName: 'Retired' }, { merge: true }));
   });
 
   it('rejects non-Discord IDs, deletes and unsigned clients', async () => {

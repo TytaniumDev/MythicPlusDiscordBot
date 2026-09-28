@@ -39,7 +39,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   const service = useSessionService();
   const isCarousel = useIsCarouselMode();
 
-  const players = channelData?.players || [];
+  const players = useAppStore((s) => s.players);
   useIdentityResolver(players);
   const isCompact = useIsCompactPanel();
   const gridRef = useRef<WheelsGridRef>(null);
@@ -93,7 +93,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     if (!data || data.status !== 'spinning') return;
 
     if (data.staticWheel) {
-      const p = initPools(data.players);
+      const p = initPools(useAppStore.getState().players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
       setWheelStatus('Static preview');
       setShowSpinBtn(false);
@@ -108,7 +108,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       useAppStore.getState().setCurrentGroupIndex(0);
       useAppStore.getState().clearGroupCards();
 
-      const p = initPools(data.players);
+      const p = initPools(useAppStore.getState().players);
       useAppStore.getState().setPools(p.tanks, p.healers, p.dps);
 
       gridRef.current?.grid?.resetCarouselDots();

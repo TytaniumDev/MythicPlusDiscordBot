@@ -29,8 +29,8 @@ const meta = {
         ...mockChannelData,
         status: 'completed',
         groups: showcaseGroups,
-        players: showcasePlayers,
       },
+      players: showcasePlayers,
     }),
   ],
 } satisfies Meta<typeof ResultsView>;

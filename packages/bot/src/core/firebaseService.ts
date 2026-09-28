@@ -2,7 +2,10 @@ import { createRequire } from 'node:module';
 import {
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
+  parsePlayerPreferences,
   parseSeasonPairs,
+  type LobbyMember,
+  type PlayerPreferences,
   type WoWGroupDict,
 } from '@mythicplus/shared';
 import logger from './logger.js';
@@ -21,6 +24,7 @@ export let DELETE_FIELD: unknown = null;
 type FirebaseDb = {
   collection: (name: string) => FirebaseCollection;
   batch: () => FirebaseBatch;
+  getAll: (...refs: FirebaseDocRef[]) => Promise<FirebaseDocSnapshot[]>;
 };
 
 type FirebaseCollection = {
@@ -75,7 +79,9 @@ export interface IFirebaseService {
     debug?: boolean,
   ): Promise<string>;
   updateChannelDoc(channelId: string, data: Record<string, unknown>): Promise<void>;
+  setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void>;
   deleteChannelDoc(channelId: string): Promise<void>;
+  getPreferences(discordIds: string[]): Promise<Map<string, PlayerPreferences>>;
   deleteOldDocs(collection: string, seconds: number): Promise<number>;
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
@@ -83,13 +89,14 @@ export interface IFirebaseService {
   listenForGuildRefreshRequests(
     callback: (guildId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
-  listenForChannelPlayerRefreshRequests(
-    callback: (channelId: string, data: Record<string, unknown>) => void,
-  ): { unsubscribe(): void } | null;
+  listenForChannels(handlers: ChannelListenerHandlers): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
-  listenForChannelRemovedDocs(
-    callback: (docId: string) => void,
-  ): { unsubscribe(): void } | null;
+}
+
+export interface ChannelListenerHandlers {
+  /** A lobby doc appeared (including every existing doc when the listener starts). */
+  onAdded(channelId: string, data: Record<string, unknown>): void;
+  onRemoved(channelId: string): void;
 }
 
 let instance: FirebaseService | null = null;
@@ -219,7 +226,7 @@ export class FirebaseService implements IFirebaseService {
         channelName,
         guildId,
         status: 'lobby',
-        players: [],
+        members: [],
         groups: [],
         isDebug: debug,
         createdAt: SERVER_TIMESTAMP,
@@ -244,6 +251,29 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection('channels').doc(channelId);
     await docRef.update(data);
+  }
+
+  /**
+   * Write a lobby's voice membership. Only the bot writes `members`
+   * (firestore.rules reject client writes to it).
+   */
+  async setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void> {
+    await this.updateChannelDoc(channelId, { members });
+  }
+
+  /**
+   * Read the preferences docs for these players. Players without a doc are
+   * absent from the returned map.
+   */
+  async getPreferences(discordIds: string[]): Promise<Map<string, PlayerPreferences>> {
+    const prefs = new Map<string, PlayerPreferences>();
+    if (!this.db || discordIds.length === 0) return prefs;
+    const collection = this.db.collection('preferences');
+    const snaps = await this.db.getAll(...discordIds.map((id) => collection.doc(id)));
+    for (const snap of snaps) {
+      if (snap.exists) prefs.set(snap.id, parsePlayerPreferences(snap.data()));
+    }
+    return prefs;
   }
 
   async deleteChannelDoc(channelId: string): Promise<void> {
@@ -302,33 +332,6 @@ export class FirebaseService implements IFirebaseService {
       },
       (...errArgs: unknown[]) => {
         reportError(errArgs[0], { tags: { handler: 'firebaseService.guildRefreshListener' } });
-      },
-    );
-
-    return { unsubscribe: unsubscribe as () => void };
-  }
-
-  listenForChannelPlayerRefreshRequests(
-    callback: (channelId: string, data: Record<string, unknown>) => void,
-  ): { unsubscribe(): void } | null {
-    if (!this.db) return null;
-
-    const collectionRef = this.db.collection('channels');
-
-    const unsubscribe = collectionRef.onSnapshot(
-      (...args: unknown[]) => {
-        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
-        for (const change of snapshot.docChanges()) {
-          if (change.type === 'added' || change.type === 'modified') {
-            const data = change.doc.data();
-            if (data && data.refreshPlayers) {
-              callback(change.doc.id, data);
-            }
-          }
-        }
-      },
-      (...errArgs: unknown[]) => {
-        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelPlayerRefreshListener' } });
       },
     );
 
@@ -403,9 +406,13 @@ export class FirebaseService implements IFirebaseService {
     await docRef.delete();
   }
 
-  listenForChannelRemovedDocs(
-    callback: (docId: string) => void,
-  ): { unsubscribe(): void } | null {
+  /**
+   * Follow the set of lobby docs. `added` fires for every existing doc when the
+   * listener starts, so the bot rebuilds its lobby tracking after a restart.
+   * Modifications are ignored: the bot's own `members` writes would otherwise
+   * echo back.
+   */
+  listenForChannels(handlers: ChannelListenerHandlers): { unsubscribe(): void } | null {
     if (!this.db) return null;
 
     const collectionRef = this.db.collection('channels');
@@ -414,13 +421,15 @@ export class FirebaseService implements IFirebaseService {
       (...args: unknown[]) => {
         const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
         for (const change of snapshot.docChanges()) {
-          if (change.type === 'removed') {
-            callback(change.doc.id);
+          if (change.type === 'added') {
+            handlers.onAdded(change.doc.id, change.doc.data() ?? {});
+          } else if (change.type === 'removed') {
+            handlers.onRemoved(change.doc.id);
           }
         }
       },
       (...errArgs: unknown[]) => {
-        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelRemovedListener' } });
+        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelListener' } });
       },
     );
 

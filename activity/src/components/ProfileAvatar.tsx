@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { getClassColor } from '../lib/classColors';
-import { useAppStore } from '../store/store';
+import { useMyProfile } from '../hooks/useMyProfile';
 import { CharacterImage } from './CharacterImage';
 
 interface ProfileAvatarProps {
@@ -8,23 +8,9 @@ interface ProfileAvatarProps {
 }
 
 export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
-  const currentCharacter = useAppStore((s) => s.currentCharacter);
-  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
-  const currentPlayerName = useAppStore((s) => s.currentPlayerName);
-  const channelData = useAppStore((s) => s.channelData);
+  const { player, displayName } = useMyProfile();
 
-  // Prefer the per-browser local character (works on every view, even
-  // outside a voice channel). Fall back to channelData lookup for
-  // returning users who haven't yet hydrated their local character.
-  const channelPlayer = currentPlayerId && channelData
-    ? channelData.players.find((p) => p.discordId === currentPlayerId)
-    : null;
-
-  const mediaUrl = currentCharacter?.mediaUrl ?? channelPlayer?.mediaUrl ?? null;
-  const characterClass = currentCharacter?.characterClass ?? channelPlayer?.characterClass ?? null;
-  const displayName = (currentCharacter?.inGameName?.split('-')[0]) || currentPlayerName || channelPlayer?.name || null;
-
-  const ringColor = getClassColor(characterClass) ?? '#888';
+  const ringColor = getClassColor(player?.characterClass ?? null) ?? '#888';
   const initial = (displayName ?? '?').charAt(0).toUpperCase();
 
   // Always actionable — even with no character set, the slot opens
@@ -42,7 +28,7 @@ export function ProfileAvatar({ onClick }: ProfileAvatarProps) {
       style={{ '--avatar-ring': ringColor } as CSSProperties}
     >
       <CharacterImage
-        mediaUrl={mediaUrl}
+        mediaUrl={player?.mediaUrl ?? null}
         variant="avatar"
         className="profile-avatar__img"
         fallback={<span className="profile-avatar__initial">{initial}</span>}

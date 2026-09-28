@@ -2,27 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getWowName,
   getMaskedName,
-  getPlayerList,
+  toLobbyMember,
   showLongTyping,
   showShortTyping,
 } from '../src/core/utils.js';
 import type { DiscordMember, TypingChannel } from '../src/core/utils.js';
-
-// Mock the preference service
-vi.mock('../src/core/preferenceService.js', () => {
-  const mockSvc = {
-    getPreferenceSync: vi.fn().mockReturnValue(null),
-    getPreferenceByNameSync: vi.fn().mockReturnValue(null),
-    getInGameNameSync: vi.fn().mockReturnValue(''),
-    getMediaUrlSync: vi.fn().mockReturnValue(null),
-    getCharacterClassSync: vi.fn().mockReturnValue(null),
-  };
-  return {
-    getPreferenceService: vi.fn().mockReturnValue(mockSvc),
-    PreferenceService: vi.fn(),
-    _resetInstance: vi.fn(),
-  };
-});
 
 describe('getWowName', () => {
   it('prioritizes nick > global > str and removes dots', () => {
@@ -58,39 +42,15 @@ describe('getWowName', () => {
   });
 });
 
-describe('getPlayerList', () => {
-  it('returns all members with or without roles', async () => {
-    const { getPreferenceService } = await import('../src/core/preferenceService.js');
-    const mockSvc = getPreferenceService();
-    vi.mocked(mockSvc.getPreferenceSync).mockImplementation((discordId: string) => {
-      if (discordId === '111') return ['Tank'];
-      return null;
-    });
-    vi.mocked(mockSvc.getPreferenceByNameSync).mockReturnValue(null);
-
-    const members: DiscordMember[] = [
-      { nick: 'SavedPlayer', id: '111', bot: false, toString: () => 'SavedPlayer' },
-      { nick: 'NoRolesPlayer', id: '222', bot: false, toString: () => 'NoRolesPlayer' },
-      { nick: 'AnotherPlayer', id: '333', bot: false, toString: () => 'AnotherPlayer' },
-    ];
-
-    const players = getPlayerList(members);
-    expect(players.length).toBe(3);
-
-    const p1 = players.find((p) => p.name === 'SavedPlayer');
-    expect(p1).toBeTruthy();
-    expect(p1!.tankMain).toBe(true);
-    expect(p1!.hasRoles()).toBe(true);
-    expect(p1!.discordId).toBe('111');
-
-    const p2 = players.find((p) => p.name === 'NoRolesPlayer');
-    expect(p2).toBeTruthy();
-    expect(p2!.hasRoles()).toBe(false);
-    expect(p2!.discordId).toBe('222');
-
-    const p3 = players.find((p) => p.name === 'AnotherPlayer');
-    expect(p3).toBeTruthy();
-    expect(p3!.hasRoles()).toBe(false);
+describe('toLobbyMember', () => {
+  it('pairs the Discord ID with the dot-stripped display name', () => {
+    const member: DiscordMember = {
+      nick: 'Mr.Tank',
+      id: '111',
+      bot: false,
+      toString: () => 'Mr.Tank',
+    };
+    expect(toLobbyMember(member)).toEqual({ discordId: '111', name: 'MrTank' });
   });
 });
 

@@ -83,11 +83,13 @@ activity/                  # React/Vite frontend (npm workspace)
 
 ### Data Flow for the Activity
 
+A player's profile (roles, in-game name, portrait, class) lives only in `preferences/{discordId}`. The lobby doc holds voice membership, nothing else about players.
+
 1. Users join a voice channel and launch the Wheelson activity (or run `/wheelson`)
-2. Bot collects players from voice channel members and resolves their roles from the preferences collection (with Discord role fallback)
-3. Bot creates Firestore documents in `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
-4. Bot listens to Firestore; frontend subscribes via `onSnapshot`
-5. Voice state changes → bot updates `players` in Firestore → frontend rerenders
+2. The activity (or `/wheelson`) creates `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
+3. The bot follows the `channels` collection: when a lobby doc appears (or already exists when the bot starts), it writes `members: [{ discordId, name }]` from the voice channel. Only the bot writes `members`
+4. Voice state changes → bot rewrites `members`; the last human leaving deletes the lobby doc (never the guild doc)
+5. The frontend subscribes to the lobby doc and to the members' `preferences` docs, and joins them into players with `WoWPlayer.fromPreferences`. Profile edits write only `preferences`, so every client's lobby follows
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
 8. Frontend animates the wheel reveal sequence
@@ -104,6 +106,7 @@ The class exposes computed boolean getters (`tankMain`, `healerMain`, `hasBrez`,
 
 - `WoWPlayer.create(name, role_list)` builds from Discord role-name strings (from `packages/shared/src/config.ts`); unknown strings are dropped.
 - `WoWPlayer.fromDict(dict)` builds from the Firestore wire format and validates via `toRole` / `toUtility`.
+- `WoWPlayer.fromPreferences(member, prefs)` joins a lobby member with their `preferences` doc (parsed by `parsePlayerPreferences`). It is the only way to build a player from live data: the bot's `/wheel` and the activity lobby both use it.
 
 These serve different input shapes — don't unify them.
 
@@ -111,7 +114,7 @@ These serve different input shapes — don't unify them.
 
 `lobby` → `spinning` → `completed`
 
-The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot doesn't act on status changes; it keeps `players` in sync with the voice channel.
+The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot doesn't act on status changes; it keeps `members` in sync with the voice channel.
 
 ## Conventions
 

@@ -1,5 +1,4 @@
-import { WoWPlayer } from '@mythicplus/shared';
-import { getPreferenceService } from './preferenceService.js';
+import type { LobbyMember } from '@mythicplus/shared';
 
 export interface DiscordMember {
   nick?: string | null;
@@ -42,23 +41,7 @@ export function getMaskedName(name: string): string {
   return '?'.repeat(name.length);
 }
 
-export function getPlayerFromMember(member: DiscordMember): WoWPlayer {
-  const name = getWowName(member);
-  const discordId = String(member.id);
-  const prefSvc = getPreferenceService();
-  let savedRoles = prefSvc.getPreferenceSync(discordId);
-  if (!savedRoles) {
-    savedRoles = prefSvc.getPreferenceByNameSync(name);
-  }
-  const inGameName = prefSvc.getInGameNameSync(discordId);
-  const mediaUrl = prefSvc.getMediaUrlSync(discordId);
-  const characterClass = prefSvc.getCharacterClassSync(discordId);
-  if (savedRoles) {
-    return WoWPlayer.create(name, savedRoles, discordId, inGameName, mediaUrl, characterClass);
-  }
-  return WoWPlayer.fromFlags({ name, discordId, inGameName });
-}
-
-export function getPlayerList(members: DiscordMember[]): WoWPlayer[] {
-  return members.map(getPlayerFromMember);
+/** The lobby-doc entry for a voice channel member. */
+export function toLobbyMember(member: DiscordMember): LobbyMember {
+  return { discordId: String(member.id), name: getWowName(member) };
 }

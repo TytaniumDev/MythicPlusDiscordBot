@@ -8,7 +8,7 @@ import {
   type WoWGroupDict,
 } from '@mythicplus/shared';
 import { announceGroup, type Sendable } from '../core/groupUi.js';
-import { getPlayerList, type DiscordMember, type TypingChannel } from '../core/utils.js';
+import { toLobbyMember, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { getDebugPlayers } from '../core/debugFixtures.js';
 import { FirebaseService } from '../core/firebaseService.js';
 import { reportError } from '../core/sentry.js';
@@ -42,12 +42,17 @@ export class GroupService {
     if (debug) {
       players = getDebugPlayers();
     } else {
-      const members = ctx.channel.members.filter((m) => !m.bot);
+      const members = ctx.channel.members.filter((m) => !m.bot).map(toLobbyMember);
       if (members.length === 0) {
         await ctx.send('❌ No players found in the channel.');
         return null;
       }
-      players = getPlayerList(members).filter((p) => p.hasRoles());
+      const prefs = await FirebaseService.getInstance().getPreferences(
+        members.map((m) => m.discordId),
+      );
+      players = members
+        .map((m) => WoWPlayer.fromPreferences(m, prefs.get(m.discordId) ?? null))
+        .filter((p) => p.hasRoles());
     }
 
     if (players.length === 0) {

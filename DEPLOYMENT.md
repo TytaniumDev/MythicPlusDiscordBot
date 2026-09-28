@@ -170,12 +170,7 @@ If Activities are not set up, `/wheelson` will fail; `/wheel` (voice + GIFs) sti
 
 ### 4.1 Data Persistence
 
-In normal production deployments (`FIREBASE_CREDENTIALS_JSON` set), player preferences are stored in the Firestore `preferences/` collection by `PreferenceService` and there is nothing to back up on the Pi.
-
-If Firebase credentials are not configured, the bot falls back to a local JSON file in the `data/` directory inside the repository folder on the Pi (`/home/deploy/mythic-plus-bot/data`):
-- This directory is created automatically by Docker when the container starts.
-- It is ignored by git (via `.gitignore`), so your data survives deployments and `git reset`.
-- You can back up this file manually: `cp /home/deploy/mythic-plus-bot/data/player_preferences.json ~/.backup_prefs.json`.
+The bot keeps no state on the Pi. Player preferences live in the Firestore `preferences/` collection and lobbies in `channels/`; without `FIREBASE_CREDENTIALS_JSON`, `/wheel` treats every player as having no roles and `/wheelson` is unavailable.
 
 ## 5. Verification checklist
 

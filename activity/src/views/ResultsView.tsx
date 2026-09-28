@@ -37,7 +37,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
   const service = useSessionService();
   const groups = useMemo(() => channelData?.groups || [], [channelData?.groups]);
-  const players = channelData?.players || [];
+  const players = useAppStore((s) => s.players);
   useIdentityResolver(players);
 
   const yourGroupIndex = useMemo(() => {

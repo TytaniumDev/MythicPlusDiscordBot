@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
-import { WoWGroup, WoWPlayer, WheelEntry, GuildData, ChannelData, SeasonConfig, SeasonPairs } from '../types';
-import { saveStoredCharacter, clearStoredCharacter, loadStoredCharacter } from '../lib/currentCharacter';
+import { WoWGroup, WheelEntry, GuildData, ChannelData, SeasonConfig, SeasonPairs } from '../types';
+import { parseLobbyMembers, parsePlayerPreferences, type PlayerPreferences } from '@mythicplus/shared';
+import { joinPlayers, type Profiles } from '../lib/profiles';
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
@@ -25,7 +26,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentPlayerId: null,
   currentPlayerName: null,
   identityResolved: false,
-  currentCharacter: loadStoredCharacter(),
+
+  // Profiles
+  profiles: {},
+  players: [],
 
   // Spin sequence
   fullGroups: [],
@@ -53,7 +57,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setGuildId: (id: string | null) => set({ currentGuildId: id }),
   setChannelId: (id: string | null) => set({ currentChannelId: id }),
   setGuildData: (data: GuildData | null) => set({ guildData: data }),
-  setChannelData: (data: ChannelData | null) => set({ channelData: data }),
+  setChannelData: (data: ChannelData | null) =>
+    set((s) => ({
+      channelData: data,
+      players: joinPlayers(parseLobbyMembers(data?.members), s.profiles),
+    })),
   setDemoMode: (val: boolean) => set({ isDemoMode: val }),
   setDiscordChannelId: (id: string | null) => set({ discordChannelId: id }),
   setGuildDocCreationInFlight: (val: boolean) => set({ guildDocCreationInFlight: val }),
@@ -63,21 +71,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
-  setCurrentCharacter: (character) => {
-    if (character) {
-      saveStoredCharacter(character);
-    } else {
-      clearStoredCharacter();
-    }
-    set({ currentCharacter: character });
+  setProfiles: (profiles: Profiles) =>
+    set((s) => ({
+      profiles,
+      players: joinPlayers(parseLobbyMembers(s.channelData?.members), profiles),
+    })),
+  updateProfile: (discordId: string, fields: Partial<PlayerPreferences>) => {
+    const profiles = get().profiles;
+    get().setProfiles({
+      ...profiles,
+      [discordId]: { ...(profiles[discordId] ?? parsePlayerPreferences(null)), ...fields },
+    });
   },
-  updatePlayer: (discordId: string, fields: Partial<WoWPlayer>) => set((s) => {
-    if (!s.channelData) return s;
-    const players = s.channelData.players.map((p) =>
-      p.discordId === discordId ? { ...p, ...fields } : p,
-    );
-    return { channelData: { ...s.channelData, players } };
-  }),
   setSpinState: (groups: WoWGroup[], remainder: WoWGroup[]) =>
     set({ fullGroups: groups, remainderGroups: remainder }),
   setCurrentGroupIndex: (index: number) => set({ currentGroupIndex: index }),
@@ -118,6 +123,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentChannelId: null,
       guildData: null,
       channelData: null,
+      profiles: {},
+      players: [],
       isDemoMode: false,
       discordChannelId: null,
       guildDocCreationInFlight: false,

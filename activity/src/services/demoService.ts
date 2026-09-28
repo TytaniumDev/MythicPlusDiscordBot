@@ -1,9 +1,9 @@
-import { mockChannelData, mockPlayers, mockGuildData } from '../lib/mockData';
+import { mockChannelData, mockProfiles, mockGuildData } from '../lib/mockData';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import type { ChannelData } from '../types';
-import { createMythicPlusGroups } from '@mythicplus/shared';
-import type { CharacterClass } from '@mythicplus/shared';
+import { createMythicPlusGroups, parsePlayerPreferences } from '@mythicplus/shared';
+import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
 /**
@@ -30,10 +30,10 @@ class DemoSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const currentData = useAppStore.getState().channelData;
+    const { channelData: currentData, players: lobbyPlayers } = useAppStore.getState();
     if (!currentData) return;
 
-    const players = eligibleSpinPlayers(currentData.players, currentData.sittingOut ?? []);
+    const players = eligibleSpinPlayers(lobbyPlayers, currentData.sittingOut ?? []);
 
     const groupDicts = createMythicPlusGroups(players, true, null).map((g) => g.toDict());
 
@@ -61,10 +61,9 @@ class DemoSessionService implements SessionService {
     patchChannelData({ status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
-  async saveRoles(playerId: string, _playerName: string, _roles: string[], inGameName?: string): Promise<void> {
-    if (inGameName !== undefined) {
-      useAppStore.getState().updatePlayer(playerId, { inGameName });
-    }
+  async saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void> {
+    const { roles: validRoles } = parsePlayerPreferences({ roles });
+    useAppStore.getState().updateProfile(playerId, { roles: validRoles, inGameName });
   }
 
   async saveLinkedCharacter(
@@ -73,12 +72,10 @@ class DemoSessionService implements SessionService {
     mediaUrl?: string | null,
     characterClass?: CharacterClass | null,
   ): Promise<void> {
-    const patch: Partial<{ mediaUrl: string | null; characterClass: CharacterClass | null }> = {};
+    const patch: Partial<PlayerPreferences> = {};
     if (mediaUrl !== undefined) patch.mediaUrl = mediaUrl;
     if (characterClass !== undefined) patch.characterClass = characterClass;
-    if (Object.keys(patch).length > 0) {
-      useAppStore.getState().updatePlayer(playerId, patch);
-    }
+    useAppStore.getState().updateProfile(playerId, patch);
   }
 
   async refreshChannels(_guildId: string): Promise<void> {
@@ -86,11 +83,12 @@ class DemoSessionService implements SessionService {
   }
 
   async selectChannel(channelId: string, channelName?: string): Promise<void> {
-    useAppStore.getState().setChannelData({
+    const store = useAppStore.getState();
+    store.setProfiles(mockProfiles);
+    store.setChannelData({
       ...mockChannelData,
       channelId,
       channelName: channelName || 'Demo Channel',
-      players: mockPlayers,
     });
   }
 

@@ -1,13 +1,14 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
-import { loadStoredDiscordId } from './lib/currentCharacter';
-import { useGuildSubscription, useChannelSubscription } from './hooks/useSession';
+import { loadStoredDiscordId } from './lib/storedDiscordId';
+import { useGuildSubscription, useChannelSubscription, useProfilesSubscription } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
 import { firestoreService } from './services/firestoreService';
 import { statusToView, routeToView, viewToRoute } from './lib/routing';
-import type { ViewName } from './store/types';
+import type { AppState, ViewName } from './store/types';
 import { isPlayerReady } from './lib/roles';
+import { isProfileLoading } from './lib/profiles';
 import { Layout } from './components/Layout';
 import { HomeView } from './views/HomeView';
 import { ChannelsView } from './views/ChannelsView';
@@ -29,7 +30,7 @@ function resolveLobbyGate(): ViewName {
 
   if (!store.identityResolved) {
     const savedId = loadStoredDiscordId();
-    const players = store.channelData?.players ?? [];
+    const players = store.players;
     const match = savedId ? players.find(p => p.discordId === savedId) : null;
     if (match) {
       store.setIdentity(match.discordId ?? null, match.name);
@@ -39,9 +40,15 @@ function resolveLobbyGate(): ViewName {
     return 'identity';
   }
 
-  const me = store.channelData?.players?.find(p => p.discordId === store.currentPlayerId);
+  const me = store.players.find(p => p.discordId === store.currentPlayerId);
   if (me && !isPlayerReady(me)) return 'setup';
   return 'lobby';
+}
+
+// The lobby gate waits for the current user's profile, so a returning player
+// whose profile is complete isn't sent to setup while it loads.
+function awaitingMyProfile(s: AppState): boolean {
+  return isProfileLoading(s.currentPlayerId ?? loadStoredDiscordId(), s.players, s.profiles);
 }
 
 /**
@@ -64,13 +71,16 @@ export function App() {
   const currentView = useAppStore((s) => s.currentView);
   const currentGuildId = useAppStore((s) => s.currentGuildId);
   const channelData = useAppStore((s) => s.channelData);
+  const players = useAppStore((s) => s.players);
+  const waitingForMyProfile = useAppStore(awaitingMyProfile);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const guildData = useAppStore((s) => s.guildData);
   const { saveRecentGuild } = useRecentGuilds();
 
-  // Subscribe to guild and channel Firestore docs
+  // Subscribe to the guild and channel docs, and the members' profiles
   useGuildSubscription();
   useChannelSubscription();
+  useProfilesSubscription();
 
   // Subscribe to global season config for affinity tracking. Independent of
   // guild/channel — boots once with the app and stays current across sessions.
@@ -82,7 +92,7 @@ export function App() {
 
   // Warm browser cache with spotlight portraits while user is in lobby/setup,
   // so the wheel landing and results views render instantly.
-  usePreloadPortraits(channelData?.players);
+  usePreloadPortraits(players);
 
   // Refresh dungeon-suggestion data each time a spin starts, so per-character
   // Raider.io scores stay current between rounds. Watching status (rather
@@ -130,10 +140,11 @@ export function App() {
   useEffect(() => {
     if (isDemoMode || !channelData || !useAppStore.getState().currentChannelId) return;
     const targetView = statusToView(channelData.status);
+    if (targetView === 'lobby' && waitingForMyProfile) return;
     if (useAppStore.getState().currentView !== targetView) {
       navigateTo(targetView, { replace: true });
     }
-  }, [channelData?.status, isDemoMode, navigateTo]);
+  }, [channelData?.status, isDemoMode, navigateTo, waitingForMyProfile]);
 
   // Browser back/forward navigation
   useEffect(() => {

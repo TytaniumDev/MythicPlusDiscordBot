@@ -21,36 +21,34 @@ export const Placeholder: Story = {
     currentPlayerName: null,
     identityResolved: false,
     channelData: null,
-    currentCharacter: null,
   })],
 };
 
-export const FromCurrentCharacter: Story = {
+export const FromPreferences: Story = {
   decorators: [withStore({
     isDemoMode: true,
-    currentPlayerId: null,
-    currentPlayerName: null,
+    currentPlayerId: '100000000000000099',
+    currentPlayerName: 'Tytanium',
     identityResolved: false,
     channelData: null,
-    currentCharacter: {
-      inGameName: 'Tytanium-Stormrage',
-      region: 'us',
-      mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
-      characterClass: 'Druid',
-      lookupStatus: 'ok',
-      lastUpdated: 1234567890,
+    profiles: {
+      '100000000000000099': {
+        roles: ['Healer'],
+        inGameName: 'Tytanium-Stormrage',
+        mediaUrl: 'https://render.worldofwarcraft.com/us/character/stormrage/1/1234567-inset.jpg',
+        characterClass: 'Druid',
+      },
     },
   })],
 };
 
-export const FromChannelDataFallback: Story = {
+export const InLobby: Story = {
   decorators: [withStore({
     isDemoMode: true,
     currentPlayerId: '100000000000000007',
     currentPlayerName: 'Fourseven',
     identityResolved: true,
     channelData: mockChannelData,
-    currentCharacter: null,
   })],
 };
 
@@ -60,21 +58,18 @@ export const NoCharacterClass: Story = {
     currentPlayerId: '999999999999999999',
     currentPlayerName: 'Mystery',
     identityResolved: true,
-    channelData: {
-      ...mockChannelData,
-      players: [
-        ...mockPlayers,
-        {
-          name: 'Mystery',
-          discordId: '999999999999999999',
-          mainRole: 'ranged',
-          offspecs: [],
-          utilities: [],
-          mediaUrl: null,
-          characterClass: null,
-        },
-      ],
-    },
-    currentCharacter: null,
+    channelData: mockChannelData,
+    players: [
+      ...mockPlayers,
+      {
+        name: 'Mystery',
+        discordId: '999999999999999999',
+        mainRole: 'ranged',
+        offspecs: [],
+        utilities: [],
+        mediaUrl: null,
+        characterClass: null,
+      },
+    ],
   })],
 };

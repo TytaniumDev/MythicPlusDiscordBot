@@ -1,4 +1,4 @@
-import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore';
+import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction, query, where, documentId } from 'firebase/firestore';
 import { authReady, db } from '../firebase';
 import { GuildData, ChannelData } from '../types';
 import { useAppStore } from '../store/store';
@@ -6,14 +6,17 @@ import type { SessionService } from './types';
 import {
   WoWGroup,
   bumpPairCounts,
+  chunkIds,
   createMythicPlusGroups,
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
+  parsePlayerPreferences,
   parseSeasonPairs,
   setGroupHistory,
   todayPST,
 } from '@mythicplus/shared';
-import type { CharacterClass, WoWGroupDict } from '@mythicplus/shared';
+import type { CharacterClass, PlayerPreferences, WoWGroupDict, WoWPlayerDict } from '@mythicplus/shared';
+import type { Profiles } from '../lib/profiles';
 import { reportError } from '../lib/sentry';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
 
@@ -202,6 +205,41 @@ class FirestoreSessionService implements SessionService {
     }
   }
 
+  /**
+   * Follow the preferences docs for these players (the lobby members plus the
+   * current user) and keep `profiles` in the store current. Local writes show
+   * up immediately through Firestore's latency compensation, so edits need no
+   * optimistic store update.
+   */
+  subscribeToProfiles(discordIds: string[]): () => void {
+    const wanted = new Set(discordIds);
+    // Replace one chunk's entries: every ID in it is now known, with or
+    // without a doc. Also drops IDs no longer wanted.
+    const applyChunk = (chunk: string[], docs: Map<string, PlayerPreferences>) => {
+      const store = useAppStore.getState();
+      const next: Profiles = {};
+      for (const [id, prefs] of Object.entries(store.profiles)) {
+        if (wanted.has(id)) next[id] = prefs;
+      }
+      for (const id of chunk) next[id] = docs.get(id) ?? null;
+      store.setProfiles(next);
+    };
+    const unsubs = chunkIds(discordIds).map((chunk) => onSnapshot(
+      query(collection(db, 'preferences'), where(documentId(), 'in', chunk)),
+      (snap) => applyChunk(chunk, new Map(snap.docs.map((d) => [d.id, parsePlayerPreferences(d.data())]))),
+      (err) => {
+        reportError(err, { tag: 'firestoreService.profilesListener' });
+        // Show these players without profiles rather than waiting forever.
+        const known = useAppStore.getState().profiles;
+        applyChunk(chunk, new Map(chunk.flatMap((id) => {
+          const prefs = known[id];
+          return prefs ? [[id, prefs] as const] : [];
+        })));
+      },
+    ));
+    return () => unsubs.forEach((unsub) => unsub());
+  }
+
   subscribeToSeasonConfig(): () => void {
     const ref = doc(db, 'config', 'season');
     const unsub = onSnapshot(
@@ -230,7 +268,7 @@ class FirestoreSessionService implements SessionService {
   }
 
   async requestSpin(): Promise<void> {
-    const { currentChannelId, channelData, guildData } = useAppStore.getState();
+    const { currentChannelId, channelData, guildData, players: lobbyPlayers } = useAppStore.getState();
     if (!currentChannelId || !channelData) return;
 
     const guildId = channelData.guildId || null;
@@ -252,7 +290,7 @@ class FirestoreSessionService implements SessionService {
     setGroupHistory(rounds, guildId);
     const roundsForPersist: WoWGroupDict[][] = rounds.length === 0 ? [] : existingRounds;
 
-    const players = eligibleSpinPlayers(channelData.players, channelData.sittingOut ?? []);
+    const players = eligibleSpinPlayers(lobbyPlayers, channelData.sittingOut ?? []);
 
     const groups = createMythicPlusGroups(players, true, guildId);
     const groupDicts = groups.map(g => g.toDict());
@@ -332,27 +370,14 @@ class FirestoreSessionService implements SessionService {
     await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
   }
 
-  async saveRoles(playerId: string, playerName: string, roles: string[], inGameName?: string): Promise<void> {
+  async saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void> {
     await authReady;
     const prefRef = doc(db, 'preferences', playerId);
     await setDoc(prefRef, {
       roles,
-      wowName: playerName,
-      inGameName: inGameName ?? '',
+      inGameName,
       updatedAt: serverTimestamp(),
     }, { merge: true });
-    await this.requestPlayerRefresh();
-  }
-
-  /**
-   * Ask the bot to re-read preferences and republish the channel's players,
-   * so every client sees the change. Skipped until the channel doc has loaded:
-   * updateDoc fails on a doc that doesn't exist yet.
-   */
-  private async requestPlayerRefresh(): Promise<void> {
-    const { currentChannelId, channelData } = useAppStore.getState();
-    if (!currentChannelId || !channelData) return;
-    await updateDoc(doc(db, 'channels', currentChannelId), { refreshPlayers: true });
   }
 
   async saveLinkedCharacter(
@@ -370,7 +395,6 @@ class FirestoreSessionService implements SessionService {
     }
     if (characterClass !== undefined) payload.characterClass = characterClass;
     await setDoc(prefRef, payload, { merge: true });
-    await this.requestPlayerRefresh();
   }
 
   async refreshChannels(guildId: string): Promise<void> {
@@ -390,28 +414,27 @@ class FirestoreSessionService implements SessionService {
       groups: [],
       sittingOut: [],
       isDebug: false,
-      refreshPlayers: true,
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true });
   }
 
   async reportBadGroup(title: string, description: string): Promise<void> {
-    const { channelData, guildData, currentPlayerName, currentPlayerId } = useAppStore.getState();
+    const { channelData, guildData, currentPlayerName, currentPlayerId, players: lobbyPlayers } = useAppStore.getState();
     if (!channelData) return;
 
-    // Use the players actually in the spin output, not channelData.players —
+    // Use the players actually in the spin output, not the lobby roster —
     // voice-channel membership drifts (people leave to start the dungeon)
     // between spin and report, which would otherwise silently truncate the
     // input list and make the report unreproducible.
     const playersFromGroups = channelData.groups.flatMap((g) => {
-      const members: typeof channelData.players = [];
+      const members: WoWPlayerDict[] = [];
       if (g.tank) members.push(g.tank);
       if (g.healer) members.push(g.healer);
       if (g.dps) members.push(...g.dps);
       return members;
     });
-    const players = playersFromGroups.length > 0 ? playersFromGroups : channelData.players;
+    const players = playersFromGroups.length > 0 ? playersFromGroups : lobbyPlayers;
 
     // Read fresh guild history rather than trusting the cached `guildData`,
     // which can lag the spin's own `setDoc` if the user clicks Report before
@@ -514,10 +537,8 @@ class FirestoreSessionService implements SessionService {
         channelName: '',
         guildId,
         status: 'lobby',
-        players: [],
         groups: [],
         isDebug: false,
-        refreshPlayers: true,
         createdAt: serverTimestamp(),
         lastActive: serverTimestamp(),
       }, { merge: true });

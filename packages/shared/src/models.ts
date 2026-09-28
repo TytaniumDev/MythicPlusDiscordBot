@@ -12,6 +12,7 @@ import {
 } from './config.js';
 import { toCharacterClass, toRole, toUtility } from './types.js';
 import type { CharacterClass, Role, Utility, WoWGroupDict, WoWPlayerDict } from './types.js';
+import type { LobbyMember, PlayerPreferences } from './profiles.js';
 
 export class WoWPlayer {
   readonly name: string;
@@ -124,6 +125,22 @@ export class WoWPlayer {
     if (roles.includes(ROLE_LUST)) utilities.push('lust');
 
     return new WoWPlayer(name, discordId, mainRole, offspecs, utilities, inGameName, mediaUrl, characterClass);
+  }
+
+  /**
+   * Join a lobby member with their `preferences` doc. The one place a player is
+   * built from live data: the bot's `/wheel` and the activity's lobby both use
+   * it, so they always agree. A member with no preferences doc has no roles.
+   */
+  static fromPreferences(member: LobbyMember, prefs: PlayerPreferences | null): WoWPlayer {
+    return WoWPlayer.create(
+      member.name,
+      prefs?.roles ?? [],
+      member.discordId,
+      prefs?.inGameName ?? '',
+      prefs?.mediaUrl ?? null,
+      prefs?.characterClass ?? null,
+    );
   }
 
   /**

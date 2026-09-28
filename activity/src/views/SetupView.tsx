@@ -13,8 +13,7 @@ interface SetupViewProps {
 
 export function SetupView({ onNavigate }: SetupViewProps) {
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
-  const channelData = useAppStore((s) => s.channelData);
-  const players = channelData?.players ?? [];
+  const players = useAppStore((s) => s.players);
 
   const player = useMemo(
     () => players.find(p => p.discordId === currentPlayerId) ?? null,
