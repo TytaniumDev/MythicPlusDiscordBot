@@ -476,6 +476,9 @@ class FirestoreSessionService implements SessionService {
       return;
     }
 
+    // Merge: the "missing" snapshot that triggers this can come from the
+    // local cache, and an overwrite would wipe the guild's group history and
+    // season pair counts.
     const guildDocRef = doc(db, 'guilds', guildId);
     await setDoc(guildDocRef, {
       guildId,
@@ -483,7 +486,7 @@ class FirestoreSessionService implements SessionService {
       refreshRequest: serverTimestamp(),
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
-    });
+    }, { merge: true });
 
     if (discordChannelId) {
       const channelDocRef = doc(db, 'channels', discordChannelId);

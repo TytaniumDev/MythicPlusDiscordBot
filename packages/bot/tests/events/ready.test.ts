@@ -59,10 +59,10 @@ describe('onReady', () => {
     expect(FirebaseService.getInstance).toHaveBeenCalled();
     expect(mockIsAvailable).toHaveBeenCalled();
 
+    // Only abandoned lobbies are swept; guild docs hold durable history.
     const maxAge = 24 * 60 * 60;
-    expect(mockDeleteOldDocs).toHaveBeenCalledWith('guilds', maxAge);
     expect(mockDeleteOldDocs).toHaveBeenCalledWith('channels', maxAge);
-    expect(mockDeleteOldDocs).toHaveBeenCalledTimes(2);
+    expect(mockDeleteOldDocs).toHaveBeenCalledTimes(1);
 
     expect(logger.info).toHaveBeenCalledWith('Bot ready — preference cache loaded and old docs cleaned up.');
   });
