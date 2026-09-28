@@ -33,11 +33,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
+      - name: Install dependencies
+        run: npm ci
+
+      # Same path as verify-activity.yml (typecheck, build, Storybook, then
+      # Playwright in Docker) so snapshots are generated under exactly the
+      # conditions they are verified in.
       - name: Update and verify snapshots (Docker)
         env:
           PW_UPDATE_MODE: ${{ inputs.mode }}
-        run: ./scripts/playwright-docker.sh --update-and-verify
+        run: ./scripts/verify-activity.sh --update-and-verify
 
       - name: Commit and push snapshots
         id: commit
