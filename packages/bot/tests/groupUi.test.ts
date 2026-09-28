@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { WoWPlayer, WoWGroup, ROLE_TANK, ROLE_HEALER, ROLE_MELEE, ROLE_RANGED, ROLE_BREZ, ROLE_LUST } from '@mythicplus/shared';
 import { buildGroupEmbed, announceGroup } from '../src/core/groupUi.js';
 import type { Embed, Message, Sendable } from '../src/core/groupUi.js';
@@ -78,7 +78,7 @@ describe('buildGroupEmbed', () => {
 
 describe('announceGroup', () => {
   let ctx: Sendable;
-  let channel: { sendTyping: ReturnType<typeof vi.fn> };
+  let channel: { sendTyping: Mock<() => Promise<void>> };
 
   beforeEach(() => {
     ctx = {
@@ -89,7 +89,7 @@ describe('announceGroup', () => {
         return Promise.resolve(msg);
       }),
     };
-    channel = { sendTyping: vi.fn().mockResolvedValue(undefined) };
+    channel = { sendTyping: vi.fn<() => Promise<void>>().mockResolvedValue(undefined) };
   });
 
   it('sends embed directly in debug mode', async () => {
