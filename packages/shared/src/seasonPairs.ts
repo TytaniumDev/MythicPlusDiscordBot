@@ -13,16 +13,23 @@ export interface SeasonPairs {
 
 /**
  * Validate an unknown value against the {@link SeasonPairs} shape. Returns the
- * narrowed object when valid (string `seasonSlug`, non-null object `counts`)
- * and `null` otherwise. The bot and frontend both run this on raw Firestore
- * values, so they must not drift on what "valid" means.
+ * narrowed object when valid (string `seasonSlug`, non-null object `counts`,
+ * with non-numeric counts dropped) and `null` otherwise. The bot and frontend
+ * both run this on raw Firestore values, so they must not drift on what
+ * "valid" means.
  */
 export function parseSeasonPairs(raw: unknown): SeasonPairs | null {
   if (!raw || typeof raw !== 'object') return null;
   const sp = raw as { seasonSlug?: unknown; counts?: unknown };
   if (typeof sp.seasonSlug !== 'string') return null;
   if (typeof sp.counts !== 'object' || sp.counts === null) return null;
-  return { seasonSlug: sp.seasonSlug, counts: sp.counts as Record<string, number> };
+  // Drop any count that isn't a finite number so one bad entry can't poison
+  // the tally (`NaN + 1` stays NaN forever).
+  const counts: Record<string, number> = {};
+  for (const [key, value] of Object.entries(sp.counts)) {
+    if (typeof value === 'number' && Number.isFinite(value)) counts[key] = value;
+  }
+  return { seasonSlug: sp.seasonSlug, counts };
 }
 
 /**

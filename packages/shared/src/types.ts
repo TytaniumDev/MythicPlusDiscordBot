@@ -1,5 +1,13 @@
 export type SessionStatus = 'lobby' | 'spinning' | 'completed';
 
+const SESSION_STATUSES: readonly SessionStatus[] = ['lobby', 'spinning', 'completed'];
+
+/** Safely narrow an arbitrary value to SessionStatus, or null if it isn't a known status. */
+export function toSessionStatus(raw: unknown): SessionStatus | null {
+  if (typeof raw !== 'string') return null;
+  return (SESSION_STATUSES as readonly string[]).includes(raw) ? (raw as SessionStatus) : null;
+}
+
 export type Role = 'tank' | 'healer' | 'ranged' | 'melee';
 export type Utility = 'brez' | 'lust';
 

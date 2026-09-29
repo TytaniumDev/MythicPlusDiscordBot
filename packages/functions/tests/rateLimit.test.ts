@@ -59,7 +59,7 @@ describe('enforceRateLimit', () => {
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockSet).toHaveBeenCalledWith(
       { __ref: 'rateLimits/user-1_lookupCharacter' },
-      { count: 1, resetAt: FIXED_NOW + 60000 },
+      { count: 1, resetAt: FIXED_NOW + 60000, expireAt: new Date(FIXED_NOW + 60000) },
     );
     expect(mockUpdate).not.toHaveBeenCalled();
   });
@@ -72,7 +72,7 @@ describe('enforceRateLimit', () => {
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockSet).toHaveBeenCalledWith(
       { __ref: 'rateLimits/user-2_lookupCharacter' },
-      { count: 1, resetAt: FIXED_NOW + 60000 },
+      { count: 1, resetAt: FIXED_NOW + 60000, expireAt: new Date(FIXED_NOW + 60000) },
     );
     expect(mockUpdate).not.toHaveBeenCalled();
   });
@@ -107,7 +107,7 @@ describe('enforceRateLimit', () => {
     await enforceRateLimit('user-5', 'lookupCharacter', 2, 60000);
     expect(mockSet).toHaveBeenLastCalledWith(
       { __ref: 'rateLimits/user-5_lookupCharacter' },
-      { count: 1, resetAt: FIXED_NOW + 60000 },
+      { count: 1, resetAt: FIXED_NOW + 60000, expireAt: new Date(FIXED_NOW + 60000) },
     );
 
     // Second call: under limit → increment.

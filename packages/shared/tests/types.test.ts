@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toRole, toUtility } from '../src/types';
+import { toRole, toSessionStatus, toUtility } from '../src/types';
 
 describe('toRole', () => {
   it('returns each known role string verbatim', () => {
@@ -63,5 +63,20 @@ describe('toUtility', () => {
     expect(toUtility([])).toBeNull();
     expect(toUtility(['brez'])).toBeNull();
     expect(toUtility(true)).toBeNull();
+  });
+});
+
+describe('toSessionStatus', () => {
+  it('returns each known status verbatim', () => {
+    expect(toSessionStatus('lobby')).toBe('lobby');
+    expect(toSessionStatus('spinning')).toBe('spinning');
+    expect(toSessionStatus('completed')).toBe('completed');
+  });
+
+  it('rejects unknown strings and non-strings', () => {
+    expect(toSessionStatus('Lobby')).toBeNull();
+    expect(toSessionStatus('done')).toBeNull();
+    expect(toSessionStatus(null)).toBeNull();
+    expect(toSessionStatus(1)).toBeNull();
   });
 });

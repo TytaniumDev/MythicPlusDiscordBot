@@ -1,14 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WoWPlayer, WoWGroup, type WoWGroupDict } from '@mythicplus/shared';
 import { FirebaseService } from '../src/core/firebaseService.js';
-
-// Helper to create mock docs
-function createMockDoc(id: string) {
-  return {
-    id,
-    ref: { delete: vi.fn() },
-  };
-}
 
 
 describe('FirebaseService.getOrCreateGuildDoc', () => {
@@ -125,95 +117,49 @@ describe('FirebaseService.updateGuildDoc', () => {
   });
 });
 
-describe('FirebaseService.deleteOldDocs', () => {
+describe('FirebaseService lobby expiry', () => {
+  const NOW = 1_700_000_000_000;
+  const EXPIRE_AT = new Date(NOW + 24 * 60 * 60 * 1000);
   let service: FirebaseService;
-  let mockDb: ReturnType<typeof createMockDb>;
-
-  function createMockDb() {
-    const mockBatch = {
-      delete: vi.fn(),
-      commit: vi.fn().mockResolvedValue(undefined),
-    };
-    const mockQuery = {
-      get: vi.fn().mockResolvedValue({ docs: [] }),
-    };
-    const mockCollection = {
-      where: vi.fn().mockReturnValue(mockQuery),
-      get: vi.fn().mockResolvedValue({ docs: [] }),
-      doc: vi.fn(),
-    };
-    const db = {
-      collection: vi.fn().mockReturnValue(mockCollection),
-      batch: vi.fn().mockReturnValue(mockBatch),
-    };
-    return { db, mockCollection, mockQuery, mockBatch };
-  }
+  let mockDocRef: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    mockDocRef = {
+      get: vi.fn(),
+      set: vi.fn().mockResolvedValue(undefined),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
     service = Object.create(FirebaseService.prototype);
-    mockDb = createMockDb();
-    // Bypass constructor by directly setting db
-    service.db = mockDb.db as unknown as FirebaseService['db'];
+    service.db = {
+      collection: vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue(mockDocRef) }),
+    } as unknown as FirebaseService['db'];
   });
 
-  it('handles no matching docs', async () => {
-    mockDb.mockQuery.get.mockResolvedValue({ docs: [] });
-    const deleted = await service.deleteOldDocs('channels', 3600);
-    expect(deleted).toBe(0);
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('deletes single batch (< 500 docs)', async () => {
-    const numDocs = 10;
-    const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.get.mockResolvedValue({ docs });
-
-    const deleted = await service.deleteOldDocs('guilds', 3600);
-    expect(deleted).toBe(numDocs);
-    expect(mockDb.mockBatch.delete).toHaveBeenCalledTimes(numDocs);
-    expect(mockDb.mockBatch.commit).toHaveBeenCalled();
+  it('sets expireAt 24h out when writing lobby members', async () => {
+    await service.setChannelMembers('c1', [{ discordId: '1', name: 'Ay' }]);
+    expect(mockDocRef.update).toHaveBeenCalledWith({
+      members: [{ discordId: '1', name: 'Ay' }],
+      lastActive: expect.anything(),
+      expireAt: EXPIRE_AT,
+    });
   });
 
-  it('handles multi-batch (> 500 docs)', async () => {
-    const numDocs = 550;
-    const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.get.mockResolvedValue({ docs });
-
-    const batch1 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
-    const batch2 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
-    mockDb.db.batch.mockReturnValueOnce(batch1).mockReturnValueOnce(batch2);
-
-    const deleted = await service.deleteOldDocs('channels', 3600);
-    expect(deleted).toBe(numDocs);
-    expect(mockDb.db.batch).toHaveBeenCalledTimes(2);
-    expect(batch1.delete).toHaveBeenCalledTimes(500);
-    expect(batch1.commit).toHaveBeenCalledTimes(1);
-    expect(batch2.delete).toHaveBeenCalledTimes(50);
-    expect(batch2.commit).toHaveBeenCalledTimes(1);
+  it('sets expireAt when creating a lobby', async () => {
+    mockDocRef.get.mockResolvedValue({ exists: false });
+    await service.getOrCreateChannelDoc('c1', 'g1', 'Voice');
+    expect(mockDocRef.set).toHaveBeenCalledWith(expect.objectContaining({ expireAt: EXPIRE_AT }));
   });
 
-  it('handles exact batch boundary (500 docs)', async () => {
-    const numDocs = 500;
-    const docs = Array.from({ length: numDocs }, (_, i) => createMockDoc(`doc_${i}`));
-    mockDb.mockQuery.get.mockResolvedValue({ docs });
-
-    const batch1 = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) };
-    mockDb.db.batch
-      .mockReturnValueOnce(batch1)
-      .mockReturnValueOnce({ delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) });
-
-    const deleted = await service.deleteOldDocs('guilds', 3600);
-    expect(deleted).toBe(numDocs);
-    expect(batch1.delete).toHaveBeenCalledTimes(500);
-    expect(batch1.commit).toHaveBeenCalled();
-  });
-
-  it('works for both collection names', async () => {
-    mockDb.mockQuery.get.mockResolvedValue({ docs: [] });
-    await service.deleteOldDocs('guilds', 3600);
-    expect(mockDb.db.collection).toHaveBeenCalledWith('guilds');
-
-    await service.deleteOldDocs('channels', 3600);
-    expect(mockDb.db.collection).toHaveBeenCalledWith('channels');
+  it('refreshes expireAt when reusing a lobby', async () => {
+    mockDocRef.get.mockResolvedValue({ exists: true });
+    await service.getOrCreateChannelDoc('c1', 'g1', 'Voice');
+    expect(mockDocRef.update).toHaveBeenCalledWith(expect.objectContaining({ expireAt: EXPIRE_AT }));
   });
 });
 

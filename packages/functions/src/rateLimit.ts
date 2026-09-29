@@ -9,7 +9,9 @@ export async function enforceRateLimit(uid: string, endpoint: string, maxRequest
     const now = Date.now();
     const data = doc.data();
     if (!doc.exists || !data || now > data.resetAt) {
-      t.set(ref, { count: 1, resetAt: now + windowMs });
+      // expireAt lets the TTL policy (firestore.indexes.json) delete the doc
+      // once its window is over; a later request just starts a new window.
+      t.set(ref, { count: 1, resetAt: now + windowMs, expireAt: new Date(now + windowMs) });
     } else if (data.count >= maxRequests) {
       throw new HttpsError('resource-exhausted', 'Rate limit exceeded');
     } else {

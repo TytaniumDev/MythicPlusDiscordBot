@@ -1,3 +1,4 @@
+import { isRecord, parseWoWGroupDicts } from './groupWire.js';
 import type { WoWGroupDict } from './types.js';
 
 /**
@@ -10,8 +11,9 @@ import type { WoWGroupDict } from './types.js';
  *
  * The decoder also tolerates the legacy flat shape (`Array<Array<...>>`) for
  * documents written before the wrapping was introduced. Garbage entries
- * (null, missing `groups`, non-array `groups`) are skipped silently — a
- * malformed history record must never block a spin.
+ * (null, missing `groups`, non-array `groups`) are skipped silently, as are
+ * malformed groups and players inside a round — a malformed history record
+ * must never block a spin.
  */
 
 /** Wrapped wire shape for a single round, as written to Firestore. */
@@ -31,27 +33,17 @@ export function encodeGroupHistoryRounds(rounds: WoWGroupDict[][]): WireRound[] 
  *
  * Accepts both the current wrapped shape (`{ groups: WoWGroupDict[] }`) and
  * the legacy flat shape (`WoWGroupDict[]`). Entries that match neither shape
- * are dropped — callers should treat a missing/garbage round as "no history"
- * rather than failing the operation.
+ * are dropped, and each round's groups go through `parseWoWGroupDicts` —
+ * callers should treat a missing/garbage round as "no history" rather than
+ * failing the operation.
  */
-export function decodeGroupHistoryRounds(raw: unknown[]): WoWGroupDict[][] {
+export function decodeGroupHistoryRounds(raw: unknown): WoWGroupDict[][] {
+  if (!Array.isArray(raw)) return [];
   const out: WoWGroupDict[][] = [];
   for (const r of raw) {
-    if (Array.isArray(r)) {
-      // Legacy flat shape: round is itself an array of group dicts.
-      out.push(r as WoWGroupDict[]);
-      continue;
-    }
-    if (
-      r !== null
-      && typeof r === 'object'
-      && 'groups' in r
-      && Array.isArray((r as { groups: unknown }).groups)
-    ) {
-      out.push((r as { groups: WoWGroupDict[] }).groups);
-      continue;
-    }
-    // Skip anything else (null, missing groups, non-array groups).
+    // Legacy flat shape: the round is itself an array of group dicts.
+    const groups = Array.isArray(r) ? r : isRecord(r) && Array.isArray(r.groups) ? r.groups : null;
+    if (groups) out.push(parseWoWGroupDicts(groups).value);
   }
   return out;
 }

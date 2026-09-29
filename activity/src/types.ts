@@ -1,4 +1,5 @@
 import type {
+  AffixDisplay,
   WoWPlayerDict,
   WoWGroupDict,
   SessionStatus,
@@ -31,12 +32,10 @@ export interface GuildData {
   guildName?: string;
   guildIconUrl?: string;
   voiceChannels: VoiceChannel[];
+  /** Decoded from either wire shape by `decodeGroupHistoryRounds`. */
   groupHistory?: {
     date: string;
-    // Stored as either flat `Record<string, unknown>[][]` (legacy) or
-    // `{ groups: Record<string, unknown>[] }[]` (current). Always read
-    // through parseExistingRounds() in firestoreService.ts to normalize.
-    rounds: unknown[];
+    rounds: WoWGroup[][];
   };
   seasonPairs?: SeasonPairs;
   refreshRequest?: unknown;
@@ -74,3 +73,9 @@ export interface SeasonConfig {
   expansionId: number;
 }
 
+/** The `config/affixes` doc, written weekly by the `fetchWeeklyAffixes` function. */
+export interface AffixData {
+  period: number;
+  region: string;
+  affixes: AffixDisplay[];
+}

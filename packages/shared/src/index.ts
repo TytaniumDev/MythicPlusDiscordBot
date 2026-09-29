@@ -60,11 +60,18 @@ export type {
   WoWGroupDict,
 } from './types.js';
 
-export { CHARACTER_CLASSES, toCharacterClass, toRole, toUtility } from './types.js';
+export { CHARACTER_CLASSES, toCharacterClass, toRole, toSessionStatus, toUtility } from './types.js';
 
 export { todayPST } from './dateHelpers.js';
 
 export { realmToSlug, parseInGameName, DEFAULT_REGION } from './realmSlug.js';
+
+export {
+  isRecord,
+  parseWoWPlayerDict,
+  parseWoWGroupDicts,
+  type Decoded,
+} from './groupWire.js';
 
 export {
   encodeGroupHistoryRounds,

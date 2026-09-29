@@ -77,7 +77,8 @@ service cloud.firestore {
 
     // --- Channels ---
     // One lobby per voice channel. Only the bot writes `members` (who is in
-    // voice); clients drive a round's status and groups. Player profiles live
+    // voice) and `expireAt` (the TTL expiry); clients drive a round's status
+    // and groups. Player profiles live
     // in preferences, never on the lobby.
     match /channels/{channelId} {
       allow read: if true;
@@ -164,9 +165,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Characters ---
-    // Battle.net lookup cache; only the lookupCharacter function touches it.
-    match /characters/{region}/{realm}/{name} {
+    // --- Character cache ---
+    // Battle.net lookup cache; only Cloud Functions touch it.
+    match /characterCache/{docId} {
       allow read: if false;
       allow write: if false;
     }

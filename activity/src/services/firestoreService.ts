@@ -1,6 +1,6 @@
 import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction, query, where, documentId } from 'firebase/firestore';
 import { authReady, db } from '../firebase';
-import { GuildData, ChannelData } from '../types';
+import type { GuildData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import {
@@ -8,10 +8,8 @@ import {
   bumpPairCounts,
   chunkIds,
   createMythicPlusGroups,
-  decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
   parsePlayerPreferences,
-  parseSeasonPairs,
   setGroupHistory,
   todayPST,
 } from '@mythicplus/shared';
@@ -19,6 +17,7 @@ import type { CharacterClass, PlayerPreferences, WoWGroupDict, WoWPlayerDict } f
 import type { Profiles } from '../lib/profiles';
 import { reportError } from '../lib/sentry';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
+import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
 
 const MAX_LISTENER_RETRIES = 5;
 const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
@@ -37,20 +36,22 @@ function backoffDelayMs(retryCount: number): number {
 }
 
 /**
- * Parse the persisted group history from a guild doc. Returns empty rounds
- * when the date doesn't match today or the data is malformed — the spin
- * should never be blocked by stale or bad history. Wire-shape normalization
- * (wrapped vs legacy flat) is handled by `decodeGroupHistoryRounds`.
+ * Today's rounds from a guild's group history, or none when the history is
+ * from another day. The history was validated when the guild doc was decoded.
  */
-function parseExistingRounds(
+function todaysRounds(
   guildData: GuildData | null | undefined,
   todayIso: string,
 ): WoWGroupDict[][] {
   const history = guildData?.groupHistory;
-  if (!history || history.date !== todayIso || !Array.isArray(history.rounds)) {
-    return [];
-  }
-  return decodeGroupHistoryRounds(history.rounds);
+  return history && history.date === todayIso ? history.rounds : [];
+}
+
+/** Decode a guild snapshot and report anything malformed in it. */
+function readGuildData(raw: unknown, guildId: string): GuildData {
+  const { value, issues } = decodeGuildData(raw, guildId);
+  reportDecodeIssues('firestoreService.decodeGuild', `guilds/${guildId}`, issues);
+  return value;
 }
 
 // Every write awaits `authReady` first: firestore.rules reject writes from a
@@ -108,9 +109,9 @@ class FirestoreSessionService implements SessionService {
       (docSnap) => {
         const s = useAppStore.getState();
         if (docSnap.exists()) {
-          const data = docSnap.data() as GuildData;
+          const data = readGuildData(docSnap.data(), guildId);
           s.setGuildData(data);
-          s.setSeasonPairs(parseSeasonPairs(data.seasonPairs));
+          s.setSeasonPairs(data.seasonPairs ?? null);
           s.setStatusMessage('');
           return;
         }
@@ -158,7 +159,9 @@ class FirestoreSessionService implements SessionService {
       (docSnap) => {
         if (docSnap.exists()) {
           this.clearChannelMissingTimer();
-          useAppStore.getState().setChannelData(docSnap.data() as ChannelData);
+          const { value, issues } = decodeChannelData(docSnap.data(), channelId);
+          reportDecodeIssues('firestoreService.decodeChannel', `channels/${channelId}`, issues);
+          useAppStore.getState().setChannelData(value);
           return;
         }
         // The listener fires `exists()=false` during normal lifecycle —
@@ -274,21 +277,10 @@ class FirestoreSessionService implements SessionService {
     const guildId = channelData.guildId || null;
     const today = todayPST();
 
-    // Restore group history from Firestore so the algorithm avoids repeat
-    // groupings. Malformed history should never block a spin — fall back to
-    // empty history. The try is narrowed to just WoWGroup.fromDict since
-    // parseExistingRounds already returns [] defensively for malformed data
-    // and setGroupHistory doesn't throw.
-    const existingRounds = parseExistingRounds(guildData, today);
-    let rounds: WoWGroup[][];
-    try {
-      rounds = existingRounds.map(round => round.map(g => WoWGroup.fromDict(g)));
-    } catch (err) {
-      reportError(err, { tag: 'firestoreService.restoreGroupHistory' });
-      rounds = [];
-    }
-    setGroupHistory(rounds, guildId);
-    const roundsForPersist: WoWGroupDict[][] = rounds.length === 0 ? [] : existingRounds;
+    // Restore today's group history so the algorithm avoids repeat
+    // groupings. It was validated when the guild doc was decoded.
+    const existingRounds = todaysRounds(guildData, today);
+    setGroupHistory(existingRounds.map(round => round.map(g => WoWGroup.fromDict(g))), guildId);
 
     const players = eligibleSpinPlayers(lobbyPlayers, channelData.sittingOut ?? []);
 
@@ -310,7 +302,7 @@ class FirestoreSessionService implements SessionService {
     // Intentionally not awaited — history save should not block the spin.
     if (guildId) {
       const guildDocRef = doc(db, 'guilds', guildId);
-      const wireRounds = encodeGroupHistoryRounds([...roundsForPersist, groupDicts]);
+      const wireRounds = encodeGroupHistoryRounds([...existingRounds, groupDicts]);
       setDoc(guildDocRef, {
         groupHistory: { date: today, rounds: wireRounds },
       }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
@@ -445,7 +437,7 @@ class FirestoreSessionService implements SessionService {
     if (channelData.guildId) {
       try {
         const snap = await getDoc(doc(db, 'guilds', channelData.guildId));
-        if (snap.exists()) freshGuildData = snap.data() as GuildData;
+        if (snap.exists()) freshGuildData = readGuildData(snap.data(), channelData.guildId);
       } catch (err) {
         reportError(err, { tag: 'firestoreService.reportBadGroup.getGuildDoc' });
       }
@@ -454,7 +446,7 @@ class FirestoreSessionService implements SessionService {
     // Prior rounds = persisted group history minus the round being reported.
     // The algorithm's pair-history scoring depends on these, so omitting them
     // makes "shouldn't have grouped me with X again" complaints undebuggable.
-    const allRounds = parseExistingRounds(freshGuildData, todayPST());
+    const allRounds = todaysRounds(freshGuildData, todayPST());
     const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
 
     await authReady;
@@ -499,8 +491,8 @@ class FirestoreSessionService implements SessionService {
       const channelDoc = await transaction.get(docRef);
       if (!channelDoc.exists()) return;
 
-      const data = channelDoc.data();
-      const current: string[] = data.sittingOut ?? [];
+      const { sittingOut } = channelDoc.data();
+      const current: unknown[] = Array.isArray(sittingOut) ? sittingOut : [];
       if (current.includes(discordId)) {
         transaction.update(docRef, { sittingOut: arrayRemove(discordId) });
       } else {
