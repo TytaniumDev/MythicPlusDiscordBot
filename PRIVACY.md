@@ -24,6 +24,10 @@ When the App is in a server, the bot receives information from Discord through i
 
 The bot does not read or store the content of ordinary chat messages.
 
+### Signing in
+
+By default, the Activity signs you in anonymously through Firebase Authentication. If you choose **Sign in with Discord**, Discord asks for your permission to share your account's basic profile (the `identify` scope). We use it only to confirm your Discord user ID, which then becomes your Firebase Authentication account ID so the App knows which player you are. We don't store the Discord access token, and we don't request your email address, server list, or messages.
+
 ### Information you give us
 
 - **Player preferences:** your main role, off-spec roles, and utilities (battle res, bloodlust), plus an optional in-game name.
@@ -48,6 +52,7 @@ When something breaks, error reports are sent to [Sentry](https://sentry.io), ou
 We use the information above only to:
 
 - Form Mythic+ groups and show them in Discord and in the Activity.
+- Confirm your identity if you use Sign in with Discord.
 - Show each player's name, roles, class, and portrait in the lobby.
 - Avoid pairing the same players together too often.
 - Look up and refresh your linked character's class and portrait.
@@ -62,8 +67,8 @@ We use the following third-party services to run the App. Each one processes dat
 
 | Service | What it does | Data involved |
 | --- | --- | --- |
-| [Discord](https://discord.com/privacy) | Hosts the bot and Activity | Everything received from Discord |
-| [Google Firebase](https://firebase.google.com/support/privacy) (Firestore, Cloud Functions, Authentication) | Database and backend | Preferences, lobbies, group history, reports |
+| [Discord](https://discord.com/privacy) | Hosts the bot and Activity | Everything received from Discord, and the Sign in with Discord authorization |
+| [Google Firebase](https://firebase.google.com/support/privacy) (Firestore, Cloud Functions, Authentication) | Database and backend | Preferences, lobbies, group history, reports, sign-in accounts |
 | [Blizzard Battle.net API](https://www.blizzard.com/en-us/legal/privacy) | Character lookup | Character name, realm, region |
 | [Sentry](https://sentry.io/privacy/) | Error monitoring | Error reports as described above |
 | [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) | Hosts the web app and issue tracker | Bug and feature reports (made public) |
@@ -76,7 +81,7 @@ We may also disclose information if required by law.
 
 - **Lobbies** are deleted when the last person leaves the voice channel, or automatically 24 hours after their last activity.
 - **Today's group history** is replaced each day. **Season pair counts** are replaced when a new Mythic+ season starts.
-- **Player preferences** are kept until you ask us to delete them.
+- **Player preferences** and **sign-in accounts** are kept until you ask us to delete them.
 - **Bad group reports** are deleted from our database once they've been turned into a GitHub issue. The GitHub issue stays public.
 - **Character lookup cache** entries are refreshed after a day.
 - **Error reports** are kept according to Sentry's retention period for our plan.
