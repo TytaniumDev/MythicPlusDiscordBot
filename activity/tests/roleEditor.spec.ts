@@ -23,8 +23,8 @@ test.describe('MyCharacterCard Inline Editor', () => {
     const playerCard = page.locator('[data-testid="my-character-card"]');
     await expect(playerCard).toBeVisible();
 
-    // Character name visible
-    await expect(playerCard.locator('.my-character__name')).toBeVisible();
+    // Full-body render of the character
+    await expect(playerCard.getByAltText(`${mockPlayers[4].inGameName}, full-body render`)).toBeVisible();
 
     await expect(page).toHaveScreenshot('player-card-sidebar.png');
   });

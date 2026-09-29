@@ -220,7 +220,7 @@ test.describe('Mobile Functional (393x852)', () => {
     const card = page.locator('[data-testid="my-character-card"]');
     await expect(card).toBeInViewport();
     await expect(card.getByRole('switch', { name: 'Sit out' })).toBeVisible();
-    await expect(card.getByRole('button', { name: '✎ Edit' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
 
     // Editor stays tucked away until asked for when the character is ready
     await expect(card.locator('.role-editor-input')).toHaveCount(0);
@@ -236,7 +236,7 @@ test.describe('Mobile Functional (393x852)', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     const card = page.locator('[data-testid="my-character-card"]');
 
-    await card.getByRole('button', { name: '✎ Edit' }).click();
+    await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(card.locator('.role-editor-input')).toBeVisible();
     await expect(card.locator('[data-role-id="Tank"]')).toBeVisible();
 

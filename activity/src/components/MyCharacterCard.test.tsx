@@ -7,6 +7,7 @@ import { demoService } from '../services/demoService';
 import { mockPlayers } from '../lib/mockData';
 
 const gazzi = mockPlayers[4];
+const NEEDS_NAME_CAPTION = 'Add your in-game name to show your character';
 
 describe('MyCharacterCard', () => {
   afterEach(() => {
@@ -15,29 +16,64 @@ describe('MyCharacterCard', () => {
     useAppStore.getState().resetSession();
   });
 
-  it('shows the character and keeps the editor closed when collapsible and ready', () => {
-    render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
-    expect(screen.getByText(gazzi.name)).toBeTruthy();
-    expect(screen.getByText(gazzi.inGameName!)).toBeTruthy();
-    expect(screen.getByText('✓ Ready')).toBeTruthy();
-    expect(screen.queryByPlaceholderText('PlayerName-ServerName')).toBeNull();
+  describe('phone layout (collapsible)', () => {
+    it('shows the role tags and keeps the editor closed when ready', () => {
+      const { container } = render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
+      expect(screen.getByText('✓ Ready')).toBeTruthy();
+      const tags = [...container.querySelectorAll('.chip-tags .role-tag')].map((t) => t.textContent);
+      expect(tags).toEqual(['Tank', 'Brez']);
+      expect(screen.queryByPlaceholderText('PlayerName-ServerName')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: '✎ Edit' }));
-    expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Done' }).getAttribute('aria-expanded')).toBe('true');
+    it('opens the editor from Edit, keeping Edit in place but out of reach', () => {
+      render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
+      const edit = screen.getByRole('button', { name: 'Edit' });
+      expect(edit.getAttribute('aria-expanded')).toBe('false');
+
+      fireEvent.click(edit);
+      expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Done' }).getAttribute('aria-expanded')).toBe('true');
+      // Still rendered so the header keeps its height, but inert.
+      expect(edit.isConnected).toBe(true);
+      expect(edit.hasAttribute('inert')).toBe(true);
+      expect(edit.classList.contains('my-character__edit--reserved')).toBe(true);
+    });
+
+    it('closes the editor from Done and puts focus back on Edit', () => {
+      render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
+      const edit = screen.getByRole('button', { name: 'Edit' });
+      fireEvent.click(edit);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(screen.queryByPlaceholderText('PlayerName-ServerName')).toBeNull();
+      expect(edit.hasAttribute('inert')).toBe(false);
+      expect(document.activeElement).toBe(edit);
+    });
+
+    it('opens the editor straight away when the in-game name is missing', () => {
+      render(<MyCharacterCard player={{ ...gazzi, inGameName: undefined }} isSittingOut={false} collapsible />);
+      expect(screen.getByText('Not ready')).toBeTruthy();
+      expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
+      // The open name field is the prompt here; no caption over the stage.
+      expect(screen.queryByText(NEEDS_NAME_CAPTION)).toBeNull();
+    });
   });
 
-  it('opens the editor straight away when the in-game name is missing', () => {
-    render(<MyCharacterCard player={{ ...gazzi, inGameName: undefined }} isSittingOut={false} collapsible />);
-    expect(screen.getByText('Not ready')).toBeTruthy();
-    expect(screen.getByText('⚠ Add your in-game name')).toBeTruthy();
-    expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
-  });
+  describe('sidebar layout', () => {
+    it('always shows the editor, without Edit or role tags', () => {
+      const { container } = render(<MyCharacterCard player={gazzi} isSittingOut={false} />);
+      expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+      expect(container.querySelector('.chip-tags')).toBeNull();
+    });
 
-  it('always shows the editor when not collapsible', () => {
-    render(<MyCharacterCard player={gazzi} isSittingOut={false} />);
-    expect(screen.queryByRole('button', { name: '✎ Edit' })).toBeNull();
-    expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
+    it('asks for the in-game name over the empty stage', () => {
+      render(<MyCharacterCard player={{ ...gazzi, inGameName: undefined, mediaUrl: null }} isSittingOut={false} />);
+      expect(screen.getByText('Not ready')).toBeTruthy();
+      expect(screen.getByText(NEEDS_NAME_CAPTION)).toBeTruthy();
+    });
   });
 
   it('sits out and rejoins through the session service', () => {
@@ -51,26 +87,29 @@ describe('MyCharacterCard', () => {
     expect(setSittingOut).toHaveBeenLastCalledWith('channel-1', gazzi.discordId, true);
 
     cleanup();
-    render(<MyCharacterCard player={gazzi} isSittingOut collapsible />);
-    fireEvent.click(screen.getByRole('switch', { name: 'Sitting out' }));
+    render(<MyCharacterCard player={gazzi} isSittingOut />);
+    fireEvent.click(screen.getByRole('switch', { name: 'Sit out' }));
     expect(setSittingOut).toHaveBeenLastCalledWith('channel-1', gazzi.discordId, false);
   });
 
   it('reflects the sitting-out state', () => {
-    render(<MyCharacterCard player={gazzi} isSittingOut collapsible />);
-    expect(screen.getByRole('switch', { name: 'Sitting out' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getAllByText('Sitting out')).toHaveLength(2);
+    const { container } = render(<MyCharacterCard player={gazzi} isSittingOut collapsible />);
+    expect(screen.getByRole('switch', { name: 'Sit out' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('Sitting out')).toBeTruthy();
+    expect(container.querySelector('.character-stage--dimmed')).not.toBeNull();
   });
 
-  it('shows a portrait saved after the card rendered', () => {
+  it('shows a render saved after the card rendered', () => {
     const { container, rerender } = render(<MyCharacterCard player={{ ...gazzi, mediaUrl: null }} isSittingOut={false} />);
-    expect(container.querySelector('.my-character__portrait-img')).toBeNull();
+    expect(container.querySelector('.character-stage__img')).toBeNull();
+    expect(container.querySelector('.character-stage__placeholder')).not.toBeNull();
 
     // e.g. the profile modal's Refresh, or the weekly refresh job.
-    const avatar = 'https://render.worldofwarcraft.com/us/character/uldum/1/2-avatar.jpg';
-    rerender(<MyCharacterCard player={{ ...gazzi, mediaUrl: avatar }} isSittingOut={false} />);
+    const base = 'https://render.worldofwarcraft.com/us/character/uldum/1/2';
+    rerender(<MyCharacterCard player={{ ...gazzi, mediaUrl: `${base}-avatar.jpg` }} isSittingOut={false} />);
 
-    expect(container.querySelector('.my-character__portrait-img')?.getAttribute('src')).toBe(avatar);
+    const img = screen.getByAltText(`${gazzi.inGameName}, full-body render`);
+    expect(img.getAttribute('src')).toBe(`${base}-main-raw.png`);
   });
 
   it('reveal() opens the editor', () => {
