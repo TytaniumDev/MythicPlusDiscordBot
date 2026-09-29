@@ -81,9 +81,11 @@ Cloud Functions read their credentials from Google Secret Manager (`defineSecret
 The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:
 
 ```bash
-doppler secrets get BNET_CLIENT_ID --plain \
+printf %s "$(doppler secrets get BNET_CLIENT_ID --plain)" \
   | npx firebase-tools@14 functions:secrets:set BNET_CLIENT_ID --data-file=- --project mythicplusdiscordbot
 ```
+
+`doppler secrets get --plain` ends its output with a newline, and piping it straight in stores that newline in the secret (which made Battle.net OAuth return 401); `printf %s "$(...)"` strips it.
 
 Functions bind the latest secret version when they deploy, so after a rotation, redeploy (re-run the Deploy workflow) to pick up the new value.
 

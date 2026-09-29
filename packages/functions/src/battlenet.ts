@@ -106,8 +106,9 @@ let _client: BattleNetClient | null = null;
 
 export function getBattleNetClient(): BattleNetClient {
   if (!_client) {
-    const clientId = bnetClientId.value();
-    const clientSecret = bnetClientSecret.value();
+    // Trim so a stray trailing newline in the stored secret can't cause an OAuth 401.
+    const clientId = bnetClientId.value().trim();
+    const clientSecret = bnetClientSecret.value().trim();
     if (!clientId || !clientSecret) {
       throw new Error('BNET_CLIENT_ID and BNET_CLIENT_SECRET secrets are not available');
     }
