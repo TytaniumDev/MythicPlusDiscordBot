@@ -52,6 +52,12 @@ if [ "$RUN_BUILD" -eq 1 ]; then
   npx -w packages/functions tsc --noEmit
 
   echo ""
+  echo "--- Bundle: packages/functions ---"
+  # Deploy uploads this esbuild bundle, so build it here to catch a broken
+  # bundle in CI instead of at deploy time.
+  npm -w packages/functions run build
+
+  echo ""
   echo "--- Typecheck: activity ---"
   npm -w activity run typecheck
 fi
