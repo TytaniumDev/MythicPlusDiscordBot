@@ -2,10 +2,12 @@ import { useCallback } from 'react';
 import { getClassColor } from '../lib/classColors';
 import { CharacterImage } from './CharacterImage';
 import { RoleEditor } from './RoleEditor';
+import { DiscordSignInButton } from './DiscordSignInButton';
 import { Divider } from './ui';
 import { useCharacterLookup } from '../hooks/useCharacterLookup';
 import { useSessionService } from '../hooks/useSession';
 import { useMyProfile } from '../hooks/useMyProfile';
+import { useAppStore } from '../store/store';
 import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 
 interface ProfileModalProps {
@@ -21,6 +23,7 @@ interface ProfileModalProps {
  */
 export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalProps) {
   const { discordId, player, displayName } = useMyProfile();
+  const verifiedDiscordId = useAppStore((s) => s.verifiedDiscordId);
   const inGameName = player?.inGameName ?? '';
 
   const { lookup, loading: refreshLoading } = useCharacterLookup();
@@ -86,6 +89,13 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
             <span className="profile-modal__value">{discordId}</span>
           </div>
         )}
+        {discordId && discordId === verifiedDiscordId && (
+          <div className="profile-modal__field">
+            <span className="profile-modal__label">Discord</span>
+            <span className="profile-modal__verified">✓ Signed in</span>
+          </div>
+        )}
+        <DiscordSignInButton />
 
         <Divider />
 

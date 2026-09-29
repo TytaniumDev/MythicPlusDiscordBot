@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useIdentity } from './useIdentity';
+import { useAppStore } from '../store/store';
 import { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
 
@@ -25,6 +26,9 @@ export function useIdentityResolver(players: WoWPlayer[]) {
   const playersRef = useRef(players);
   playersRef.current = players;
 
+  // Also re-resolve when the user signs in with Discord mid-session.
+  const verifiedDiscordId = useAppStore((s) => s.verifiedDiscordId);
+
   const { resolveIdentity } = identity;
   useEffect(() => {
     if (playersRef.current.length > 0) {
@@ -32,7 +36,7 @@ export function useIdentityResolver(players: WoWPlayer[]) {
         reportError(err, { tag: 'useIdentityResolver.resolveIdentity' });
       });
     }
-  }, [membershipKey, resolveIdentity]);
+  }, [membershipKey, verifiedDiscordId, resolveIdentity]);
 
   return identity;
 }

@@ -31,6 +31,12 @@ export interface AppState {
   currentPlayerId: string | null;
   currentPlayerName: string | null;
   identityResolved: boolean;
+  // The Discord ID the user proved by signing in with Discord (optional; see
+  // services/discordAuth.ts). Takes precedence over every identity guess.
+  // App-lifetime like the Firebase Auth session: not cleared by resetSession.
+  verifiedDiscordId: string | null;
+  // Whether Discord sign-in can be offered (running inside the Discord activity).
+  discordSignInAvailable: boolean;
 
   // preferences docs for the lobby members and the current user, by Discord ID
   profiles: Profiles;
@@ -74,6 +80,8 @@ export interface AppState {
   setStatusMessage: (msg: string) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
+  setVerifiedDiscordId: (id: string | null) => void;
+  setDiscordSignInAvailable: (val: boolean) => void;
   setProfiles: (profiles: Profiles) => void;
   /** Demo mode only: edit a profile in memory (real edits go through Firestore). */
   updateProfile: (discordId: string, fields: Partial<PlayerPreferences>) => void;

@@ -30,23 +30,28 @@ const functions = getFunctions(app);
 // Auth is optional — getAuth() throws when the API key is missing (e.g. Storybook).
 // Guard it so non-auth features keep working without Firebase credentials.
 let auth: ReturnType<typeof getAuth> | null = null;
-// Resolves once anonymous sign-in settles. Callables attach whichever user is
-// signed in at call time (the SDK does not wait for sign-in), so anything that
-// needs request.auth must await this first.
+// Resolves once sign-in settles. Callables attach whichever user is signed in
+// at call time (the SDK does not wait for sign-in), so anything that needs
+// request.auth must await this first.
 let authReady: Promise<void> = Promise.resolve();
 try {
-  auth = getAuth(app);
+  const firebaseAuth = getAuth(app);
+  auth = firebaseAuth;
   if (authEmulatorHost) {
-    connectAuthEmulator(auth, `http://${authEmulatorHost}`, { disableWarnings: true });
+    connectAuthEmulator(firebaseAuth, `http://${authEmulatorHost}`, { disableWarnings: true });
   }
 
-  // Sign in anonymously so Cloud Function callables receive request.auth.
-  authReady = signInAnonymously(auth).then(
-    () => undefined,
-    (err) => {
+  // Sign in anonymously so Cloud Function callables receive request.auth —
+  // unless a session was restored. A player who signed in with Discord
+  // (services/discordAuth.ts) stays signed in across launches; signing in
+  // anonymously would replace them.
+  authReady = firebaseAuth.authStateReady()
+    .then(async () => {
+      if (!firebaseAuth.currentUser) await signInAnonymously(firebaseAuth);
+    })
+    .catch((err: unknown) => {
       reportError(err, { tag: 'firebase.signIn' });
-    },
-  );
+    });
 } catch {
   // No valid Firebase config (e.g. Storybook) — auth features are unavailable.
   console.info('[Wheelson] Firebase Auth not initialized; auth features will be unavailable.');

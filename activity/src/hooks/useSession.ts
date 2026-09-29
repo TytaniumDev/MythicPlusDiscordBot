@@ -3,6 +3,7 @@ import { useAppStore } from '../store/store';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
 import type { SessionService } from '../services/types';
+import type { AppState } from '../store/types';
 import { loadStoredDiscordId } from '../lib/storedDiscordId';
 
 export function useSessionService(): SessionService {
@@ -82,10 +83,14 @@ export function useProfilesSubscription() {
 }
 
 /**
- * The current user's Discord ID: the resolved identity, or the one remembered
- * from an earlier visit. Null until one of those exists.
+ * The current user's Discord ID: the resolved identity, then a Discord
+ * sign-in, then the one remembered from an earlier visit. Null until one of
+ * those exists.
  */
+export function selectMyDiscordId(s: AppState): string | null {
+  return s.currentPlayerId ?? s.verifiedDiscordId ?? loadStoredDiscordId();
+}
+
 export function useMyDiscordId(): string | null {
-  const currentPlayerId = useAppStore((s) => s.currentPlayerId);
-  return currentPlayerId ?? loadStoredDiscordId();
+  return useAppStore(selectMyDiscordId);
 }

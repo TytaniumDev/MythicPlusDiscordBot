@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
 import { loadStoredDiscordId } from './lib/storedDiscordId';
-import { useGuildSubscription, useChannelSubscription, useProfilesSubscription } from './hooks/useSession';
+import { useGuildSubscription, useChannelSubscription, useProfilesSubscription, selectMyDiscordId } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
 import { firestoreService } from './services/firestoreService';
@@ -21,15 +21,15 @@ import { ConnectionsView } from './views/ConnectionsView';
 
 /**
  * Gate lobby navigation behind identity + setup.
- * Tries localStorage for returning players, redirects to identity/setup if needed.
- * Returns the actual view to navigate to.
+ * Tries a Discord sign-in, then localStorage for returning players, and
+ * redirects to identity/setup if needed. Returns the actual view to navigate to.
  */
 function resolveLobbyGate(): ViewName {
   const store = useAppStore.getState();
   store.resetSpinState();
 
   if (!store.identityResolved) {
-    const savedId = loadStoredDiscordId();
+    const savedId = store.verifiedDiscordId ?? loadStoredDiscordId();
     const players = store.players;
     const match = savedId ? players.find(p => p.discordId === savedId) : null;
     if (match) {
@@ -48,7 +48,7 @@ function resolveLobbyGate(): ViewName {
 // The lobby gate waits for the current user's profile, so a returning player
 // whose profile is complete isn't sent to setup while it loads.
 function awaitingMyProfile(s: AppState): boolean {
-  return isProfileLoading(s.currentPlayerId ?? loadStoredDiscordId(), s.players, s.profiles);
+  return isProfileLoading(selectMyDiscordId(s), s.players, s.profiles);
 }
 
 /**
