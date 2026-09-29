@@ -1,15 +1,15 @@
-import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, runTransaction, query, where, documentId } from 'firebase/firestore';
+import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, increment, runTransaction, query, where, documentId } from 'firebase/firestore';
 import { authReady, db } from '../firebase';
 import type { GuildData } from '../types';
 import { useAppStore } from '../store/store';
 import type { SessionService } from './types';
 import {
   WoWGroup,
-  bumpPairCounts,
   chunkIds,
   createMythicPlusGroups,
   encodeGroupHistoryRounds,
   parsePlayerPreferences,
+  seasonPairsUpdate,
   setGroupHistory,
   todayPST,
 } from '@mythicplus/shared';
@@ -18,6 +18,7 @@ import type { Profiles } from '../lib/profiles';
 import { reportError } from '../lib/sentry';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
+import { ensureLobby } from './lobby';
 
 const MAX_LISTENER_RETRIES = 5;
 const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
@@ -310,17 +311,10 @@ class FirestoreSessionService implements SessionService {
       // Bump season pair counts for cross-session affinity tracking. Skip
       // for debug channels so test spins don't pollute the real tally.
       if (!(channelData.isDebug ?? false)) {
-        const cfg = useAppStore.getState().seasonConfig;
-        if (cfg) {
-          const existing = useAppStore.getState().seasonPairs;
-          const baseCounts =
-            existing && existing.seasonSlug === cfg.slug ? existing.counts : {};
-          const newCounts = bumpPairCounts(baseCounts, groups);
-          setDoc(
-            guildDocRef,
-            { seasonPairs: { seasonSlug: cfg.slug, counts: newCounts } },
-            { merge: true },
-          ).catch((err) =>
+        const { seasonConfig: cfg, seasonPairs: existing } = useAppStore.getState();
+        const update = cfg ? seasonPairsUpdate(existing, cfg.slug, groups, increment) : null;
+        if (update) {
+          setDoc(guildDocRef, update.data, update.options).catch((err) =>
             reportError(err, { tag: 'firestoreService.saveSeasonPairs' }),
           );
         }
@@ -397,18 +391,7 @@ class FirestoreSessionService implements SessionService {
 
   async selectChannel(channelId: string, channelName: string, guildId: string): Promise<void> {
     await authReady;
-    const channelDocRef = doc(db, 'channels', channelId);
-    await setDoc(channelDocRef, {
-      channelId,
-      channelName: channelName || '',
-      guildId,
-      status: 'lobby',
-      groups: [],
-      sittingOut: [],
-      isDebug: false,
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-    }, { merge: true });
+    await ensureLobby(db, channelId, channelName || '', guildId);
   }
 
   async reportBadGroup(title: string, description: string): Promise<void> {
@@ -510,9 +493,9 @@ class FirestoreSessionService implements SessionService {
     }
 
     await authReady;
-    // Merge (here and for the channel): the "missing" snapshot that triggers
-    // this can come from the local cache, and an overwrite would wipe the
-    // guild's group history and season pair counts.
+    // Merge: the "missing" snapshot that triggers this can come from the local
+    // cache, and an overwrite would wipe the guild's group history and season
+    // pair counts. The lobby is only created if it doesn't exist.
     const guildDocRef = doc(db, 'guilds', guildId);
     await setDoc(guildDocRef, {
       guildId,
@@ -523,17 +506,7 @@ class FirestoreSessionService implements SessionService {
     }, { merge: true });
 
     if (discordChannelId) {
-      const channelDocRef = doc(db, 'channels', discordChannelId);
-      await setDoc(channelDocRef, {
-        channelId: discordChannelId,
-        channelName: '',
-        guildId,
-        status: 'lobby',
-        groups: [],
-        isDebug: false,
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-      }, { merge: true });
+      await ensureLobby(db, discordChannelId, '', guildId);
     }
   }
 }

@@ -4229,7 +4229,12 @@ button.role-section-header--collapsible {
   }
 }
 
-/* Connections view */
+/* Connections overlay: full screen above the current view, including the
+   wheel's spin prompt (z-index 200), and below dialogs */
+.connections-view {
+  position: fixed; inset: 0; z-index: 300;
+  overflow-y: auto; background: var(--bg-primary);
+}
 .connections-view__body { padding: 16px; max-width: 640px; margin: 0 auto; }
 .connections-view__heading { font-size: 18px; margin-bottom: 12px; }
 .connections-view__empty { color: #888; font-style: italic; }

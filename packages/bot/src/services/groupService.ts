@@ -1,7 +1,6 @@
 import {
   WoWGroup,
   WoWPlayer,
-  bumpPairCounts,
   createMythicPlusGroups,
   setGroupHistory,
   todayPST,
@@ -124,10 +123,10 @@ export class GroupService {
   }
 
   /**
-   * Increment per-guild season pair counts after a real spin. Lazy-resets
-   * counts when the stored seasonSlug differs from the current `config/season`
-   * slug. No-op when no season config has been written yet (the weekly cron
-   * hasn't run).
+   * Increment per-guild season pair counts after a real spin. Counts reset
+   * when the stored seasonSlug differs from the current `config/season` slug.
+   * No-op when no season config has been written yet (the weekly cron hasn't
+   * run).
    */
   private async _bumpSeasonPairs(
     firebase: FirebaseService,
@@ -136,11 +135,7 @@ export class GroupService {
   ): Promise<void> {
     const config = await firebase.getSeasonConfig();
     if (!config) return;
-    const existing = await firebase.getSeasonPairs(guildId);
-    const baseCounts =
-      existing && existing.seasonSlug === config.slug ? existing.counts : {};
-    const counts = bumpPairCounts(baseCounts, groups);
-    await firebase.saveSeasonPairs(guildId, { seasonSlug: config.slug, counts });
+    await firebase.bumpSeasonPairs(guildId, config.slug, groups);
   }
 
   async getGroupsData(

@@ -5,7 +5,7 @@ import { useAppStore } from '../store/store';
 
 export function HeaderProfileSlot() {
   const [open, setOpen] = useState(false);
-  const setView = useAppStore((s) => s.setView);
+  const setConnectionsOpen = useAppStore((s) => s.setConnectionsOpen);
 
   return (
     <>
@@ -15,7 +15,7 @@ export function HeaderProfileSlot() {
         onClose={() => setOpen(false)}
         onOpenConnections={() => {
           setOpen(false);
-          setView('connections');
+          setConnectionsOpen(true);
         }}
       />
     </>

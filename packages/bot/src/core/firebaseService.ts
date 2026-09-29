@@ -1,11 +1,14 @@
 import { createRequire } from 'node:module';
+import { FieldValue } from 'firebase-admin/firestore';
 import {
   decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
   parsePlayerPreferences,
   parseSeasonPairs,
+  seasonPairsUpdate,
   type LobbyMember,
   type PlayerPreferences,
+  type WoWGroup,
   type WoWGroupDict,
 } from '@mythicplus/shared';
 import logger from './logger.js';
@@ -52,7 +55,7 @@ type FirebaseQuery = {
 
 type FirebaseDocRef = {
   get: () => Promise<FirebaseDocSnapshot>;
-  set: (data: Record<string, unknown>, options?: { merge?: boolean }) => Promise<void>;
+  set: (data: Record<string, unknown>, options?: { merge?: boolean; mergeFields?: string[] }) => Promise<void>;
   update: (data: Record<string, unknown>) => Promise<void>;
   delete: () => Promise<void>;
   onSnapshot: (callback: (...args: unknown[]) => void) => unknown;
@@ -83,7 +86,7 @@ export interface IFirebaseService {
   saveGroupHistory(guildId: string, history: { date: string; rounds: WoWGroupDict[][] }): Promise<void>;
   getSeasonConfig(): Promise<{ slug: string; blizzardSeasonId: number; expansionId: number } | null>;
   getSeasonPairs(guildId: string): Promise<{ seasonSlug: string; counts: Record<string, number> } | null>;
-  saveSeasonPairs(guildId: string, pairs: { seasonSlug: string; counts: Record<string, number> }): Promise<void>;
+  bumpSeasonPairs(guildId: string, seasonSlug: string, round: readonly WoWGroup[]): Promise<void>;
   getOrCreateChannelDoc(
     channelId: string,
     guildId: string,
@@ -402,13 +405,18 @@ export class FirebaseService implements IFirebaseService {
     return parseSeasonPairs(data.seasonPairs);
   }
 
-  async saveSeasonPairs(
-    guildId: string,
-    pairs: { seasonSlug: string; counts: Record<string, number> },
-  ): Promise<void> {
+  /**
+   * Record one round in the guild's season pair counts: incremented in place
+   * for the stored season, replaced when the season changes (see
+   * `seasonPairsUpdate`). `FieldValue.increment` needs no initialized app, so
+   * it is imported directly rather than set up as a sentinel.
+   */
+  async bumpSeasonPairs(guildId: string, seasonSlug: string, round: readonly WoWGroup[]): Promise<void> {
     if (!this.db) return;
-    const docRef = this.db.collection('guilds').doc(guildId);
-    await docRef.set({ seasonPairs: pairs }, { merge: true });
+    const existing = await this.getSeasonPairs(guildId);
+    const update = seasonPairsUpdate(existing, seasonSlug, round, (n) => FieldValue.increment(n));
+    if (!update) return;
+    await this.db.collection('guilds').doc(guildId).set(update.data, update.options);
   }
 
   async deleteDoc(collectionName: string, docId: string): Promise<void> {

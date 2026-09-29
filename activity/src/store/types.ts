@@ -7,7 +7,7 @@ export function isCompleteGroup(group: WoWGroup): boolean {
 }
 
 
-export type ViewName = 'home' | 'channels' | 'identity' | 'setup' | 'lobby' | 'wheels' | 'results' | 'connections';
+export type ViewName = 'home' | 'channels' | 'identity' | 'setup' | 'lobby' | 'wheels' | 'results';
 
 export interface AppState {
   // Navigation
@@ -62,6 +62,10 @@ export interface AppState {
   // Browser back interception for synchronized views
   pendingBrowserBack: boolean;
 
+  // The Connections overlay. Per-player: it sits outside the views that follow
+  // the channel status, so a round moving on doesn't close it.
+  connectionsOpen: boolean;
+
   // Bumps each time we want consumers to refetch dungeon suggestion data
   // (set when a wheel spin starts). Hooks watch this value to refresh.
   dungeonSuggestionsRefreshKey: number;
@@ -93,6 +97,7 @@ export interface AppState {
   addGroupCard: (card: GroupCardData) => void;
   clearGroupCards: () => void;
   setPendingBrowserBack: (val: boolean) => void;
+  setConnectionsOpen: (open: boolean) => void;
   bumpDungeonSuggestionsRefresh: () => void;
   resetSpinState: () => void;
   resetIdentity: () => void;

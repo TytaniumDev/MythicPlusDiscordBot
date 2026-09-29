@@ -56,6 +56,42 @@ export function bumpPairCounts(
 }
 
 /**
+ * A guild-doc `set` that records one round in `seasonPairs`. Both the web and
+ * Admin SDKs accept these options.
+ */
+export interface SeasonPairsSet {
+  data: { seasonPairs: { seasonSlug: string; counts: Record<string, unknown> } };
+  options: { merge: true } | { mergeFields: string[] };
+}
+
+/**
+ * Build the write that records `round` in a guild's season pair counts, or
+ * null when there is nothing to write. Pass the SDK's `increment` (web
+ * `increment`, Admin `FieldValue.increment`).
+ *
+ * For the stored season, each pair is incremented in place: a merge applies
+ * the increments and leaves every other pair alone, so concurrent spins can't
+ * overwrite each other's counts. For a new season (or the first spin) the
+ * whole field is replaced with `mergeFields`: a merge would keep the old
+ * season's pairs.
+ */
+export function seasonPairsUpdate(
+  existing: SeasonPairs | null,
+  seasonSlug: string,
+  round: readonly WoWGroup[],
+  increment: (n: number) => unknown,
+): SeasonPairsSet | null {
+  const deltas = bumpPairCounts({}, round);
+  if (existing && existing.seasonSlug === seasonSlug) {
+    const entries = Object.entries(deltas);
+    if (entries.length === 0) return null;
+    const counts = Object.fromEntries(entries.map(([key, n]) => [key, increment(n)]));
+    return { data: { seasonPairs: { seasonSlug, counts } }, options: { merge: true } };
+  }
+  return { data: { seasonPairs: { seasonSlug, counts: deltas } }, options: { mergeFields: ['seasonPairs'] } };
+}
+
+/**
  * Return the top `limit` teammates of `name` sorted by pair count descending,
  * with ties broken alphabetically. Empty array when `name` has no pairings.
  */

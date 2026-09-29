@@ -21,6 +21,7 @@ beforeEach(() => {
   localStorage.clear();
   useAppStore.setState({ isDemoMode: true });
   vi.spyOn(demoService, 'claimPlayer').mockResolvedValue();
+  vi.spyOn(demoService, 'unclaimPlayer').mockResolvedValue();
   mocks.getParticipants.mockResolvedValue([]);
 });
 
@@ -86,5 +87,49 @@ describe('resolveIdentity with a Discord sign-in', () => {
     await resolve();
 
     expect(useAppStore.getState().currentPlayerId).toBe(quill.discordId);
+  });
+});
+
+describe('claims', () => {
+  function pickedEarlier(player = quill) {
+    useAppStore.getState().setIdentity(player.discordId, player.name);
+    useAppStore.getState().setIdentityResolved(true);
+  }
+
+  it('re-picking releases the earlier claim', () => {
+    pickedEarlier();
+    const { result } = renderHook(() => useIdentity());
+
+    act(() => result.current.selectPlayer(schmeebs));
+
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
+    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(schmeebs.discordId);
+  });
+
+  it('picking the same player again keeps the claim', () => {
+    pickedEarlier();
+    const { result } = renderHook(() => useIdentity());
+
+    act(() => result.current.selectPlayer(quill));
+
+    expect(demoService.unclaimPlayer).not.toHaveBeenCalled();
+  });
+
+  it('signing in as someone else releases the earlier pick', async () => {
+    pickedEarlier();
+    useAppStore.setState({ verifiedDiscordId: schmeebs.discordId });
+
+    await resolve();
+
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
+    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(schmeebs.discordId);
+  });
+
+  it('releases the claim when the picked player leaves the lobby', async () => {
+    pickedEarlier();
+
+    await resolve(mockPlayers.filter((p) => p.discordId !== quill.discordId));
+
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
   });
 });

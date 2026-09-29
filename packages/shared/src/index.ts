@@ -33,10 +33,12 @@ export {
 
 export {
   bumpPairCounts,
+  seasonPairsUpdate,
   topAffinityFor,
   shortestPath,
   parseSeasonPairs,
   type SeasonPairs,
+  type SeasonPairsSet,
 } from './seasonPairs.js';
 
 export { generateInviteCommand } from './inviteCommand.js';
