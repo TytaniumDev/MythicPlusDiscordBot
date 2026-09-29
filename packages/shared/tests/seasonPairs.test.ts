@@ -172,3 +172,26 @@ describe('shortestPath', () => {
     expect(shortestPath('Alice', 'Carol', counts)).toBeNull();
   });
 });
+
+import { parseSeasonPairs } from '../src/seasonPairs.js';
+
+describe('parseSeasonPairs', () => {
+  it('returns a valid value unchanged', () => {
+    const pairs = { seasonSlug: 's1', counts: { 'a|b': 2 } };
+    expect(parseSeasonPairs(pairs)).toEqual(pairs);
+  });
+
+  it('rejects a missing slug or counts', () => {
+    expect(parseSeasonPairs(null)).toBeNull();
+    expect(parseSeasonPairs({ counts: {} })).toBeNull();
+    expect(parseSeasonPairs({ seasonSlug: 's1' })).toBeNull();
+    expect(parseSeasonPairs({ seasonSlug: 's1', counts: null })).toBeNull();
+  });
+
+  it('drops counts that are not finite numbers', () => {
+    expect(parseSeasonPairs({
+      seasonSlug: 's1',
+      counts: { 'a|b': 1, 'a|c': '2', 'b|c': NaN, 'c|d': null },
+    })).toEqual({ seasonSlug: 's1', counts: { 'a|b': 1 } });
+  });
+});

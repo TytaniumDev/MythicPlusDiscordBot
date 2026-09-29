@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { findWeeklyAffix } from '@mythicplus/shared';
 import { useAffixes } from '../hooks/useAffixes';
 
@@ -5,9 +6,11 @@ const BARGAIN_PREFIX = "Xal'atath's Bargain: ";
 
 /**
  * Shows only the week's rotating affix — the others are fixed for the season,
- * so they'd just be noise on every screen.
+ * so they'd just be noise on every screen. A labeled region, so screen
+ * readers can find it from the landmarks list.
  */
 export function AffixBar() {
+  const labelId = useId();
   const data = useAffixes();
   const affix = data ? findWeeklyAffix(data.affixes) : null;
 
@@ -18,8 +21,8 @@ export function AffixBar() {
     : affix.name;
 
   return (
-    <div className="affix-bar">
-      <span className="affix-bar-label">This week's affix</span>
+    <section className="affix-bar" aria-labelledby={labelId}>
+      <span id={labelId} className="affix-bar-label">This week's affix</span>
       <div className="affix-item">
         <span
           className="affix-dot"
@@ -41,6 +44,6 @@ export function AffixBar() {
         )}
         <span className="affix-keystone">{affix.keystoneLevel}</span>
       </div>
-    </div>
+    </section>
   );
 }

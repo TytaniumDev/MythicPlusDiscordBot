@@ -26,7 +26,6 @@ import { SessionService, type Bot, type Guild, type VoiceChannel } from './servi
 import { adaptGuild, buildVoiceChannelsSnapshot } from './core/discordAdapters.js';
 import { GroupsHandler } from './commands/groups.js';
 import { DebugHandler } from './commands/debug.js';
-import { onReady } from './events/ready.js';
 import type { DiscordMember } from './core/utils.js';
 import { FirebaseService, DELETE_FIELD } from './core/firebaseService.js';
 import { WoWPlayer, WoWGroup, decodeGroupHistoryRounds } from '@mythicplus/shared';
@@ -302,9 +301,6 @@ async function main() {
     } catch (e) {
       logger.error(`Failed to register slash commands: ${e}`);
     }
-
-    // Run ready handler (sweeps abandoned lobbies before we start tracking them)
-    await onReady();
 
     // Listen for bad group reports from the activity frontend
     const firebase = FirebaseService.getInstance();

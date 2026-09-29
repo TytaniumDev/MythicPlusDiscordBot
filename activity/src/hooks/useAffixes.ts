@@ -5,12 +5,8 @@ import { useAppStore } from '../store/store';
 import { STATIC_AFFIXES, resolveAffixDisplay } from '@mythicplus/shared';
 import type { AffixDisplay } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
-
-interface AffixData {
-  period: number;
-  region: string;
-  affixes: AffixDisplay[];
-}
+import { decodeAffixData, reportDecodeIssues } from '../services/firestoreDecoders';
+import type { AffixData } from '../types';
 
 export function useAffixes(): AffixData | null {
   const [data, setData] = useState<AffixData | null>(null);
@@ -32,7 +28,9 @@ export function useAffixes(): AffixData | null {
       doc(db, 'config', 'affixes'),
       (snap) => {
         if (snap.exists()) {
-          setData(snap.data() as AffixData);
+          const { value, issues } = decodeAffixData(snap.data());
+          reportDecodeIssues('useAffixes.decode', 'config/affixes', issues);
+          setData(value);
         } else {
           // Weekly Cloud Function hasn't run yet — show static affixes as fallback
           setData({ period: 0, region: 'us', affixes: STATIC_AFFIXES });

@@ -1,8 +1,9 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { battleNetSecrets, getBattleNetClient } from './battlenet.js';
 import { getUtilitiesForClass, getRoleForSpec, toCharacterClass } from '@mythicplus/shared';
 import { enforceRateLimit } from './rateLimit.js';
+import { characterCacheEntry, characterCachePath } from './characterCache.js';
 import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
 export interface CharacterResult {
@@ -110,7 +111,7 @@ export const lookupCharacter = onCall(
     }
 
     const db = getFirestore();
-    const cacheRef = db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`);
+    const cacheRef = db.doc(characterCachePath(region, realm, name));
 
     // Read the cache even on forceRefresh: its mediaUrl is the fallback when
     // the media call fails below.
@@ -145,10 +146,7 @@ export const lookupCharacter = onCall(
     }
 
     // Write to cache
-    await cacheRef.set({
-      result,
-      cachedAt: FieldValue.serverTimestamp(),
-    });
+    await cacheRef.set(characterCacheEntry(result));
 
     return result;
   },

@@ -73,7 +73,7 @@ flowchart TB
 
 ### 1. Discord Bot (TypeScript)
 
-- **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, syncs slash commands, and on startup cleans up old Firestore channel documents (e.g. older than 24 hours).
+- **Entrypoint**: `packages/bot/src/main.ts` — creates the bot, loads commands, and syncs slash commands.
 - **Commands** (in `packages/bot/src/commands/`):
   - **groups**: `/wheel` (text groups) and `/wheelson` (interactive wheel).
   - `/bug` & `/featurerequest` (GitHub integration) are handled in `main.ts`.
@@ -92,7 +92,7 @@ The bot does **not** serve the Activity UI; it creates the guild/channel docs, k
 
 ### 2. Data Persistence
 
-Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted when a lobby empties, and swept after 24h on startup); per-guild `guilds/` docs and `preferences/` docs persist. The bot keeps nothing on disk.
+Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted when a lobby empties, or by a Firestore TTL policy 24h after the bot last wrote to them); per-guild `guilds/` docs and `preferences/` docs persist. The bot keeps nothing on disk.
 
 ### 3. Firebase (Firestore)
 
@@ -104,11 +104,13 @@ Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted
 | Collection         | Doc ID            | Owner / Notes |
 |--------------------|-------------------|---------------|
 | `guilds`           | `{guildId}`       | Per-guild state: `voiceChannels` list, `groupHistory`, `seasonPairs`, `refreshRequest`, plus guild metadata. |
-| `channels`         | `{channelId}`     | Per-voice-channel lobby: `members` (bot-only), `status`, `groups`, `sittingOut`, `guildId` back-reference. Cleaned up after 24h on startup. |
+| `channels`         | `{channelId}`     | Per-voice-channel lobby: `members` (bot-only), `status`, `groups`, `sittingOut`, `guildId` back-reference. Deleted by the `expireAt` TTL policy when abandoned. |
 | `preferences`      | `{discordId}`     | Each player's profile: roles, in-game name, linked character, character class, and media URL. The single source of truth for profiles; written by the Activity and the weekly `refreshCharacterMedia` function, read by the bot and the Activity. |
 | `badGroupReports`  | auto-id           | Frontend writes a doc when a user clicks "report bad group"; the bot listens and files a GitHub issue. |
 | `issueTracking`    | `{issueNumber}`   | Bot writes a tracking doc per `/bug` or `/featurerequest` so the GitHub close webhook can DM the reporter. |
 | `config`           | `affixes`, `season` | Read-only at runtime; populated by Cloud Functions. |
+| `rateLimits`       | `{uid}_{endpoint}` | Per-user callable rate-limit windows; Cloud Functions only. Expired by TTL. |
+| `characterCache`   | `{region}:{realm}:{name}` | Battle.net lookup cache; Cloud Functions only. Expired by TTL 30 days after its last refresh. |
 
 **`channels/{channelId}` document shape:**
 
@@ -122,8 +124,9 @@ Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted
 | `groups`   | array     | Computed groups (tank, healer, dps); filled by the frontend on transition to `spinning` |
 | `sittingOut` | array   | IDs of players sitting out the current round |
 | `isDebug`  | boolean   | Whether this lobby is from `/test` |
-| `createdAt`| timestamp | Used for startup cleanup |
-| `lastActive`| timestamp | Updated on writes; used for the 24h cleanup query |
+| `createdAt`| timestamp | When the lobby was created |
+| `lastActive`| timestamp | Updated on lobby creation and on every bot `members` write |
+| `expireAt` | timestamp | Bot-only. 24h after the bot's latest write; the TTL policy in `firestore.indexes.json` deletes the lobby once it passes |
 
 ```mermaid
 erDiagram
@@ -206,7 +209,7 @@ The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes
 - **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
 - **Key Functions**:
   - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` and `config/season` Firestore documents.
-  - `lookupCharacter` (`lookupCharacter.ts`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characters/` collection).
+  - `lookupCharacter` (`lookupCharacter.ts`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characterCache/` collection, expired by TTL).
   - `refreshCharacterMedia` (`refreshCharacterMedia.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
   - `onGithubIssueWebhook` (`githubWebhook.ts`): An HTTP (`onRequest`) webhook that receives GitHub issue closed events and notifies the reporting Discord user directly.
 - **Manual runs**: There are no callable "refresh now" functions. To run a scheduled function on demand, use **Force run** on its job in Cloud Scheduler (Google Cloud console).

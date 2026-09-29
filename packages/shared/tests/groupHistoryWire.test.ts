@@ -89,4 +89,17 @@ describe('decodeGroupHistoryRounds', () => {
   it('returns an empty array for an empty input', () => {
     expect(decodeGroupHistoryRounds([])).toEqual([]);
   });
+
+  it('returns an empty array when rounds is not an array', () => {
+    expect(decodeGroupHistoryRounds(undefined)).toEqual([]);
+    expect(decodeGroupHistoryRounds({ groups: [] })).toEqual([]);
+  });
+
+  it('drops malformed groups and players inside a round', () => {
+    const good = group('a');
+    const decoded = decodeGroupHistoryRounds([
+      { groups: [good, 'not-a-group', { tank: { discordId: 'no-name' }, healer: null, dps: [] }] },
+    ]);
+    expect(decoded).toEqual([[good, { tank: null, healer: null, dps: [] }]]);
+  });
 });

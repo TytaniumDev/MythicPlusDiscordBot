@@ -87,6 +87,7 @@ async function seedLobby(): Promise<void> {
     isDebug: false,
     createdAt: now,
     lastActive: now,
+    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
   await Promise.all(ROSTER.map((p) => db.doc(`preferences/${p.discordId}`).set({
     roles: ROLES.get(p.discordId),

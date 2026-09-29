@@ -4,6 +4,7 @@ import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firesto
 import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 import { battleNetSecrets, getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
+import { characterCacheEntry, characterCachePath } from './characterCache.js';
 
 interface LinkedCharacter {
   name: string;
@@ -176,10 +177,7 @@ export async function runRefresh(): Promise<RefreshSummary> {
       // don't reintroduce stale mediaUrl within the 24h cache TTL. Skipped on
       // a media failure so the cache keeps the URL lookupCharacter falls back to.
       if (result.mediaUrl != null) {
-        batch.set(
-          db.doc(`characters/${region}/${realm.toLowerCase()}/${name.toLowerCase()}`),
-          { result, cachedAt: FieldValue.serverTimestamp() },
-        );
+        batch.set(db.doc(characterCachePath(region, realm, name)), characterCacheEntry(result));
       }
       await batch.commit();
 

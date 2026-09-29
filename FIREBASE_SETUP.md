@@ -42,16 +42,16 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 2. Click "Create Database".
 3. Choose **Standard** edition and select a location (e.g. your nearest region).
 4. After the database is created, open the **Rules** tab.
-5. The canonical security rules for this project live in [`firestore.rules`](firestore.rules) at the repo root. Copy that file into the Rules tab in the Firebase Console (or deploy via `firebase deploy --only firestore:rules`). It covers all collections used at runtime:
+5. The canonical security rules for this project live in [`firestore.rules`](firestore.rules) at the repo root. Copy that file into the Rules tab in the Firebase Console (or deploy via `firebase deploy --only firestore:rules,firestore:indexes`; `deploy.yml` does this on every merge to `main`). It covers all collections used at runtime:
 
    Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). The bot and Cloud Functions use the Admin SDK, which bypasses the rules.
 
    - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs` / `refreshRequest`; `guildName`, `guildIconUrl` and `voiceChannels` are bot-owned. No delete.
-   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `members` (who is in voice) is bot-only: clients can't write it at all, so a lobby a client opens stays empty until the bot fills it in. No delete.
+   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `members` (who is in voice) and `expireAt` (the TTL expiry) are bot-only: clients can't write them at all, so a lobby a client opens stays empty until the bot fills it in. No delete.
    - `preferences/{discordId}` — each player's profile, and its only copy. Doc ID must be a numeric Discord ID; roles must be known role names, `mediaUrl` must be a `render.worldofwarcraft.com` URL, `characterClass` a known class. No delete.
    - `config/{docId}` — public read; writes are server-only (Cloud Functions populate `config/affixes` and `config/season`).
    - `rateLimits/{docId}` — server-only (read and write deny).
-   - `characters/{region}/{realm}/{name}` — server-only; reads/writes go through the `lookupCharacter` Cloud Function.
+   - `characterCache/{region}:{realm}:{name}` — server-only; the Battle.net lookup cache written by the `lookupCharacter` and `refreshCharacterMedia` Cloud Functions.
    - `badGroupReports/{docId}` — clients can `create` a report with the exact report shape, for a guild that exists; read/update/delete are server-only. The bot listens server-side and files GitHub issues.
    - `issueTracking/{issueNumber}` — implicitly server-only (no rule grants client access); written by the bot and consumed by the GitHub close webhook Cloud Function.
 
@@ -67,7 +67,18 @@ Channel documents are ephemeral lobbies and are cleaned up; guild documents are 
 - **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the channel doc stays so results remain visible.
 - **Empty lobby.** When the last person leaves a tracked voice channel, the bot deletes its channel doc.
 - **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
-- **Startup cleanup.** On **bot startup**, the bot deletes any channel document whose `lastActive` is older than **24 hours**.
+- **TTL policies.** Firestore deletes docs whose `expireAt` has passed (usually within a day of it). The policies are code in the `fieldOverrides` of [`firestore.indexes.json`](firestore.indexes.json), applied by `firebase deploy --only firestore:indexes`:
+  - `channels.expireAt` — the bot sets it to 24 hours after its latest write to the lobby (creating it, or rewriting `members` on a voice change or at bot startup), so an abandoned lobby goes away a day after the bot last saw activity.
+  - `rateLimits.expireAt` — the end of the doc's rate-limit window.
+  - `characterCache.expireAt` — 30 days after the entry was last refreshed.
+
+  Guild docs have no `expireAt` and never expire. Managing TTL policies needs `roles/datastore.indexAdmin` (or Owner) on the deploy service account. To set them up without a deploy:
+
+  ```bash
+  gcloud firestore fields ttls update expireAt --collection-group=channels --enable-ttl --project=<project-id>
+  gcloud firestore fields ttls update expireAt --collection-group=rateLimits --enable-ttl --project=<project-id>
+  gcloud firestore fields ttls update expireAt --collection-group=characterCache --enable-ttl --project=<project-id>
+  ```
 
 ## 7. Cloud Functions secrets
 

@@ -95,6 +95,8 @@ async function seedChannel(status: 'lobby' | 'spinning' | 'completed'): Promise<
     revealedGroups: 0,
     sittingOut: [],
     isDebug: false,
+    // The bot stamps a TTL expiry on every lobby write.
+    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 }
 
@@ -264,6 +266,19 @@ describe('channels', () => {
     }));
   });
 
+  it('rejects clients setting or clearing the TTL expiry', async () => {
+    await seedGuild();
+    await seedChannel('lobby');
+    await denied(updateDoc(channelRef(), { expireAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) }));
+    await denied(updateDoc(channelRef(), { expireAt: null }));
+    await denied(setDoc(doc(db, 'channels', '200000000000000009'), {
+      channelId: '200000000000000009',
+      guildId: GUILD_ID,
+      status: 'lobby',
+      expireAt: new Date(),
+    }));
+  });
+
   it('rejects the retired players and refreshPlayers fields', async () => {
     await seedGuild();
     await seedChannel('lobby');
@@ -373,7 +388,7 @@ describe('server-only collections', () => {
   it('rejects client writes to config, rate limits, the character cache and issue tracking', async () => {
     await denied(setDoc(doc(db, 'config', 'affixes'), { affixes: [] }));
     await denied(setDoc(doc(db, 'rateLimits', 'x_lookupCharacter'), { count: 0 }));
-    await denied(setDoc(doc(db, 'characters', 'us', 'stormrage', 'tankone'), { result: {} }));
+    await denied(setDoc(doc(db, 'characterCache', 'us:stormrage:tankone'), { result: {} }));
     await denied(setDoc(doc(db, 'issueTracking', '1'), { discordUserId: PLAYER_ID }));
   });
 });

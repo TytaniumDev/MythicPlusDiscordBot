@@ -20,6 +20,18 @@ export let SERVER_TIMESTAMP: unknown = { __sentinel: 'serverTimestamp' };
 // Replaced with FieldValue.delete() at initialization time.
 export let DELETE_FIELD: unknown = null;
 
+/**
+ * A lobby the bot hasn't written to for this long is deleted by the
+ * `channels.expireAt` TTL policy (firestore.indexes.json). The bot writes
+ * `members` on every voice change and for every lobby when it starts.
+ */
+const LOBBY_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** `lastActive` plus the TTL expiry, stamped on every bot write to a lobby. */
+function lobbyActivity(): { lastActive: unknown; expireAt: Date } {
+  return { lastActive: SERVER_TIMESTAMP, expireAt: new Date(Date.now() + LOBBY_TTL_MS) };
+}
+
 // Firebase Admin SDK types — imported dynamically to allow mocking
 type FirebaseDb = {
   collection: (name: string) => FirebaseCollection;
@@ -82,7 +94,6 @@ export interface IFirebaseService {
   setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void>;
   deleteChannelDoc(channelId: string): Promise<void>;
   getPreferences(discordIds: string[]): Promise<Map<string, PlayerPreferences>>;
-  deleteOldDocs(collection: string, seconds: number): Promise<number>;
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
@@ -230,11 +241,11 @@ export class FirebaseService implements IFirebaseService {
         groups: [],
         isDebug: debug,
         createdAt: SERVER_TIMESTAMP,
-        lastActive: SERVER_TIMESTAMP,
+        ...lobbyActivity(),
       });
     } else {
       await docRef.update({
-        lastActive: SERVER_TIMESTAMP,
+        ...lobbyActivity(),
         status: 'lobby',
         groups: [],
         isDebug: debug,
@@ -254,11 +265,11 @@ export class FirebaseService implements IFirebaseService {
   }
 
   /**
-   * Write a lobby's voice membership. Only the bot writes `members`
-   * (firestore.rules reject client writes to it).
+   * Write a lobby's voice membership and push out its expiry. Only the bot
+   * writes `members` and `expireAt` (firestore.rules reject client writes).
    */
   async setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void> {
-    await this.updateChannelDoc(channelId, { members });
+    await this.updateChannelDoc(channelId, { members, ...lobbyActivity() });
   }
 
   /**
@@ -438,52 +449,5 @@ export class FirebaseService implements IFirebaseService {
 
   // Collection Operations
 
-  /**
-   * Helper method to delete documents in batches of 500.
-   *
-   * @param docs - Array of FirebaseDocSnapshot to delete.
-   * @returns Total count of documents deleted.
-   */
-  private async _deleteDocumentsInBatches(docs: FirebaseDocSnapshot[]): Promise<number> {
-    if (!this.db || docs.length === 0) return 0;
-
-    let batch = this.db.batch();
-    let count = 0;
-    const promises: Promise<unknown>[] = [];
-
-    for (const doc of docs) {
-      batch.delete(doc.ref);
-      count++;
-      if (count % 500 === 0) {
-        promises.push(batch.commit());
-        batch = this.db.batch();
-      }
-    }
-
-    if (count % 500 !== 0) {
-      promises.push(batch.commit());
-    }
-
-    await Promise.all(promises);
-    return count;
-  }
-
-  async deleteOldDocs(collection: string, seconds: number): Promise<number> {
-    if (!this.db) return 0;
-
-    const db = this.db;
-    const cutoff = new Date(Date.now() - seconds * 1000);
-
-    const snapshot = await db.collection(collection).where('lastActive', '<', cutoff).get();
-    const count = await this._deleteDocumentsInBatches(snapshot.docs);
-
-    if (count > 0) {
-      logger.info(
-        `Deleted ${count} old doc(s) from ${collection} (older than ${seconds} seconds)`,
-      );
-    }
-
-    return count;
-  }
 
 }

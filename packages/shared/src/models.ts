@@ -264,9 +264,9 @@ export class WoWPlayer {
    */
   static fromDict(data: WoWPlayerDict | Record<string, unknown>): WoWPlayer {
     const name = data.name as string;
-    const discordId = (data.discordId as string) ?? '';
-    const inGameName = (data.inGameName as string) ?? '';
-    const mediaUrl = (data.mediaUrl as string | null | undefined) ?? null;
+    const discordId = typeof data.discordId === 'string' ? data.discordId : '';
+    const inGameName = typeof data.inGameName === 'string' ? data.inGameName : '';
+    const mediaUrl = typeof data.mediaUrl === 'string' && data.mediaUrl ? data.mediaUrl : null;
     const characterClass = toCharacterClass(data.characterClass);
 
     // New compact format: mainRole/offspecs/utilities
