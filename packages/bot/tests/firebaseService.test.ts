@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WoWPlayer, WoWGroup, type WoWGroupDict } from '@mythicplus/shared';
+import { FieldValue } from 'firebase-admin/firestore';
 import { FirebaseService } from '../src/core/firebaseService.js';
 
 
@@ -520,7 +521,7 @@ describe('FirebaseService.getSeasonPairs', () => {
   });
 });
 
-describe('FirebaseService.saveSeasonPairs', () => {
+describe('FirebaseService.bumpSeasonPairs', () => {
   let service: FirebaseService;
 
   function createMockDbWithDocRef() {
@@ -544,29 +545,50 @@ describe('FirebaseService.saveSeasonPairs', () => {
     return { db, mockCollection, mockDocRef };
   }
 
+  function pairGroup(): WoWGroup {
+    return new WoWGroup(WoWPlayer.create('Alice', ['Tank']), WoWPlayer.create('Bob', ['Healer']), []);
+  }
+
   beforeEach(() => {
     service = Object.create(FirebaseService.prototype);
   });
 
   it('does nothing when db is null', async () => {
     service.db = null;
-    await service.saveSeasonPairs('123', { seasonSlug: 'season-mn-1', counts: {} });
+    await service.bumpSeasonPairs('123', 'season-mn-1', [pairGroup()]);
   });
 
-  it('upserts seasonPairs onto the guild doc with merge', async () => {
+  it('increments each pair in place for the stored season', async () => {
     const { db, mockDocRef } = createMockDbWithDocRef();
     service.db = db as unknown as FirebaseService['db'];
-
-    await service.saveSeasonPairs('123', {
-      seasonSlug: 'season-mn-1',
-      counts: { 'A|B': 2 },
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ seasonPairs: { seasonSlug: 'season-mn-1', counts: { 'Alice|Bob': 3 } } }),
     });
+
+    await service.bumpSeasonPairs('123', 'season-mn-1', [pairGroup()]);
 
     expect(db.collection).toHaveBeenCalledWith('guilds');
     expect(db.collection('guilds').doc).toHaveBeenCalledWith('123');
     expect(mockDocRef.set).toHaveBeenCalledWith(
-      { seasonPairs: { seasonSlug: 'season-mn-1', counts: { 'A|B': 2 } } },
+      { seasonPairs: { seasonSlug: 'season-mn-1', counts: { 'Alice|Bob': FieldValue.increment(1) } } },
       { merge: true },
+    );
+  });
+
+  it('replaces the counts when the season changes', async () => {
+    const { db, mockDocRef } = createMockDbWithDocRef();
+    service.db = db as unknown as FirebaseService['db'];
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ seasonPairs: { seasonSlug: 'season-mn-1', counts: { 'Old|Pair': 99 } } }),
+    });
+
+    await service.bumpSeasonPairs('123', 'season-mn-2', [pairGroup()]);
+
+    expect(mockDocRef.set).toHaveBeenCalledWith(
+      { seasonPairs: { seasonSlug: 'season-mn-2', counts: { 'Alice|Bob': 1 } } },
+      { mergeFields: ['seasonPairs'] },
     );
   });
 });

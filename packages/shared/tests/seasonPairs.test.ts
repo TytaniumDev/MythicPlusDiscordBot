@@ -195,3 +195,52 @@ describe('parseSeasonPairs', () => {
     })).toEqual({ seasonSlug: 's1', counts: { 'a|b': 1 } });
   });
 });
+
+import { seasonPairsUpdate } from '../src/seasonPairs.js';
+
+describe('seasonPairsUpdate', () => {
+  const increment = (n: number) => ({ increment: n });
+  const round = [mkGroup(['Alice', 'Bob', 'Carol'])];
+
+  it('increments each pair in place for the stored season', () => {
+    const existing = { seasonSlug: 's1', counts: { 'Alice|Bob': 4, 'Old|Pair': 2 } };
+    expect(seasonPairsUpdate(existing, 's1', round, increment)).toEqual({
+      data: {
+        seasonPairs: {
+          seasonSlug: 's1',
+          counts: {
+            'Alice|Bob': { increment: 1 },
+            'Alice|Carol': { increment: 1 },
+            'Bob|Carol': { increment: 1 },
+          },
+        },
+      },
+      options: { merge: true },
+    });
+  });
+
+  it('replaces the whole field when the season changes', () => {
+    const existing = { seasonSlug: 's1', counts: { 'Old|Pair': 9 } };
+    expect(seasonPairsUpdate(existing, 's2', round, increment)).toEqual({
+      data: { seasonPairs: { seasonSlug: 's2', counts: { 'Alice|Bob': 1, 'Alice|Carol': 1, 'Bob|Carol': 1 } } },
+      options: { mergeFields: ['seasonPairs'] },
+    });
+  });
+
+  it('replaces the field on the first spin', () => {
+    expect(seasonPairsUpdate(null, 's1', round, increment)?.options).toEqual({ mergeFields: ['seasonPairs'] });
+  });
+
+  it('writes nothing when the round has no pairs in the stored season', () => {
+    const existing = { seasonSlug: 's1', counts: { 'Alice|Bob': 4 } };
+    expect(seasonPairsUpdate(existing, 's1', [mkGroup(['Solo'])], increment)).toBeNull();
+  });
+
+  it('still resets a new season when the round has no pairs', () => {
+    const existing = { seasonSlug: 's1', counts: { 'Alice|Bob': 4 } };
+    expect(seasonPairsUpdate(existing, 's2', [mkGroup(['Solo'])], increment)).toEqual({
+      data: { seasonPairs: { seasonSlug: 's2', counts: {} } },
+      options: { mergeFields: ['seasonPairs'] },
+    });
+  });
+});

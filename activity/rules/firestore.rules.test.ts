@@ -1,6 +1,6 @@
 /**
  * firestore.rules against the Firestore emulator. Every "allows" case mirrors
- * a write in src/services/firestoreService.ts, so a rules change that would
+ * (or, where it can, calls) a write in src/services/, so a rules change that would
  * break the activity fails here; the "rejects" cases pin down what the rules
  * exist to block.
  *
@@ -10,6 +10,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { deleteApp, initializeApp, type FirebaseApp } from 'firebase/app';
 import {
   addDoc,
+  arrayRemove,
   arrayUnion,
   collection,
   connectFirestoreEmulator,
@@ -17,6 +18,7 @@ import {
   doc,
   getDoc,
   getFirestore,
+  increment,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -28,11 +30,14 @@ import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import {
   ALL_ROLES,
   CHARACTER_CLASSES,
+  WoWGroup,
   WoWPlayer,
   encodeGroupHistoryRounds,
+  seasonPairsUpdate,
   todayPST,
   type WoWGroupDict,
 } from '@mythicplus/shared';
+import { ensureLobby } from '../src/services/lobby';
 
 const projectId = process.env.GCLOUD_PROJECT;
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
@@ -154,9 +159,13 @@ describe('guilds', () => {
     await allowed(setDoc(guildRef(), {
       groupHistory: { date: todayPST(), rounds: encodeGroupHistoryRounds([[GROUP]]) },
     }, { merge: true }));
-    await allowed(setDoc(guildRef(), {
-      seasonPairs: { seasonSlug: 'season-1', counts: { '1001|1002': 1 } },
-    }, { merge: true }));
+    // A season's first spin replaces the field; later spins increment each pair.
+    const round = [WoWGroup.fromDict(GROUP)];
+    const first = seasonPairsUpdate(null, 'season-1', round, increment);
+    await allowed(setDoc(guildRef(), first!.data, first!.options));
+    const next = seasonPairsUpdate({ seasonSlug: 'season-1', counts: {} }, 'season-1', round, increment);
+    await allowed(setDoc(guildRef(), next!.data, next!.options));
+    expect((await admin.doc(`guilds/${GUILD_ID}`).get()).get('seasonPairs.counts')['Healone|Tankone']).toBe(2);
   });
 
   it('rejects writes from a client that has not signed in', async () => {
@@ -182,35 +191,22 @@ describe('guilds', () => {
 describe('channels', () => {
   const channelRef = () => doc(db, 'channels', CHANNEL_ID);
 
-  it('allows opening a lobby for a new guild (createGuildEntry)', async () => {
+  it('allows opening a lobby (selectChannel, createGuildEntry)', async () => {
     await seedGuild();
-    await allowed(setDoc(channelRef(), {
-      channelId: CHANNEL_ID,
-      channelName: '',
-      guildId: GUILD_ID,
-      status: 'lobby',
-      groups: [],
-      isDebug: false,
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-    }, { merge: true }));
+    await allowed(ensureLobby(db, CHANNEL_ID, 'Lobby', GUILD_ID));
+    expect((await admin.doc(`channels/${CHANNEL_ID}`).get()).get('status')).toBe('lobby');
   });
 
-  it('allows selecting an existing lobby without touching its members (selectChannel)', async () => {
+  it('joins an existing lobby without resetting its round (selectChannel)', async () => {
     await seedGuild();
-    await seedChannel('completed');
-    await allowed(setDoc(channelRef(), {
-      channelId: CHANNEL_ID,
-      channelName: 'Lobby',
-      guildId: GUILD_ID,
-      status: 'lobby',
-      groups: [],
-      sittingOut: [],
-      isDebug: false,
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-    }, { merge: true }));
-    expect((await admin.doc(`channels/${CHANNEL_ID}`).get()).get('members')).toHaveLength(5);
+    await seedChannel('spinning');
+    await admin.doc(`channels/${CHANNEL_ID}`).update({ sittingOut: ['1005'] });
+    await allowed(ensureLobby(db, CHANNEL_ID, 'Lobby', GUILD_ID));
+    const lobby = await admin.doc(`channels/${CHANNEL_ID}`).get();
+    expect(lobby.get('status')).toBe('spinning');
+    expect(lobby.get('groups')).toHaveLength(1);
+    expect(lobby.get('sittingOut')).toEqual(['1005']);
+    expect(lobby.get('members')).toHaveLength(5);
   });
 
   it('allows a full round: spin, reveal, finish (from every client), new round', async () => {
@@ -233,6 +229,7 @@ describe('channels', () => {
     await seedGuild();
     await seedChannel('lobby');
     await allowed(updateDoc(channelRef(), { claimedPlayers: arrayUnion('1001') }));
+    await allowed(updateDoc(channelRef(), { claimedPlayers: arrayRemove('1001') }));
     await allowed(runTransaction(db, async (tx) => {
       await tx.get(channelRef());
       tx.update(channelRef(), { sittingOut: arrayUnion('1002') });
