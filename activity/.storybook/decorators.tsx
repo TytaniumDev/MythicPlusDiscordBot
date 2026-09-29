@@ -17,7 +17,7 @@ type StoreOverrides = Partial<Pick<AppState,
   | 'currentChannelId'
   | 'statusMessage'
   | 'seasonConfig'
-  | 'seasonPairs'
+  | 'connectionLost'
   | 'profiles'
   | 'verifiedDiscordId'
   | 'discordSignInAvailable'
@@ -51,8 +51,13 @@ export function withStore(overrides: StoreOverrides): Decorator {
       }
       return () => {
         useAppStore.getState().resetSession();
-        // App-lifetime auth state that resetSession deliberately keeps.
-        useAppStore.setState({ verifiedDiscordId: null, discordSignInAvailable: false });
+        // App-lifetime state that resetSession deliberately keeps.
+        useAppStore.setState({
+          verifiedDiscordId: null,
+          discordSignInAvailable: false,
+          seasonConfig: null,
+          connectionLost: false,
+        });
       };
     }, []);
     return <Story />;

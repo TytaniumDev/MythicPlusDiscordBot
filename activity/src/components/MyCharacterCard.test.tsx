@@ -40,15 +40,20 @@ describe('MyCharacterCard', () => {
     expect(screen.getByPlaceholderText('PlayerName-ServerName')).toBeTruthy();
   });
 
-  it('toggles sit-out through the session service', () => {
-    useAppStore.setState({ isDemoMode: true });
-    const toggle = vi.spyOn(demoService, 'toggleSitOut').mockResolvedValue();
-    render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
+  it('sits out and rejoins through the session service', () => {
+    useAppStore.setState({ isDemoMode: true, currentChannelId: 'channel-1' });
+    const setSittingOut = vi.spyOn(demoService, 'setSittingOut').mockResolvedValue();
 
+    render(<MyCharacterCard player={gazzi} isSittingOut={false} collapsible />);
     const sitOut = screen.getByRole('switch', { name: 'Sit out' });
     expect(sitOut.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(sitOut);
-    expect(toggle).toHaveBeenCalledWith(gazzi.discordId);
+    expect(setSittingOut).toHaveBeenLastCalledWith('channel-1', gazzi.discordId, true);
+
+    cleanup();
+    render(<MyCharacterCard player={gazzi} isSittingOut collapsible />);
+    fireEvent.click(screen.getByRole('switch', { name: 'Sitting out' }));
+    expect(setSittingOut).toHaveBeenLastCalledWith('channel-1', gazzi.discordId, false);
   });
 
   it('reflects the sitting-out state', () => {

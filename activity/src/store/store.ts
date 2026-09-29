@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AppState, GroupCardData, ViewName } from './types';
-import { WoWGroup, WheelEntry, GuildData, ChannelData, SeasonConfig, SeasonPairs } from '../types';
+import { WoWGroup, WheelEntry, GuildData, ChannelData, SeasonConfig } from '../types';
 import { parseLobbyMembers, parsePlayerPreferences, type PlayerPreferences } from '@mythicplus/shared';
 import { joinPlayers, type Profiles } from '../lib/profiles';
 
@@ -15,12 +15,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   channelData: null,
   isDemoMode: false,
   discordChannelId: null,
-  guildDocCreationInFlight: false,
   seasonConfig: null,
-  seasonPairs: null,
 
   // Status
   statusMessage: '',
+  connectionLost: false,
 
   // Identity
   currentPlayerId: null,
@@ -69,10 +68,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   setDemoMode: (val: boolean) => set({ isDemoMode: val }),
   setDiscordChannelId: (id: string | null) => set({ discordChannelId: id }),
-  setGuildDocCreationInFlight: (val: boolean) => set({ guildDocCreationInFlight: val }),
   setSeasonConfig: (config: SeasonConfig | null) => set({ seasonConfig: config }),
-  setSeasonPairs: (pairs: SeasonPairs | null) => set({ seasonPairs: pairs }),
   setStatusMessage: (msg: string) => set({ statusMessage: msg }),
+  setConnectionLost: (val: boolean) => set({ connectionLost: val }),
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
@@ -123,6 +121,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentPlayerName: null,
       identityResolved: false,
     }),
+  // seasonConfig and connectionLost stay: they come from the app-wide
+  // config/season listener, which only calls back when they change.
   resetSession: () => {
     get().resetIdentity();
     get().resetSpinState();
@@ -135,9 +135,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       players: [],
       isDemoMode: false,
       discordChannelId: null,
-      guildDocCreationInFlight: false,
-      seasonConfig: null,
-      seasonPairs: null,
       statusMessage: '',
     });
   },

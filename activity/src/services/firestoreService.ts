@@ -1,52 +1,18 @@
-import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove, increment, runTransaction, query, where, documentId } from 'firebase/firestore';
+import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { authReady, db } from '../firebase';
-import type { GuildData } from '../types';
+import type { GuildData, WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
-import type { SessionService } from './types';
-import {
-  WoWGroup,
-  chunkIds,
-  createMythicPlusGroups,
-  encodeGroupHistoryRounds,
-  parsePlayerPreferences,
-  seasonPairsUpdate,
-  setGroupHistory,
-  todayPST,
-} from '@mythicplus/shared';
-import type { CharacterClass, PlayerPreferences, WoWGroupDict, WoWPlayerDict } from '@mythicplus/shared';
-import type { Profiles } from '../lib/profiles';
+import type { BadGroupReportInput, SessionService } from './types';
+import { encodeGroupHistoryRounds, parsePlayerPreferences, todayPST } from '@mythicplus/shared';
+import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
-import { eligibleSpinPlayers } from '../lib/spinEligibility';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
-import { ensureLobby } from './lobby';
+import { ensureLobby, lobbyReset, startSpin, todaysRounds } from './lobby';
 
-const MAX_LISTENER_RETRIES = 5;
-const NON_RECOVERABLE_CODES = new Set(['permission-denied', 'not-found', 'unauthenticated']);
 const CHANNEL_DOC_MISSING_GRACE_MS = 10000;
-
-function isRecoverableError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const code = (error as { code?: string }).code;
-    if (code && NON_RECOVERABLE_CODES.has(code)) return false;
-  }
-  return true;
-}
-
-function backoffDelayMs(retryCount: number): number {
-  return Math.min(1000 * 2 ** retryCount, 30000);
-}
-
-/**
- * Today's rounds from a guild's group history, or none when the history is
- * from another day. The history was validated when the guild doc was decoded.
- */
-function todaysRounds(
-  guildData: GuildData | null | undefined,
-  todayIso: string,
-): WoWGroupDict[][] {
-  const history = guildData?.groupHistory;
-  return history && history.date === todayIso ? history.rounds : [];
-}
+// A listener's error callback is final: the SDK retries network trouble on its
+// own and only gives up for good (e.g. a rules rejection).
+const LISTENER_FAILED_MESSAGE = 'Connection lost. Please refresh to try again.';
 
 /** Decode a guild snapshot and report anything malformed in it. */
 function readGuildData(raw: unknown, guildId: string): GuildData {
@@ -55,111 +21,61 @@ function readGuildData(raw: unknown, guildId: string): GuildData {
   return value;
 }
 
+/** Set one player's profile in the store; null when they have no preferences doc. */
+function setProfile(discordId: string, prefs: PlayerPreferences | null): void {
+  const store = useAppStore.getState();
+  store.setProfiles({ ...store.profiles, [discordId]: prefs });
+}
+
 // Every write awaits `authReady` first: firestore.rules reject writes from a
 // client that hasn't finished its anonymous sign-in.
 class FirestoreSessionService implements SessionService {
-  private guildUnsub: (() => void) | null = null;
-  private channelUnsub: (() => void) | null = null;
-  private guildRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  private channelRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  private channelMissingTimer: ReturnType<typeof setTimeout> | null = null;
+  private creatingGuild = false;
+  private profileUnsubs = new Map<string, () => void>();
 
-  /**
-   * Schedule a listener retry with exponential backoff, surfacing a status
-   * message to the user. Stores the timer handle on the instance so a fresh
-   * subscribe call (or unsubscribe) can clear a pending retry instead of
-   * letting it fire and re-establish a stale listener.
-   */
-  private scheduleRetry(
-    slot: 'guildRetryTimer' | 'channelRetryTimer',
-    label: string,
-    retryCount: number,
-    error: unknown,
-    retry: () => void,
-  ): void {
-    if (!isRecoverableError(error) || retryCount >= MAX_LISTENER_RETRIES) {
-      useAppStore.getState().setStatusMessage('Connection lost. Please refresh to try again.');
-      return;
-    }
-    const delayMs = backoffDelayMs(retryCount);
-    console.info(`[Wheelson] Retrying ${label} listener in ${delayMs}ms (attempt ${retryCount + 1})`);
-    useAppStore.getState().setStatusMessage('Connection lost. Reconnecting...');
-    this[slot] = setTimeout(() => {
-      this[slot] = null;
-      retry();
-    }, delayMs);
-  }
-
-  private clearRetry(slot: 'guildRetryTimer' | 'channelRetryTimer'): void {
-    const timer = this[slot];
-    if (timer !== null) {
-      clearTimeout(timer);
-      this[slot] = null;
-    }
-  }
-
-  subscribeToGuild(guildId: string, retryCount = 0): () => void {
-    this.clearRetry('guildRetryTimer');
-    this.guildUnsub?.();
-    this.guildUnsub = null;
-
-    const docRef = doc(db, 'guilds', guildId);
-
-    this.guildUnsub = onSnapshot(
-      docRef,
+  subscribeToGuild(guildId: string, launchChannelId: string | null): () => void {
+    return onSnapshot(
+      doc(db, 'guilds', guildId),
       (docSnap) => {
         const s = useAppStore.getState();
         if (docSnap.exists()) {
-          const data = readGuildData(docSnap.data(), guildId);
-          s.setGuildData(data);
-          s.setSeasonPairs(data.seasonPairs ?? null);
+          s.setGuildData(readGuildData(docSnap.data(), guildId));
           s.setStatusMessage('');
           return;
         }
-        if (s.guildDocCreationInFlight) return;
-        s.setGuildDocCreationInFlight(true);
+        // Only the server can say the guild is new: offline, the cache
+        // doesn't know about it either.
+        if (docSnap.metadata.fromCache || this.creatingGuild) return;
+        this.creatingGuild = true;
         s.setStatusMessage('Setting up session...');
-        this.createGuildEntry(guildId, s.discordChannelId)
+        this.createGuildEntry(guildId, launchChannelId)
           .catch((err) => {
             reportError(err, { tag: 'firestoreService.createGuildEntry' });
             useAppStore.getState().setStatusMessage('Failed to set up session. Please try again.');
           })
           .finally(() => {
-            useAppStore.getState().setGuildDocCreationInFlight(false);
+            this.creatingGuild = false;
           });
       },
       (error) => {
-        // Report only on the first failure to avoid 5x amplification across the
-        // retry chain. The status-message UX is driven separately by scheduleRetry.
-        if (retryCount === 0) {
-          reportError(error, { tag: 'firestoreService.guildListener' });
-        }
-        this.scheduleRetry('guildRetryTimer', 'guild', retryCount, error, () =>
-          this.subscribeToGuild(guildId, retryCount + 1),
-        );
+        reportError(error, { tag: 'firestoreService.guildListener' });
+        useAppStore.getState().setStatusMessage(LISTENER_FAILED_MESSAGE);
       },
     );
-
-    return () => {
-      this.clearRetry('guildRetryTimer');
-      this.guildUnsub?.();
-      this.guildUnsub = null;
-    };
   }
 
-  subscribeToChannel(channelId: string, retryCount = 0): () => void {
-    this.clearRetry('channelRetryTimer');
-    this.clearChannelMissingTimer();
-    this.channelUnsub?.();
-    this.channelUnsub = null;
+  subscribeToChannel(channelId: string): () => void {
+    let missingTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearMissingTimer = () => {
+      if (missingTimer !== null) clearTimeout(missingTimer);
+      missingTimer = null;
+    };
 
-    const docRef = doc(db, 'channels', channelId);
-
-    this.channelUnsub = onSnapshot(
-      docRef,
+    const unsub = onSnapshot(
+      doc(db, 'channels', channelId),
       (docSnap) => {
         if (docSnap.exists()) {
-          this.clearChannelMissingTimer();
+          clearMissingTimer();
           const { value, issues } = decodeChannelData(docSnap.data(), channelId);
           reportDecodeIssues('firestoreService.decodeChannel', `channels/${channelId}`, issues);
           useAppStore.getState().setChannelData(value);
@@ -167,90 +83,87 @@ class FirestoreSessionService implements SessionService {
         }
         // The listener fires `exists()=false` during normal lifecycle —
         // before `selectChannel` finishes creating the doc, or before the bot
-        // has written it on activity launch. Only escalate if the doc is
-        // still missing after a grace period AND the user is on a view that
+        // has written it on activity launch. Only escalate if the server
+        // still has no doc after a grace period AND the user is on a view that
         // depends on channel data; on home/channels the doc may legitimately
         // not exist yet (URL/Discord SDK sets currentChannelId before the
         // user has selected a channel, which is what bootstraps the doc).
-        if (this.channelMissingTimer === null) {
-          this.channelMissingTimer = setTimeout(() => {
-            this.channelMissingTimer = null;
-            const view = useAppStore.getState().currentView;
-            if (view === 'home' || view === 'channels') return;
-            reportError(
-              new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
-              { tag: 'firestoreService.channelDocMissing', extra: { channelId, view } },
-            );
-          }, CHANNEL_DOC_MISSING_GRACE_MS);
-        }
+        if (docSnap.metadata.fromCache || missingTimer !== null) return;
+        missingTimer = setTimeout(() => {
+          missingTimer = null;
+          const view = useAppStore.getState().currentView;
+          if (view === 'home' || view === 'channels') return;
+          reportError(
+            new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
+            { tag: 'firestoreService.channelDocMissing', extra: { channelId, view } },
+          );
+        }, CHANNEL_DOC_MISSING_GRACE_MS);
       },
       (error) => {
-        if (retryCount === 0) {
-          reportError(error, { tag: 'firestoreService.channelListener' });
-        }
-        this.scheduleRetry('channelRetryTimer', 'channel', retryCount, error, () =>
-          this.subscribeToChannel(channelId, retryCount + 1),
-        );
+        reportError(error, { tag: 'firestoreService.channelListener' });
+        useAppStore.getState().setStatusMessage(LISTENER_FAILED_MESSAGE);
       },
     );
 
     return () => {
-      this.clearRetry('channelRetryTimer');
-      this.clearChannelMissingTimer();
-      this.channelUnsub?.();
-      this.channelUnsub = null;
+      clearMissingTimer();
+      unsub();
     };
   }
 
-  private clearChannelMissingTimer(): void {
-    if (this.channelMissingTimer !== null) {
-      clearTimeout(this.channelMissingTimer);
-      this.channelMissingTimer = null;
+  /**
+   * Follow the preferences docs of exactly these players (the lobby members
+   * plus the current user) and keep `profiles` in the store current. One
+   * listener per doc, so a player joining or leaving adds or drops a single
+   * listener instead of re-reading everyone's profile. Local writes show up
+   * immediately through Firestore's latency compensation, so edits need no
+   * optimistic store update. Pass [] to stop following.
+   */
+  followProfiles(discordIds: readonly string[]): void {
+    const wanted = new Set(discordIds);
+    const dropped = [...this.profileUnsubs.keys()].filter((id) => !wanted.has(id));
+    if (dropped.length > 0) {
+      for (const id of dropped) {
+        this.profileUnsubs.get(id)?.();
+        this.profileUnsubs.delete(id);
+      }
+      const store = useAppStore.getState();
+      store.setProfiles(Object.fromEntries(Object.entries(store.profiles).filter(([id]) => wanted.has(id))));
+    }
+
+    for (const id of wanted) {
+      if (this.profileUnsubs.has(id)) continue;
+      this.profileUnsubs.set(id, onSnapshot(
+        doc(db, 'preferences', id),
+        (snap) => setProfile(id, snap.exists() ? parsePlayerPreferences(snap.data()) : null),
+        (err) => {
+          reportError(err, { tag: 'firestoreService.profileListener' });
+          // Show this player without a profile rather than waiting forever.
+          if (!(id in useAppStore.getState().profiles)) setProfile(id, null);
+        },
+      ));
     }
   }
 
   /**
-   * Follow the preferences docs for these players (the lobby members plus the
-   * current user) and keep `profiles` in the store current. Local writes show
-   * up immediately through Firestore's latency compensation, so edits need no
-   * optimistic store update.
+   * Follow `config/season`, and through it the connection. Every live client
+   * follows this doc and never writes it, so its snapshots' `fromCache` flag
+   * flips only when the connection drops and comes back. The SDK reconnects
+   * every listener by itself; this just tells the player it's happening.
+   * Only a connection that was up can be lost: before the first server
+   * snapshot (still connecting, or Playwright's stalled Firestore) nothing shows.
    */
-  subscribeToProfiles(discordIds: string[]): () => void {
-    const wanted = new Set(discordIds);
-    // Replace one chunk's entries: every ID in it is now known, with or
-    // without a doc. Also drops IDs no longer wanted.
-    const applyChunk = (chunk: string[], docs: Map<string, PlayerPreferences>) => {
-      const store = useAppStore.getState();
-      const next: Profiles = {};
-      for (const [id, prefs] of Object.entries(store.profiles)) {
-        if (wanted.has(id)) next[id] = prefs;
-      }
-      for (const id of chunk) next[id] = docs.get(id) ?? null;
-      store.setProfiles(next);
-    };
-    const unsubs = chunkIds(discordIds).map((chunk) => onSnapshot(
-      query(collection(db, 'preferences'), where(documentId(), 'in', chunk)),
-      (snap) => applyChunk(chunk, new Map(snap.docs.map((d) => [d.id, parsePlayerPreferences(d.data())]))),
-      (err) => {
-        reportError(err, { tag: 'firestoreService.profilesListener' });
-        // Show these players without profiles rather than waiting forever.
-        const known = useAppStore.getState().profiles;
-        applyChunk(chunk, new Map(chunk.flatMap((id) => {
-          const prefs = known[id];
-          return prefs ? [[id, prefs] as const] : [];
-        })));
-      },
-    ));
-    return () => unsubs.forEach((unsub) => unsub());
-  }
-
   subscribeToSeasonConfig(): () => void {
-    const ref = doc(db, 'config', 'season');
+    let connected = false;
     const unsub = onSnapshot(
-      ref,
+      doc(db, 'config', 'season'),
+      { includeMetadataChanges: true },
       (snap) => {
+        const store = useAppStore.getState();
+        if (!snap.metadata.fromCache) connected = true;
+        store.setConnectionLost(connected && snap.metadata.fromCache);
         if (!snap.exists()) {
-          useAppStore.getState().setSeasonConfig(null);
+          store.setSeasonConfig(null);
           return;
         }
         const data = snap.data() as Record<string, unknown>;
@@ -259,7 +172,7 @@ class FirestoreSessionService implements SessionService {
           typeof data.blizzardSeasonId === 'number' &&
           typeof data.expansionId === 'number'
         ) {
-          useAppStore.getState().setSeasonConfig({
+          store.setSeasonConfig({
             slug: data.slug,
             blizzardSeasonId: data.blizzardSeasonId,
             expansionId: data.expansionId,
@@ -268,92 +181,35 @@ class FirestoreSessionService implements SessionService {
       },
       (err) => reportError(err, { tag: 'firestoreService.seasonConfig' }),
     );
-    return () => unsub();
+    return () => {
+      unsub();
+      useAppStore.getState().setConnectionLost(false);
+    };
   }
 
-  async requestSpin(): Promise<void> {
-    const { currentChannelId, channelData, guildData, players: lobbyPlayers } = useAppStore.getState();
-    if (!currentChannelId || !channelData) return;
-
-    const guildId = channelData.guildId || null;
-    const today = todayPST();
-
-    // Restore today's group history so the algorithm avoids repeat
-    // groupings. It was validated when the guild doc was decoded.
-    const existingRounds = todaysRounds(guildData, today);
-    setGroupHistory(existingRounds.map(round => round.map(g => WoWGroup.fromDict(g))), guildId);
-
-    const players = eligibleSpinPlayers(lobbyPlayers, channelData.sittingOut ?? []);
-
-    const groups = createMythicPlusGroups(players, true, guildId);
-    const groupDicts = groups.map(g => g.toDict());
-
-    // Start the round first. The rules reject it if a round is already
-    // spinning (e.g. a second Spin click), and in that case nothing below
-    // should be recorded.
+  async requestSpin(channelId: string, players: readonly WoWPlayer[], seasonSlug: string | null): Promise<void> {
     await authReady;
-    const channelRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(channelRef, {
-      status: 'spinning',
-      groups: groupDicts,
-      revealedGroups: 0,
-    });
-
-    // Persist group history to guild doc for cross-session diversity.
-    // Intentionally not awaited — history save should not block the spin.
-    if (guildId) {
-      const guildDocRef = doc(db, 'guilds', guildId);
-      const wireRounds = encodeGroupHistoryRounds([...existingRounds, groupDicts]);
-      setDoc(guildDocRef, {
-        groupHistory: { date: today, rounds: wireRounds },
-      }, { merge: true }).catch(err => reportError(err, { tag: 'firestoreService.saveGroupHistory' }));
-
-      // Bump season pair counts for cross-session affinity tracking. Skip
-      // for debug channels so test spins don't pollute the real tally.
-      if (!(channelData.isDebug ?? false)) {
-        const { seasonConfig: cfg, seasonPairs: existing } = useAppStore.getState();
-        const update = cfg ? seasonPairsUpdate(existing, cfg.slug, groups, increment) : null;
-        if (update) {
-          setDoc(guildDocRef, update.data, update.options).catch((err) =>
-            reportError(err, { tag: 'firestoreService.saveSeasonPairs' }),
-          );
-        }
-      }
-    }
+    await startSpin(db, channelId, players, seasonSlug);
   }
 
-  async revealAllGroups(): Promise<void> {
-    const { currentChannelId, fullGroups } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async revealAllGroups(channelId: string, groupCount: number): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { revealedGroups: fullGroups.length });
+    await updateDoc(doc(db, 'channels', channelId), { revealedGroups: groupCount });
   }
 
-  async finishSequence(): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async finishSequence(channelId: string): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'completed' });
+    await updateDoc(doc(db, 'channels', channelId), { status: 'completed' });
   }
 
-  async newRound(): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async newRound(channelId: string): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
+    await updateDoc(doc(db, 'channels', channelId), lobbyReset());
   }
 
-  async cancelToLobby(): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async cancelToLobby(channelId: string): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
-    // round that was cancelled, so players re-enter the pool for the next attempt.
-    await updateDoc(docRef, { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
+    await updateDoc(doc(db, 'channels', channelId), lobbyReset());
   }
 
   async saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void> {
@@ -394,16 +250,13 @@ class FirestoreSessionService implements SessionService {
     await ensureLobby(db, channelId, channelName || '', guildId);
   }
 
-  async reportBadGroup(title: string, description: string): Promise<void> {
-    const { channelData, guildData, currentPlayerName, currentPlayerId, players: lobbyPlayers } = useAppStore.getState();
-    if (!channelData) return;
-
+  async reportBadGroup({ title, description, reporterName, reporterId, lobby, lobbyPlayers }: BadGroupReportInput): Promise<void> {
     // Use the players actually in the spin output, not the lobby roster —
     // voice-channel membership drifts (people leave to start the dungeon)
     // between spin and report, which would otherwise silently truncate the
     // input list and make the report unreproducible.
-    const playersFromGroups = channelData.groups.flatMap((g) => {
-      const members: WoWPlayerDict[] = [];
+    const playersFromGroups = lobby.groups.flatMap((g) => {
+      const members: WoWPlayer[] = [];
       if (g.tank) members.push(g.tank);
       if (g.healer) members.push(g.healer);
       if (g.dps) members.push(...g.dps);
@@ -411,16 +264,13 @@ class FirestoreSessionService implements SessionService {
     });
     const players = playersFromGroups.length > 0 ? playersFromGroups : lobbyPlayers;
 
-    // Read fresh guild history rather than trusting the cached `guildData`,
-    // which can lag the spin's own `setDoc` if the user clicks Report before
-    // the onSnapshot listener has caught up. Falls back to the cached value
-    // on read failure so a transient network blip still produces a report
-    // (without history) instead of dropping it entirely.
-    let freshGuildData = guildData;
-    if (channelData.guildId) {
+    // Read the guild's history fresh: the report needs the rounds before this
+    // one. A failed read still files the report, without history.
+    let guild: GuildData | null = null;
+    if (lobby.guildId) {
       try {
-        const snap = await getDoc(doc(db, 'guilds', channelData.guildId));
-        if (snap.exists()) freshGuildData = readGuildData(snap.data(), channelData.guildId);
+        const snap = await getDoc(doc(db, 'guilds', lobby.guildId));
+        if (snap.exists()) guild = readGuildData(snap.data(), lobby.guildId);
       } catch (err) {
         reportError(err, { tag: 'firestoreService.reportBadGroup.getGuildDoc' });
       }
@@ -429,62 +279,43 @@ class FirestoreSessionService implements SessionService {
     // Prior rounds = persisted group history minus the round being reported.
     // The algorithm's pair-history scoring depends on these, so omitting them
     // makes "shouldn't have grouped me with X again" complaints undebuggable.
-    const allRounds = todaysRounds(freshGuildData, todayPST());
+    const allRounds = todaysRounds(guild, todayPST());
     const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
 
     await authReady;
     await addDoc(collection(db, 'badGroupReports'), {
       title,
       description,
-      reporterName: currentPlayerName || 'Unknown',
-      reporterId: currentPlayerId || 'Unknown',
-      guildId: channelData.guildId || null,
+      reporterName: reporterName || 'Unknown',
+      reporterId: reporterId || 'Unknown',
+      guildId: lobby.guildId || null,
       players,
-      groups: channelData.groups,
+      groups: lobby.groups,
       priorRounds: encodeGroupHistoryRounds(priorRounds),
       createdAt: serverTimestamp(),
     });
   }
 
-  async claimPlayer(playerId: string): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async claimPlayer(channelId: string, playerId: string): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { claimedPlayers: arrayUnion(playerId) });
+    await updateDoc(doc(db, 'channels', channelId), { claimedPlayers: arrayUnion(playerId) });
   }
 
-  async unclaimPlayer(playerId: string): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async unclaimPlayer(channelId: string, playerId: string): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-    await updateDoc(docRef, { claimedPlayers: arrayRemove(playerId) });
+    await updateDoc(doc(db, 'channels', channelId), { claimedPlayers: arrayRemove(playerId) });
   }
 
-  async toggleSitOut(discordId: string): Promise<void> {
-    const { currentChannelId } = useAppStore.getState();
-    if (!currentChannelId) return;
+  async setSittingOut(channelId: string, discordId: string, sittingOut: boolean): Promise<void> {
     await authReady;
-    const docRef = doc(db, 'channels', currentChannelId);
-
-    // Use a transaction to read authoritative Firestore state and toggle atomically,
-    // avoiding stale local state from the Zustand store / onSnapshot listener
-    await runTransaction(db, async (transaction) => {
-      const channelDoc = await transaction.get(docRef);
-      if (!channelDoc.exists()) return;
-
-      const { sittingOut } = channelDoc.data();
-      const current: unknown[] = Array.isArray(sittingOut) ? sittingOut : [];
-      if (current.includes(discordId)) {
-        transaction.update(docRef, { sittingOut: arrayRemove(discordId) });
-      } else {
-        transaction.update(docRef, { sittingOut: arrayUnion(discordId) });
-      }
+    // Idempotent array ops say what the player wants, so there's nothing to
+    // read first, and the change shows at once through latency compensation.
+    await updateDoc(doc(db, 'channels', channelId), {
+      sittingOut: sittingOut ? arrayUnion(discordId) : arrayRemove(discordId),
     });
   }
 
-  async createGuildEntry(guildId: string, discordChannelId: string | null): Promise<void> {
+  private async createGuildEntry(guildId: string, launchChannelId: string | null): Promise<void> {
     if (!/^\d+$/.test(guildId) && guildId !== 'demo-guild') {
       // Precondition check on URL-derived input — a user opening a malformed
       // activity link is bad input, not an actionable error.
@@ -493,9 +324,9 @@ class FirestoreSessionService implements SessionService {
     }
 
     await authReady;
-    // Merge: the "missing" snapshot that triggers this can come from the local
-    // cache, and an overwrite would wipe the guild's group history and season
-    // pair counts. The lobby is only created if it doesn't exist.
+    // Merge: an overwrite would wipe the guild's group history and season pair
+    // counts if the doc appeared meanwhile. The lobby is only created if it
+    // doesn't exist.
     const guildDocRef = doc(db, 'guilds', guildId);
     await setDoc(guildDocRef, {
       guildId,
@@ -505,8 +336,8 @@ class FirestoreSessionService implements SessionService {
       lastActive: serverTimestamp(),
     }, { merge: true });
 
-    if (discordChannelId) {
-      await ensureLobby(db, discordChannelId, '', guildId);
+    if (launchChannelId) {
+      await ensureLobby(db, launchChannelId, '', guildId);
     }
   }
 }

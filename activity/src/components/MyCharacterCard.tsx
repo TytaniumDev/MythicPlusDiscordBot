@@ -1,6 +1,8 @@
 import { useState, useEffect, useId, useImperativeHandle, useRef, type Ref } from 'react';
 import type { WoWPlayer } from '../types';
+import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
+import { reportError } from '../lib/sentry';
 import { CharacterImage } from './CharacterImage';
 import { RoleEditor } from './RoleEditor';
 import { getPrimaryRole, getRoleColor, getRoleTags, isPlayerReady } from '../lib/roles';
@@ -65,8 +67,12 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
       ? { label: '✓ Ready', modifier: 'ready' }
       : { label: 'Not ready', modifier: 'warn' };
 
+  const channelId = useAppStore((s) => s.currentChannelId);
   const toggleSitOut = () => {
-    if (player.discordId) service.toggleSitOut(player.discordId);
+    if (!channelId || !player.discordId) return;
+    service.setSittingOut(channelId, player.discordId, !isSittingOut).catch((err) => {
+      reportError(err, { tag: 'MyCharacterCard.setSittingOut' });
+    });
   };
 
   return (

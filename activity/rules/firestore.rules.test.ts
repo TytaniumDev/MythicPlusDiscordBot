@@ -18,8 +18,6 @@ import {
   doc,
   getDoc,
   getFirestore,
-  increment,
-  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -32,12 +30,13 @@ import {
   CHARACTER_CLASSES,
   WoWGroup,
   WoWPlayer,
+  bumpPairCounts,
+  decodeGroupHistoryRounds,
   encodeGroupHistoryRounds,
-  seasonPairsUpdate,
   todayPST,
   type WoWGroupDict,
 } from '@mythicplus/shared';
-import { ensureLobby } from '../src/services/lobby';
+import { ensureLobby, lobbyReset, startSpin } from '../src/services/lobby';
 
 const projectId = process.env.GCLOUD_PROJECT;
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
@@ -71,6 +70,7 @@ const dps = ['1003', '1004', '1005'].map((id) =>
   WoWPlayer.create(`Dps${id}`, ['Ranged'], id, `Dps${id}-Stormrage`).toDict(),
 );
 const GROUP: WoWGroupDict = { tank, healer, dps };
+const PLAYERS = [tank, healer, ...dps];
 
 async function clearEmulator(): Promise<void> {
   const res = await fetch(
@@ -154,20 +154,6 @@ describe('guilds', () => {
     await allowed(updateDoc(guildRef(), { refreshRequest: serverTimestamp() }));
   });
 
-  it('allows saving group history and season pairs (requestSpin)', async () => {
-    await seedGuild();
-    await allowed(setDoc(guildRef(), {
-      groupHistory: { date: todayPST(), rounds: encodeGroupHistoryRounds([[GROUP]]) },
-    }, { merge: true }));
-    // A season's first spin replaces the field; later spins increment each pair.
-    const round = [WoWGroup.fromDict(GROUP)];
-    const first = seasonPairsUpdate(null, 'season-1', round, increment);
-    await allowed(setDoc(guildRef(), first!.data, first!.options));
-    const next = seasonPairsUpdate({ seasonSlug: 'season-1', counts: {} }, 'season-1', round, increment);
-    await allowed(setDoc(guildRef(), next!.data, next!.options));
-    expect((await admin.doc(`guilds/${GUILD_ID}`).get()).get('seasonPairs.counts')['Healone|Tankone']).toBe(2);
-  });
-
   it('rejects writes from a client that has not signed in', async () => {
     await seedGuild();
     await denied(updateDoc(doc(client(null), 'guilds', GUILD_ID), { refreshRequest: serverTimestamp() }));
@@ -212,28 +198,89 @@ describe('channels', () => {
   it('allows a full round: spin, reveal, finish (from every client), new round', async () => {
     await seedGuild();
     await seedChannel('lobby');
-    await allowed(updateDoc(channelRef(), { status: 'spinning', groups: [GROUP], revealedGroups: 0 }));
+    await expect(startSpin(db, CHANNEL_ID, PLAYERS, 'season-1')).resolves.toBe(true);
     await allowed(updateDoc(channelRef(), { revealedGroups: 1 }));
     await allowed(updateDoc(channelRef(), { status: 'completed' }));
     await allowed(updateDoc(channelRef(), { status: 'completed' }));
-    await allowed(updateDoc(channelRef(), { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] }));
+    await allowed(updateDoc(channelRef(), lobbyReset()));
   });
 
   it('allows cancelling a spin back to the lobby (cancelToLobby)', async () => {
     await seedGuild();
     await seedChannel('spinning');
-    await allowed(updateDoc(channelRef(), { status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] }));
+    await allowed(updateDoc(channelRef(), lobbyReset()));
   });
 
-  it('allows claiming a player and sitting out', async () => {
+  it('allows claiming a player and sitting out (setSittingOut)', async () => {
     await seedGuild();
     await seedChannel('lobby');
     await allowed(updateDoc(channelRef(), { claimedPlayers: arrayUnion('1001') }));
     await allowed(updateDoc(channelRef(), { claimedPlayers: arrayRemove('1001') }));
-    await allowed(runTransaction(db, async (tx) => {
-      await tx.get(channelRef());
-      tx.update(channelRef(), { sittingOut: arrayUnion('1002') });
-    }));
+    await allowed(updateDoc(channelRef(), { sittingOut: arrayUnion('1002') }));
+    await allowed(updateDoc(channelRef(), { sittingOut: arrayRemove('1002') }));
+  });
+
+  describe('a spin (requestSpin)', () => {
+    const guildDoc = () => admin.doc(`guilds/${GUILD_ID}`).get();
+    const lobbyGroups = async () => (await admin.doc(`channels/${CHANNEL_ID}`).get()).get('groups') as WoWGroupDict[];
+    const pairsOf = (groups: WoWGroupDict[]) => bumpPairCounts({}, groups.map((g) => WoWGroup.fromDict(g)));
+
+    it('starts the round with its history and season pairs in one write', async () => {
+      await seedGuild();
+      await seedChannel('lobby');
+      await expect(startSpin(db, CHANNEL_ID, PLAYERS, 'season-1')).resolves.toBe(true);
+
+      const groups = await lobbyGroups();
+      expect(groups).toHaveLength(1);
+      const guild = await guildDoc();
+      expect(guild.get('groupHistory.date')).toBe(todayPST());
+      expect(decodeGroupHistoryRounds(guild.get('groupHistory.rounds'))).toEqual([groups]);
+      expect(guild.get('seasonPairs')).toEqual({ seasonSlug: 'season-1', counts: pairsOf(groups) });
+    });
+
+    it("adds to today's history and this season's pairs", async () => {
+      await seedGuild({
+        groupHistory: { date: todayPST(), rounds: encodeGroupHistoryRounds([[GROUP]]) },
+        seasonPairs: { seasonSlug: 'season-1', counts: { 'Other|Pair': 2, 'Healone|Tankone': 4 } },
+      });
+      await seedChannel('lobby');
+      await startSpin(db, CHANNEL_ID, PLAYERS, 'season-1');
+
+      const groups = await lobbyGroups();
+      const guild = await guildDoc();
+      expect(decodeGroupHistoryRounds(guild.get('groupHistory.rounds'))).toEqual([[GROUP], groups]);
+      expect(guild.get('seasonPairs.counts')).toEqual({ ...pairsOf(groups), 'Other|Pair': 2, 'Healone|Tankone': 5 });
+    });
+
+    it("replaces last season's pairs", async () => {
+      await seedGuild({ seasonPairs: { seasonSlug: 'season-0', counts: { 'Other|Pair': 9 } } });
+      await seedChannel('lobby');
+      await startSpin(db, CHANNEL_ID, PLAYERS, 'season-1');
+
+      expect((await guildDoc()).get('seasonPairs')).toEqual({ seasonSlug: 'season-1', counts: pairsOf(await lobbyGroups()) });
+    });
+
+    it('keeps sitting-out players out, and a debug lobby out of the season pairs', async () => {
+      await seedGuild();
+      await seedChannel('lobby');
+      await admin.doc(`channels/${CHANNEL_ID}`).update({ sittingOut: ['1005'], isDebug: true });
+      await startSpin(db, CHANNEL_ID, PLAYERS, 'season-1');
+
+      const placed = (await lobbyGroups()).flatMap((g) => [g.tank, g.healer, ...g.dps]).filter((p) => p !== null);
+      expect(placed.map((p) => p.discordId)).not.toContain('1005');
+      const guild = await guildDoc();
+      expect(guild.get('groupHistory')).toBeDefined();
+      expect(guild.get('seasonPairs')).toBeUndefined();
+    });
+
+    it('starts nothing over a round in progress (a second Spin click)', async () => {
+      await seedGuild();
+      await seedChannel('spinning');
+      await expect(startSpin(db, CHANNEL_ID, PLAYERS, 'season-1')).resolves.toBe(false);
+
+      expect(await lobbyGroups()).toEqual([GROUP]);
+      expect((await guildDoc()).get('groupHistory')).toBeUndefined();
+    });
   });
 
   it('rejects a second spin over a round in progress', async () => {

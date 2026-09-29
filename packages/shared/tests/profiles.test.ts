@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WoWPlayer } from '../src/models';
-import { chunkIds, parseLobbyMembers, parsePlayerPreferences } from '../src/profiles';
+import { parseLobbyMembers, parsePlayerPreferences } from '../src/profiles';
 
 describe('parsePlayerPreferences', () => {
   it('reads every profile field from a full doc', () => {
@@ -48,19 +48,6 @@ describe('parseLobbyMembers', () => {
     expect(parseLobbyMembers({ discordId: '1', name: 'A' })).toEqual([]);
     expect(parseLobbyMembers([null, { discordId: '', name: 'A' }, { discordId: '1' }, { discordId: '2', name: 'B' }]))
       .toEqual([{ discordId: '2', name: 'B' }]);
-  });
-});
-
-describe('chunkIds', () => {
-  it('splits into query-sized chunks', () => {
-    const ids = Array.from({ length: 65 }, (_, i) => String(i));
-    const chunks = chunkIds(ids);
-    expect(chunks.map((c) => c.length)).toEqual([30, 30, 5]);
-    expect(chunks.flat()).toEqual(ids);
-  });
-
-  it('returns no chunks for no IDs', () => {
-    expect(chunkIds([])).toEqual([]);
   });
 });
 

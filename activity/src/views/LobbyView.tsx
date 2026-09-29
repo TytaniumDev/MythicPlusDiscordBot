@@ -51,25 +51,25 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
   const doSpin = async () => {
     setShowSpinWarning(false);
+    const { currentChannelId: channelId, seasonConfig, isDemoMode } = useAppStore.getState();
+    if (!channelId) return;
     try {
       setIsCalculating(true);
 
-      // Auto-sit-out players missing a role.
-      // Each toggleSitOut runs its own Firestore transaction (read+write
-      // round trip), so issuing them in parallel converts O(N) latency to
-      // O(1). The underlying writes use commutative arrayUnion ops, so
-      // there's no ordering hazard.
+      // Auto-sit-out players missing a role. The writes are independent
+      // array ops, so they go out together; the spin reads the lobby after
+      // they land.
       const { missingRole } = categorizeUnreadyPlayers(players, sittingOut);
       await Promise.all(
         missingRole
           .filter((p) => p.discordId && !sittingOut.includes(p.discordId))
-          .map((p) => service.toggleSitOut(p.discordId!)),
+          .map((p) => service.setSittingOut(channelId, p.discordId, true)),
       );
 
-      if (useAppStore.getState().isDemoMode) {
+      if (isDemoMode) {
         onNavigate('wheels');
       }
-      await service.requestSpin();
+      await service.requestSpin(channelId, players, seasonConfig?.slug ?? null);
     } catch (err) {
       reportError(err, { tag: 'LobbyView.requestSpin' });
       useAppStore.getState().setStatusMessage('Spin request failed. Please try again.');

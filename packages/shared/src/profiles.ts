@@ -23,9 +23,6 @@ export interface PlayerPreferences {
   characterClass: CharacterClass | null;
 }
 
-/** Firestore `documentId() in` queries accept at most 30 IDs. */
-export const PREFERENCES_QUERY_CHUNK_SIZE = 30;
-
 function toRoleName(raw: unknown): RoleName | null {
   return typeof raw === 'string' && (ALL_ROLES as readonly string[]).includes(raw)
     ? (raw as RoleName)
@@ -58,13 +55,4 @@ export function parseLobbyMembers(raw: unknown): LobbyMember[] {
     }
   }
   return members;
-}
-
-/** Split IDs into chunks that fit one `documentId() in` query. */
-export function chunkIds(ids: readonly string[], size = PREFERENCES_QUERY_CHUNK_SIZE): string[][] {
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += size) {
-    chunks.push(ids.slice(i, i + size));
-  }
-  return chunks;
 }

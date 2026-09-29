@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { firestoreService } from '../services/firestoreService';
 import { demoService } from '../services/demoService';
@@ -6,67 +6,45 @@ import type { SessionService } from '../services/types';
 import type { AppState } from '../store/types';
 import { loadStoredDiscordId } from '../lib/storedDiscordId';
 
+/** The session service for this mode: in-memory for the demo, Firestore otherwise. */
+export function getSessionService(isDemoMode = useAppStore.getState().isDemoMode): SessionService {
+  return isDemoMode ? demoService : firestoreService;
+}
+
 export function useSessionService(): SessionService {
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  return isDemoMode ? demoService : firestoreService;
+  return getSessionService(isDemoMode);
 }
 
 export function useGuildSubscription() {
   const currentGuildId = useAppStore((s) => s.currentGuildId);
+  const launchChannelId = useAppStore((s) => s.discordChannelId);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!currentGuildId) return;
-
-    if (unsubRef.current) {
-      unsubRef.current();
-    }
-
-    const service = isDemoMode ? demoService : firestoreService;
-    unsubRef.current = service.subscribeToGuild(currentGuildId);
-
-    return () => {
-      if (unsubRef.current) {
-        unsubRef.current();
-        unsubRef.current = null;
-      }
-    };
-  }, [currentGuildId, isDemoMode]);
+    return getSessionService(isDemoMode).subscribeToGuild(currentGuildId, launchChannelId);
+  }, [currentGuildId, launchChannelId, isDemoMode]);
 }
 
 export function useChannelSubscription() {
   const currentChannelId = useAppStore((s) => s.currentChannelId);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!currentChannelId || isDemoMode) return;
-
-    if (unsubRef.current) {
-      unsubRef.current();
-    }
-
-    unsubRef.current = firestoreService.subscribeToChannel(currentChannelId);
-
-    return () => {
-      if (unsubRef.current) {
-        unsubRef.current();
-        unsubRef.current = null;
-      }
-    };
+    if (!currentChannelId) return;
+    return getSessionService(isDemoMode).subscribeToChannel(currentChannelId);
   }, [currentChannelId, isDemoMode]);
 }
 
 /**
  * Follow the preferences docs for everyone in the lobby plus the current user
- * (whose profile the avatar shows on every view). Resubscribes only when that
- * set of IDs changes. Demo mode and `?data=` fixtures (no guild ID) seed
- * `profiles` directly instead.
+ * (whose profile the avatar shows on every view). As that set changes, only
+ * the players who joined or left are followed or dropped. Demo mode and
+ * `?data=` fixtures (no guild ID) seed `profiles` directly instead.
  */
 export function useProfilesSubscription() {
-  const currentGuildId = useAppStore((s) => s.currentGuildId);
-  const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const live = useAppStore((s) => !!s.currentGuildId && !s.isDemoMode);
   const players = useAppStore((s) => s.players);
   const myDiscordId = useMyDiscordId();
 
@@ -76,10 +54,15 @@ export function useProfilesSubscription() {
     return [...ids].sort().join(',');
   }, [players, myDiscordId]);
 
+  // Kept apart from the effect below, whose reruns must not stop everything.
   useEffect(() => {
-    if (!currentGuildId || isDemoMode || !idsKey) return;
-    return firestoreService.subscribeToProfiles(idsKey.split(','));
-  }, [currentGuildId, isDemoMode, idsKey]);
+    if (!live) return;
+    return () => firestoreService.followProfiles([]);
+  }, [live]);
+
+  useEffect(() => {
+    if (live) firestoreService.followProfiles(idsKey ? idsKey.split(',') : []);
+  }, [live, idsKey]);
 }
 
 /**

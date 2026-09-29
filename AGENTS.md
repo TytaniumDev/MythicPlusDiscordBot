@@ -138,7 +138,7 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 - Shared package tests live in `packages/shared/tests/`
 - Frontend E2E tests use Playwright and are in `activity/tests/`. Import `test`/`expect` from `activity/tests/fixtures.ts`, not `@playwright/test`: it stubs Blizzard character renders and holds Firestore requests open so screenshots don't depend on the network.
 - The end-to-end smoke test (`activity/smoke/`, run by `./scripts/smoke-test.sh`) drives the production activity build against the Firestore and Auth emulators. It seeds a lobby with the admin SDK as the bot would, spins twice through the real UI, and checks the groups, group history, and season pairs in Firestore. Keep it passing whenever the spin flow, wire format, or `firestore.rules` change.
-- `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production.
+- `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production. Lobby writes that span several fields or read first (`ensureLobby`, `startSpin`, `lobbyReset` in `activity/src/services/lobby.ts`) are called by the rules tests directly; keep such writes there.
 - Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 
 ### Visual Snapshot Tests

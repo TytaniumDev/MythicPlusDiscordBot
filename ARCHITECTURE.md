@@ -167,8 +167,8 @@ erDiagram
     }
 ```
 
-- **Bot**: creates the channel doc (status `lobby`) and keeps `members` in sync with the voice channel via `SessionService`. It also listens to `badGroupReports` and the per-guild `refreshRequest` field. It doesn't post anything when a round completes.
-- **Frontend**: subscribes with `onSnapshot` to a `guilds/{guildId}` doc and a `channels/{channelId}` doc (using `guildId` and `channelId` from the URL), plus the `preferences` docs of the lobby members and the current user (`where(documentId(), 'in', ids)`, 30 IDs per query). The store joins them into the `players` roster every view reads. Profile edits write only `preferences`; every client's roster follows. When the user clicks Spin it runs `createMythicPlusGroups` client-side, writes the computed `groups` plus `status: spinning` directly, then writes `status: completed` after the animation finishes. The bot does **not** compute groups in Activity mode.
+- **Bot**: creates the channel doc (status `lobby`) and keeps `members` in sync with the voice channel via `SessionService`. It also listens to `badGroupReports`, and to the guilds with a pending `refreshRequest` (a query on that field, so other guild writes don't reach it); it clears the request in the same write as the refreshed channel list. It doesn't post anything when a round completes.
+- **Frontend**: subscribes with `onSnapshot` to a `guilds/{guildId}` doc and a `channels/{channelId}` doc (using `guildId` and `channelId` from the URL), plus the `preferences` docs of the lobby members and the current user (one listener per doc, so a player joining or leaving adds or drops just their listener). The store joins them into the `players` roster every view reads. Profile edits write only `preferences`; every client's roster follows. When the user clicks Spin it runs `createMythicPlusGroups` client-side and writes the computed `groups` plus `status: spinning` in a transaction, then writes `status: completed` after the animation finishes. The bot does **not** compute groups in Activity mode.
 
 Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonical `firestore.rules` at the repo root.
 
@@ -183,7 +183,8 @@ Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonica
   2. **Lobby**: Always render the joined roster (`members` + `preferences`); show/hide lobby vs wheel vs results based on `status`.
   - **Profile**: the header avatar and profile modal read the current user's `preferences` doc (their Discord ID is remembered in localStorage between visits; nothing else is). Without a known ID, the modal asks the user to pick themselves in a lobby first.
   - **Connections**: "View Connections" in the profile modal opens a per-player overlay of the guild's season pairings. It isn't part of the status-driven navigation, so it moves no one else, and the round keeps going underneath.
-  3. **Spin**: User clicks “Spin” → frontend runs `createMythicPlusGroups` client-side and writes both `groups` and `status: 'spinning'` to the channel doc in one update. It then appends the round to the guild's `groupHistory` and increments each pair's count in `seasonPairs` (the whole map is replaced when `config/season` changes).
+  3. **Spin**: User clicks “Spin” → one transaction (`startSpin` in `activity/src/services/lobby.ts`) reads the lobby and guild docs, runs `createMythicPlusGroups` client-side, and writes `groups` + `status: 'spinning'` to the lobby together with the guild's `groupHistory` and `seasonPairs` (each pair's count is incremented; the whole map is replaced when `config/season` changes). No client shows the round until the server accepts it, so a second Spin click can't put different groups on one screen.
+  - **Connection**: the SDK reconnects its listeners by itself. The `config/season` listener's `fromCache` flag (every client follows it and none writes it) drives the "Reconnecting…" status.
   4. **Spinning**: Frontend animates the reveal in `activity/src/views/WheelsView.tsx`, then writes `status: 'completed'`.
   5. **Completed**: Show final groups; if the channel doc is deleted (e.g. new `/wheelson` in same channel), show “Activity ended.”
 
@@ -273,8 +274,9 @@ sequenceDiagram
     Firestore-->>Frontend: snapshot → every client's lobby updates
 
     User->>Frontend: click "Spin the wheel"
+    Frontend->>Firestore: transaction: read lobby + guild
     Frontend->>Frontend: createMythicPlusGroups (client-side)
-    Frontend->>Firestore: updateDoc(status: spinning, groups)
+    Frontend->>Firestore: commit(status: spinning, groups, groupHistory, seasonPairs)
     Firestore-->>Frontend: snapshot → run wheel animation
     Frontend->>Frontend: animate wheels
     Frontend->>Firestore: updateDoc(status: completed)
@@ -298,7 +300,7 @@ sequenceDiagram
 | Lobby tracking (survives restarts) | `SessionService.listen` → `FirebaseService.listenForChannels` |
 | Channel/guild doc create/listen/update | `SessionService` + `FirebaseService` |
 | Group algorithm | `packages/shared/src/parallelGroupCreator.ts` |
-| “Spin” handling | Frontend: `activity/src/services/firestoreService.ts` (`requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups` |
+| “Spin” handling | Frontend: `activity/src/services/lobby.ts` (`startSpin`, called by `requestSpin`) — runs the algorithm client-side and writes `spinning`+`groups`, history and season pairs in one transaction |
 | Activity UI and wheel | `activity/src/main.tsx`, `activity/src/views/WheelsView.tsx` |
 | Channel doc cleanup | `packages/bot/src/main.ts` (startup), `SessionService.cleanupChannel` |
 

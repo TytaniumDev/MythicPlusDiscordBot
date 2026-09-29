@@ -129,9 +129,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       if (store.groupCards.length >= totalFull) return;
       if (store.currentGroupIndex >= totalFull) {
         onNavigate('results', { replace: true });
-        service.finishSequence().catch((err) => {
-          reportError(err, { tag: 'WheelsView.finishSequenceEffect' });
-        });
+        if (store.currentChannelId) {
+          service.finishSequence(store.currentChannelId).catch((err) => {
+            reportError(err, { tag: 'WheelsView.finishSequenceEffect' });
+          });
+        }
         return;
       }
       runAutoAdvanceLoop().catch((err) => {
@@ -291,8 +293,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     await delay(300);
     onNavigate('results', { replace: true });
+    const channelId = useAppStore.getState().currentChannelId;
+    if (!channelId) return;
     try {
-      await service.finishSequence();
+      await service.finishSequence(channelId);
     } catch (err) {
       reportError(err, { tag: 'WheelsView.finishSequence' });
     }
@@ -314,8 +318,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       return;
     }
 
+    if (!store.currentChannelId) return;
     try {
-      await service.revealAllGroups();
+      await service.revealAllGroups(store.currentChannelId, store.fullGroups.length);
     } catch (err) {
       reportError(err, { tag: 'WheelsView.revealAllGroups' });
       setWheelStatus('Failed to spin. Please try again.');
@@ -329,9 +334,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     setAutoAdvanceRunning(false);
     onNavigate('lobby');
     gridRef.current?.grid?.cancelAll();
-    useAppStore.getState().resetSpinState();
+    const store = useAppStore.getState();
+    store.resetSpinState();
+    if (!store.currentChannelId) return;
     try {
-      await service.cancelToLobby();
+      await service.cancelToLobby(store.currentChannelId);
     } catch (err) {
       reportError(err, { tag: 'WheelsView.cancelToLobby' });
     }

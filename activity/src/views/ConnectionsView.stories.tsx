@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { withStore } from '../../.storybook/decorators';
+import { mockGuildData } from '../lib/mockData';
+import type { SeasonPairs } from '../types';
 import { ConnectionsView } from './ConnectionsView';
 
 const meta = {
@@ -33,16 +35,18 @@ const populatedCounts: Record<string, number> = {
   'Sable|Ardent': 1,
 };
 
+/** The demo guild carrying this season's pair counts. */
+function withPairs(counts: SeasonPairs['counts']) {
+  return { ...mockGuildData, seasonPairs: { seasonSlug: 'season-tww-3', counts } };
+}
+
 export const Populated: Story = {
   decorators: [withStore({
     isDemoMode: true,
     currentPlayerId: '100000000000000007',
     currentPlayerName: 'Fourseven',
     identityResolved: true,
-    seasonPairs: {
-      seasonSlug: 'season-tww-3',
-      counts: populatedCounts,
-    },
+    guildData: withPairs(populatedCounts),
   })],
 };
 
@@ -52,10 +56,7 @@ export const NoPairsYet: Story = {
     currentPlayerId: '100000000000000007',
     currentPlayerName: 'Fourseven',
     identityResolved: true,
-    seasonPairs: {
-      seasonSlug: 'season-tww-3',
-      counts: {},
-    },
+    guildData: withPairs({}),
   })],
 };
 
@@ -65,9 +66,6 @@ export const NoIdentity: Story = {
     currentPlayerId: null,
     currentPlayerName: null,
     identityResolved: false,
-    seasonPairs: {
-      seasonSlug: 'season-tww-3',
-      counts: populatedCounts,
-    },
+    guildData: withPairs(populatedCounts),
   })],
 };

@@ -2,14 +2,9 @@ import { useCallback } from 'react';
 import { useAppStore } from '../store/store';
 import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
-import { firestoreService } from '../services/firestoreService';
-import { demoService } from '../services/demoService';
 import { reportError } from '../lib/sentry';
 import { loadStoredDiscordId, saveStoredDiscordId } from '../lib/storedDiscordId';
-
-function getSessionService() {
-  return useAppStore.getState().isDemoMode ? demoService : firestoreService;
-}
+import { getSessionService } from './useSession';
 
 function stripDots(s: string): string {
   return s.replace(/\./g, '');
@@ -21,10 +16,17 @@ interface CommitOptions {
   persist: boolean;
 }
 
-/** Release a claim this client made, so the picker stops showing that player as claimed. */
-function releaseClaim(discordId: string): void {
-  getSessionService().unclaimPlayer(discordId).catch((err) => {
-    reportError(err, { tag: 'useIdentity.unclaimPlayer' });
+/**
+ * Claim a player in the current lobby, or release a claim this client made so
+ * the picker stops showing that player as claimed.
+ */
+function setClaim(discordId: string, claimed: boolean): void {
+  const channelId = useAppStore.getState().currentChannelId;
+  if (!channelId) return;
+  const service = getSessionService();
+  const write = claimed ? service.claimPlayer(channelId, discordId) : service.unclaimPlayer(channelId, discordId);
+  write.catch((err) => {
+    reportError(err, { tag: claimed ? 'useIdentity.claimPlayer' : 'useIdentity.unclaimPlayer' });
   });
 }
 
@@ -39,14 +41,12 @@ function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
   const previousId = store.currentPlayerId;
   store.setIdentity(player.discordId ?? null, player.name);
   store.setIdentityResolved(true);
-  if (previousId && previousId !== player.discordId) releaseClaim(previousId);
+  if (previousId && previousId !== player.discordId) setClaim(previousId, false);
   if (!player.discordId) return;
   if (opts.persist) {
     saveStoredDiscordId(player.discordId);
   }
-  getSessionService().claimPlayer(player.discordId).catch((err) => {
-    reportError(err, { tag: 'useIdentity.claimPlayer' });
-  });
+  setClaim(player.discordId, true);
 }
 
 export function useIdentity() {
@@ -64,7 +64,7 @@ export function useIdentity() {
       const replacedBySignIn = verifiedPlayer != null && verifiedPlayer.discordId !== state.currentPlayerId;
       if (stillHere && !replacedBySignIn) return;
       // Player left, or the signed-in Discord user is here as someone else — re-resolve
-      releaseClaim(state.currentPlayerId);
+      setClaim(state.currentPlayerId, false);
       state.resetIdentity();
     }
 
