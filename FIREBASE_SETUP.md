@@ -101,15 +101,37 @@ printf %s "$(doppler secrets get BNET_CLIENT_ID --plain)" \
 
 Functions bind the latest secret version when they deploy, so after a rotation, redeploy (re-run the Deploy workflow) to pick up the new value.
 
-The deploy service account (`FIREBASE_CREDENTIALS_JSON`) needs to read each secret and to grant the functions' runtime service account `roles/secretmanager.secretAccessor` on it. `roles/secretmanager.admin` covers both. If you'd rather not give it that role, grant the accessor binding yourself; the deploy only checks for it:
+Two service accounts need access to every secret:
+
+- **The deploy service account** (`FIREBASE_CREDENTIALS_JSON`) reads each secret during `firebase deploy` and makes sure the runtime account can read it. In this project it has access **one secret at a time**, not project-wide, so a new secret starts with none. The deploy then stops with `Permission 'secretmanager.secrets.get' denied on resource ... (or it may not exist)`.
+- **The functions' runtime service account** (`<PROJECT_NUMBER>-compute@developer.gserviceaccount.com`) reads the value while running. The deploy grants it `roles/secretmanager.secretAccessor` once the deploy account has access.
+
+After creating a secret, copy the access of one that already deploys (`BNET_CLIENT_ID`) onto it. Paste this into [Cloud Shell](https://shell.cloud.google.com) or any shell with `gcloud` logged in as a project Owner, with the new secret names in `NEW_SECRETS`. It's safe to re-run:
 
 ```bash
-gcloud secrets add-iam-policy-binding BNET_CLIENT_ID --project mythicplusdiscordbot \
-  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+bash <<'EOF'
+set -euo pipefail
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+PROJECT=mythicplusdiscordbot
+SOURCE=BNET_CLIENT_ID
+NEW_SECRETS="DISCORD_APPLICATION_ID DISCORD_CLIENT_SECRET"
+
+BINDINGS=$(gcloud secrets get-iam-policy "$SOURCE" --project "$PROJECT" \
+  --flatten="bindings[].members" --format="value(bindings.role,bindings.members)")
+[ -n "$BINDINGS" ] || { echo "No access set on $SOURCE"; exit 1; }
+
+for SECRET in $NEW_SECRETS; do
+  while read -r ROLE MEMBER; do
+    [ -z "$ROLE" ] && continue
+    gcloud secrets add-iam-policy-binding "$SECRET" --project "$PROJECT" \
+      --member="$MEMBER" --role="$ROLE" --condition=None </dev/null >/dev/null
+    echo "$SECRET: $ROLE for $MEMBER"
+  done <<< "$BINDINGS"
+done
+EOF
 ```
 
-`gcloud secrets get-iam-policy BOT_TOKEN --project mythicplusdiscordbot` shows the bindings an already-working secret has, so you can mirror them.
+If a deploy has already failed on the missing access, re-run its failed `deploy-firebase` job afterwards. No new commit is needed.
 
 ### Custom tokens (`discordSignIn`)
 

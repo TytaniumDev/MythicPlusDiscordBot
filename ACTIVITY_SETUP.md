@@ -37,7 +37,7 @@ We have added a GitHub Action to automatically deploy your activity files. You j
 Players can opt in to **Sign in with Discord** inside the activity, so Wheelson knows who they are without the name picker. It needs:
 
 1.  **OAuth2 redirect**: on the **OAuth2** page, add at least one redirect URI. Discord's activity `authorize` flow needs one configured even though the activity never redirects; a placeholder like `https://127.0.0.1` works.
-2.  **Client secret**: on the same page, copy (or reset) the **Client Secret** and store it, with the application ID, in Secret Manager as `DISCORD_CLIENT_SECRET` and `DISCORD_APPLICATION_ID` ([FIREBASE_SETUP.md](FIREBASE_SETUP.md) section 7). Create both before deploying functions, or the deploy fails.
+2.  **Client secret**: on the same page, copy (or reset) the **Client Secret** and store it, with the application ID, in Secret Manager as `DISCORD_CLIENT_SECRET` and `DISCORD_APPLICATION_ID` ([FIREBASE_SETUP.md](FIREBASE_SETUP.md) section 7). Create both, and give them the same access as the existing secrets (the copy script in that section), before deploying functions, or the deploy fails.
 3.  **Custom tokens**: the IAM setup under "Custom tokens" in [FIREBASE_SETUP.md](FIREBASE_SETUP.md) section 7.
 
 If sign-in fails or a player closes Discord's consent prompt, the activity keeps working as before.
