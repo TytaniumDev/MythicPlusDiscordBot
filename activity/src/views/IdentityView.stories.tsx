@@ -111,3 +111,16 @@ export const WithClaimed: Story = {
     }),
   ],
 };
+
+// Inside the Discord activity: signing in with Discord skips the picker.
+export const DiscordSignInOffered: Story = {
+  decorators: [
+    withStore({
+      isDemoMode: true,
+      currentGuildId: 'demo-guild',
+      currentChannelId: 'vc-1',
+      discordSignInAvailable: true,
+      ...buildLobby([tytanium, martz, pandemonium]),
+    }),
+  ],
+};

@@ -46,12 +46,21 @@ export function useIdentity() {
 
   const resolveIdentity = useCallback(async (players: WoWPlayer[]) => {
     const state = useAppStore.getState();
+    const verifiedId = state.verifiedDiscordId;
+    const verifiedPlayer = verifiedId ? players.find((p) => p.discordId === verifiedId) : undefined;
 
     if (state.identityResolved && state.currentPlayerId) {
       const stillHere = players.some((p) => p.discordId === state.currentPlayerId);
-      if (stillHere) return;
-      // Player left — re-resolve
+      const replacedBySignIn = verifiedPlayer != null && verifiedPlayer.discordId !== state.currentPlayerId;
+      if (stillHere && !replacedBySignIn) return;
+      // Player left, or the signed-in Discord user is here as someone else — re-resolve
       state.resetIdentity();
+    }
+
+    // A Discord sign-in is proof of identity: use it and never guess past it.
+    if (verifiedId) {
+      if (verifiedPlayer) commitIdentity(verifiedPlayer, { persist: true });
+      return;
     }
 
     // Check localStorage — value is already persisted, so don't re-write it.

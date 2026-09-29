@@ -19,6 +19,8 @@ type StoreOverrides = Partial<Pick<AppState,
   | 'seasonConfig'
   | 'seasonPairs'
   | 'profiles'
+  | 'verifiedDiscordId'
+  | 'discordSignInAvailable'
 >> & {
   /**
    * The lobby roster as the screens show it. Split into the lobby doc's
@@ -49,6 +51,8 @@ export function withStore(overrides: StoreOverrides): Decorator {
       }
       return () => {
         useAppStore.getState().resetSession();
+        // App-lifetime auth state that resetSession deliberately keeps.
+        useAppStore.setState({ verifiedDiscordId: null, discordSignInAvailable: false });
       };
     }, []);
     return <Story />;
