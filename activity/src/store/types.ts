@@ -1,4 +1,4 @@
-import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer, SeasonConfig, SeasonPairs } from '../types';
+import { WoWGroup, WheelEntry, GuildData, ChannelData, WoWPlayer, SeasonConfig } from '../types';
 import type { PlayerPreferences } from '@mythicplus/shared';
 import type { Profiles } from '../lib/profiles';
 
@@ -19,13 +19,14 @@ export interface AppState {
   guildData: GuildData | null;
   channelData: ChannelData | null;
   isDemoMode: boolean;
+  // The voice channel the Discord activity was launched from, if any.
   discordChannelId: string | null;
-  guildDocCreationInFlight: boolean;
   seasonConfig: SeasonConfig | null;
-  seasonPairs: SeasonPairs | null;
 
   // Status
   statusMessage: string;
+  // The Firestore connection dropped; the SDK is reconnecting on its own.
+  connectionLost: boolean;
 
   // Identity
   currentPlayerId: string | null;
@@ -78,10 +79,9 @@ export interface AppState {
   setChannelData: (data: ChannelData | null) => void;
   setDemoMode: (val: boolean) => void;
   setDiscordChannelId: (id: string | null) => void;
-  setGuildDocCreationInFlight: (val: boolean) => void;
   setSeasonConfig: (config: SeasonConfig | null) => void;
-  setSeasonPairs: (pairs: SeasonPairs | null) => void;
   setStatusMessage: (msg: string) => void;
+  setConnectionLost: (val: boolean) => void;
   setIdentity: (id: string | null, name: string | null) => void;
   setIdentityResolved: (val: boolean) => void;
   setVerifiedDiscordId: (id: string | null) => void;

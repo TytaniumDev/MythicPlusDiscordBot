@@ -175,4 +175,35 @@ describe.skipIf(!shouldRun)('FirebaseService against real Firestore emulator', (
       });
     });
   });
+
+  describe('listenForGuildRefreshRequests', () => {
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 1000));
+
+    it('delivers each request once, and not other guild writes', async () => {
+      const guilds = db.collection('guilds');
+      await guilds.doc('guild-quiet').set({ guildId: 'guild-quiet' });
+      await guilds.doc('guild-refresh').set({ guildId: 'guild-refresh', voiceChannels: [] });
+
+      const requests: string[] = [];
+      const listener = service.listenForGuildRefreshRequests((guildId) => {
+        requests.push(guildId);
+        // As the bot does: the result and the cleared flag in one write.
+        void guilds.doc(guildId).update({
+          voiceChannels: [{ id: '1', name: 'Voice', userCount: 2 }],
+          refreshRequest: admin.firestore.FieldValue.delete(),
+        });
+      });
+      try {
+        await settle();
+        await guilds.doc('guild-quiet').set({ groupHistory: { date: '2026-09-29', rounds: [] } }, { merge: true });
+        await guilds.doc('guild-refresh').update({ refreshRequest: admin.firestore.FieldValue.serverTimestamp() });
+        await settle();
+      } finally {
+        listener?.unsubscribe();
+      }
+
+      expect(requests).toEqual(['guild-refresh']);
+      expect((await guilds.doc('guild-refresh').get()).get('refreshRequest')).toBeUndefined();
+    });
+  });
 });

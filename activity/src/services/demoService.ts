@@ -1,15 +1,15 @@
 import { mockChannelData, mockProfiles, mockGuildData } from '../lib/mockData';
 import { useAppStore } from '../store/store';
-import type { SessionService } from './types';
-import type { ChannelData } from '../types';
+import type { BadGroupReportInput, SessionService } from './types';
+import type { ChannelData, WoWPlayer } from '../types';
 import { createMythicPlusGroups, parsePlayerPreferences } from '@mythicplus/shared';
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { eligibleSpinPlayers } from '../lib/spinEligibility';
+import { lobbyReset } from './lobby';
 
 /**
- * Apply a partial update to the in-memory channelData. No-op when there is
- * no active channel — mirrors the early-return pattern the Firestore service
- * uses around currentChannelId, but for the demo's local-only state.
+ * Apply a partial update to the in-memory channelData. The demo has a single
+ * lobby, so the channel ID the callers pass is not needed to find it.
  */
 function patchChannelData(patch: Partial<ChannelData> | ((data: ChannelData) => Partial<ChannelData>)): void {
   const store = useAppStore.getState();
@@ -20,7 +20,7 @@ function patchChannelData(patch: Partial<ChannelData> | ((data: ChannelData) => 
 }
 
 class DemoSessionService implements SessionService {
-  subscribeToGuild(_guildId: string): () => void {
+  subscribeToGuild(_guildId: string, _launchChannelId: string | null): () => void {
     useAppStore.getState().setGuildData(mockGuildData);
     return () => {};
   }
@@ -29,8 +29,8 @@ class DemoSessionService implements SessionService {
     return () => {};
   }
 
-  async requestSpin(): Promise<void> {
-    const { channelData: currentData, players: lobbyPlayers } = useAppStore.getState();
+  async requestSpin(_channelId: string, lobbyPlayers: readonly WoWPlayer[], _seasonSlug: string | null): Promise<void> {
+    const currentData = useAppStore.getState().channelData;
     if (!currentData) return;
 
     const players = eligibleSpinPlayers(lobbyPlayers, currentData.sittingOut ?? []);
@@ -43,22 +43,20 @@ class DemoSessionService implements SessionService {
     }, 500);
   }
 
-  async revealAllGroups(): Promise<void> {
+  async revealAllGroups(_channelId: string, _groupCount: number): Promise<void> {
     // Demo mode: animation handled directly by WheelsView auto-advance loop
   }
 
-  async finishSequence(): Promise<void> {
+  async finishSequence(_channelId: string): Promise<void> {
     patchChannelData({ status: 'completed' });
   }
 
-  async newRound(): Promise<void> {
-    patchChannelData({ status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
+  async newRound(_channelId: string): Promise<void> {
+    patchChannelData(lobbyReset());
   }
 
-  async cancelToLobby(): Promise<void> {
-    // Intentionally reset sittingOut on cancel — "sit out this round" applies to the
-    // round that was cancelled, so players re-enter the pool for the next attempt.
-    patchChannelData({ status: 'lobby', groups: [], revealedGroups: 0, sittingOut: [] });
+  async cancelToLobby(_channelId: string): Promise<void> {
+    patchChannelData(lobbyReset());
   }
 
   async saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void> {
@@ -92,36 +90,29 @@ class DemoSessionService implements SessionService {
     });
   }
 
-  async reportBadGroup(_title: string, _description: string): Promise<void> {
+  async reportBadGroup(_report: BadGroupReportInput): Promise<void> {
     // No-op in demo
   }
 
-  async claimPlayer(playerId: string): Promise<void> {
+  async claimPlayer(_channelId: string, playerId: string): Promise<void> {
     patchChannelData((data) => {
       const claimed = data.claimedPlayers || [];
       return claimed.includes(playerId) ? {} : { claimedPlayers: [...claimed, playerId] };
     });
   }
 
-  async unclaimPlayer(playerId: string): Promise<void> {
+  async unclaimPlayer(_channelId: string, playerId: string): Promise<void> {
     patchChannelData((data) => ({
       claimedPlayers: (data.claimedPlayers || []).filter((id) => id !== playerId),
     }));
   }
 
-  async toggleSitOut(discordId: string): Promise<void> {
+  async setSittingOut(_channelId: string, discordId: string, sittingOut: boolean): Promise<void> {
     patchChannelData((data) => {
       const current = data.sittingOut ?? [];
-      return {
-        sittingOut: current.includes(discordId)
-          ? current.filter((id) => id !== discordId)
-          : [...current, discordId],
-      };
+      if (current.includes(discordId) === sittingOut) return {};
+      return { sittingOut: sittingOut ? [...current, discordId] : current.filter((id) => id !== discordId) };
     });
-  }
-
-  async createGuildEntry(_guildId: string): Promise<void> {
-    // No-op in demo
   }
 }
 

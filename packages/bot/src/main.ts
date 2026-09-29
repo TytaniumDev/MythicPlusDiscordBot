@@ -375,45 +375,33 @@ async function main() {
       logger.info('Listening for bad group reports from activity frontend');
     }
 
-    // Listen for guild refresh requests from the activity frontend.
+    // Listen for guild refresh requests from the activity frontend. The
+    // request is cleared in the same write as the channel list, so the
+    // listener doesn't take the bot's own write for another request.
     // Look up guilds by string ID directly to avoid Number() precision loss
     // on 64-bit Discord snowflake IDs.
     guildRefreshListener = firebase.listenForGuildRefreshRequests(async (guildId) => {
       try {
+        const update: Record<string, unknown> = { refreshRequest: DELETE_FIELD };
         const discordGuild = readyClient.guilds.cache.get(guildId);
-        if (!discordGuild) {
+        if (discordGuild) {
+          update.voiceChannels = buildVoiceChannelsSnapshot(
+            discordGuild.channels.cache
+              .filter((ch) => ch.isVoiceBased())
+              .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
+            { sorted: true },
+          );
+          update.guildName = discordGuild.name;
+          const guildIconUrl = discordGuild.iconURL();
+          if (guildIconUrl) update.guildIconUrl = guildIconUrl;
+        } else {
           logger.warn(`Guild ${guildId} not found in cache for refresh request`);
-          return;
         }
 
-        const guildName = discordGuild.name;
-        const guildIconUrl = discordGuild.iconURL();
-
-        const voiceChannelsData = buildVoiceChannelsSnapshot(
-          discordGuild.channels.cache
-            .filter((ch) => ch.isVoiceBased())
-            .map((ch) => adaptVoiceChannel(ch as import('discord.js').VoiceChannel)),
-          { sorted: true },
-        );
-
-        const updateData: Record<string, unknown> = {
-          voiceChannels: voiceChannelsData,
-          guildName,
-        };
-        if (guildIconUrl) updateData.guildIconUrl = guildIconUrl;
-
-        await firebase.updateGuildDoc(guildId, updateData);
-        logger.debug(`Refreshed voice channels for guild ${guildId}`);
+        await firebase.updateGuildDoc(guildId, update);
+        if (discordGuild) logger.debug(`Refreshed voice channels for guild ${guildId}`);
       } catch (e) {
         reportError(e, { tags: { handler: 'guildRefresh' }, extra: { guildId } });
-      } finally {
-        // Best-effort clear; the refresh fires again on the next request, so
-        // a transient failure here is recoverable. Keep at debug.
-        try {
-          await firebase.updateGuildDoc(guildId, { refreshRequest: DELETE_FIELD });
-        } catch (e) {
-          logger.debug(`Failed to clear refreshRequest for guild ${guildId}: ${e}`);
-        }
       }
     });
 

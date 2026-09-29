@@ -11,6 +11,7 @@ import { mockPlayers } from '../lib/mockData';
 import { saveStoredDiscordId, loadStoredDiscordId } from '../lib/storedDiscordId';
 
 const [quill, schmeebs, kitchenstink] = mockPlayers;
+const CHANNEL_ID = '200000000000000002';
 
 function resolve(players = mockPlayers) {
   const { result } = renderHook(() => useIdentity());
@@ -19,7 +20,7 @@ function resolve(players = mockPlayers) {
 
 beforeEach(() => {
   localStorage.clear();
-  useAppStore.setState({ isDemoMode: true });
+  useAppStore.setState({ isDemoMode: true, currentChannelId: CHANNEL_ID });
   vi.spyOn(demoService, 'claimPlayer').mockResolvedValue();
   vi.spyOn(demoService, 'unclaimPlayer').mockResolvedValue();
   mocks.getParticipants.mockResolvedValue([]);
@@ -102,8 +103,8 @@ describe('claims', () => {
 
     act(() => result.current.selectPlayer(schmeebs));
 
-    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
-    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(schmeebs.discordId);
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, quill.discordId);
+    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, schmeebs.discordId);
   });
 
   it('picking the same player again keeps the claim', () => {
@@ -121,8 +122,8 @@ describe('claims', () => {
 
     await resolve();
 
-    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
-    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(schmeebs.discordId);
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, quill.discordId);
+    expect(demoService.claimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, schmeebs.discordId);
   });
 
   it('releases the claim when the picked player leaves the lobby', async () => {
@@ -130,6 +131,6 @@ describe('claims', () => {
 
     await resolve(mockPlayers.filter((p) => p.discordId !== quill.discordId));
 
-    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(quill.discordId);
+    expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, quill.discordId);
   });
 });

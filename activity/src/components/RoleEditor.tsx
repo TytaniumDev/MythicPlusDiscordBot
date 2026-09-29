@@ -31,6 +31,7 @@ const LOOKUP_FAILED_MESSAGE = "Couldn't look up the character. Try again in a mo
 
 export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
+  const channelId = useAppStore((s) => s.currentChannelId);
   const service = useSessionService();
 
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
@@ -231,7 +232,12 @@ export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
           <div className="role-editor-row">
             <SecondaryButton
               className={`player-card__sit-out ${isSittingOut ? 'active-sitting-out' : ''}`}
-              onClick={() => service.toggleSitOut(player.discordId)}
+              onClick={() => {
+                if (!channelId) return;
+                service.setSittingOut(channelId, player.discordId, !isSittingOut).catch((err) => {
+                  reportError(err, { tag: 'RoleEditor.setSittingOut' });
+                });
+              }}
             >
               {isSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
             </SecondaryButton>

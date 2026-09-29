@@ -51,6 +51,7 @@ type FirebaseCollection = {
 
 type FirebaseQuery = {
   get: () => Promise<{ docs: FirebaseDocSnapshot[] }>;
+  onSnapshot: (callback: (...args: unknown[]) => void, onError?: (...args: unknown[]) => void) => unknown;
 };
 
 type FirebaseDocRef = {
@@ -325,14 +326,20 @@ export class FirebaseService implements IFirebaseService {
     return { unsubscribe: unsubscribe as () => void };
   }
 
+  /**
+   * Follow the guilds with a pending `refreshRequest`. Only those docs are
+   * delivered (on startup too), not every guild write: guild docs also carry
+   * each spin's history and season pairs. The handler must clear the flag in
+   * the same write as its result, or it sees its own write as a new request.
+   */
   listenForGuildRefreshRequests(
     callback: (guildId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null {
     if (!this.db) return null;
 
-    const collectionRef = this.db.collection('guilds');
+    const pending = this.db.collection('guilds').where('refreshRequest', '!=', null);
 
-    const unsubscribe = collectionRef.onSnapshot(
+    const unsubscribe = pending.onSnapshot(
       (...args: unknown[]) => {
         const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
         for (const change of snapshot.docChanges()) {

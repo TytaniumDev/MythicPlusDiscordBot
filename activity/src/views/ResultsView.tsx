@@ -116,17 +116,23 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
     if (pendingBrowserBack) setShowConfirmBack(true);
   }, [pendingBrowserBack]);
 
+  // Reset the lobby for everyone. Test fixtures have no lobby to reset.
+  const resetLobby = useCallback(async () => {
+    const channelId = useAppStore.getState().currentChannelId;
+    if (channelId) await service.newRound(channelId);
+  }, [service]);
+
   const confirmBack = useCallback(async () => {
     setShowConfirmBack(false);
     useAppStore.getState().setPendingBrowserBack(false);
     try {
-      await service.newRound();
+      await resetLobby();
       onNavigate('lobby');
     } catch (err) {
       reportError(err, { tag: 'ResultsView.newRound' });
       onNavigate('home');
     }
-  }, [service, onNavigate]);
+  }, [resetLobby, onNavigate]);
 
   const cancelBack = useCallback(() => {
     setShowConfirmBack(false);
@@ -138,7 +144,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
 
   const handleNewRound = async () => {
     try {
-      await service.newRound();
+      await resetLobby();
       onNavigate('lobby');
     } catch (err) {
       reportError(err, { tag: 'ResultsView.newRound' });
@@ -147,8 +153,18 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   };
 
   const handleReportSubmit = useCallback(async (title: string, description: string) => {
+    const { channelData: lobby, currentPlayerName, currentPlayerId: reporterId, players: lobbyPlayers } = useAppStore.getState();
     try {
-      await service.reportBadGroup(title, description);
+      if (lobby) {
+        await service.reportBadGroup({
+          title,
+          description,
+          reporterName: currentPlayerName,
+          reporterId,
+          lobby,
+          lobbyPlayers,
+        });
+      }
       setReportSubmitted(true);
       setTimeout(() => setReportSubmitted(false), 5000);
       setShowReportDialog(false);

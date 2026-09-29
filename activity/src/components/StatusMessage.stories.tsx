@@ -17,3 +17,9 @@ export const WithMessage: Story = {
     withStore({ statusMessage: 'Spin request failed. Please try again.' }),
   ],
 };
+
+export const Reconnecting: Story = {
+  decorators: [
+    withStore({ connectionLost: true }),
+  ],
+};

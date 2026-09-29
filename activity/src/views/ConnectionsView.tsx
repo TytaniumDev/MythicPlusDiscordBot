@@ -15,7 +15,7 @@ interface ConnectionsViewProps {
  */
 export function ConnectionsView({ onClose }: ConnectionsViewProps) {
   const currentPlayerName = useAppStore((s) => s.currentPlayerName);
-  const seasonPairs = useAppStore((s) => s.seasonPairs);
+  const seasonPairs = useAppStore((s) => s.guildData?.seasonPairs ?? null);
 
   // Escape closes it, and so does browser back: the view underneath handles
   // the navigation, and its prompts (e.g. "Leave Results?") must be visible.
