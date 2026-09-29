@@ -76,6 +76,8 @@ export function App() {
   const waitingForMyProfile = useAppStore(awaitingMyProfile);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const guildData = useAppStore((s) => s.guildData);
+  const connectionsOpen = useAppStore((s) => s.connectionsOpen);
+  const closeConnections = useCallback(() => useAppStore.getState().setConnectionsOpen(false), []);
   const { saveRecentGuild } = useRecentGuilds();
 
   // Subscribe to the guild and channel docs, and the members' profiles
@@ -213,7 +215,8 @@ export function App() {
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}
       {currentView === 'wheels' && <WheelsView onNavigate={navigateTo} />}
       {currentView === 'results' && <ResultsView onNavigate={navigateTo} />}
-      {currentView === 'connections' && <ConnectionsView />}
+      {/* Per-player overlay, outside the status-driven views above */}
+      {connectionsOpen && <ConnectionsView onClose={closeConnections} />}
     </Layout>
   );
 }

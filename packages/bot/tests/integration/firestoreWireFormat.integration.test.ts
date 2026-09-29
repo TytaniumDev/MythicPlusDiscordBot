@@ -31,8 +31,9 @@ describe.skipIf(!shouldRun)('FirebaseService against real Firestore emulator', (
     // FIREBASE_CREDENTIALS_JSON (service account PEM) that the emulator
     // doesn't need. Limitation: the module-level FieldValue sentinels
     // (SERVER_TIMESTAMP, DELETE_FIELD) stay at
-    // their default dummy values. Tests here only exercise saveGroupHistory
-    // and getGroupHistory which don't use those sentinels. If tests are
+    // their default dummy values. Tests here only exercise group history and
+    // bumpSeasonPairs, which don't use those sentinels (bumpSeasonPairs
+    // imports FieldValue directly). If tests are
     // added for methods that do, refactor the constructor to accept an
     // injected admin module (or an emulator-aware bypass) first.
     service = Object.create(FirebaseService.prototype);
@@ -124,6 +125,54 @@ describe.skipIf(!shouldRun)('FirebaseService against real Firestore emulator', (
 
       const loaded = await service.getGroupHistory('guild-legacy');
       expect(loaded?.rounds).toHaveLength(1);
+    });
+  });
+
+  describe('bumpSeasonPairs', () => {
+    // Discord display names can hold characters that are special in field
+    // paths; the pair keys must survive as literal map keys.
+    const group = () => new WoWGroup(
+      WoWPlayer.create('Alice', ['Tank']),
+      WoWPlayer.create('B/o*b [x]', ['Healer']),
+      [WoWPlayer.create('Carol', ['Ranged'])],
+    );
+    const seasonPairs = async (guildId: string) =>
+      (await db.collection('guilds').doc(guildId).get()).get('seasonPairs');
+
+    it('drops the old season\'s pairs when the season changes', async () => {
+      // Regression: a merge used to keep every old-season pair under the new slug.
+      await db.collection('guilds').doc('guild-season').set({
+        seasonPairs: { seasonSlug: 'season-1', counts: { 'Old|Pair': 9, 'Alice|Carol': 4 } },
+      });
+
+      await service.bumpSeasonPairs('guild-season', 'season-2', [group()]);
+
+      expect(await seasonPairs('guild-season')).toEqual({
+        seasonSlug: 'season-2',
+        counts: { 'Alice|B/o*b [x]': 1, 'Alice|Carol': 1, 'B/o*b [x]|Carol': 1 },
+      });
+    });
+
+    it('increments the stored season in place and keeps other pairs', async () => {
+      await db.collection('guilds').doc('guild-season').set({
+        seasonPairs: { seasonSlug: 'season-1', counts: { 'Other|Pair': 2, 'Alice|Carol': 4 } },
+      });
+
+      await service.bumpSeasonPairs('guild-season', 'season-1', [group()]);
+      await service.bumpSeasonPairs('guild-season', 'season-1', [group()]);
+
+      expect(await seasonPairs('guild-season')).toEqual({
+        seasonSlug: 'season-1',
+        counts: { 'Other|Pair': 2, 'Alice|Carol': 6, 'Alice|B/o*b [x]': 2, 'B/o*b [x]|Carol': 2 },
+      });
+    });
+
+    it('starts the counts on a guild doc without any', async () => {
+      await service.bumpSeasonPairs('guild-new', 'season-1', [group()]);
+
+      expect((await seasonPairs('guild-new')).counts).toEqual({
+        'Alice|B/o*b [x]': 1, 'Alice|Carol': 1, 'B/o*b [x]|Carol': 1,
+      });
     });
   });
 });

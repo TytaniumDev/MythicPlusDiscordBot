@@ -73,6 +73,8 @@ async function seedLobby(): Promise<void> {
     guildId: GUILD_ID,
     guildName: 'Smoke Test Guild',
     voiceChannels: [{ id: CHANNEL_ID, name: 'Mythic+ Lobby', userCount: ROSTER.length }],
+    // Last season's tally: the first spin must replace it, not merge into it.
+    seasonPairs: { seasonSlug: 'last-season', counts: { 'Old|Pair': 9 } },
     createdAt: now,
     lastActive: now,
   });

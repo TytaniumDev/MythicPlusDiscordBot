@@ -7,8 +7,7 @@ const { mockFirebaseInstance } = vi.hoisted(() => {
     getGroupHistory: vi.fn().mockResolvedValue(null),
     saveGroupHistory: vi.fn().mockResolvedValue(undefined),
     getSeasonConfig: vi.fn().mockResolvedValue(null),
-    getSeasonPairs: vi.fn().mockResolvedValue(null),
-    saveSeasonPairs: vi.fn().mockResolvedValue(undefined),
+    bumpSeasonPairs: vi.fn().mockResolvedValue(undefined),
     // Every requested player has a Tank preference unless a test overrides it.
     getPreferences: vi.fn(async (ids: string[]) => new Map<string, PlayerPreferences>(ids.map((id) => [
       id,
@@ -463,8 +462,7 @@ describe('GroupService season pair bumping', () => {
     mockFirebaseInstance.getGroupHistory.mockResolvedValue(null);
     mockFirebaseInstance.saveGroupHistory.mockResolvedValue(undefined);
     mockFirebaseInstance.getSeasonConfig.mockResolvedValue(null);
-    mockFirebaseInstance.getSeasonPairs.mockResolvedValue(null);
-    mockFirebaseInstance.saveSeasonPairs.mockResolvedValue(undefined);
+    mockFirebaseInstance.bumpSeasonPairs.mockResolvedValue(undefined);
   });
 
   function fivePlayerGroup(): WoWGroup {
@@ -476,7 +474,7 @@ describe('GroupService season pair bumping', () => {
     return new WoWGroup(tank, healer, [dps1, dps2, dps3]);
   }
 
-  it('bumps season pairs on real spin and merges with existing counts', async () => {
+  it('bumps season pairs for the current season on a real spin', async () => {
     const service = new GroupService();
     const member = { bot: false, nick: 'Alice', id: '1', toString: () => 'Alice' };
     const ctx = makeCtx({ guild: { id: '42' }, members: [member] });
@@ -486,26 +484,15 @@ describe('GroupService season pair bumping', () => {
       blizzardSeasonId: 17,
       expansionId: 11,
     });
-    mockFirebaseInstance.getSeasonPairs.mockResolvedValue({
-      seasonSlug: 'season-mn-1',
-      counts: { 'Alice|Bob': 1 },
-    });
 
     const group = fivePlayerGroup();
     vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
 
     await service.getGroupsData(ctx, false);
 
-    expect(mockFirebaseInstance.saveSeasonPairs).toHaveBeenCalledOnce();
-    const [savedGuildId, savedPairs] = mockFirebaseInstance.saveSeasonPairs.mock.calls[0];
-    expect(savedGuildId).toBe('42');
-    expect(savedPairs.seasonSlug).toBe('season-mn-1');
-    // Pre-existing Alice|Bob (1) + new pairing in this round (1) = 2
-    expect(savedPairs.counts['Alice|Bob']).toBe(2);
-    // 5 players → C(5,2) = 10 unique pairs total
-    expect(Object.keys(savedPairs.counts)).toHaveLength(10);
-    // A previously-unseen pair from this round
-    expect(savedPairs.counts['Carol|Dave']).toBe(1);
+    // Incrementing, and resetting on a new season, are covered by the
+    // FirebaseService tests.
+    expect(mockFirebaseInstance.bumpSeasonPairs).toHaveBeenCalledExactlyOnceWith('42', 'season-mn-1', [group]);
   });
 
   it('skips bump when spin is debug=true', async () => {
@@ -524,37 +511,8 @@ describe('GroupService season pair bumping', () => {
 
     await service.getGroupsData(ctx, true);
 
-    expect(mockFirebaseInstance.saveSeasonPairs).not.toHaveBeenCalled();
+    expect(mockFirebaseInstance.bumpSeasonPairs).not.toHaveBeenCalled();
     expect(mockFirebaseInstance.getSeasonConfig).not.toHaveBeenCalled();
-  });
-
-  it('resets counts when seasonSlug differs from current config slug', async () => {
-    const service = new GroupService();
-    const member = { bot: false, nick: 'Alice', id: '1', toString: () => 'Alice' };
-    const ctx = makeCtx({ guild: { id: '42' }, members: [member] });
-
-    mockFirebaseInstance.getSeasonConfig.mockResolvedValue({
-      slug: 'season-mn-2',
-      blizzardSeasonId: 18,
-      expansionId: 11,
-    });
-    mockFirebaseInstance.getSeasonPairs.mockResolvedValue({
-      seasonSlug: 'season-mn-1',
-      counts: { 'Old|Pair': 99 },
-    });
-
-    const group = fivePlayerGroup();
-    vi.mocked(createMythicPlusGroups).mockReturnValue([group]);
-
-    await service.getGroupsData(ctx, false);
-
-    expect(mockFirebaseInstance.saveSeasonPairs).toHaveBeenCalledOnce();
-    const [, savedPairs] = mockFirebaseInstance.saveSeasonPairs.mock.calls[0];
-    expect(savedPairs.seasonSlug).toBe('season-mn-2');
-    // Stale Old|Pair must NOT carry over — counts reset to {} before bumping.
-    expect(savedPairs.counts['Old|Pair']).toBeUndefined();
-    expect(savedPairs.counts['Alice|Bob']).toBe(1);
-    expect(Object.keys(savedPairs.counts)).toHaveLength(10);
   });
 
   it('skips bump when no season config exists yet', async () => {
@@ -570,6 +528,6 @@ describe('GroupService season pair bumping', () => {
     await service.getGroupsData(ctx, false);
 
     expect(mockFirebaseInstance.getSeasonConfig).toHaveBeenCalled();
-    expect(mockFirebaseInstance.saveSeasonPairs).not.toHaveBeenCalled();
+    expect(mockFirebaseInstance.bumpSeasonPairs).not.toHaveBeenCalled();
   });
 });

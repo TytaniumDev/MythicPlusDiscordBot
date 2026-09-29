@@ -21,15 +21,25 @@ interface CommitOptions {
   persist: boolean;
 }
 
+/** Release a claim this client made, so the picker stops showing that player as claimed. */
+function releaseClaim(discordId: string): void {
+  getSessionService().unclaimPlayer(discordId).catch((err) => {
+    reportError(err, { tag: 'useIdentity.unclaimPlayer' });
+  });
+}
+
 /**
  * Commit a resolved identity to the store and (optionally) persistence.
- * Always sets identity + resolved flag; only writes localStorage and claims
- * the player when there's a non-null discordId, since both are keyed off it.
+ * Always sets identity + resolved flag, and releases the claim on the player
+ * this client was before (a re-pick). Only writes localStorage and claims the
+ * player when there's a non-null discordId, since both are keyed off it.
  */
 function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
   const store = useAppStore.getState();
+  const previousId = store.currentPlayerId;
   store.setIdentity(player.discordId ?? null, player.name);
   store.setIdentityResolved(true);
+  if (previousId && previousId !== player.discordId) releaseClaim(previousId);
   if (!player.discordId) return;
   if (opts.persist) {
     saveStoredDiscordId(player.discordId);
@@ -54,6 +64,7 @@ export function useIdentity() {
       const replacedBySignIn = verifiedPlayer != null && verifiedPlayer.discordId !== state.currentPlayerId;
       if (stillHere && !replacedBySignIn) return;
       // Player left, or the signed-in Discord user is here as someone else — re-resolve
+      releaseClaim(state.currentPlayerId);
       state.resetIdentity();
     }
 
@@ -100,25 +111,9 @@ export function useIdentity() {
     commitIdentity(player, { persist: true });
   }, []);
 
-  const clearIdentity = useCallback(() => {
-    const state = useAppStore.getState();
-    const previousId = state.currentPlayerId;
-    // Don't clear localStorage Discord ID here — clearIdentity is only called
-    // on Player-Left re-resolution today, which preserves the user's identity
-    // across sessions. Switching to a different identity goes through
-    // selectPlayer, which overwrites the stored ID.
-    state.resetIdentity();
-    if (previousId) {
-      getSessionService().unclaimPlayer(previousId).catch((err) => {
-        reportError(err, { tag: 'useIdentity.unclaimPlayer' });
-      });
-    }
-  }, []);
-
   return {
     resolveIdentity,
     selectPlayer,
-    clearIdentity,
     currentPlayerId,
     currentPlayerName,
     identityResolved,

@@ -51,6 +51,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Browser back interception
   pendingBrowserBack: false,
 
+  // Connections overlay
+  connectionsOpen: false,
+
   // Dungeon suggestions refresh trigger
   dungeonSuggestionsRefreshKey: 0,
 
@@ -98,6 +101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ groupCards: [...s.groupCards, card] })),
   clearGroupCards: () => set({ groupCards: [] }),
   setPendingBrowserBack: (val: boolean) => set({ pendingBrowserBack: val }),
+  setConnectionsOpen: (open: boolean) => set({ connectionsOpen: open }),
   bumpDungeonSuggestionsRefresh: () =>
     set((s) => ({ dungeonSuggestionsRefreshKey: s.dungeonSuggestionsRefreshKey + 1 })),
   resetSpinState: () =>

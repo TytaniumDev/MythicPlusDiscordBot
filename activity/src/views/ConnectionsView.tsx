@@ -2,12 +2,34 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../store/store';
 import { topAffinityFor, shortestPath } from '@mythicplus/shared';
 import { HeaderBar } from '../components/HeaderBar';
-import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 
-export function ConnectionsView() {
+interface ConnectionsViewProps {
+  onClose: () => void;
+}
+
+/**
+ * The player's own look at the guild's season pairings. An overlay rather
+ * than a view: it isn't part of the navigation that follows the channel
+ * status, so it doesn't move anyone else, and the round keeps going
+ * underneath while it's open.
+ */
+export function ConnectionsView({ onClose }: ConnectionsViewProps) {
   const currentPlayerName = useAppStore((s) => s.currentPlayerName);
   const seasonPairs = useAppStore((s) => s.seasonPairs);
-  const setView = useAppStore((s) => s.setView);
+
+  // Escape closes it, and so does browser back: the view underneath handles
+  // the navigation, and its prompts (e.g. "Leave Results?") must be visible.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('popstate', onClose);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('popstate', onClose);
+    };
+  }, [onClose]);
 
   const counts = seasonPairs?.counts ?? {};
 
@@ -38,11 +60,10 @@ export function ConnectionsView() {
   }, [currentPlayerName, target, counts]);
 
   return (
-    <div className="connections-view">
+    <div className="connections-view" role="dialog" aria-modal="true" aria-label="Connections">
       <HeaderBar
         title="Connections"
-        onBack={() => setView('lobby')}
-        avatar={<HeaderProfileSlot />}
+        onBack={onClose}
       />
       <main className="connections-view__body">
         <section>

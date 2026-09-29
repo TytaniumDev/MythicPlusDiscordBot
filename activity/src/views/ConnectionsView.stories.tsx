@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 import { withStore } from '../../.storybook/decorators';
 import { ConnectionsView } from './ConnectionsView';
 
@@ -8,6 +9,9 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
     viewport: { defaultViewport: 'discordMedium' },
+  },
+  args: {
+    onClose: fn(),
   },
 } satisfies Meta<typeof ConnectionsView>;
 
