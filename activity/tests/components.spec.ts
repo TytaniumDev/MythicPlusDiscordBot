@@ -148,7 +148,7 @@ test.describe('Component: MyCharacterCard', () => {
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     const card = page.locator('[data-testid="my-character-card"]');
-    await card.getByRole('button', { name: '✎ Edit' }).click();
+    await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(card.locator('.role-editor-input')).toBeVisible();
     await expect(card).toHaveScreenshot('my-character-card-mobile.png');
   });

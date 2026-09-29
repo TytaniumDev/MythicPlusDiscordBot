@@ -2689,6 +2689,90 @@ button.role-section-header--collapsible {
 }
 
 /* ============================================
+   Character stage: full-body render on a pedestal
+   ============================================ */
+.character-stage {
+  --stage-color: #6b7280;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(60% 52% at 50% 62%, color-mix(in srgb, var(--stage-color) 30%, transparent), transparent 72%);
+}
+
+.character-stage--dimmed {
+  background: radial-gradient(60% 52% at 50% 62%, color-mix(in srgb, var(--stage-color) 18%, transparent), transparent 72%);
+}
+
+/* Blizzard's main-raw.png is a 1600x1200 canvas with the character centred,
+ * feet at ~82% of its height and the tallest heads and shoulders at ~18%.
+ * Sizing the image off the stage's height lands every character's feet at
+ * ~90% of the stage, whatever the stage's size or shape. */
+.character-stage__img {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  height: 135%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+}
+
+.character-stage--dimmed .character-stage__img {
+  filter: grayscale(0.85);
+  opacity: 0.5;
+}
+
+/* Sits behind the image, under the feet. */
+.character-stage__pedestal {
+  position: absolute;
+  top: calc(90.5% - 8px);
+  left: 50%;
+  width: var(--stage-pedestal-width, 88px);
+  height: 16px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center 35%,
+    color-mix(in srgb, var(--stage-color) 85%, white) 0%,
+    var(--stage-color) 40%,
+    color-mix(in srgb, var(--stage-color) 30%, transparent) 100%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--stage-color) 55%, transparent);
+  opacity: 0.95;
+}
+
+.character-stage--neutral .character-stage__pedestal {
+  opacity: 0.35;
+}
+
+/* Stand-in when there's no render: an outline standing on the pedestal. */
+.character-stage__placeholder {
+  position: absolute;
+  top: 34.5%;
+  left: 50%;
+  height: 56%;
+  width: auto;
+  aspect-ratio: 60 / 140;
+  transform: translateX(-50%);
+  fill: rgba(255, 255, 255, 0.05);
+  stroke: rgba(255, 255, 255, 0.24);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.character-stage__caption {
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  right: 8px;
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+/* ============================================
    Lobby: Your Character card
    ============================================ */
 .my-character {
@@ -2717,7 +2801,7 @@ button.role-section-header--collapsible {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -2730,7 +2814,10 @@ button.role-section-header--collapsible {
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .my-character__status--ready {
@@ -2748,117 +2835,32 @@ button.role-section-header--collapsible {
   background: var(--bg-card-hover);
 }
 
-.my-character__main {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.my-character--out .my-character__main {
-  opacity: 0.5;
-  filter: grayscale(0.7);
-}
-
-.my-character__portrait {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  flex-shrink: 0;
+/* Slim sit-out switch: a label and a track, no button chrome. */
+.my-character__sit-out {
   position: relative;
-  overflow: hidden;
-  border: 3px solid var(--mc-ring, var(--color-gold));
-  background: color-mix(in srgb, var(--mc-ring, var(--color-gold)) 18%, #0d0d1a);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-}
-
-.my-character__portrait-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  border-radius: 50%;
-}
-
-.my-character__portrait-letter {
-  font-size: 26px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-.my-character__info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.my-character__name {
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.1;
-  color: var(--text-heading);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.my-character__ign {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mc-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.my-character__ign--missing {
-  color: var(--color-gold);
-}
-
-.my-character__info .chip-tags {
-  margin-top: 3px;
-}
-
-.my-character__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 14px;
-}
-
-.my-character__actions--single {
-  grid-template-columns: 1fr;
-}
-
-.my-character__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card-hover);
-  color: var(--text-primary);
+  height: 28px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
   font: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
 }
 
-.my-character__btn:hover {
-  border-color: color-mix(in srgb, var(--color-gold) 40%, transparent);
+/* Keeps a comfortable touch target around the slim switch. */
+.my-character__sit-out::before {
+  content: '';
+  position: absolute;
+  inset: -8px -6px;
 }
 
-.my-character__btn[aria-checked="true"],
-.my-character__btn[aria-expanded="true"] {
-  border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
+.my-character__sit-out[aria-checked="true"] {
   color: var(--color-gold);
 }
 
@@ -2884,27 +2886,200 @@ button.role-section-header--collapsible {
   transition: left 0.15s;
 }
 
-.my-character__btn[aria-checked="true"] .my-character__switch {
+.my-character__sit-out[aria-checked="true"] .my-character__switch {
   background: var(--color-gold);
 }
 
-.my-character__btn[aria-checked="true"] .my-character__switch::after {
+.my-character__sit-out[aria-checked="true"] .my-character__switch::after {
   left: 14px;
 }
 
+/* Role editor inside the card: left-aligned labels over equal-width button
+   grids (two columns beside the character, four across the phone card). */
 .my-character__editor {
+  --role-editor-cols: 2;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border-subtle);
-  text-align: center;
+  gap: 14px;
+  min-width: 0;
+  text-align: left;
+}
+
+.my-character__editor .role-editor-section {
+  margin-bottom: 0;
+}
+
+.my-character__editor .role-editor-label {
+  text-align: left;
+}
+
+.my-character__editor .role-editor-row {
+  display: grid;
+  grid-template-columns: repeat(var(--role-editor-cols), minmax(0, 1fr));
+}
+
+.my-character__editor .role-editor-name-input {
+  grid-column: 1 / -1;
+}
+
+.my-character__editor .role-editor-input {
+  max-width: none;
+}
+
+.my-character__editor .role-btn {
+  justify-content: center;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 .my-character--needs-name .role-editor-input {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 25%, transparent);
+}
+
+/* Sidebar: the character stands in a column beside the editor. */
+.my-character__sheet {
+  display: flex;
+  gap: 12px;
+}
+
+.my-character__figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.my-character__figure .character-stage {
+  --stage-pedestal-width: 100%;
+  flex: 1;
+  align-self: stretch;
+  min-height: 220px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.22);
+  /* Wide renders (big shoulders, weapons) fade out at the column's edges. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+
+.my-character__sheet .my-character__editor {
+  flex: 1;
+}
+
+/* Phone: the character fills the right of a header that grows with the role
+   tags, so extra tags never collide with the controls. */
+.my-character--phone {
+  overflow: hidden;
+}
+
+.my-character__hero {
+  position: relative;
+  margin: -14px -14px 0;
+}
+
+.my-character__hero .character-stage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 58%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 30%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 30%);
+}
+
+.my-character__hero-info {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 50%;
+  min-height: 176px;
+  padding: 14px 0 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* On the narrowest phones this runs over the character's faded edge rather
+   than wrapping. */
+.my-character__hero-info .my-character__eyebrow {
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+
+.my-character__hero-info .my-character__status {
+  margin-left: 0;
+}
+
+.my-character__hero-info .chip-tags {
+  margin-top: 10px;
+}
+
+.my-character__hero-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.my-character__edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.my-character__edit:hover {
+  border-color: color-mix(in srgb, var(--color-gold) 40%, transparent);
+}
+
+/* While the editor is open, Edit hides but keeps its space so the header
+   doesn't change height. */
+.my-character__edit--reserved {
+  visibility: hidden;
+}
+
+.my-character--phone .my-character__editor {
+  --role-editor-cols: 4;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.my-character__done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  margin-top: 16px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 60%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 14%, transparent);
+  color: var(--color-gold);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.my-character__done:hover {
+  background: color-mix(in srgb, var(--color-gold) 22%, transparent);
 }
 
 /* Sit-out button rendered by RoleEditor outside the lobby (e.g. edit modal) */
@@ -2977,24 +3152,14 @@ button.role-section-header--collapsible {
     gap: 6px;
   }
 
-  .my-character__portrait {
-    width: 52px;
-    height: 52px;
-  }
-
-  .my-character__name {
-    font-size: 18px;
-  }
-
-  /* Keep the four spec buttons on one row in the narrower sidebar */
+  /* Narrower sidebar: slim the character column so the editor keeps room */
   .lobby-sidebar .my-character {
     padding-left: 12px;
     padding-right: 12px;
   }
 
-  .lobby-sidebar .role-btn {
-    padding-left: 9px;
-    padding-right: 9px;
+  .my-character__figure {
+    width: 100px;
   }
 }
 
