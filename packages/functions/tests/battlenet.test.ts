@@ -197,6 +197,23 @@ describe('getBattleNetClient', () => {
     );
   });
 
+  it('trims stray whitespace from the secret values', async () => {
+    secretValues.set('BNET_CLIENT_ID', 'secret-id\n');
+    secretValues.set('BNET_CLIENT_SECRET', ' secret-secret\r\n');
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),
+    });
+    const { getBattleNetClient } = await import('../src/battlenet');
+
+    await getBattleNetClient().getToken();
+
+    const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+    expect(headers.Authorization).toBe(
+      `Basic ${Buffer.from('secret-id:secret-secret').toString('base64')}`,
+    );
+  });
+
   it('exports both secrets for the functions that call Battle.net', async () => {
     const { battleNetSecrets } = await import('../src/battlenet');
     expect(battleNetSecrets.map((s) => s.name)).toEqual(['BNET_CLIENT_ID', 'BNET_CLIENT_SECRET']);
