@@ -1,5 +1,28 @@
-import { describe, it, expect } from 'vitest';
-import { classifyDocs } from '../src/refreshCharacterMedia';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+const mockUpdate = vi.fn();
+const mockBatchSet = vi.fn();
+let preferenceDocs: { id: string; data: Record<string, unknown> }[] = [];
+
+vi.mock('firebase-functions/params', () => ({
+  defineSecret: (name: string) => ({ name, value: () => `${name}-value` }),
+}));
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: () => ({
+    collection: () => ({
+      get: async () => ({ docs: preferenceDocs.map((d) => ({ id: d.id, data: () => d.data })) }),
+    }),
+    doc: (path: string) => ({ path, update: mockUpdate }),
+    batch: () => ({ set: mockBatchSet, commit: () => Promise.resolve() }),
+  }),
+  FieldValue: { delete: () => 'delete', serverTimestamp: () => 'server-timestamp' },
+}));
+vi.mock('firebase-functions', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+
+// Import after mocks so the module under test sees them.
+import { classifyDocs, runRefresh } from '../src/refreshCharacterMedia';
 
 describe('classifyDocs — targets', () => {
   it('returns linkedCharacter-sourced targets for docs with a valid linkedCharacter', () => {
@@ -193,5 +216,85 @@ describe('classifyDocs — clears', () => {
 
     expect(targets).toEqual([]);
     expect(clears).toEqual([]);
+  });
+});
+
+describe('runRefresh', () => {
+  const AVATAR = 'https://render.worldofwarcraft.com/us/character/stormrage/31/256146207-avatar.jpg';
+  const PROFILE = {
+    name: 'Tytanium',
+    realm: { slug: 'stormrage', name: 'Stormrage' },
+    character_class: { name: 'Warrior' },
+    active_specialization: { name: 'Protection' },
+  };
+  const MEDIA = { assets: [{ key: 'avatar', value: AVATAR }] };
+
+  /** Answer Battle.net: a token, then these statuses for the profile and media requests. */
+  function stubBattleNet(profileStatus: number, mediaStatus = 200) {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === 'https://oauth.battle.net/token') {
+        return { ok: true, status: 200, json: async () => ({ access_token: 'token', expires_in: 86400 }) };
+      }
+      const isMedia = url.includes('/character-media');
+      const status = isMedia ? mediaStatus : profileStatus;
+      return { ok: status === 200, status, json: async () => (isMedia ? MEDIA : PROFILE) };
+    });
+  }
+
+  beforeEach(() => {
+    preferenceDocs = [{ id: 'user-1', data: { inGameName: 'Tytanium-Stormrage', roles: ['Tank'] } }];
+    mockFetch.mockReset();
+    mockUpdate.mockReset().mockResolvedValue(undefined);
+    mockBatchSet.mockReset();
+  });
+
+  it.each([429, 500, 503])('leaves a name-only doc alone when Battle.net answers %i', async (status) => {
+    stubBattleNet(status, status);
+
+    const summary = await runRefresh();
+
+    expect(summary).toEqual({ total: 1, refreshed: 0, skipped: 0, failed: 1, cleared: 0 });
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockBatchSet).not.toHaveBeenCalled();
+  });
+
+  it('clears a name-only doc when Battle.net has no such character', async () => {
+    stubBattleNet(404, 404);
+
+    const summary = await runRefresh();
+
+    expect(summary).toEqual({ total: 1, refreshed: 0, skipped: 0, failed: 0, cleared: 1 });
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ inGameName: 'delete', mediaUrl: 'delete' }));
+  });
+
+  it('refreshes the portrait and backfills linkedCharacter', async () => {
+    stubBattleNet(200);
+
+    const summary = await runRefresh();
+
+    expect(summary.refreshed).toBe(1);
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'preferences/user-1' }),
+      expect.objectContaining({
+        mediaUrl: AVATAR,
+        characterClass: 'Warrior',
+        linkedCharacter: { name: 'Tytanium', realm: 'stormrage', region: 'us' },
+      }),
+      { merge: true },
+    );
+  });
+
+  it('keeps the stored portrait when only the media request fails', async () => {
+    stubBattleNet(200, 503);
+
+    const summary = await runRefresh();
+
+    expect(summary.refreshed).toBe(1);
+    // Only the preferences write: no mediaUrl in it, and the lookup cache
+    // (which holds the fallback portrait) is left as it was.
+    expect(mockBatchSet).toHaveBeenCalledTimes(1);
+    const payload = mockBatchSet.mock.calls[0][1] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('mediaUrl');
+    expect(payload.characterClass).toBe('Warrior');
   });
 });

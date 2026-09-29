@@ -38,15 +38,6 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
   // that's the one thing blocking them from being ready.
   const [expanded, setExpanded] = useState(() => !player.inGameName);
   const [highlighted, setHighlighted] = useState(false);
-  const [mediaUrl, setMediaUrl] = useState<string | null>(player.mediaUrl ?? null);
-
-  const playerId = player.discordId ?? null;
-
-  // Only reset mediaUrl when the player identity changes (not on every
-  // Firestore update), so a freshly looked-up render survives the save sync.
-  useEffect(() => {
-    setMediaUrl(player.mediaUrl ?? null);
-  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!highlighted) return;
@@ -99,7 +90,7 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
           aria-hidden="true"
         >
           <span className="my-character__portrait-letter">{player.name.charAt(0).toUpperCase() || '?'}</span>
-          <CharacterImage mediaUrl={mediaUrl} variant="avatar" className="my-character__portrait-img" />
+          <CharacterImage mediaUrl={player.mediaUrl} variant="avatar" className="my-character__portrait-img" />
         </div>
         <div className="my-character__info">
           <div className="my-character__name">{player.name}</div>
@@ -142,11 +133,7 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
 
       {showEditor && (
         <div className="my-character__editor" id={editorId}>
-          <RoleEditor
-            player={player}
-            onMediaUrlChange={setMediaUrl}
-            hideSitOut
-          />
+          <RoleEditor player={player} hideSitOut />
         </div>
       )}
     </div>

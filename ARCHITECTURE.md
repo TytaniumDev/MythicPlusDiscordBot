@@ -211,9 +211,9 @@ The Activity frontend (`activity/src/main.tsx`) operates in three distinct modes
 - **Entry**: `packages/functions/src/index.ts`. Deployed to Firebase natively using Firebase Functions v2.
 - **Key Functions**:
   - `fetchWeeklyAffixes` (`fetchWeeklyAffixes.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to pull current Mythic+ affix data from the **Raider.IO API** and sync it to the `config/affixes` and `config/season` Firestore documents.
-  - `lookupCharacter` (`lookupCharacter.ts`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characterCache/` collection, expired by TTL).
+  - `lookupCharacter` (`lookupCharacter.ts`): Callable function (`onCall`) that securely bridges the Activity frontend to the **Battle.net API**, enforcing rate limits and caching results in Firestore (`characterCache/` collection, expired by TTL). It answers `not-found` only when Battle.net has no such character (a 404); a rate limit or outage is `unavailable`, which the Activity shows as a retryable failure rather than a bad name.
   - `discordSignIn` (`discordSignIn.ts`): Callable function (`onCall`) behind the activity's optional Discord sign-in. Exchanges the OAuth2 code from the Embedded App SDK's `authorize` for an access token, reads the user's Discord ID, and returns a Firebase custom token for that ID. The access token never leaves the function.
-  - `refreshCharacterMedia` (`refreshCharacterMedia.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection.
+  - `refreshCharacterMedia` (`refreshCharacterMedia.ts`): Scheduled function (`onSchedule`) that fires weekly on Tuesdays to bulk-refresh character portrait and class data for all users in the `preferences/` collection. A Battle.net failure skips that player for the week; only a 404 for a typed name clears the character fields.
   - `onGithubIssueWebhook` (`githubWebhook.ts`): An HTTP (`onRequest`) webhook that receives GitHub issue closed events and notifies the reporting Discord user directly.
 - **Manual runs**: There are no callable "refresh now" functions. To run a scheduled function on demand, use **Force run** on its job in Cloud Scheduler (Google Cloud console).
 - **Secrets**: Credentials live in Google Secret Manager and are read with `defineSecret` from `firebase-functions/params`. Each function lists the secrets it uses in its `secrets` option (`battleNetSecrets` from `battlenet.ts` for the Battle.net callers). See `FIREBASE_SETUP.md` section 7.
@@ -292,7 +292,7 @@ sequenceDiagram
 | Concern | Where it lives |
 |--------|-----------------|
 | Slash commands (`/wheelson`, `/wheel`) | `packages/bot/src/commands/groups.ts` |
-| Player profiles | Activity `RoleEditor` → `preferences/`; the Activity joins them in `activity/src/lib/profiles.ts`, the bot reads them in `FirebaseService.getPreferences`; both build players with `WoWPlayer.fromPreferences` |
+| Player profiles | Activity `RoleEditor` → `preferences/` (plus `usePortraitRepair`, which fills in the current user's missing portrait once per launch); the Activity joins them in `activity/src/lib/profiles.ts`, the bot reads them in `FirebaseService.getPreferences`; both build players with `WoWPlayer.fromPreferences` |
 | GitHub Issues (`/bug`, `/featurerequest`, activity bad-group reports) | `packages/bot/src/core/issues.ts`, `packages/bot/src/main.ts` |
 | Voice → lobby sync | `packages/bot/src/main.ts` (`VoiceStateUpdate`) → `SessionService.onVoiceStateUpdate` → `syncMembers` |
 | Lobby tracking (survives restarts) | `SessionService.listen` → `FirebaseService.listenForChannels` |

@@ -87,6 +87,17 @@ describe('BattleNetClient', () => {
       expect(profile).toBeNull();
     });
 
+    it.each([401, 429, 500, 503])('throws on a %i instead of reporting the character missing', async (status) => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),
+      });
+      mockFetch.mockResolvedValueOnce({ ok: false, status });
+
+      await expect(client.getCharacterProfile('us', 'stormrage', 'tytanium'))
+        .rejects.toThrow(`Battle.net request failed: ${status}`);
+    });
+
     it('safely encodes spaces, special characters, and lowercases character name', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -123,7 +134,7 @@ describe('BattleNetClient', () => {
       );
     });
 
-    it('returns null when media fetch fails', async () => {
+    it('returns null on a 404', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),
@@ -132,6 +143,17 @@ describe('BattleNetClient', () => {
 
       const media = await client.getCharacterMedia('us', 'stormrage', 'nonexistent');
       expect(media).toBeNull();
+    });
+
+    it('throws when the request fails for another reason', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),
+      });
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+
+      await expect(client.getCharacterMedia('us', 'stormrage', 'tytanium'))
+        .rejects.toThrow('Battle.net request failed: 503');
     });
   });
 
@@ -153,7 +175,7 @@ describe('BattleNetClient', () => {
       );
     });
 
-    it('returns null when specializations fetch fails', async () => {
+    it('returns null on a 404', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ access_token: 'abc123', expires_in: 86400 }),

@@ -51,46 +51,50 @@ export class BattleNetClient {
     });
   }
 
+  /**
+   * GET a JSON resource. Null means Battle.net answered 404 (no such
+   * character). Any other failure, such as a rate limit or an outage, throws,
+   * so callers can't mistake it for a missing character.
+   */
+  private async getJson(region: string, path: string) {
+    const response = await this.apiCall(region, path);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Battle.net request failed: ${response.status}`);
+    return response.json();
+  }
+
   async getCharacterProfile(region: string, realmSlug: string, characterName: string) {
     const encodedRealm = encodeURIComponent(realmSlug);
     const encodedName = encodeURIComponent(characterName.toLowerCase());
-    const response = await this.apiCall(
+    return this.getJson(
       region,
       `/profile/wow/character/${encodedRealm}/${encodedName}?namespace=profile-${region}&locale=en_US`,
     );
-    if (!response.ok) return null;
-    return response.json();
   }
 
   async getCharacterMedia(region: string, realmSlug: string, characterName: string) {
     const encodedRealm = encodeURIComponent(realmSlug);
     const encodedName = encodeURIComponent(characterName.toLowerCase());
-    const response = await this.apiCall(
+    return this.getJson(
       region,
       `/profile/wow/character/${encodedRealm}/${encodedName}/character-media?namespace=profile-${region}&locale=en_US`,
     );
-    if (!response.ok) return null;
-    return response.json();
   }
 
   async getCharacterSpecializations(region: string, realmSlug: string, characterName: string) {
     const encodedRealm = encodeURIComponent(realmSlug);
     const encodedName = encodeURIComponent(characterName.toLowerCase());
-    const response = await this.apiCall(
+    return this.getJson(
       region,
       `/profile/wow/character/${encodedRealm}/${encodedName}/specializations?namespace=profile-${region}&locale=en_US`,
     );
-    if (!response.ok) return null;
-    return response.json();
   }
 
   async getMythicKeystonePeriodIndex(region: string) {
-    const response = await this.apiCall(
+    return this.getJson(
       region,
       `/data/wow/mythic-keystone/period/index?namespace=dynamic-${region}&locale=en_US`,
     );
-    if (!response.ok) return null;
-    return response.json();
   }
 }
 

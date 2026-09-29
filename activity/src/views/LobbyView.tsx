@@ -31,7 +31,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const isMobile = useIsCompactLobby();
   const myCharacterRef = useRef<MyCharacterCardHandle>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [editingPlayer, setEditingPlayer] = useState<typeof players[number] | null>(null);
+  // By ID, so the edit modal follows the player's live profile.
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const editingPlayer = players.find((p) => p.discordId === editingPlayerId) ?? null;
   const [showSpinWarning, setShowSpinWarning] = useState(false);
 
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
@@ -108,7 +110,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     if (isSelfPlayer(player)) {
       myCharacterRef.current?.reveal();
     } else {
-      setEditingPlayer(player);
+      setEditingPlayerId(player.discordId);
     }
   };
 
@@ -296,7 +298,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       {editingPlayer && (
         <EditPlayerModal
           player={editingPlayer}
-          onClose={() => setEditingPlayer(null)}
+          onClose={() => setEditingPlayerId(null)}
         />
       )}
       {showSpinWarning && (

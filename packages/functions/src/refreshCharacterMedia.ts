@@ -2,8 +2,8 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions';
 import { getFirestore, FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
-import { battleNetSecrets, getBattleNetClient, type BattleNetClient } from './battlenet.js';
-import { buildCharacterResult, type CharacterResult } from './lookupCharacter.js';
+import { battleNetSecrets, getBattleNetClient } from './battlenet.js';
+import { fetchCharacter } from './lookupCharacter.js';
 import { characterCacheEntry, characterCachePath } from './characterCache.js';
 
 interface LinkedCharacter {
@@ -100,16 +100,6 @@ async function clearCharacterFields(db: Firestore, discordId: string): Promise<v
   await db.doc(`preferences/${discordId}`).update(updates);
 }
 
-async function refreshOne(client: BattleNetClient, target: RefreshTarget): Promise<CharacterResult | null> {
-  const { name, realm, region } = target.linkedCharacter;
-  const [profile, media] = await Promise.all([
-    client.getCharacterProfile(region, realm.toLowerCase(), name),
-    client.getCharacterMedia(region, realm.toLowerCase(), name),
-  ]);
-  if (!profile || !profile.character_class) return null;
-  return buildCharacterResult(profile, media);
-}
-
 export async function runRefresh(): Promise<RefreshSummary> {
   const db = getFirestore();
   const snapshot = await db.collection('preferences').get();
@@ -141,12 +131,15 @@ export async function runRefresh(): Promise<RefreshSummary> {
   }
 
   for (const target of targets) {
+    const { name, realm, region } = target.linkedCharacter;
     try {
-      const result = await refreshOne(client, target);
+      const result = await fetchCharacter(client, region, realm, name);
       if (!result) {
-        // Source discriminates what "no profile returned" means:
-        // - linkedCharacter: previously verified; probably a transient BN/Blizzard
-        //   hiccup. Leave the doc alone.
+        // Battle.net has no such character. A rate limit or an outage throws
+        // instead and lands in the catch below, so it never clears a doc.
+        // Source discriminates what "no such character" means:
+        // - linkedCharacter: previously verified, so it was probably renamed,
+        //   transferred or deleted since. Leave the doc alone.
         // - inGameName: user's typed name didn't resolve (typo, deleted char,
         //   non-US realm). Clear character fields so they're prompted to re-enter.
         if (target.source === 'inGameName') {
@@ -170,7 +163,6 @@ export async function runRefresh(): Promise<RefreshSummary> {
       if (result.mediaUrl != null) payload.mediaUrl = result.mediaUrl;
       if (result.class != null) payload.characterClass = result.class;
 
-      const { name, realm, region } = target.linkedCharacter;
       const batch = db.batch();
       batch.set(db.doc(`preferences/${target.discordId}`), payload, { merge: true });
       // Also refresh the lookupCharacter cache doc so subsequent UI lookups
@@ -184,7 +176,7 @@ export async function runRefresh(): Promise<RefreshSummary> {
       summary.refreshed += 1;
     } catch (err) {
       summary.failed += 1;
-      logger.warn(`[refreshCharacterMedia] ${target.discordId} (${target.linkedCharacter.name}-${target.linkedCharacter.realm}) failed`, err);
+      logger.warn(`[refreshCharacterMedia] ${target.discordId} (${name}-${realm}) failed`, err);
     }
   }
 

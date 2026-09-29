@@ -1,5 +1,6 @@
 import {
   WoWPlayer as Player,
+  parseInGameName,
   parsePlayerPreferences,
   type LobbyMember,
   type PlayerPreferences,
@@ -45,4 +46,12 @@ export function isProfileLoading(
   profiles: Profiles,
 ): boolean {
   return !!discordId && players.some((p) => p.discordId === discordId) && !(discordId in profiles);
+}
+
+/**
+ * True when a profile names a character but has no portrait, which a lookup
+ * can fill in. Older versions of the activity left some profiles like this.
+ */
+export function needsPortraitRepair(profile: PlayerPreferences | null | undefined): profile is PlayerPreferences {
+  return !!profile && !profile.mediaUrl && parseInGameName(profile.inGameName) !== null;
 }

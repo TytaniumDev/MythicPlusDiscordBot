@@ -33,14 +33,14 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
     const parsed = parseInGameName(inGameName);
     if (!parsed || !discordId) return;
 
-    const character = await lookup(parsed.name, parsed.realmSlug, DEFAULT_REGION, { forceRefresh: true, silent: true });
-    if (!character) return;
+    const result = await lookup(parsed.name, parsed.realmSlug, DEFAULT_REGION, { forceRefresh: true, silent: true });
+    if (result.status !== 'found') return;
 
     await service.saveLinkedCharacter(
       discordId,
       { name: parsed.name, realm: parsed.realmSlug, region: DEFAULT_REGION },
-      character.mediaUrl,
-      character.class,
+      result.character.mediaUrl,
+      result.character.class,
     );
   }, [inGameName, discordId, lookup, service]);
 
