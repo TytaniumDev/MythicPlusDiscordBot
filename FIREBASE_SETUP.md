@@ -88,6 +88,7 @@ Cloud Functions read their credentials from Google Secret Manager (`defineSecret
 |--------|---------|
 | `BNET_CLIENT_ID`, `BNET_CLIENT_SECRET` | `lookupCharacter`, `refreshCharacterMedia` (Battle.net API client from https://develop.battle.net) |
 | `BOT_TOKEN`, `GITHUB_WEBHOOK_SECRET` | `onGithubIssueWebhook` |
+| `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET` | `discordSignIn` (the application ID and OAuth2 client secret from the Discord Developer Portal's **OAuth2** page) |
 
 The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:
 
@@ -109,3 +110,17 @@ gcloud secrets add-iam-policy-binding BNET_CLIENT_ID --project mythicplusdiscord
 ```
 
 `gcloud secrets get-iam-policy BOT_TOKEN --project mythicplusdiscordbot` shows the bindings an already-working secret has, so you can mirror them.
+
+### Custom tokens (`discordSignIn`)
+
+`discordSignIn` mints Firebase custom tokens with `createCustomToken`, which signs them with the functions' runtime service account. That account needs permission to sign as itself, and the IAM Service Account Credentials API must be enabled; without them the callable fails with `auth/insufficient-permission`:
+
+```bash
+gcloud services enable iamcredentials.googleapis.com --project mythicplusdiscordbot
+gcloud iam service-accounts add-iam-policy-binding <PROJECT_NUMBER>-compute@developer.gserviceaccount.com \
+  --project mythicplusdiscordbot \
+  --member="serviceAccount:<PROJECT_NUMBER>-compute@developer.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+Custom-token sign-in needs no provider switched on in Firebase Authentication.

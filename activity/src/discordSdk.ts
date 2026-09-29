@@ -110,6 +110,28 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
   }
 }
 
+/** True once the SDK is ready, so `authorizeWithDiscord` can be offered. */
+export function canAuthorizeWithDiscord(): boolean {
+  return _sdkInstance !== null;
+}
+
+/**
+ * Ask Discord for an OAuth2 code with the `identify` scope. The first time,
+ * Discord shows its one-click consent modal; after that it answers without
+ * prompting. Rejects if the user closes the modal or the SDK isn't ready.
+ */
+export async function authorizeWithDiscord(): Promise<string> {
+  if (!_sdkInstance) throw new Error('Discord SDK is not ready');
+  const { code } = await _sdkInstance.commands.authorize({
+    client_id: _sdkInstance.clientId,
+    response_type: 'code',
+    state: '',
+    prompt: 'none',
+    scope: ['identify'],
+  });
+  return code;
+}
+
 /**
  * Get all participants connected to the current activity instance.
  * Returns empty array if not embedded or SDK not initialized.

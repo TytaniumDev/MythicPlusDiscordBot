@@ -7,6 +7,7 @@ import { PrimaryCTA } from '../components/ui';
 import type { WoWPlayer } from '../types';
 import { getClassColor } from '../lib/classColors';
 import { CharacterImage } from '../components/CharacterImage';
+import { DiscordSignInButton } from '../components/DiscordSignInButton';
 
 interface IdentityViewProps {
   onNavigate: (view: 'channels' | 'setup' | 'home', opts?: { replace?: boolean }) => void;
@@ -102,6 +103,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
             <PrimaryCTA id="identity-continue-btn" disabled={!selectedId} onClick={handleContinue}>
               {'Continue →'}
             </PrimaryCTA>
+            <DiscordSignInButton onSignedIn={() => onNavigate('setup', { replace: true })} />
             <p className="identity-picker__help">Not in the list? Join the voice channel first.</p>
           </div>
         </section>

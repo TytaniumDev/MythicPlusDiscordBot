@@ -21,7 +21,8 @@ import './discordSdk';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { useAppStore } from './store/store';
-import { setupDiscordSdk } from './discordSdk';
+import { canAuthorizeWithDiscord, setupDiscordSdk } from './discordSdk';
+import { watchDiscordSignIn } from './services/discordAuth';
 import { migrateLegacyStorage } from './lib/storedDiscordId';
 import { splitPlayers } from './lib/profiles';
 import { statusToView, routeToView } from './lib/routing';
@@ -113,6 +114,9 @@ async function init() {
     }
   }
 
+  // Restores a Discord sign-in from an earlier launch, if there was one.
+  watchDiscordSignIn();
+
   // Resolve guild ID: URL params first, then hash route, then Discord SDK
   let currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
   const urlChannelId = urlParams.get('channelId');
@@ -134,6 +138,7 @@ async function init() {
   }
 
   const store = useAppStore.getState();
+  store.setDiscordSignInAvailable(canAuthorizeWithDiscord());
 
   if (!currentGuildId) {
     store.setView('home');

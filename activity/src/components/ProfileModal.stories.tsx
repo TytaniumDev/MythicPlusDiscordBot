@@ -56,6 +56,30 @@ export const InsideChannel_LinkedCharacter: Story = {
   })],
 };
 
+// Inside the Discord activity, before the user opts in to Discord sign-in.
+export const DiscordSignInOffered: Story = {
+  decorators: [withStore({
+    isDemoMode: true,
+    currentPlayerId: '100000000000000007',
+    currentPlayerName: 'Fourseven',
+    identityResolved: true,
+    channelData: mockChannelData,
+    discordSignInAvailable: true,
+  })],
+};
+
+export const SignedInWithDiscord: Story = {
+  decorators: [withStore({
+    isDemoMode: true,
+    currentPlayerId: '100000000000000007',
+    currentPlayerName: 'Fourseven',
+    identityResolved: true,
+    channelData: mockChannelData,
+    discordSignInAvailable: true,
+    verifiedDiscordId: '100000000000000007',
+  })],
+};
+
 export const Closed: Story = {
   args: { open: false },
   decorators: [withStore({

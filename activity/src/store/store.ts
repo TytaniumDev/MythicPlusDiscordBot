@@ -26,6 +26,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentPlayerId: null,
   currentPlayerName: null,
   identityResolved: false,
+  verifiedDiscordId: null,
+  discordSignInAvailable: false,
 
   // Profiles
   profiles: {},
@@ -71,6 +73,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIdentity: (id: string | null, name: string | null) =>
     set({ currentPlayerId: id, currentPlayerName: name }),
   setIdentityResolved: (val: boolean) => set({ identityResolved: val }),
+  setVerifiedDiscordId: (id: string | null) => set({ verifiedDiscordId: id }),
+  setDiscordSignInAvailable: (val: boolean) => set({ discordSignInAvailable: val }),
   setProfiles: (profiles: Profiles) =>
     set((s) => ({
       profiles,

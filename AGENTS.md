@@ -95,6 +95,8 @@ A player's profile (roles, in-game name, portrait, class) lives only in `prefere
 8. Frontend animates the wheel reveal sequence
 9. Frontend sets status: `completed`; every client shows the results
 
+Who the current user is: the activity guesses (remembered ID, Discord participant match, or the "Select Your Name" picker) unless they opt in to Sign in with Discord (`activity/src/services/discordAuth.ts` + the `discordSignIn` Cloud Function). That makes their Firebase Auth uid their Discord ID, and it overrides every guess. Anonymous sign-in stays the default, and `firestore.rules` don't distinguish the two.
+
 ### Domain Model
 
 `WoWPlayer` uses a compact enum-based data model:
