@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { WoWPlayer } from '../types';
 import { getPrimaryRole, getRoleColor } from '../lib/roles';
 import { CharacterHeader } from './CharacterHeader';
@@ -11,12 +11,7 @@ interface EditPlayerModalProps {
 }
 
 export function EditPlayerModal({ player, onClose }: EditPlayerModalProps) {
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMediaUrl(player.mediaUrl ?? null);
-  }, [player.discordId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === backdropRef.current) onClose();
@@ -40,11 +35,11 @@ export function EditPlayerModal({ player, onClose }: EditPlayerModalProps) {
           name={player.name}
           subtitle={player.inGameName || undefined}
           color={color}
-          mediaUrl={mediaUrl}
+          mediaUrl={player.mediaUrl}
         />
         <Divider />
         <div className="edit-modal__form">
-          <RoleEditor player={player} onMediaUrlChange={setMediaUrl} />
+          <RoleEditor player={player} />
         </div>
       </div>
     </div>

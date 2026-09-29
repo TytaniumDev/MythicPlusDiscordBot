@@ -57,6 +57,17 @@ describe('MyCharacterCard', () => {
     expect(screen.getAllByText('Sitting out')).toHaveLength(2);
   });
 
+  it('shows a portrait saved after the card rendered', () => {
+    const { container, rerender } = render(<MyCharacterCard player={{ ...gazzi, mediaUrl: null }} isSittingOut={false} />);
+    expect(container.querySelector('.my-character__portrait-img')).toBeNull();
+
+    // e.g. the profile modal's Refresh, or the weekly refresh job.
+    const avatar = 'https://render.worldofwarcraft.com/us/character/uldum/1/2-avatar.jpg';
+    rerender(<MyCharacterCard player={{ ...gazzi, mediaUrl: avatar }} isSittingOut={false} />);
+
+    expect(container.querySelector('.my-character__portrait-img')?.getAttribute('src')).toBe(avatar);
+  });
+
   it('reveal() opens the editor', () => {
     const ref = createRef<MyCharacterCardHandle>();
     render(<MyCharacterCard ref={ref} player={gazzi} isSittingOut={false} collapsible />);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { HeaderBar } from '../components/HeaderBar';
 import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
@@ -19,12 +19,6 @@ export function SetupView({ onNavigate }: SetupViewProps) {
     () => players.find(p => p.discordId === currentPlayerId) ?? null,
     [players, currentPlayerId],
   );
-
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMediaUrl(player?.mediaUrl ?? null);
-  }, [player?.discordId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!player) {
     return (
@@ -76,15 +70,11 @@ export function SetupView({ onNavigate }: SetupViewProps) {
               name={player.name}
               subtitle={player.inGameName || undefined}
               color={color}
-              mediaUrl={mediaUrl}
+              mediaUrl={player.mediaUrl}
             />
             <Divider />
             <div className="setup-view__form">
-              <RoleEditor
-                player={player}
-                onMediaUrlChange={setMediaUrl}
-                hideSitOut
-              />
+              <RoleEditor player={player} hideSitOut />
             </div>
             <PrimaryCTA
               id="setup-ready-btn"

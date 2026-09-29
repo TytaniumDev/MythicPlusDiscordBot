@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { isProfileLoading, joinPlayers, splitPlayers } from './profiles';
+import { isProfileLoading, joinPlayers, needsPortraitRepair, splitPlayers } from './profiles';
 import { mockPlayers } from './mockData';
 import { useAppStore } from '../store/store';
 import type { ChannelData } from '../types';
@@ -23,6 +23,22 @@ describe('joinPlayers', () => {
   it('shows a member without a preferences doc with no roles', () => {
     const [player] = joinPlayers([{ discordId: '3', name: 'New' }], {});
     expect(player).toMatchObject({ name: 'New', discordId: '3', mainRole: null, offspecs: [], utilities: [] });
+  });
+});
+
+describe('needsPortraitRepair', () => {
+  const named = { roles: [], inGameName: 'Ay-Illidan', mediaUrl: null, characterClass: null };
+
+  it('is true for a profile that names a character but has no portrait', () => {
+    expect(needsPortraitRepair(named)).toBe(true);
+  });
+
+  it('is false with a portrait, without a lookup-ready name, or without a profile', () => {
+    expect(needsPortraitRepair({ ...named, mediaUrl: 'https://render.worldofwarcraft.com/a-avatar.jpg' })).toBe(false);
+    expect(needsPortraitRepair({ ...named, inGameName: 'Ay' })).toBe(false);
+    expect(needsPortraitRepair({ ...named, inGameName: '' })).toBe(false);
+    expect(needsPortraitRepair(null)).toBe(false);
+    expect(needsPortraitRepair(undefined)).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { battleNetSecrets, getBattleNetClient } from './battlenet.js';
+import { battleNetSecrets, getBattleNetClient, type BattleNetClient } from './battlenet.js';
 import { getUtilitiesForClass, getRoleForSpec, toCharacterClass } from '@mythicplus/shared';
 import { enforceRateLimit } from './rateLimit.js';
 import { characterCacheEntry, characterCachePath } from './characterCache.js';
@@ -71,6 +72,30 @@ export function buildCharacterResult(
   };
 }
 
+/**
+ * Look a character up on Battle.net. Null when Battle.net has no such
+ * character. A failed profile call throws, so a rate limit or an outage never
+ * reads as "not found". A failed media call only loses the portrait
+ * (mediaUrl null): whether the character exists is the profile's call.
+ */
+export async function fetchCharacter(
+  client: BattleNetClient,
+  region: string,
+  realm: string,
+  name: string,
+): Promise<CharacterResult | null> {
+  const realmSlug = realm.toLowerCase();
+  const [profile, media] = await Promise.all([
+    client.getCharacterProfile(region, realmSlug, name),
+    client.getCharacterMedia(region, realmSlug, name).catch((err: unknown) => {
+      logger.warn(`[fetchCharacter] media request failed for ${name}-${realmSlug}`, err);
+      return null;
+    }),
+  ]);
+  if (!profile || !profile.character_class) return null;
+  return buildCharacterResult(profile, media);
+}
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 // DO NOT add `enforceAppCheck: true` here. The activity frontend does not
@@ -130,15 +155,17 @@ export const lookupCharacter = onCall(
     // Fetch from Battle.net
     const client = getBattleNetClient();
 
-    const [profile, media] = await Promise.all([
-      client.getCharacterProfile(region, realm.toLowerCase(), name),
-      client.getCharacterMedia(region, realm.toLowerCase(), name),
-    ]);
-    if (!profile || !profile.character_class) {
+    let result: CharacterResult | null;
+    try {
+      result = await fetchCharacter(client, region, realm, name);
+    } catch (err) {
+      logger.error(`[lookupCharacter] Battle.net lookup failed for ${name}-${realm}`, err);
+      throw new HttpsError('unavailable', 'Battle.net is not responding. Try again in a moment.');
+    }
+    if (!result) {
       throw new HttpsError('not-found', `Character "${name}" not found on ${realm}`);
     }
 
-    const result = buildCharacterResult(profile, media);
     // A transient media failure shouldn't erase this character's portrait —
     // callers write mediaUrl straight to preferences/{discordId}.
     if (result.mediaUrl === null && cached?.result?.mediaUrl) {

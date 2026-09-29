@@ -19,14 +19,17 @@ import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 interface RoleEditorProps {
   /** Must carry a discordId: edits are written to preferences/{discordId}. */
   player: WoWPlayer;
-  onMediaUrlChange?: (url: string | null) => void;
   hideSitOut?: boolean;
 }
 
 const LOOKUP_DEBOUNCE_MS = 800;
 const NAME_SAVE_DEBOUNCE_MS = 500;
 
-export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorProps) {
+const NOT_FOUND_MESSAGE = 'Character not found';
+// The lookup failed, not the name (Battle.net down, rate limit, offline).
+const LOOKUP_FAILED_MESSAGE = "Couldn't look up the character. Try again in a moment.";
+
+export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
   const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
   const service = useSessionService();
 
@@ -101,16 +104,16 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
     lookupAbortRef.current = controller;
 
     try {
-      const character = await lookup(parsed.name, parsed.realmSlug, DEFAULT_REGION);
+      const result = await lookup(parsed.name, parsed.realmSlug, DEFAULT_REGION);
       if (controller.signal.aborted) return;
 
-      if (!character) {
-        setLookupError('Character not found');
+      if (result.status !== 'found') {
+        setLookupError(result.status === 'notFound' ? NOT_FOUND_MESSAGE : LOOKUP_FAILED_MESSAGE);
         return;
       }
 
+      const { character } = result;
       setLookupError(null);
-      if (character.mediaUrl) onMediaUrlChange?.(character.mediaUrl);
 
       await service.saveLinkedCharacter(
         player.discordId,
@@ -142,10 +145,10 @@ export function RoleEditor({ player, onMediaUrlChange, hideSitOut }: RoleEditorP
       }
     } catch (err) {
       if (controller.signal.aborted) return;
-      setLookupError('Character not found');
+      setLookupError(LOOKUP_FAILED_MESSAGE);
       reportError(err, { tag: 'RoleEditor.runLookup' });
     }
-  }, [player.discordId, lookup, service, onMediaUrlChange, saveRoles]);
+  }, [player.discordId, lookup, service, saveRoles]);
 
   useEffect(() => {
     return () => {

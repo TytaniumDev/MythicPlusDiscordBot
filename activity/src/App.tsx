@@ -4,6 +4,7 @@ import { loadStoredDiscordId } from './lib/storedDiscordId';
 import { useGuildSubscription, useChannelSubscription, useProfilesSubscription, selectMyDiscordId } from './hooks/useSession';
 import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
+import { usePortraitRepair } from './hooks/usePortraitRepair';
 import { firestoreService } from './services/firestoreService';
 import { statusToView, routeToView, viewToRoute } from './lib/routing';
 import type { AppState, ViewName } from './store/types';
@@ -81,6 +82,9 @@ export function App() {
   useGuildSubscription();
   useChannelSubscription();
   useProfilesSubscription();
+
+  // Fill in the current user's portrait if an older version lost it.
+  usePortraitRepair();
 
   // Subscribe to global season config for affinity tracking. Independent of
   // guild/channel — boots once with the app and stays current across sessions.

@@ -64,12 +64,12 @@ export function SpinWarningDialog({
 
         {missingCharacterLookup.length > 0 && (
           <div className="spin-warning__section spin-warning__section--warn">
-            <div className="spin-warning__section-label">Character not found</div>
+            <div className="spin-warning__section-label">No portrait yet</div>
             {missingCharacterLookup.map(p => (
               <div key={p.discordId || p.name} className="spin-warning__player">
                 <span>{p.name}</span>
                 <span className="spin-warning__reason">
-                  {`'${p.inGameName ?? ''}' didn't resolve — typo?`}
+                  {`'${p.inGameName ?? ''}' — check spelling or re-enter`}
                 </span>
               </div>
             ))}
