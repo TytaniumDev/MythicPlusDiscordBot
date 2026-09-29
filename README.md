@@ -63,6 +63,8 @@ Get up and running in less than 5 minutes.
 *   **👨‍💻 Contributing**: [Development Standards](./CONTRIBUTING.md) - Development standards and guidelines.
 *   **🛡️ CI Standards**: [CI & Security Standards](./docs/CI_STANDARDS.md) - CI and security standards.
 *   **🤖 AI Agents**: [Agent Instructions](./AGENTS.md) - Instructions for AI coding agents (also loaded via `CLAUDE.md`).
+*   **📜 Terms of Service**: [Terms of Service](./TERMS.md) - Rules for using the bot and Activity.
+*   **🔒 Privacy Policy**: [Privacy Policy](./PRIVACY.md) - What data the app collects and how it is used.
 
 ## 🤝 Contributing
 
