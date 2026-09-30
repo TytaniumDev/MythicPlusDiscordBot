@@ -8,14 +8,16 @@ import { RoleEditor } from './RoleEditor';
 import { getPrimaryRole, getRoleColor, getRoleTags, isPlayerReady } from '../lib/roles';
 import { getClassColor } from '../lib/classColors';
 
-export interface MyCharacterCardHandle {
+export interface CharacterCardHandle {
   /** Open the editor (if collapsible) and bring the card into view. */
   reveal: () => void;
 }
 
-interface MyCharacterCardProps {
+interface CharacterCardProps {
   player: WoWPlayer;
   isSittingOut: boolean;
+  /** The current user's own character: headed "Your character" rather than the player's name. */
+  isSelf: boolean;
   /**
    * When true (phone layout, where the card shares the scroll area with the
    * roster) the character sits in a header beside its role tags and the role
@@ -23,10 +25,18 @@ interface MyCharacterCardProps {
    * character stands in a column beside an always-open role editor.
    */
   collapsible?: boolean;
-  ref?: Ref<MyCharacterCardHandle>;
+  /** Adds a close button to the header, for the card shown as a dialog. Sidebar layout only. */
+  onClose?: () => void;
+  ref?: Ref<CharacterCardHandle>;
 }
 
 const HIGHLIGHT_MS = 1200;
+
+const CloseIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
 
 const PencilIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -36,10 +46,12 @@ const PencilIcon = () => (
 );
 
 /**
- * The current user's character in the lobby: their full-body render, whether
- * they're ready, and one-tap access to sitting out and editing their character.
+ * A player's character in the lobby: their full-body render, whether they're
+ * ready, and one-tap access to sitting out and editing their character. The
+ * lobby shows the current user's own card; `CharacterCardModal` shows anyone
+ * else's.
  */
-export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref }: MyCharacterCardProps) {
+export function CharacterCard({ player, isSittingOut, isSelf, collapsible = false, onClose, ref }: CharacterCardProps) {
   const service = useSessionService();
   const editorId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -85,7 +97,7 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
   const toggleSitOut = () => {
     if (!channelId || !player.discordId) return;
     service.setSittingOut(channelId, player.discordId, !isSittingOut).catch((err) => {
-      reportError(err, { tag: 'MyCharacterCard.setSittingOut' });
+      reportError(err, { tag: 'CharacterCard.setSittingOut' });
     });
   };
 
@@ -95,11 +107,11 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
   };
 
   const className = [
-    'my-character',
-    collapsible ? 'my-character--phone' : 'my-character--sidebar',
-    isSittingOut && 'my-character--out',
-    !player.inGameName && 'my-character--needs-name',
-    highlighted && 'my-character--highlight',
+    'character-card',
+    collapsible ? 'character-card--phone' : 'character-card--sidebar',
+    isSittingOut && 'character-card--out',
+    !player.inGameName && 'character-card--needs-name',
+    highlighted && 'character-card--highlight',
   ].filter(Boolean).join(' ');
 
   const stage = (
@@ -110,12 +122,16 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
       alt={`${player.inGameName ?? player.name}, full-body render`}
       // The phone card opens its editor when the name is missing, so the
       // highlighted name field already says what to do.
-      caption={!collapsible && !player.inGameName ? 'Add your in-game name to show your character' : undefined}
+      caption={!collapsible && !player.inGameName
+        ? (isSelf ? 'Add your in-game name to show your character' : 'Add their in-game name to show their character')
+        : undefined}
     />
   );
 
+  const title = <span className="character-card__title">{isSelf ? 'Your character' : player.name}</span>;
+
   const statusPill = (
-    <span className={`my-character__status my-character__status--${status.modifier}`}>{status.label}</span>
+    <span className={`character-card__status character-card__status--${status.modifier}`}>{status.label}</span>
   );
 
   // The label stays put; the switch state and the status pill say whether
@@ -123,19 +139,19 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
   const sitOutToggle = (
     <button
       type="button"
-      className="my-character__sit-out"
+      className="character-card__sit-out"
       role="switch"
       aria-checked={isSittingOut}
       onClick={toggleSitOut}
     >
       Sit out
-      <span className="my-character__switch" aria-hidden="true" />
+      <span className="character-card__switch" aria-hidden="true" />
     </button>
   );
 
   const editor = (
-    <div className="my-character__editor" id={editorId}>
-      <RoleEditor player={player} hideSitOut />
+    <div className="character-card__editor" id={editorId}>
+      <RoleEditor player={player} />
     </div>
   );
 
@@ -147,14 +163,19 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
         ref={rootRef}
         className={className}
         style={{ '--mc-color': roleColor } as React.CSSProperties}
-        data-testid="my-character-card"
+        data-testid="character-card"
       >
-        <div className="my-character__eyebrow">
-          Your character
+        <div className="character-card__eyebrow">
+          {title}
           {statusPill}
+          {onClose && (
+            <button type="button" className="character-card__close" onClick={onClose} aria-label="Close">
+              <CloseIcon />
+            </button>
+          )}
         </div>
-        <div className="my-character__sheet">
-          <div className="my-character__figure">
+        <div className="character-card__sheet">
+          <div className="character-card__figure">
             {stage}
             {sitOutToggle}
           </div>
@@ -169,26 +190,26 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
       ref={rootRef}
       className={className}
       style={{ '--mc-color': roleColor } as React.CSSProperties}
-      data-testid="my-character-card"
+      data-testid="character-card"
     >
-      <div className="my-character__hero">
+      <div className="character-card__hero">
         {stage}
-        <div className="my-character__hero-info">
-          <div className="my-character__eyebrow">Your character</div>
+        <div className="character-card__hero-info">
+          <div className="character-card__eyebrow">{title}</div>
           {statusPill}
           <div className="chip-tags">
             {getRoleTags(player).map((tag, i) => (
               <span key={i} className={`role-tag ${tag.cssClass}`}>{tag.label}</span>
             ))}
           </div>
-          <div className="my-character__hero-controls">
+          <div className="character-card__hero-controls">
             {sitOutToggle}
             {/* Hidden rather than removed while the editor is open, so the
                 header keeps its height and the character doesn't resize. */}
             <button
               ref={editButtonRef}
               type="button"
-              className={`my-character__edit${expanded ? ' my-character__edit--reserved' : ''}`}
+              className={`character-card__edit${expanded ? ' character-card__edit--reserved' : ''}`}
               aria-expanded={expanded}
               aria-controls={editorId}
               inert={expanded}
@@ -206,7 +227,7 @@ export function MyCharacterCard({ player, isSittingOut, collapsible = false, ref
           {editor}
           <button
             type="button"
-            className="my-character__done"
+            className="character-card__done"
             aria-expanded="true"
             aria-controls={editorId}
             onClick={closeEditor}

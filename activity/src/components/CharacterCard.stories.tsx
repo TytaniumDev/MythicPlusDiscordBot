@@ -2,7 +2,7 @@ import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { withStore } from '../../.storybook/decorators';
 import type { WoWPlayer } from '../types';
 import { mockPlayers, mockChannelData } from '../lib/mockData';
-import { MyCharacterCard } from './MyCharacterCard';
+import { CharacterCard } from './CharacterCard';
 
 const storeDefaults = {
   isDemoMode: true,
@@ -21,12 +21,12 @@ const needsName = { ...gazzi, inGameName: undefined, mediaUrl: null };
 const everyTag: WoWPlayer = { ...mockPlayers[0], utilities: ['brez', 'lust'] };
 
 const meta = {
-  title: 'Organisms/MyCharacterCard',
-  component: MyCharacterCard,
+  title: 'Organisms/CharacterCard',
+  component: CharacterCard,
   parameters: { layout: 'centered' },
   decorators: [withStore(storeDefaults)],
-  args: { player: gazzi, isSittingOut: false },
-} satisfies Meta<typeof MyCharacterCard>;
+  args: { player: gazzi, isSittingOut: false, isSelf: true },
+} satisfies Meta<typeof CharacterCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -43,6 +43,12 @@ export const SidebarSittingOut: Story = {
 
 export const SidebarNeedsName: Story = {
   args: { player: needsName },
+  decorators: [sidebarWidth],
+};
+
+/** Another player's card: headed with their name (see CharacterCardModal) */
+export const SidebarOtherPlayer: Story = {
+  args: { player: mockPlayers[0], isSelf: false },
   decorators: [sidebarWidth],
 };
 

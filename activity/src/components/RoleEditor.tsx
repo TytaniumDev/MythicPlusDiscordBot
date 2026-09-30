@@ -3,7 +3,6 @@ import { WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useCharacterLookup } from '../hooks/useCharacterLookup';
-import { SecondaryButton } from './ui';
 import {
   playerRolesToStringArray,
   computeToggledRoles,
@@ -19,7 +18,6 @@ import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 interface RoleEditorProps {
   /** Must carry a discordId: edits are written to preferences/{discordId}. */
   player: WoWPlayer;
-  hideSitOut?: boolean;
 }
 
 const LOOKUP_DEBOUNCE_MS = 800;
@@ -29,9 +27,7 @@ const NOT_FOUND_MESSAGE = 'Character not found';
 // The lookup failed, not the name (Battle.net down, rate limit, offline).
 const LOOKUP_FAILED_MESSAGE = "Couldn't look up the character. Try again in a moment.";
 
-export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
-  const sittingOut = useAppStore((s) => s.channelData?.sittingOut) ?? [];
-  const channelId = useAppStore((s) => s.currentChannelId);
+export function RoleEditor({ player }: RoleEditorProps) {
   const service = useSessionService();
 
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
@@ -176,8 +172,6 @@ export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
     lookupTimerRef.current = setTimeout(() => runLookup(value), LOOKUP_DEBOUNCE_MS);
   }, [saveNameSoon, runLookup]);
 
-  const isSittingOut = sittingOut.includes(player.discordId);
-
   function renderSection(label: string, buttons: RoleButtonDef[], mutuallyExclusive: boolean) {
     return (
       <div className="role-editor-section">
@@ -226,24 +220,6 @@ export function RoleEditor({ player, hideSitOut }: RoleEditorProps) {
       {renderSection('Main Spec (pick one)', MAIN_SPEC_BUTTONS, true)}
       {renderSection('Offspec', OFFSPEC_BUTTONS, false)}
       {renderSection('Utilities', UTILITY_BUTTONS, false)}
-
-      {!hideSitOut && (
-        <div className="role-editor-section" style={{ marginTop: 4 }}>
-          <div className="role-editor-row">
-            <SecondaryButton
-              className={`player-card__sit-out ${isSittingOut ? 'active-sitting-out' : ''}`}
-              onClick={() => {
-                if (!channelId) return;
-                service.setSittingOut(channelId, player.discordId, !isSittingOut).catch((err) => {
-                  reportError(err, { tag: 'RoleEditor.setSittingOut' });
-                });
-              }}
-            >
-              {isSittingOut ? 'Rejoin Round' : 'Sit Out This Round'}
-            </SecondaryButton>
-          </div>
-        </div>
-      )}
     </>
   );
 }

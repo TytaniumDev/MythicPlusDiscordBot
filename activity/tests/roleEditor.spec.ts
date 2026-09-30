@@ -13,14 +13,14 @@ const lobbyData = {
   identity: lobbyIdentity,
 };
 
-test.describe('MyCharacterCard Inline Editor', () => {
+test.describe('CharacterCard Inline Editor', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('Character card visible in lobby sidebar', async ({ page }) => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    const playerCard = page.locator('[data-testid="my-character-card"]');
+    const playerCard = page.locator('[data-testid="character-card"]');
     await expect(playerCard).toBeVisible();
 
     // Full-body render of the character
@@ -34,7 +34,7 @@ test.describe('MyCharacterCard Inline Editor', () => {
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="my-character-card"]');
+    const playerCard = page.locator('[data-testid="character-card"]');
 
     // Main spec section exists
     const mainSpecLabel = playerCard.locator('.role-editor-label', { hasText: 'Main Spec' });
@@ -52,7 +52,7 @@ test.describe('MyCharacterCard Inline Editor', () => {
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="my-character-card"]');
+    const playerCard = page.locator('[data-testid="character-card"]');
 
     await expect(playerCard.locator('.role-editor-label', { hasText: 'Offspec' })).toBeVisible();
     await expect(playerCard.locator('.role-editor-label', { hasText: 'Utilities' })).toBeVisible();
@@ -65,7 +65,7 @@ test.describe('MyCharacterCard Inline Editor', () => {
     await expect(page.locator('#view-lobby')).toBeVisible();
 
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="my-character-card"]');
+    const playerCard = page.locator('[data-testid="character-card"]');
     const input = playerCard.locator('.role-editor-input');
     await expect(input).toBeVisible();
     await expect(input).toHaveAttribute('placeholder', 'PlayerName-ServerName');
@@ -87,9 +87,9 @@ test.describe('MyCharacterCard Inline Editor', () => {
 
     // Tapping your own chip opens the editor in the card
     await page.locator('.player-chip').first().click();
-    const playerCard = page.locator('[data-testid="my-character-card"]');
+    const playerCard = page.locator('[data-testid="character-card"]');
     await expect(playerCard.locator('.role-editor-input')).toBeVisible();
-    await expect(playerCard).not.toHaveClass(/my-character--highlight/);
+    await expect(playerCard).not.toHaveClass(/character-card--highlight/);
 
     await expect(page).toHaveScreenshot('player-card-mobile-lobby.png');
   });
