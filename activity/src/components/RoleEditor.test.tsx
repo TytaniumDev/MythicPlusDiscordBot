@@ -73,3 +73,34 @@ describe('RoleEditor name lookup', () => {
     );
   });
 });
+
+describe('RoleEditor main spec', () => {
+  const mainButton = (container: HTMLElement, id: string): HTMLButtonElement =>
+    container.querySelector<HTMLButtonElement>(`[data-role-id="${id}"]`)!;
+
+  it('keeps the main spec selected when it is clicked again', () => {
+    const { container } = render(<RoleEditor player={gazzi} />);
+    expect(mainButton(container, 'Tank').getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(mainButton(container, 'Tank'));
+
+    expect(mainButton(container, 'Tank').getAttribute('aria-pressed')).toBe('true');
+    for (const [, roles] of vi.mocked(demoService.saveRoles).mock.calls) {
+      expect(roles).toContain('Tank');
+    }
+  });
+
+  it('still switches the main spec to another role', () => {
+    const { container } = render(<RoleEditor player={gazzi} />);
+
+    fireEvent.click(mainButton(container, 'Healer'));
+
+    expect(mainButton(container, 'Healer').getAttribute('aria-pressed')).toBe('true');
+    expect(mainButton(container, 'Tank').getAttribute('aria-pressed')).toBe('false');
+    expect(demoService.saveRoles).toHaveBeenLastCalledWith(
+      gazzi.discordId,
+      expect.arrayContaining(['Healer']),
+      expect.anything(),
+    );
+  });
+});
