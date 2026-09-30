@@ -74,7 +74,7 @@ export function SetupView({ onNavigate }: SetupViewProps) {
             />
             <Divider />
             <div className="setup-view__form">
-              <RoleEditor player={player} hideSitOut />
+              <RoleEditor player={player} />
             </div>
             <PrimaryCTA
               id="setup-ready-btn"
