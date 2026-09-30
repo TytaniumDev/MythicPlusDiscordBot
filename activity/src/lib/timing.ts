@@ -1,15 +1,14 @@
 // ── Configurable Timing Constants ────────────────────────────
-export const CAROUSEL_SPIN_DURATION = 2000;   // ms per wheel in carousel mode
-export const CAROUSEL_ADVANCE_DELAY = 600;    // ms pause after each landing
-// Per-wheel spin durations in grid mode, ordered tank → healer → dps1/2/3.
-// Each wheel lands GRID_SPIN_STAGGER ms after the previous so landings are
-// individually visible instead of clumping into a single pop.
-export const GRID_SPIN_BASE_DURATION = 3000;
-export const GRID_SPIN_STAGGER = 400;
-export const GRID_WHEEL_COUNT = 5;
-export const GRID_SPIN_DURATIONS = Array.from(
-  { length: GRID_WHEEL_COUNT },
-  (_, i) => GRID_SPIN_BASE_DURATION + i * GRID_SPIN_STAGGER,
+// Per-wheel spin durations, ordered tank → healer → dps1/2/3. All five wheels
+// start together in every layout; each lands WHEEL_SPIN_STAGGER ms after the
+// previous so landings are individually visible instead of clumping into a
+// single pop.
+export const WHEEL_SPIN_BASE_DURATION = 3000;
+export const WHEEL_SPIN_STAGGER = 400;
+export const WHEEL_COUNT = 5;
+export const WHEEL_SPIN_DURATIONS = Array.from(
+  { length: WHEEL_COUNT },
+  (_, i) => WHEEL_SPIN_BASE_DURATION + i * WHEEL_SPIN_STAGGER,
 );
 
 // Auto-advance spotlight timing
