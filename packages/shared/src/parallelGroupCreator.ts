@@ -38,8 +38,8 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
 
 /**
  * Canonical key for an unordered name pair, so `pairCounts.get(pairKey(a, b))`
- * yields the same value regardless of argument order. Mirrored verbatim by
- * the Lua addon's pair-count map — keep the format byte-for-byte identical.
+ * yields the same value regardless of argument order. Season pair counts in
+ * Firestore are keyed by it too, so keep the format stable.
  */
 export function pairKey(a: string, b: string): string {
   return a < b ? a + '|' + b : b + '|' + a;
@@ -84,40 +84,134 @@ function canFillSlot(player: WoWPlayer, slot: SlotInfo['slot']): boolean {
 }
 
 /**
- * Lexicographic score for a group set:
- *   - `maxPerPlayer`: worst-case count of repeat-teammates any single player has
- *   - `total`: sum of pair-counts for every unique pair across all groups
- *
- * Smaller is better on both axes; `maxPerPlayer` dominates because the user-
- * facing complaint is "*I* keep getting grouped with X again", not "the
- * algorithm-wide repeat sum is high".
+ * How well `player` suits `slot`: 2 for their main role, 1 for an offspec,
+ * 0 if they can't fill it.
+ */
+function slotFit(player: WoWPlayer, slot: SlotInfo['slot']): number {
+  if (!canFillSlot(player, slot)) return 0;
+  if (slot === 'tank') return player.tankMain ? 2 : 1;
+  if (slot === 'healer') return player.healerMain ? 2 : 1;
+  return player.dpsMain ? 2 : 1;
+}
+
+/**
+ * Whether a group plays a key as formed: it has a tank and a healer, and can
+ * pug any missing DPS. Everyone in a group without both sits the round out.
+ */
+function plays(group: WoWGroup): boolean {
+  return group.tank !== null && group.healer !== null;
+}
+
+/**
+ * What the swap pass must preserve, indexed like the groups: whether each
+ * group is complete and whether it plays (see `plays`), the brez and lust
+ * coverage each playing group had after the greedy fill, and each complete
+ * group's ranged coverage. Groups that sit out have nothing to keep.
+ */
+interface SwapRules {
+  complete: boolean[];
+  plays: boolean[];
+  brez: boolean[];
+  lust: boolean[];
+  ranged: boolean[];
+}
+
+/**
+ * Whether `player`, leaving group `from`, may take `slot` in group `to` from
+ * `displaced`. A player from an incomplete group (sitting out, or short and
+ * pugging) only joins a complete group in a slot they suit at least as well
+ * as the player they replace, so a swap never trades a complete group's
+ * main-spec tank, healer or DPS for an offspec.
+ */
+function canMove(
+  player: WoWPlayer,
+  from: number,
+  displaced: WoWPlayer,
+  slot: SlotInfo['slot'],
+  to: number,
+  rules: SwapRules,
+): boolean {
+  if (!canFillSlot(player, slot)) return false;
+  return !rules.complete[to] || rules.complete[from] || slotFit(player, slot) >= slotFit(displaced, slot);
+}
+
+/**
+ * Whether group `idx` still has the coverage it started with: brez and lust
+ * always, and a ranged DPS when the swap trades with an incomplete group
+ * (`withIncomplete`). Swaps among complete groups don't keep ranged coverage,
+ * as before.
+ */
+function keepsUtility(
+  groups: readonly WoWGroup[],
+  idx: number,
+  rules: SwapRules,
+  withIncomplete: boolean,
+): boolean {
+  const g = groups[idx];
+  return (!rules.brez[idx] || g.hasBrez)
+    && (!rules.lust[idx] || g.hasLust)
+    && (!withIncomplete || !rules.ranged[idx] || g.hasRanged);
+}
+
+/** Lexicographic score for a group set; smaller is better on every axis. */
+interface GroupScore {
+  /** Most earlier sit-outs tonight of anyone sitting out this round. */
+  sitMax: number;
+  /** Earlier sit-outs tonight, summed over everyone sitting out this round. */
+  sitTotal: number;
+  /** Worst-case repeat-teammate count any single playing player has. */
+  maxPerPlayer: number;
+  /** Pair-counts summed over every unique pair in the playing groups. */
+  total: number;
+}
+
+/**
+ * Score a group set, in priority order:
+ *   1. Sit-outs rotate: nobody sits again while someone who has sat less
+ *      tonight plays. Sitting out a whole round costs more than a repeat
+ *      teammate.
+ *   2. `maxPerPlayer` before `total`, because the user-facing complaint is
+ *      "*I* keep getting grouped with X again", not "the algorithm-wide
+ *      repeat sum is high".
+ * Only playing groups count toward repeats; players sitting out together
+ * don't play together.
  */
 function scoreGroups(
   groups: readonly WoWGroup[],
   pairCounts: Map<string, number>,
-): { maxPerPlayer: number; total: number } {
-  let maxPerPlayer = 0;
+  sitCounts: Map<string, number>,
+  playing: readonly boolean[],
+): GroupScore {
+  const score: GroupScore = { sitMax: 0, sitTotal: 0, maxPerPlayer: 0, total: 0 };
   let perPlayerSum = 0;
-  for (const g of groups) {
+  groups.forEach((g, gi) => {
     const ms = g.players;
+    if (!playing[gi]) {
+      for (const p of ms) {
+        const sits = sitCounts.get(p.name) ?? 0;
+        if (sits > score.sitMax) score.sitMax = sits;
+        score.sitTotal += sits;
+      }
+      return;
+    }
     for (let i = 0; i < ms.length; i++) {
       let perPlayer = 0;
       for (let j = 0; j < ms.length; j++) {
         if (i === j) continue;
         perPlayer += pairCounts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
       }
-      if (perPlayer > maxPerPlayer) maxPerPlayer = perPlayer;
+      if (perPlayer > score.maxPerPlayer) score.maxPerPlayer = perPlayer;
       perPlayerSum += perPlayer;
     }
-  }
+  });
   // Each unique pair is summed twice across the players' perPlayer counts.
-  return { maxPerPlayer, total: perPlayerSum / 2 };
+  score.total = perPlayerSum / 2;
+  return score;
 }
 
-function isBetterScore(
-  candidate: { maxPerPlayer: number; total: number },
-  current: { maxPerPlayer: number; total: number },
-): boolean {
+function isBetterScore(candidate: GroupScore, current: GroupScore): boolean {
+  if (candidate.sitMax !== current.sitMax) return candidate.sitMax < current.sitMax;
+  if (candidate.sitTotal !== current.sitTotal) return candidate.sitTotal < current.sitTotal;
   if (candidate.maxPerPlayer !== current.maxPerPlayer) {
     return candidate.maxPerPlayer < current.maxPerPlayer;
   }
@@ -131,10 +225,10 @@ function isBetterScore(
 function trySingleSwap(
   groups: WoWGroup[],
   pairCounts: Map<string, number>,
-  origBrez: boolean[],
-  origLust: boolean[],
+  sitCounts: Map<string, number>,
+  rules: SwapRules,
 ): boolean {
-  let bestScore = scoreGroups(groups, pairCounts);
+  let bestScore = scoreGroups(groups, pairCounts, sitCounts, rules.plays);
   let bestSwap:
     | { gi: WoWGroup; gj: WoWGroup; pa: WoWPlayer; sa: SlotInfo; pb: WoWPlayer; sb: SlotInfo }
     | null = null;
@@ -151,16 +245,13 @@ function trySingleSwap(
         for (const pb of playersJ) {
           const sb = findSlot(gj, pb);
           if (!sb) continue;
-          if (!canFillSlot(pa, sb.slot) || !canFillSlot(pb, sa.slot)) continue;
+          if (!canMove(pa, i, pb, sb.slot, j, rules) || !canMove(pb, j, pa, sa.slot, i, rules)) continue;
 
           setSlot(gi, sa, pb);
           setSlot(gj, sb, pa);
-          const utilityOk = (!origBrez[i] || gi.hasBrez)
-            && (!origLust[i] || gi.hasLust)
-            && (!origBrez[j] || gj.hasBrez)
-            && (!origLust[j] || gj.hasLust);
-          if (utilityOk) {
-            const candidate = scoreGroups(groups, pairCounts);
+          const withIncomplete = rules.complete[i] !== rules.complete[j];
+          if (keepsUtility(groups, i, rules, withIncomplete) && keepsUtility(groups, j, rules, withIncomplete)) {
+            const candidate = scoreGroups(groups, pairCounts, sitCounts, rules.plays);
             if (isBetterScore(candidate, bestScore)) {
               bestScore = candidate;
               bestSwap = { gi, gj, pa, sa, pb, sb };
@@ -190,12 +281,12 @@ function trySingleSwap(
 function tryThreeCycle(
   groups: WoWGroup[],
   pairCounts: Map<string, number>,
-  origBrez: boolean[],
-  origLust: boolean[],
+  sitCounts: Map<string, number>,
+  rules: SwapRules,
 ): boolean {
   if (groups.length < 3) return false;
 
-  let bestScore = scoreGroups(groups, pairCounts);
+  let bestScore = scoreGroups(groups, pairCounts, sitCounts, rules.plays);
   let bestCycle:
     | {
       gi: WoWGroup; pi: WoWPlayer; si: SlotInfo;
@@ -223,23 +314,23 @@ function tryThreeCycle(
           for (const pj of playersJ) {
             const sj = findSlot(gj, pj);
             if (!sj) continue;
-            if (!canFillSlot(pi, sj.slot)) continue;
+            if (!canMove(pi, i, pj, sj.slot, j, rules)) continue;
             for (const pk of playersK) {
               const sk = findSlot(gk, pk);
               if (!sk) continue;
-              if (!canFillSlot(pj, sk.slot) || !canFillSlot(pk, si.slot)) continue;
+              if (!canMove(pj, j, pk, sk.slot, k, rules) || !canMove(pk, k, pi, si.slot, i, rules)) continue;
 
               setSlot(gi, si, pk);
               setSlot(gj, sj, pi);
               setSlot(gk, sk, pj);
-              const utilityOk = (!origBrez[i] || gi.hasBrez)
-                && (!origLust[i] || gi.hasLust)
-                && (!origBrez[j] || gj.hasBrez)
-                && (!origLust[j] || gj.hasLust)
-                && (!origBrez[k] || gk.hasBrez)
-                && (!origLust[k] || gk.hasLust);
-              if (utilityOk) {
-                const candidate = scoreGroups(groups, pairCounts);
+              const withIncomplete = rules.complete[i] !== rules.complete[j]
+                || rules.complete[j] !== rules.complete[k];
+              if (
+                keepsUtility(groups, i, rules, withIncomplete)
+                && keepsUtility(groups, j, rules, withIncomplete)
+                && keepsUtility(groups, k, rules, withIncomplete)
+              ) {
+                const candidate = scoreGroups(groups, pairCounts, sitCounts, rules.plays);
                 if (isBetterScore(candidate, bestScore)) {
                   bestScore = candidate;
                   bestCycle = { gi, pi, si, gj, pj, sj, gk, pk, sk };
@@ -263,13 +354,17 @@ function tryThreeCycle(
 }
 
 /**
- * Local-search post-processing: swap pairs of players between groups if doing
- * so lowers the lexicographic `(maxPerPlayer, total)` score. The greedy fill
- * passes optimize each group as it is built, which strands the last-filled
- * group with the leftover DPS and can leave one player with 2+ repeat
- * teammates even though a strictly better assignment exists. This pass cleans
- * that up without changing role assignments or utility coverage. See issue
- * #512 for the motivating scenario.
+ * Local-search post-processing: swap players between groups while doing so
+ * improves the lexicographic `scoreGroups` score, i.e. rotates who sits out
+ * first, then lowers repeat teammates. The greedy fill passes optimize each
+ * group as it is built, which strands the last-filled group with the leftover
+ * DPS, can leave one player with 2+ repeat teammates even though a strictly
+ * better assignment exists (issue #512), and never looks at who sat out
+ * earlier tonight (issue #654). This pass cleans that up without changing
+ * role assignments or utility coverage.
+ *
+ * Every group takes part, including the groups that sit out, so players can
+ * trade places across the sit-out line.
  *
  * Two phases run alternately until both quiesce. Single-swap exploration
  * handles the common cases. A 3-cycle pass escapes local minima that single
@@ -279,29 +374,39 @@ function tryThreeCycle(
  * Constraints preserved:
  *   - Role compatibility for each slot (tank/healer/DPS slot occupants).
  *   - No healer-main placed as tank.
- *   - Brez/lust coverage of any group that originally had it.
+ *   - Brez/lust coverage of any playing group that originally had it.
  *   - Group sizes (only same-cardinality slot swaps occur).
- *
- * Mirrored in Lua by the MythicPlusWheel addon — keep behavior in sync.
+ *   - Against incomplete groups, a complete group's role fit and ranged
+ *     coverage: a player from an incomplete group only replaces someone they
+ *     suit a slot at least as well as, and a trade with an incomplete group
+ *     can't take away a complete group's ranged DPS. Swaps among complete
+ *     groups follow the same rules as before.
  */
-function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): void {
-  if (pairCounts.size === 0) return;
+function diversifyGroups(
+  groups: WoWGroup[],
+  pairCounts: Map<string, number>,
+  sitCounts: Map<string, number>,
+): void {
+  if ((pairCounts.size === 0 && sitCounts.size === 0) || groups.length < 2) return;
 
-  const completeGroups = groups.filter((g) => g.isComplete);
-  if (completeGroups.length < 2) return;
-
-  const origBrez = completeGroups.map((g) => g.hasBrez);
-  const origLust = completeGroups.map((g) => g.hasLust);
+  const playing = groups.map(plays);
+  const rules: SwapRules = {
+    complete: groups.map((g) => g.isComplete),
+    plays: playing,
+    brez: groups.map((g, i) => playing[i] && g.hasBrez),
+    lust: groups.map((g, i) => playing[i] && g.hasLust),
+    ranged: groups.map((g) => g.isComplete && g.hasRanged),
+  };
 
   // Outer loop bounded so a hostile pair-count map can't make this run away;
-  // each phase already converges in O(complete-groups) iterations in practice.
-  const maxOuter = completeGroups.length * 4;
+  // each phase already converges in O(groups) iterations in practice.
+  const maxOuter = groups.length * 4;
   for (let outer = 0; outer < maxOuter; outer++) {
     let progress = false;
-    while (trySingleSwap(completeGroups, pairCounts, origBrez, origLust)) {
+    while (trySingleSwap(groups, pairCounts, sitCounts, rules)) {
       progress = true;
     }
-    if (tryThreeCycle(completeGroups, pairCounts, origBrez, origLust)) {
+    if (tryThreeCycle(groups, pairCounts, sitCounts, rules)) {
       progress = true;
     }
     if (!progress) return;
@@ -310,15 +415,17 @@ function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): v
 
 /**
  * Form balanced Mythic+ groups from a player pool. Used by both the bot
- * (Discord-only `/wheel`) and the frontend (Activity spin), and mirrored in
- * Lua by the MythicPlusWheel addon — keep behavior in sync if you change it.
+ * (Discord-only `/wheel`) and the frontend (Activity spin).
  *
  * Three things that aren't obvious from the signature:
  *
  * 1. **Diversity across rounds.** A pair-count matrix tracks how often each
- *    pair of players has shared a group tonight, scoped per `guildId`. The
- *    grabber-loop scoring penalizes repeats, so successive `/wheel` calls or
- *    Activity spins in the same guild produce minimally repeated groupings.
+ *    pair of players has played in a group together tonight, scoped per
+ *    `guildId`. The grabber-loop scoring penalizes repeats, so successive
+ *    `/wheel` calls or Activity spins in the same guild produce minimally
+ *    repeated groupings. A sit-out count per player tracks who sat out
+ *    earlier rounds (in a group without a tank or healer), and the swap pass
+ *    rotates sit-outs before it minimizes repeats.
  *
  * 2. **Per-guild history.** `guildId: null` falls back to a single shared
  *    bucket (suitable for tests and single-guild bots). Multi-guild bots
@@ -329,8 +436,7 @@ function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): v
  *    slots compete for the remaining player pool, which is why the algorithm
  *    sometimes "skips" the obviously-best DPS to satisfy lust/brez coverage.
  *
- * The `_debug` parameter is currently a no-op — kept for API compatibility
- * with the Lua sibling, which uses it to gate verbose logging.
+ * The `_debug` parameter is currently a no-op, kept for API compatibility.
  */
 export function createMythicPlusGroups(
   players: WoWPlayer[],
@@ -339,11 +445,18 @@ export function createMythicPlusGroups(
 ): WoWGroup[] {
   const rounds = groupHistory.get(guildId) ?? [];
 
-  // Build pair-count matrix from all rounds: how many times each pair has been grouped
+  // From tonight's rounds: how many times each pair has played together, and
+  // how many times each player sat out. Players sitting out together didn't
+  // play together, so those groups add sit-outs rather than pairs.
   const pairCounts = new Map<string, number>();
+  const sitCounts = new Map<string, number>();
   for (const round of rounds) {
     for (const group of round) {
       const members = group.players;
+      if (!plays(group)) {
+        for (const p of members) sitCounts.set(p.name, (sitCounts.get(p.name) ?? 0) + 1);
+        continue;
+      }
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
           const key = pairKey(members[i].name, members[j].name);
@@ -623,7 +736,7 @@ export function createMythicPlusGroups(
   fillRemainingDps();
   handleRemainders();
 
-  diversifyGroups(groups, pairCounts);
+  diversifyGroups(groups, pairCounts, sitCounts);
 
   groupHistory.set(guildId, [...rounds, groups]);
   return groups;
