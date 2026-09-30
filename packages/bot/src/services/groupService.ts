@@ -6,7 +6,7 @@ import {
   todayPST,
   type WoWGroupDict,
 } from '@mythicplus/shared';
-import { announceGroup, type Sendable } from '../core/groupUi.js';
+import { announceGroup, formatSittingOutNotice, type Sendable } from '../core/groupUi.js';
 import { toLobbyMember, type DiscordMember, type TypingChannel } from '../core/utils.js';
 import { getDebugPlayers } from '../core/debugFixtures.js';
 import { FirebaseService } from '../core/firebaseService.js';
@@ -26,7 +26,9 @@ export class GroupService {
   private serverLocks: Map<string, boolean> = new Map();
 
   /**
-   * Retrieves the eligible WoW players from the Discord channel.
+   * Retrieves the eligible WoW players from the Discord channel. Only players
+   * with a main role are grouped; the rest sit this spin out, and the channel
+   * is told who and why.
    *
    * @param ctx - The command context.
    * @param debug - Whether to use debug data.
@@ -49,9 +51,12 @@ export class GroupService {
       const prefs = await FirebaseService.getInstance().getPreferences(
         members.map((m) => m.discordId),
       );
-      players = members
-        .map((m) => WoWPlayer.fromPreferences(m, prefs.get(m.discordId) ?? null))
-        .filter((p) => p.hasRoles());
+      const inVoice = members.map((m) => WoWPlayer.fromPreferences(m, prefs.get(m.discordId) ?? null));
+      players = inVoice.filter((p) => p.mainRole !== null);
+      const sittingOut = inVoice.filter((p) => p.mainRole === null);
+      if (players.length > 0 && sittingOut.length > 0) {
+        await ctx.send(formatSittingOutNotice(sittingOut.map((p) => p.name)));
+      }
     }
 
     if (players.length === 0) {
