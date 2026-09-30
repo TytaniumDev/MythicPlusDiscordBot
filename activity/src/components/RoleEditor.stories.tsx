@@ -34,7 +34,3 @@ export const Unassigned: Story = {
     },
   },
 };
-
-export const HideSitOut: Story = {
-  args: { player: mockPlayers[6], hideSitOut: true },
-};

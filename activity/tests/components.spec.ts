@@ -127,17 +127,17 @@ test.describe('Component: GroupSlide', () => {
   });
 });
 
-// ── Component: MyCharacterCard ───────────────────────────────
-test.describe('Component: MyCharacterCard', () => {
+// ── Component: CharacterCard ───────────────────────────────
+test.describe('Component: CharacterCard', () => {
   test('Character card in lobby sidebar', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    const card = page.locator('[data-testid="my-character-card"]');
+    const card = page.locator('[data-testid="character-card"]');
     await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('my-character-card.png');
+    await expect(card).toHaveScreenshot('character-card.png');
   });
 
   test('Character card on mobile, editor open', async ({ page }) => {
@@ -147,10 +147,29 @@ test.describe('Component: MyCharacterCard', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    const card = page.locator('[data-testid="my-character-card"]');
-    await card.getByRole('button', { name: '✎ Edit' }).click();
+    const card = page.locator('[data-testid="character-card"]');
+    await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(card.locator('.role-editor-input')).toBeVisible();
-    await expect(card).toHaveScreenshot('my-character-card-mobile.png');
+    await expect(card).toHaveScreenshot('character-card-mobile.png');
+  });
+
+  test("Another player's character card in a modal", async ({ page }) => {
+    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
+    const lobbyData = { ...mockChannelData, status: 'lobby', players: mockPlayers, identity: lobbyIdentity };
+    await page.goto(`/?data=${encodeData(lobbyData)}`);
+    await expect(page.locator('#view-lobby')).toBeVisible();
+
+    const other = mockPlayers[0];
+    await page.getByRole('button', { name: `Edit ${other.name} roles` }).click();
+    const dialog = page.getByRole('dialog', { name: `Edit ${other.name}` });
+    const card = dialog.getByTestId('character-card');
+    await expect(card.getByText(other.name, { exact: true })).toBeVisible();
+    await expect(card.getByAltText(`${other.inGameName}, full-body render`)).toBeVisible();
+    await expect(card.locator('.role-editor-input')).toHaveValue(other.inGameName!);
+    await expect(card).toHaveScreenshot('character-card-modal.png');
+
+    await card.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toHaveCount(0);
   });
 });
 

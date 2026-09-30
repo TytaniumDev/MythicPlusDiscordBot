@@ -217,10 +217,10 @@ test.describe('Mobile Functional (393x852)', () => {
     await page.goto(`/?data=${encodeData(lobbyData)}`);
     await expect(page.locator('#view-lobby')).toBeVisible();
 
-    const card = page.locator('[data-testid="my-character-card"]');
+    const card = page.locator('[data-testid="character-card"]');
     await expect(card).toBeInViewport();
     await expect(card.getByRole('switch', { name: 'Sit out' })).toBeVisible();
-    await expect(card.getByRole('button', { name: '✎ Edit' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
 
     // Editor stays tucked away until asked for when the character is ready
     await expect(card.locator('.role-editor-input')).toHaveCount(0);
@@ -234,9 +234,9 @@ test.describe('Mobile Functional (393x852)', () => {
   test('Lobby — Edit opens and closes the character editor', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
-    const card = page.locator('[data-testid="my-character-card"]');
+    const card = page.locator('[data-testid="character-card"]');
 
-    await card.getByRole('button', { name: '✎ Edit' }).click();
+    await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(card.locator('.role-editor-input')).toBeVisible();
     await expect(card.locator('[data-role-id="Tank"]')).toBeVisible();
 
@@ -247,12 +247,12 @@ test.describe('Mobile Functional (393x852)', () => {
   test('Lobby — tapping your own chip opens your character editor', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     await page.goto(`/?data=${encodeData(lobbyData)}`);
-    const card = page.locator('[data-testid="my-character-card"]');
+    const card = page.locator('[data-testid="character-card"]');
 
     await page.getByRole('button', { name: `Edit your character: ${mockPlayers[4].name}` }).click();
     await expect(card.locator('.role-editor-input')).toBeVisible();
     // Own chip never opens the edit-other-player modal
-    await expect(page.locator('.edit-modal')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
   test('Wheels — group pager appears below wheel, side column hidden', async ({ page }) => {
