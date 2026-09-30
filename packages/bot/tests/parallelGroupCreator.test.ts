@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   WoWPlayer,
   WoWGroup,
   clear,
   setGroupHistory,
   createMythicPlusGroups,
+  pairKey,
 } from '@mythicplus/shared';
 import {
   TankWarrior,
@@ -502,6 +503,239 @@ describe('GroupCreator', () => {
         totalOverlap,
         `total pair overlap was ${totalOverlap} on trial ${trial}, expected the proven global minimum of 10`,
       ).toBe(10);
+    }
+  });
+});
+
+describe('GroupCreator swap pass with leftover groups', () => {
+  const mkGroup = (
+    tank: WoWPlayer | null,
+    healer: WoWPlayer | null,
+    dps: WoWPlayer[],
+  ): WoWGroup => {
+    const g = new WoWGroup();
+    g.tank = tank;
+    g.healer = healer;
+    g.dps = [...dps];
+    return g;
+  };
+
+  /** Times each pair shared a group across `rounds`, keyed by `pairKey`. */
+  const pairCountsOf = (rounds: WoWGroup[][]): Map<string, number> => {
+    const counts = new Map<string, number>();
+    for (const round of rounds) {
+      for (const group of round) {
+        const ms = group.players;
+        for (let i = 0; i < ms.length; i++) {
+          for (let j = i + 1; j < ms.length; j++) {
+            const key = pairKey(ms[i].name, ms[j].name);
+            counts.set(key, (counts.get(key) ?? 0) + 1);
+          }
+        }
+      }
+    }
+    return counts;
+  };
+
+  /**
+   * Repeat score over every group, leftover groups included: the worst
+   * player's repeat count with their teammates, and the total over all pairs.
+   */
+  const repeatScore = (
+    groups: WoWGroup[],
+    counts: Map<string, number>,
+  ): { maxPerPlayer: number; total: number } => {
+    let maxPerPlayer = 0;
+    let total = 0;
+    for (const group of groups) {
+      const ms = group.players;
+      for (let i = 0; i < ms.length; i++) {
+        let perPlayer = 0;
+        for (let j = 0; j < ms.length; j++) {
+          if (i === j) continue;
+          const c = counts.get(pairKey(ms[i].name, ms[j].name)) ?? 0;
+          perPlayer += c;
+          if (j > i) total += c;
+        }
+        maxPerPlayer = Math.max(maxPerPlayer, perPlayer);
+      }
+    }
+    return { maxPerPlayer, total };
+  };
+
+  const names = (group: WoWGroup): string[] => group.players.map((p) => p.name);
+
+  afterEach(() => {
+    clear();
+    vi.restoreAllMocks();
+  });
+
+  it('breaks up a repeat pair left together in the leftover group', () => {
+    // D1-D3 are fresh to the tank, D4 and D5 aren't, so the greedy fill always
+    // gives the complete group D1-D3 and leaves D4 and D5 (together twice
+    // tonight) in the leftover group. Swapping one of them into the complete
+    // group costs a single repeat with the tank instead.
+    for (let trial = 0; trial < 25; trial++) {
+      clear();
+      const tank = WoWPlayer.create('T', ['Tank']);
+      const healer = WoWPlayer.create('H', ['Healer']);
+      const dps = [1, 2, 3, 4, 5].map((i) => WoWPlayer.create(`D${i}`, ['Melee']));
+      const [, , , d4, d5] = dps;
+      const history = [
+        [mkGroup(tank, null, [d4, d5])],
+        [mkGroup(null, null, [d4, d5])],
+      ];
+      setGroupHistory(history);
+
+      const groups = createMythicPlusGroups([tank, healer, ...dps]);
+
+      expect(groups).toHaveLength(2);
+      expect(groups[0].isComplete).toBe(true);
+      expect(names(groups[1])).not.toEqual(expect.arrayContaining(['D4', 'D5']));
+      expect(repeatScore(groups, pairCountsOf(history))).toEqual({ maxPerPlayer: 1, total: 1 });
+    }
+  });
+
+  it('never trades a main tank or healer for a leftover offspec', () => {
+    // The main tank and healer have played with everyone in the complete
+    // group; the offspec-only tank and healer in the leftover group haven't.
+    // Swapping them in would clear every repeat, but a leftover player may
+    // only take a complete group's slot if they suit it at least as well.
+    for (let trial = 0; trial < 25; trial++) {
+      clear();
+      const mainTank = WoWPlayer.create('MainTank', ['Tank']);
+      const mainHealer = WoWPlayer.create('MainHealer', ['Healer']);
+      const dps = [1, 2, 3].map((i) => WoWPlayer.create(`D${i}`, ['Melee']));
+      const offTank = WoWPlayer.create('OffTank', ['Tank Offspec']);
+      const offHealer = WoWPlayer.create('OffHealer', ['Healer Offspec']);
+      setGroupHistory([[mkGroup(mainTank, mainHealer, dps)]]);
+
+      const groups = createMythicPlusGroups([mainTank, mainHealer, ...dps, offTank, offHealer]);
+
+      const complete = groups.filter((g) => g.isComplete);
+      expect(complete).toHaveLength(1);
+      expect(complete[0].tank?.name).toBe('MainTank');
+      expect(complete[0].healer?.name).toBe('MainHealer');
+    }
+  });
+
+  it("keeps a complete group's ranged DPS when trading with a leftover group", () => {
+    // The only ranged player has played with the tank and healer. Swapping
+    // them for the leftover melee would clear both repeats, but would leave
+    // the complete group with no ranged DPS.
+    for (let trial = 0; trial < 25; trial++) {
+      clear();
+      const tank = WoWPlayer.create('T', ['Tank']);
+      const healer = WoWPlayer.create('H', ['Healer']);
+      const ranged = WoWPlayer.create('R', ['Ranged']);
+      const melee = [1, 2, 3].map((i) => WoWPlayer.create(`M${i}`, ['Melee']));
+      setGroupHistory([[mkGroup(tank, healer, [ranged])]]);
+
+      const groups = createMythicPlusGroups([tank, healer, ranged, ...melee]);
+
+      expect(groups).toHaveLength(2);
+      expect(groups[0].isComplete).toBe(true);
+      expect(groups[0].hasRanged).toBe(true);
+      expect(names(groups[0])).toContain('R');
+    }
+  });
+
+  it('never gives anyone two repeat teammates on the issue #625 input', () => {
+    // Reproduction of issue #625 (18 players, one earlier round). A brute-force
+    // search of every legal arrangement shows the best possible is 2 repeat
+    // pairs across all four groups, with nobody repeating more than one
+    // teammate. Before the swap pass took in the leftover group, it could
+    // leave an avoidable repeat there (John G with Vanyali) and occasionally
+    // gave one player two repeats.
+    for (let trial = 0; trial < 25; trial++) {
+      clear();
+      const gazzi = WoWPlayer.create('Gazzi (Nikki)', ['Tank', 'Brez']);
+      const quill = WoWPlayer.create('Quill (Josh)', [
+        'Healer',
+        'Tank Offspec',
+        'Ranged Offspec',
+        'Melee Offspec',
+        'Brez',
+      ]);
+      const tyt = WoWPlayer.create('Tytaniormu (Tyler)', ['Ranged', 'Lust']);
+      const marti = WoWPlayer.create('Martichoux (Erik)', ['Ranged', 'Ranged Offspec', 'Lust']);
+      const gutter = WoWPlayer.create('Gutterhero (Daniel)', ['Melee']);
+      const temma = WoWPlayer.create('Temma (Ben)', ['Tank', 'Melee Offspec', 'Brez']);
+      const sorovar = WoWPlayer.create('Sorovar (Jeremy)', ['Healer', 'Ranged Offspec']);
+      const poppy = WoWPlayer.create('Poppybrosjr (Steve)', ['Ranged', 'Lust']);
+      const raxef = WoWPlayer.create('Raxef', ['Melee', 'Melee Offspec']);
+      const mickey = WoWPlayer.create('Mickey (rook (AJ))', ['Melee']);
+      const hung = WoWPlayer.create('HungFarLow', ['Tank']);
+      const selinora = WoWPlayer.create('Selinora(CJ)', ['Healer']);
+      const coriander = WoWPlayer.create('Coriander (Bevan)', ['Ranged', 'Lust']);
+      const glod = WoWPlayer.create('Glodskegg (Graham)', ['Ranged', 'Brez']);
+      const jim = WoWPlayer.create('jim (Stink)', ['Melee']);
+      const vanyali = WoWPlayer.create('Vanyali ((K/H)ailey)', ['Ranged']);
+      const khurri = WoWPlayer.create('Khurri (Caitlin)', ['Melee', 'Melee Offspec', 'Brez']);
+      const johnG = WoWPlayer.create('John G', ['Melee', 'Tank Offspec', 'Brez']);
+      const fourX = WoWPlayer.create('FourX (Andrew)', ['Ranged', 'Lust']);
+
+      const history = [[
+        mkGroup(gazzi, selinora, [tyt, khurri, poppy]),
+        mkGroup(temma, quill, [fourX, jim, mickey]),
+        mkGroup(johnG, sorovar, [coriander, gutter, vanyali]),
+        mkGroup(null, null, [glod, marti, raxef]),
+      ]];
+      setGroupHistory(history);
+
+      const players = [
+        gazzi, quill, tyt, marti, gutter, temma, sorovar, poppy, raxef,
+        mickey, hung, selinora, coriander, glod, jim, vanyali, khurri, johnG,
+      ];
+      const groups = createMythicPlusGroups(players);
+
+      expect(groups).toHaveLength(4);
+      expect(groups.filter((g) => g.isComplete)).toHaveLength(3);
+      const score = repeatScore(groups, pairCountsOf(history));
+      expect(score.maxPerPlayer, `trial ${trial}`).toBe(1);
+      expect(score.total, `trial ${trial}`).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('keeps every spin valid across random lobbies with history', () => {
+    // Seeded so a failure reproduces. Each lobby's history comes from the
+    // algorithm's own earlier rounds, as on a real night.
+    let seed = 12345;
+    const random = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    vi.spyOn(Math, 'random').mockImplementation(random);
+
+    const mains = ['Tank', 'Healer', 'Ranged', 'Melee'];
+    const offspecs = ['Tank Offspec', 'Healer Offspec', 'Ranged Offspec', 'Melee Offspec'];
+    for (let lobby = 0; lobby < 150; lobby++) {
+      clear();
+      const size = 5 + Math.floor(random() * 26);
+      const players = Array.from({ length: size }, (_, i) => {
+        const roles = [mains[Math.floor(random() * mains.length)]];
+        for (const off of offspecs) if (random() < 0.2) roles.push(off);
+        if (random() < 0.3) roles.push('Brez');
+        if (random() < 0.25) roles.push('Lust');
+        return WoWPlayer.create(`L${lobby}P${i}`, roles);
+      });
+
+      for (let round = 0; round < 3; round++) {
+        const attending = players.filter(() => random() < 0.85);
+        const groups = createMythicPlusGroups(attending);
+
+        const placed = groups.flatMap(names);
+        expect(placed.sort()).toEqual(attending.map((p) => p.name).sort());
+        for (const group of groups) {
+          expect(group.size).toBeLessThanOrEqual(5);
+          if (!group.isComplete) continue;
+          // The fill step may tank with a healer-main who has a tank offspec
+          // when nobody else can; the swap pass never moves one into a tank slot.
+          expect(group.tank!.tankMain || group.tank!.offtank).toBe(true);
+          expect(group.healer!.healerMain || group.healer!.offhealer).toBe(true);
+          for (const d of group.dps) expect(d.dpsMain || d.offdps).toBe(true);
+        }
+      }
     }
   });
 });

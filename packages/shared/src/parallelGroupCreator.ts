@@ -38,8 +38,8 @@ function removeFromList(list: WoWPlayer[], player: WoWPlayer): void {
 
 /**
  * Canonical key for an unordered name pair, so `pairCounts.get(pairKey(a, b))`
- * yields the same value regardless of argument order. Mirrored verbatim by
- * the Lua addon's pair-count map — keep the format byte-for-byte identical.
+ * yields the same value regardless of argument order. Season pair counts in
+ * Firestore are keyed by it too, so keep the format stable.
  */
 export function pairKey(a: string, b: string): string {
   return a < b ? a + '|' + b : b + '|' + a;
@@ -95,13 +95,14 @@ function slotFit(player: WoWPlayer, slot: SlotInfo['slot']): number {
 }
 
 /**
- * What the swap pass must preserve, indexed like the groups: the brez and
- * lust coverage each group had after the greedy fill, and whether it was
- * complete.
+ * What the swap pass must preserve, indexed like the groups: the brez, lust
+ * and ranged coverage each group had after the greedy fill, and whether it
+ * was complete.
  */
 interface SwapRules {
   brez: boolean[];
   lust: boolean[];
+  ranged: boolean[];
   complete: boolean[];
 }
 
@@ -124,10 +125,22 @@ function canMove(
   return !rules.complete[to] || rules.complete[from] || slotFit(player, slot) >= slotFit(displaced, slot);
 }
 
-/** Whether group `idx` still has the brez and lust coverage it started with. */
-function keepsUtility(groups: readonly WoWGroup[], idx: number, rules: SwapRules): boolean {
+/**
+ * Whether group `idx` still has the coverage it started with: brez and lust
+ * always, and a ranged DPS when the swap trades with a leftover group
+ * (`withLeftover`). Swaps among complete groups don't keep ranged coverage,
+ * as before, so lobbies without a leftover group group exactly as they did.
+ */
+function keepsUtility(
+  groups: readonly WoWGroup[],
+  idx: number,
+  rules: SwapRules,
+  withLeftover: boolean,
+): boolean {
   const g = groups[idx];
-  return (!rules.brez[idx] || g.hasBrez) && (!rules.lust[idx] || g.hasLust);
+  return (!rules.brez[idx] || g.hasBrez)
+    && (!rules.lust[idx] || g.hasLust)
+    && (!withLeftover || !rules.ranged[idx] || g.hasRanged);
 }
 
 /**
@@ -201,7 +214,8 @@ function trySingleSwap(
 
           setSlot(gi, sa, pb);
           setSlot(gj, sb, pa);
-          if (keepsUtility(groups, i, rules) && keepsUtility(groups, j, rules)) {
+          const withLeftover = rules.complete[i] !== rules.complete[j];
+          if (keepsUtility(groups, i, rules, withLeftover) && keepsUtility(groups, j, rules, withLeftover)) {
             const candidate = scoreGroups(groups, pairCounts);
             if (isBetterScore(candidate, bestScore)) {
               bestScore = candidate;
@@ -273,10 +287,12 @@ function tryThreeCycle(
               setSlot(gi, si, pk);
               setSlot(gj, sj, pi);
               setSlot(gk, sk, pj);
+              const withLeftover = rules.complete[i] !== rules.complete[j]
+                || rules.complete[j] !== rules.complete[k];
               if (
-                keepsUtility(groups, i, rules)
-                && keepsUtility(groups, j, rules)
-                && keepsUtility(groups, k, rules)
+                keepsUtility(groups, i, rules, withLeftover)
+                && keepsUtility(groups, j, rules, withLeftover)
+                && keepsUtility(groups, k, rules, withLeftover)
               ) {
                 const candidate = scoreGroups(groups, pairCounts);
                 if (isBetterScore(candidate, bestScore)) {
@@ -310,6 +326,10 @@ function tryThreeCycle(
  * that up without changing role assignments or utility coverage. See issue
  * #512 for the motivating scenario.
  *
+ * Every group takes part, including incomplete leftover groups, and their
+ * repeats count toward the score (issue #625): a leftover pair that already
+ * played together tonight is as much a repeat as one in a complete group.
+ *
  * Two phases run alternately until both quiesce. Single-swap exploration
  * handles the common cases. A 3-cycle pass escapes local minima that single
  * swaps can't see — typically when tank or healer placements would all need
@@ -320,8 +340,10 @@ function tryThreeCycle(
  *   - No healer-main placed as tank.
  *   - Brez/lust coverage of any group that originally had it.
  *   - Group sizes (only same-cardinality slot swaps occur).
- *
- * Mirrored in Lua by the MythicPlusWheel addon — keep behavior in sync.
+ *   - Complete groups' role fit and ranged coverage against leftover groups:
+ *     a leftover player only replaces someone they suit a slot at least as
+ *     well as, and a swap with a leftover group can't take away a complete
+ *     group's ranged DPS. Lobbies without a leftover group are unaffected.
  */
 function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): void {
   if (pairCounts.size === 0 || groups.length < 2) return;
@@ -329,6 +351,7 @@ function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): v
   const rules: SwapRules = {
     brez: groups.map((g) => g.hasBrez),
     lust: groups.map((g) => g.hasLust),
+    ranged: groups.map((g) => g.hasRanged),
     complete: groups.map((g) => g.isComplete),
   };
 
@@ -349,8 +372,7 @@ function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): v
 
 /**
  * Form balanced Mythic+ groups from a player pool. Used by both the bot
- * (Discord-only `/wheel`) and the frontend (Activity spin), and mirrored in
- * Lua by the MythicPlusWheel addon — keep behavior in sync if you change it.
+ * (Discord-only `/wheel`) and the frontend (Activity spin).
  *
  * Three things that aren't obvious from the signature:
  *
@@ -368,8 +390,7 @@ function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): v
  *    slots compete for the remaining player pool, which is why the algorithm
  *    sometimes "skips" the obviously-best DPS to satisfy lust/brez coverage.
  *
- * The `_debug` parameter is currently a no-op — kept for API compatibility
- * with the Lua sibling, which uses it to gate verbose logging.
+ * The `_debug` parameter is currently a no-op, kept for API compatibility.
  */
 export function createMythicPlusGroups(
   players: WoWPlayer[],

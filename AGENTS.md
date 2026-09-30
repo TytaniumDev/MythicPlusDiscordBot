@@ -42,8 +42,7 @@ enforces Docker usage with a `PLAYWRIGHT_TEST` env guard.
 
 ## Related Repositories
 
-The WoW addon (Wheelson) lives in a separate repo: https://github.com/TytaniumDev/Wheelson
-It reimplements the group formation algorithm from `packages/shared/src/parallelGroupCreator.ts` in Lua — preserve behavior and structural similarity when changing it.
+The WoW addon (Wheelson, https://github.com/TytaniumDev/Wheelson) is deprecated. It has its own Lua copy of the group algorithm, but changes to `packages/shared/src/parallelGroupCreator.ts` no longer need to be mirrored there.
 
 ## Architecture Overview
 
