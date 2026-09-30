@@ -18,7 +18,7 @@ import { audio } from '../lib/audio';
 import { reportError } from '../lib/sentry';
 import {
   delay,
-  CAROUSEL_SPIN_DURATION, CAROUSEL_ADVANCE_DELAY, GRID_SPIN_DURATIONS,
+  WHEEL_SPIN_DURATIONS,
   SPOTLIGHT_HOLD_DURATION, SPOTLIGHT_ENTER_DURATION, SPOTLIGHT_EXIT_DURATION,
   WHEELS_FADE_DURATION, POST_LAND_PAUSE,
 } from '../lib/timing';
@@ -144,7 +144,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
   const autoAdvanceRef = useRef(false);
 
-  const spinOneGroupGrid = useCallback(async (groupIndex: number) => {
+  // Every layout spins all five wheels together, so everyone in the voice
+  // channel sees the same wheel land at the same moment. The carousel layout
+  // (Discord's picture-in-picture) stays on the tank wheel and ticks off each
+  // dot as its wheel lands.
+  const spinOneGroup = useCallback(async (groupIndex: number) => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
@@ -154,48 +158,21 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     grid.setAllSpinning(true);
     grid.clearAllResults();
     grid.initWheels(markedPools);
+    grid.resetCarouselDots();
+    grid.setCarouselSlide(0);
 
     const wheels = grid.orderedWheels();
     const winners = [group.tank, group.healer, ...group.dps];
-    const spinPromises: Promise<string>[] = [];
+    const spinPromises: Promise<void>[] = [];
     winners.forEach((winner, i) => {
       if (winner && wheels[i]) {
-        spinPromises.push(wheels[i].spinTo(winner.name, GRID_SPIN_DURATIONS[i]));
+        spinPromises.push(
+          wheels[i].spinTo(winner.name, WHEEL_SPIN_DURATIONS[i]).then(() => grid.markDotCompleted(i)),
+        );
       }
     });
 
     await Promise.all(spinPromises);
-  }, [markedPools]);
-
-  const spinOneGroupCarousel = useCallback(async (groupIndex: number) => {
-    const grid = gridRef.current?.grid;
-    if (!grid) return;
-    const store = useAppStore.getState();
-    const group = store.fullGroups[groupIndex];
-    if (!group || !markedPools) return;
-
-    grid.clearAllResults();
-    grid.setCarouselSlide(0);
-    grid.initWheels(markedPools);
-    grid.resetCarouselDots();
-
-    const wheels = grid.orderedWheels();
-    const winners = [group.tank, group.healer, group.dps[0] || null, group.dps[1] || null, group.dps[2] || null];
-
-    for (let slideIndex = 0; slideIndex < wheels.length; slideIndex++) {
-      const wheel = wheels[slideIndex];
-      const winner = winners[slideIndex];
-      if (!winner) continue;
-
-      grid.setCarouselSlide(slideIndex);
-      wheel.setSpinning(true);
-
-      await delay(350);
-      await wheel.spinTo(winner.name, CAROUSEL_SPIN_DURATION);
-
-      grid.markDotCompleted(slideIndex);
-      await delay(CAROUSEL_ADVANCE_DELAY);
-    }
   }, [markedPools]);
 
   const runAutoAdvanceLoop = useCallback(async () => {
@@ -209,7 +186,6 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     store.setSpinAnimating(true);
 
     const totalFull = store.fullGroups.length;
-    const isCarouselMode = grid.isCarouselMode();
 
     for (let i = 0; i < totalFull; i++) {
       if (!autoAdvanceRef.current) break;
@@ -224,11 +200,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
       }
 
       // Spin wheels
-      if (isCarouselMode) {
-        await spinOneGroupCarousel(i);
-      } else {
-        await spinOneGroupGrid(i);
-      }
+      await spinOneGroup(i);
 
       // Post-land pause
       setWheelStatus(`Group ${i + 1} Formed!`);
@@ -300,7 +272,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     } catch (err) {
       reportError(err, { tag: 'WheelsView.finishSequence' });
     }
-  }, [spinOneGroupGrid, spinOneGroupCarousel, onNavigate, service]);
+  }, [spinOneGroup, onNavigate, service]);
 
   const handleSpinClick = useCallback(async () => {
     const store = useAppStore.getState();

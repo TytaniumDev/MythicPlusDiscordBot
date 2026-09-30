@@ -32,8 +32,6 @@ export interface WheelsGridHandle {
   cancelAll(): void;
   /** Toggle the pulse-glow state on every wheel. */
   setAllSpinning(value: boolean): void;
-  /** True if the viewport is currently in carousel (narrow) layout. */
-  isCarouselMode(): boolean;
   /** Scroll the carousel to a specific wheel + update dot states. */
   setCarouselSlide(index: number): void;
   /** Mark a carousel dot as completed (e.g., after landing a wheel). */
@@ -62,9 +60,6 @@ const DOT_CONFIGS: DotConfig[] = [
   { ariaLabel: 'DPS 2 wheel', dotColor: 'var(--color-dps)' },
   { ariaLabel: 'DPS 3 wheel', dotColor: 'var(--color-dps)' },
 ];
-
-const CAROUSEL_MQ =
-  typeof window !== 'undefined' ? window.matchMedia('(max-width: 599px)') : null;
 
 export const WheelsGridComponent = forwardRef<WheelsGridRef, WheelsGridProps>(
   function WheelsGridComponent({ pools }, ref) {
@@ -116,9 +111,6 @@ export const WheelsGridComponent = forwardRef<WheelsGridRef, WheelsGridProps>(
         },
         setAllSpinning(value) {
           orderedHandles().forEach((w) => w.setSpinning(value));
-        },
-        isCarouselMode() {
-          return CAROUSEL_MQ?.matches ?? false;
         },
         setCarouselSlide(index) {
           const clamped = Math.max(0, Math.min(DOT_CONFIGS.length - 1, index));
