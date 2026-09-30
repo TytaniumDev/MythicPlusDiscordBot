@@ -167,6 +167,8 @@ export const UTILITY_BUTTONS: RoleButtonDef[] = [
  * Pure function to compute the next role set after toggling a role button.
  * Handles main/offspec swap logic:
  * - Switching main spec removes it from offspec and swaps old main into offspec
+ * - Clicking the current main spec is a no-op: it can be switched, never
+ *   cleared, since a player needs a main role to be grouped
  * - Adding an offspec that matches current main is a no-op
  */
 export function computeToggledRoles(
@@ -177,6 +179,7 @@ export function computeToggledRoles(
   const next = new Set(prev);
 
   if (next.has(roleId)) {
+    if (mutuallyExclusive) return next;
     next.delete(roleId);
     return next;
   }

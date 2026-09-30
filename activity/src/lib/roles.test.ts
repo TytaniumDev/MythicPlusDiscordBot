@@ -78,12 +78,13 @@ describe('computeToggledRoles', () => {
   });
 
   describe('removing roles', () => {
-    it('removes main spec on toggle', () => {
-      const prev = new Set(['Tank', 'Brez']);
+    it('keeps the main spec when it is clicked again', () => {
+      // A main spec can be switched but never cleared: every player needs one
+      // to be grouped.
+      const prev = new Set(['Tank', 'Healer Offspec', 'Brez']);
       const result = computeToggledRoles(prev, 'Tank', true);
 
-      expect(result.has('Tank')).toBe(false);
-      expect(result.has('Brez')).toBe(true);
+      expect(result).toEqual(prev);
     });
 
     it('removes utility on toggle', () => {

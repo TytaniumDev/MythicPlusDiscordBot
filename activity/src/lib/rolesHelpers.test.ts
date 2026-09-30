@@ -195,9 +195,10 @@ describe('playerRolesToStringArray / roleStringsToPlayerFields', () => {
 
 describe('computeToggledRoles', () => {
   it('removes a role that is already active', () => {
-    const next = computeToggledRoles(new Set(['Tank', 'Brez']), 'Tank', true);
-    expect(next.has('Tank')).toBe(false);
-    expect(next.has('Brez')).toBe(true);
+    // A main spec can't be cleared (see roles.test.ts), so toggle a utility.
+    const next = computeToggledRoles(new Set(['Tank', 'Brez']), 'Brez', false);
+    expect(next.has('Brez')).toBe(false);
+    expect(next.has('Tank')).toBe(true);
   });
 
   it('switching main spec: swaps old main into offspec when new main was an offspec', () => {
