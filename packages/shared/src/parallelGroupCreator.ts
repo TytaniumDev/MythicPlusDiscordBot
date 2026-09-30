@@ -84,6 +84,53 @@ function canFillSlot(player: WoWPlayer, slot: SlotInfo['slot']): boolean {
 }
 
 /**
+ * How well `player` suits `slot`: 2 for their main role, 1 for an offspec,
+ * 0 if they can't fill it.
+ */
+function slotFit(player: WoWPlayer, slot: SlotInfo['slot']): number {
+  if (!canFillSlot(player, slot)) return 0;
+  if (slot === 'tank') return player.tankMain ? 2 : 1;
+  if (slot === 'healer') return player.healerMain ? 2 : 1;
+  return player.dpsMain ? 2 : 1;
+}
+
+/**
+ * What the swap pass must preserve, indexed like the groups: the brez and
+ * lust coverage each group had after the greedy fill, and whether it was
+ * complete.
+ */
+interface SwapRules {
+  brez: boolean[];
+  lust: boolean[];
+  complete: boolean[];
+}
+
+/**
+ * Whether `player`, leaving group `from`, may take `slot` in group `to` from
+ * `displaced`. A player from an incomplete (leftover) group only joins a
+ * complete group in a slot they suit at least as well as the player they
+ * replace, so a swap never trades a complete group's main-spec tank, healer
+ * or DPS for a leftover offspec.
+ */
+function canMove(
+  player: WoWPlayer,
+  from: number,
+  displaced: WoWPlayer,
+  slot: SlotInfo['slot'],
+  to: number,
+  rules: SwapRules,
+): boolean {
+  if (!canFillSlot(player, slot)) return false;
+  return !rules.complete[to] || rules.complete[from] || slotFit(player, slot) >= slotFit(displaced, slot);
+}
+
+/** Whether group `idx` still has the brez and lust coverage it started with. */
+function keepsUtility(groups: readonly WoWGroup[], idx: number, rules: SwapRules): boolean {
+  const g = groups[idx];
+  return (!rules.brez[idx] || g.hasBrez) && (!rules.lust[idx] || g.hasLust);
+}
+
+/**
  * Lexicographic score for a group set:
  *   - `maxPerPlayer`: worst-case count of repeat-teammates any single player has
  *   - `total`: sum of pair-counts for every unique pair across all groups
@@ -131,8 +178,7 @@ function isBetterScore(
 function trySingleSwap(
   groups: WoWGroup[],
   pairCounts: Map<string, number>,
-  origBrez: boolean[],
-  origLust: boolean[],
+  rules: SwapRules,
 ): boolean {
   let bestScore = scoreGroups(groups, pairCounts);
   let bestSwap:
@@ -151,15 +197,11 @@ function trySingleSwap(
         for (const pb of playersJ) {
           const sb = findSlot(gj, pb);
           if (!sb) continue;
-          if (!canFillSlot(pa, sb.slot) || !canFillSlot(pb, sa.slot)) continue;
+          if (!canMove(pa, i, pb, sb.slot, j, rules) || !canMove(pb, j, pa, sa.slot, i, rules)) continue;
 
           setSlot(gi, sa, pb);
           setSlot(gj, sb, pa);
-          const utilityOk = (!origBrez[i] || gi.hasBrez)
-            && (!origLust[i] || gi.hasLust)
-            && (!origBrez[j] || gj.hasBrez)
-            && (!origLust[j] || gj.hasLust);
-          if (utilityOk) {
+          if (keepsUtility(groups, i, rules) && keepsUtility(groups, j, rules)) {
             const candidate = scoreGroups(groups, pairCounts);
             if (isBetterScore(candidate, bestScore)) {
               bestScore = candidate;
@@ -190,8 +232,7 @@ function trySingleSwap(
 function tryThreeCycle(
   groups: WoWGroup[],
   pairCounts: Map<string, number>,
-  origBrez: boolean[],
-  origLust: boolean[],
+  rules: SwapRules,
 ): boolean {
   if (groups.length < 3) return false;
 
@@ -223,22 +264,20 @@ function tryThreeCycle(
           for (const pj of playersJ) {
             const sj = findSlot(gj, pj);
             if (!sj) continue;
-            if (!canFillSlot(pi, sj.slot)) continue;
+            if (!canMove(pi, i, pj, sj.slot, j, rules)) continue;
             for (const pk of playersK) {
               const sk = findSlot(gk, pk);
               if (!sk) continue;
-              if (!canFillSlot(pj, sk.slot) || !canFillSlot(pk, si.slot)) continue;
+              if (!canMove(pj, j, pk, sk.slot, k, rules) || !canMove(pk, k, pi, si.slot, i, rules)) continue;
 
               setSlot(gi, si, pk);
               setSlot(gj, sj, pi);
               setSlot(gk, sk, pj);
-              const utilityOk = (!origBrez[i] || gi.hasBrez)
-                && (!origLust[i] || gi.hasLust)
-                && (!origBrez[j] || gj.hasBrez)
-                && (!origLust[j] || gj.hasLust)
-                && (!origBrez[k] || gk.hasBrez)
-                && (!origLust[k] || gk.hasLust);
-              if (utilityOk) {
+              if (
+                keepsUtility(groups, i, rules)
+                && keepsUtility(groups, j, rules)
+                && keepsUtility(groups, k, rules)
+              ) {
                 const candidate = scoreGroups(groups, pairCounts);
                 if (isBetterScore(candidate, bestScore)) {
                   bestScore = candidate;
@@ -285,23 +324,23 @@ function tryThreeCycle(
  * Mirrored in Lua by the MythicPlusWheel addon — keep behavior in sync.
  */
 function diversifyGroups(groups: WoWGroup[], pairCounts: Map<string, number>): void {
-  if (pairCounts.size === 0) return;
+  if (pairCounts.size === 0 || groups.length < 2) return;
 
-  const completeGroups = groups.filter((g) => g.isComplete);
-  if (completeGroups.length < 2) return;
-
-  const origBrez = completeGroups.map((g) => g.hasBrez);
-  const origLust = completeGroups.map((g) => g.hasLust);
+  const rules: SwapRules = {
+    brez: groups.map((g) => g.hasBrez),
+    lust: groups.map((g) => g.hasLust),
+    complete: groups.map((g) => g.isComplete),
+  };
 
   // Outer loop bounded so a hostile pair-count map can't make this run away;
-  // each phase already converges in O(complete-groups) iterations in practice.
-  const maxOuter = completeGroups.length * 4;
+  // each phase already converges in O(groups) iterations in practice.
+  const maxOuter = groups.length * 4;
   for (let outer = 0; outer < maxOuter; outer++) {
     let progress = false;
-    while (trySingleSwap(completeGroups, pairCounts, origBrez, origLust)) {
+    while (trySingleSwap(groups, pairCounts, rules)) {
       progress = true;
     }
-    if (tryThreeCycle(completeGroups, pairCounts, origBrez, origLust)) {
+    if (tryThreeCycle(groups, pairCounts, rules)) {
       progress = true;
     }
     if (!progress) return;
