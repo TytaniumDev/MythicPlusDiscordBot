@@ -3,8 +3,8 @@ import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { reportError } from '../lib/sentry';
 import { PlayerChip } from '../components/PlayerChip';
-import { MyCharacterCard, type MyCharacterCardHandle } from '../components/MyCharacterCard';
-import { EditPlayerModal } from '../components/EditPlayerModal';
+import { CharacterCard, type CharacterCardHandle } from '../components/CharacterCard';
+import { CharacterCardModal } from '../components/CharacterCardModal';
 import { SpinWarningDialog } from '../components/SpinWarningDialog';
 import { HeaderBar } from '../components/HeaderBar';
 import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
@@ -29,7 +29,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
   const players = useAppStore((s) => s.players);
 
   const isMobile = useIsCompactLobby();
-  const myCharacterRef = useRef<MyCharacterCardHandle>(null);
+  const myCharacterRef = useRef<CharacterCardHandle>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   // By ID, so the edit modal follows the player's live profile.
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -196,10 +196,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
           <div className="lobby-body">
             <div className="lobby-players">
               {isMobile && myPlayer && (
-                <MyCharacterCard
+                <CharacterCard
                   ref={myCharacterRef}
                   player={myPlayer}
                   isSittingOut={isMyPlayerSittingOut}
+                  isSelf
                   collapsible
                 />
               )}
@@ -261,10 +262,11 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
             {!isMobile && myPlayer && (
               <div className="lobby-sidebar">
-                <MyCharacterCard
+                <CharacterCard
                   ref={myCharacterRef}
                   player={myPlayer}
                   isSittingOut={isMyPlayerSittingOut}
+                  isSelf
                 />
               </div>
             )}
@@ -296,8 +298,9 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         </div>
       )}
       {editingPlayer && (
-        <EditPlayerModal
+        <CharacterCardModal
           player={editingPlayer}
+          isSittingOut={sittingOut.includes(editingPlayer.discordId)}
           onClose={() => setEditingPlayerId(null)}
         />
       )}

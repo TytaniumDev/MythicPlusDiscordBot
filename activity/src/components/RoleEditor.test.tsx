@@ -37,7 +37,7 @@ afterEach(() => {
 describe('RoleEditor name lookup', () => {
   it('says the character was not found when the name does not resolve', async () => {
     mocks.lookup.mockResolvedValue({ status: 'notFound' });
-    render(<RoleEditor player={gazzi} hideSitOut />);
+    render(<RoleEditor player={gazzi} />);
 
     await typeName('Nobody-Uldum');
 
@@ -46,7 +46,7 @@ describe('RoleEditor name lookup', () => {
 
   it('asks for a retry instead of blaming the name when the lookup fails', async () => {
     mocks.lookup.mockResolvedValue({ status: 'failed' });
-    render(<RoleEditor player={gazzi} hideSitOut />);
+    render(<RoleEditor player={gazzi} />);
 
     await typeName('Gazzi-Stormrage');
 
@@ -60,7 +60,7 @@ describe('RoleEditor name lookup', () => {
       status: 'found',
       character: { name: 'Gazzi', realm: 'Stormrage', class: 'Druid', role: 'tank', utilities: ['brez'], mediaUrl },
     });
-    render(<RoleEditor player={gazzi} hideSitOut />);
+    render(<RoleEditor player={gazzi} />);
 
     await typeName('Gazzi-Stormrage');
 

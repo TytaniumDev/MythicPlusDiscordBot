@@ -95,7 +95,7 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
 
         <div className="profile-modal__editor">
           {player ? (
-            <RoleEditor player={player} hideSitOut />
+            <RoleEditor player={player} />
           ) : (
             <p className="profile-modal__hint">Pick yourself in a lobby to set up your profile.</p>
           )}
