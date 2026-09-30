@@ -83,12 +83,6 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
             )}
           </button>
         )}
-        {discordId && (
-          <div className="profile-modal__field">
-            <span className="profile-modal__label">Discord ID</span>
-            <span className="profile-modal__value">{discordId}</span>
-          </div>
-        )}
         {discordId && discordId === verifiedDiscordId && (
           <div className="profile-modal__field">
             <span className="profile-modal__label">Discord</span>

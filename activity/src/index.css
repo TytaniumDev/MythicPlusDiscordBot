@@ -2621,7 +2621,6 @@ button.role-section-header--collapsible {
 }
 .profile-modal__field { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
 .profile-modal__label { color: #888; }
-.profile-modal__value { font-family: monospace; }
 .profile-modal__verified { color: var(--color-healer); }
 .profile-modal__editor {
   width: 100%;
