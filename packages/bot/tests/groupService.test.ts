@@ -51,7 +51,8 @@ vi.mock('../src/core/debugFixtures.js', () => ({
   getDebugPlayers: vi.fn(),
 }));
 
-vi.mock('../src/core/groupUi.js', () => ({
+vi.mock('../src/core/groupUi.js', async () => ({
+  ...(await vi.importActual('../src/core/groupUi.js')),
   announceGroup: vi.fn().mockResolvedValue(undefined),
   buildGroupEmbed: vi.fn(),
 }));
@@ -147,6 +148,55 @@ describe('GroupService.getGroupsData', () => {
     const result = await service.getGroupsData(ctx, false);
 
     expect(result).toBeNull();
+    expect(ctx.send).toHaveBeenCalledWith('❌ No players with valid roles found.');
+  });
+
+  it('sits out members without a main role and says who', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ members: [
+      { bot: false, nick: 'Main', id: '1', toString: () => 'Main' },
+      { bot: false, nick: 'OffOnly', id: '2', toString: () => 'OffOnly' },
+      { bot: false, nick: 'NoProfile', id: '3', toString: () => 'NoProfile' },
+    ] });
+
+    // OffOnly has only an offspec and a utility; NoProfile has no preferences doc.
+    mockFirebaseInstance.getPreferences.mockResolvedValueOnce(new Map([
+      ['1', { roles: ['Melee'], inGameName: '', mediaUrl: null, characterClass: null }],
+      ['2', { roles: ['Healer Offspec', 'Lust'], inGameName: '', mediaUrl: null, characterClass: null }],
+    ]));
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup()]);
+
+    const result = await service.getGroupsData(ctx, false);
+
+    expect(result!.players.map((p) => p.name)).toEqual(['Main']);
+    expect(vi.mocked(createMythicPlusGroups).mock.calls[0][0].map((p) => p.name)).toEqual(['Main']);
+    expect(ctx.send).toHaveBeenCalledWith(
+      'Sitting out (no main role set): OffOnly, NoProfile. Pick a main spec in the Wheelson activity to join the next spin.',
+    );
+  });
+
+  it('does not post a sitting-out line when everyone has a main role', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ members: [{ bot: false, nick: 'P1', id: '1', toString: () => 'P1' }] });
+    vi.mocked(createMythicPlusGroups).mockReturnValue([new WoWGroup()]);
+
+    await service.getGroupsData(ctx, false);
+
+    expect(ctx.send).not.toHaveBeenCalled();
+  });
+
+  it('returns null when nobody in voice has a main role', async () => {
+    const service = new GroupService();
+    const ctx = makeCtx({ members: [{ bot: false, nick: 'OffOnly', id: '1', toString: () => 'OffOnly' }] });
+
+    mockFirebaseInstance.getPreferences.mockResolvedValueOnce(new Map([
+      ['1', { roles: ['Tank Offspec'], inGameName: '', mediaUrl: null, characterClass: null }],
+    ]));
+
+    const result = await service.getGroupsData(ctx, false);
+
+    expect(result).toBeNull();
+    expect(createMythicPlusGroups).not.toHaveBeenCalled();
     expect(ctx.send).toHaveBeenCalledWith('❌ No players with valid roles found.');
   });
 });

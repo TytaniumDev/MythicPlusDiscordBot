@@ -190,3 +190,11 @@ export async function announceGroup(
     await announceGroupAnimated(ctx, channel, group, groupNumber, debug);
   }
 }
+
+/**
+ * The line `/wheel` posts before its groups when some voice members have no
+ * main role. They sit the spin out, as the activity auto-sits them.
+ */
+export function formatSittingOutNotice(names: readonly string[]): string {
+  return `Sitting out (no main role set): ${names.join(', ')}. Pick a main spec in the Wheelson activity to join the next spin.`;
+}

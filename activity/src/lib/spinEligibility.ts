@@ -2,8 +2,10 @@ import type { WoWPlayerDict } from '@mythicplus/shared';
 import { WoWPlayer } from '@mythicplus/shared';
 
 /**
- * Filter the channel's players down to those eligible to spin: must have at
- * least one role declared and must not appear in `sittingOut`.
+ * Filter the channel's players down to those eligible to spin: must have a
+ * main role and must not appear in `sittingOut`. The lobby auto-sits players
+ * without a main role before it spins; this makes sure the group algorithm
+ * never sees one even if that write hasn't landed.
  *
  * Lives here (not in `@mythicplus/shared`) because both call sites are in
  * the activity frontend and the shared package shouldn't depend on the
@@ -20,7 +22,7 @@ export function eligibleSpinPlayers(
   return players
     .filter(
       (p) =>
-        (p.mainRole !== null || p.offspecs.length > 0) &&
+        p.mainRole !== null &&
         (!p.discordId || !sittingOut.includes(p.discordId)),
     )
     .map((p) => WoWPlayer.fromDict(p));
