@@ -42,7 +42,7 @@ enforces Docker usage with a `PLAYWRIGHT_TEST` env guard.
 
 ## Related Repositories
 
-The WoW addon (Wheelson, https://github.com/TytaniumDev/Wheelson) is deprecated. It has its own Lua copy of the group algorithm, but changes to `packages/shared/src/parallelGroupCreator.ts` no longer need to be mirrored there.
+The WoW addon (Wheelson, https://github.com/TytaniumDev/Wheelson) is deprecated. It has its own Lua copy of the group algorithm, and changes to `packages/shared/src/parallelGroupCreator.ts` don't need to be mirrored in it.
 
 ## Architecture Overview
 
@@ -66,7 +66,7 @@ packages/
 ├── bot/                   # Discord bot (TypeScript)
 │   └── src/
 │       ├── main.ts        # Entry point (Discord.js client + command routing)
-│       ├── commands/      # Slash commands (groups, roles, general, debug)
+│       ├── commands/      # Slash command handlers (groups, debug)
 │       ├── services/      # GroupService, SessionService
 │       └── core/          # Config, Firebase, UI formatting, Discord adapters
 └── functions/             # Firebase Cloud Functions: affix sync, character lookup, GitHub webhook
@@ -103,7 +103,7 @@ Who the current user is: the activity guesses (remembered ID, Discord participan
 - `offspecs`: array of `Role` values
 - `utilities`: array of `'brez' | 'lust'`
 
-The class exposes computed boolean getters (`tankMain`, `healerMain`, `hasBrez`, etc.) so the group algorithm works without modification.
+The class exposes computed boolean getters (`tankMain`, `healerMain`, `hasBrez`, etc.), which the group algorithm reads.
 
 - `WoWPlayer.create(name, role_list)` builds from Discord role-name strings (from `packages/shared/src/config.ts`); unknown strings are dropped.
 - `WoWPlayer.fromDict(dict)` builds from the Firestore wire format and validates via `toRole` / `toUtility`.
@@ -142,13 +142,13 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 
 ### Visual Snapshot Tests
 
-**If you modify any UI code** (`activity/src/`), you MUST update visual test snapshots before committing:
+When you change UI code in `activity/src/`, regenerate the visual snapshots and commit the updated screenshots in `activity/tests/__screenshots__/` with the change, because the `Verify Activity` workflow fails when they don't match its Docker Playwright run:
 
 ```bash
 ./scripts/playwright-docker.sh --update-snapshots
 ```
 
-Then commit the updated screenshots in `activity/tests/__screenshots__/` alongside your code changes. CI will fail if committed snapshots don't match what the Docker Playwright run produces. Never commit snapshots generated outside Docker.
+Snapshots generated outside Docker won't match, so don't commit them.
 
 If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment, commits them to the branch, and re-dispatches `CI Retrigger` and `Verify Activity` so the new head gets its checks. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
 

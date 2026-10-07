@@ -33,8 +33,8 @@ Players are serialized `WoWPlayer` dicts (`mainRole`, `offspecs`, `utilities`); 
 
 - Active lobbies: `list channels --status lobby`
 - Recently active sessions: `list channels --hours 6`
-- One session: `get channels <channelId>` → summarize status, player count with role breakdown, group count
+- One session: `get channels <channelId>` → summarize status, member count, group count. The lobby doc has no roles: take them from `groups` after a spin, or `get preferences <discordId>` per member
 - Spin failure: `completed` channel docs with an empty `groups` array
 - Guild history: `get guilds <guildId>`
 
-Summarize results as short tables (status, player count by role, group count, lastActive) rather than dumping raw JSON.
+Summarize results as short tables (status, member count, roles when you've looked them up, group count, lastActive) rather than dumping raw JSON.
