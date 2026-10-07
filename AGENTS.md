@@ -150,7 +150,7 @@ When you change UI code in `activity/src/`, regenerate the visual snapshots and 
 
 Snapshots generated outside Docker won't match, so don't commit them.
 
-If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment, commits them to the branch, and re-dispatches `CI Retrigger` and `Verify Activity` so the new head gets its checks. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
+If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment and commits them to the branch. It pushes with the `SNAPSHOTS_PUSH_TOKEN` secret, so CI runs on the PR and auto-merge still fires; without that secret it falls back to `GITHUB_TOKEN`, whose push leaves the PR's runs awaiting approval, and re-dispatches `CI Retrigger` and `Verify Activity` instead. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
 
 ## Environment Variables
 

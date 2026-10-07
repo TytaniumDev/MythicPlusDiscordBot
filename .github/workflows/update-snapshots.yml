@@ -4,6 +4,12 @@ name: Update Snapshots
 # them to the branch it runs on. Run it from the Actions tab ("Run workflow",
 # pick your branch) when snapshots drift for reasons outside the UI code, such
 # as a dependency bump.
+#
+# It pushes with the SNAPSHOTS_PUSH_TOKEN secret (a fine-grained token with
+# Contents: write on this repo) when one is set. A push made with the
+# workflow's own GITHUB_TOKEN leaves the PR's pull_request runs waiting for a
+# maintainer's approval, and those pending runs keep auto-merge from firing.
+# A push made with the token runs CI on the PR like any other push.
 on:
   workflow_dispatch:
     inputs:
@@ -25,9 +31,13 @@ jobs:
     permissions:
       contents: write
       actions: write
+    env:
+      HAS_PUSH_TOKEN: ${{ secrets.SNAPSHOTS_PUSH_TOKEN != '' }}
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SNAPSHOTS_PUSH_TOKEN || github.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -62,10 +72,12 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      # Pushes made with GITHUB_TOKEN don't trigger workflows, so the new head
-      # would have no required CI checks. Dispatch them explicitly.
+      # Without SNAPSHOTS_PUSH_TOKEN the push was made with GITHUB_TOKEN, so the
+      # PR's own runs wait for approval. Dispatch the checks so the new head
+      # still reports them; the PR then needs its pending runs approved (or
+      # another push) before auto-merge fires.
       - name: Re-run CI on the new commit
-        if: steps.commit.outputs.pushed == 'true'
+        if: steps.commit.outputs.pushed == 'true' && env.HAS_PUSH_TOKEN != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
