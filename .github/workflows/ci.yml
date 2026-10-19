@@ -2,7 +2,12 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main]
+
+# A new push to the PR cancels the CI round still running for the old head.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   CI:

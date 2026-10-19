@@ -1,0 +1,43 @@
+name: Dependabot Auto-merge
+
+# Approves Dependabot's minor and patch PRs and turns on squash auto-merge, so
+# they merge once the required checks pass. Major bumps are left for a human.
+#
+# Auto-merge is enabled with the repo's GitHub App token (CI_APP_ID variable,
+# CI_APP_PRIVATE_KEY Dependabot secret): a merge made through GITHUB_TOKEN
+# doesn't trigger the push to main that runs Deploy.
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Get a GitHub App token
+        id: app-token
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major' && vars.CI_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+
+      - name: Approve and enable auto-merge
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ github.token }}
+          MERGE_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+        run: |
+          gh pr review --approve "$PR_URL"
+          GH_TOKEN="$MERGE_TOKEN" gh pr merge --auto --squash "$PR_URL"

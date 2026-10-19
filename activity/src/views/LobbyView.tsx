@@ -38,7 +38,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
 
   const currentPlayerId = useAppStore((s) => s.currentPlayerId);
 
-  const sittingOut = channelData?.sittingOut ?? [];
+  const sittingOut = useMemo(() => channelData?.sittingOut ?? [], [channelData?.sittingOut]);
 
   const handleSpinClick = () => {
     const { missingRole, missingNameOnly, missingCharacterLookup } = categorizeUnreadyPlayers(players, sittingOut);

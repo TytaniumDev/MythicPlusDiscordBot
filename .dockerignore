@@ -1,20 +1,14 @@
-__pycache__/
-*.py[cod]
-*.so
-*.egg-info/
-dist/
-build/
-.eggs/
+# Only package.json, package-lock.json and packages/{shared,bot} are copied
+# into the image; keep everything else out of the build context.
+.git/
+.github/
+.claude/
 .env
 .env.*
-.git/
-.gitignore
-.github/
-.vscode/
-tests/
-htmlcov/
-.coverage
-.coverage.*
-.pytest_cache/
-.mypy_cache/
-.dockerignore
+**/node_modules/
+**/dist/
+**/coverage/
+**/tests/
+activity/
+docs/
+*.log

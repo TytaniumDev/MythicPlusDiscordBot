@@ -1,0 +1,36 @@
+# Weekly dependency updates. Minor and patch bumps are grouped into one PR per
+# ecosystem and merge themselves once CI passes (dependabot-auto-merge.yml);
+# major bumps come as their own PRs for a human to review.
+version: 2
+updates:
+  - package-ecosystem: npm
+    # The root lockfile covers every workspace (packages/* and activity/).
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Wait a few days after a release before proposing it, so a broken or
+    # compromised publish has time to be pulled.
+    cooldown:
+      default-days: 5
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Node types follow the runtime (Node 22 in the Dockerfile, CI and
+      # Cloud Functions); bump them with the runtime, not on their own.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+    commit-message:
+      prefix: 'chore(deps)'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: 'ci(deps)'

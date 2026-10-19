@@ -6,16 +6,16 @@ Thank you for your interest in contributing! This guide covers the technical sta
 
 This project is a monorepo that uses **npm workspaces** for package management, encompassing both a Discord bot backend and a React frontend.
 
-1.  **Install Node.js**: Ensure you are using the Node.js version specified in the `Dockerfile` or your local development environment.
+1.  **Install Node.js 22**: the version in `.nvmrc`, which CI, the `Dockerfile` and Cloud Functions also use (`nvm use` picks it up).
 2.  **Install dependencies**:
     ```bash
-    npm install
+    npm ci
     ```
-    This installs dependencies for all packages in the workspace (`packages/bot`, `packages/shared`, and `activity/`).
+    This installs dependencies for every workspace (`packages/shared`, `packages/bot`, `packages/functions`, and `activity/`) from the lockfile.
 
 ## Verification
 
-Before submitting a PR, you **must** run the backend verification script. This script handles linting, formatting, type checking, and testing for the bot and shared packages.
+Before submitting a PR, you **must** run the verification script. It lints every package and the activity, type checks them, bundles the Cloud Functions, and runs the unit tests.
 
 ```bash
 ./scripts/verify-ts.sh
@@ -41,6 +41,7 @@ This script handles:
 -   **Dependencies**: `npm ci`
 -   **Type Checking**: `npm run typecheck`
 -   **Build**: `npm run build`
+-   **Storybook**: `npm run build-storybook`
 -   **E2E Tests**: `./scripts/playwright-docker.sh` (from the project root)
 
 > **Playwright must run in Docker.** Snapshots are pixel-compared with a 2% tolerance and Chromium's font rendering differs by OS — running `npx playwright test` directly will produce noisy diffs. The Playwright config enforces this with a `PLAYWRIGHT_TEST` env guard. To regenerate snapshots, run `./scripts/playwright-docker.sh --update-snapshots`.
@@ -49,7 +50,7 @@ This script handles:
 The project uses Playwright for visual regression testing.
 -   Snapshots are stored in `activity/tests/__screenshots__/`.
 -   **Rule:** If your changes affect the UI, you must update and commit the new snapshots (regenerated via Docker — see above).
--   **CI:** Tests run automatically in CI and will fail if snapshots do not match.
+-   **CI:** The `Verify Activity` workflow runs them on every PR that touches the activity and fails if snapshots do not match. If you can't run Docker locally, run the **Update Snapshots** workflow on your branch.
 
 ## Coding Standards
 
@@ -78,7 +79,7 @@ This project has strict requirements to prevent secret leaks and ensure CI relia
 ## Production vs. Development
 
 -   **Development**: Run the bot locally using `npm -w @mythicplus/bot run dev` (uses `tsx`).
--   **Production (Docker)**: The `Dockerfile` compiles the TypeScript bot to JS and runs it natively with Node for improved startup speed and memory performance.
+-   **Production (Docker)**: The `Dockerfile` installs production dependencies only and runs the bot's TypeScript with `tsx`, as the unprivileged `node` user. The container's healthcheck reads a heartbeat file the bot touches while it is connected to Discord.
 
 ## Command Style
 

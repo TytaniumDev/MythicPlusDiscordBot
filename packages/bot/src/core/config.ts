@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import os from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -46,3 +48,7 @@ export const PLACEHOLDER_CHAR = ':question:';
 
 // Logging
 export const LOG_FILE = 'mythic_bot.log';
+
+// Health: touched while the bot is connected to Discord; the Docker healthcheck
+// in docker-compose.yml reads its age (in the container this is /tmp).
+export const HEARTBEAT_FILE = path.join(os.tmpdir(), 'mythic-bot-heartbeat');

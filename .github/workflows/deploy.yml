@@ -1,14 +1,27 @@
 name: Deploy
 
+# One workflow deploys everything a merge to main changes: Firebase (rules,
+# indexes, functions), the bot on the Pi, and the activity on GitHub Pages.
+# Every deploy job waits on one CI run against the merged commit.
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Workflow-level, never cancelled: an older merge's deploy can't finish after
+# a newer one's and leave production on the older commit.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
   ci:
+    # A manual run from any other branch deploys nothing: every deploy job
+    # needs this one, so they're skipped with it.
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/ci-shared.yml
 
   deploy-firebase:
@@ -78,6 +91,7 @@ jobs:
   build-and-push:
     needs: [ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -110,7 +124,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  deploy-pi:
     needs: build-and-push
     runs-on: ubuntu-latest
     permissions: {}
@@ -232,3 +246,75 @@ jobs:
             docker image prune -f > /dev/null
             echo "=== Deploy finished ==="
           DEPLOY_SCRIPT
+
+  deploy-pages:
+    needs: [ci]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Load Doppler secrets
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          DELIM=$(openssl rand -hex 16)
+          SECRETS=$(doppler secrets download --no-file --format json)
+          # Mask each secret value so it cannot appear in workflow logs
+          echo "$SECRETS" | jq -r '
+            to_entries[]
+            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or .key == "SENTRY_AUTH_TOKEN" or (.key | startswith("VITE_FIREBASE_")))
+            | .value
+          ' | while IFS= read -r val; do
+            [ -n "$val" ] && echo "::add-mask::$val"
+          done
+          # Export filtered secrets
+          echo "$SECRETS" | jq -r --arg d "$DELIM" '
+            to_entries[]
+            | select(.key == "DISCORD_APPLICATION_ID" or .key == "VITE_SENTRY_DSN" or .key == "SENTRY_AUTH_TOKEN" or (.key | startswith("VITE_FIREBASE_")))
+            | "\(.key)<<\($d)\n\(.value)\n\($d)"
+          ' >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Activity
+        env:
+          VITE_DISCORD_CLIENT_ID: ${{ env.DISCORD_APPLICATION_ID }}
+          VITE_SENTRY_DSN: ${{ env.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
+        run: |
+          cd activity
+          npm run build
+
+      - name: Build Storybook
+        run: npm -w activity run build-storybook -- -o dist/storybook
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'activity/dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

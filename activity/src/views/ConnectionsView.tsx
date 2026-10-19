@@ -31,7 +31,7 @@ export function ConnectionsView({ onClose }: ConnectionsViewProps) {
     };
   }, [onClose]);
 
-  const counts = seasonPairs?.counts ?? {};
+  const counts = useMemo(() => seasonPairs?.counts ?? {}, [seasonPairs]);
 
   const [subject, setSubject] = useState<string | null>(currentPlayerName);
   useEffect(() => {

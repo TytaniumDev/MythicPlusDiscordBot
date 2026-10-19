@@ -18,7 +18,7 @@ npx -w packages/bot tsx src/main.ts
 ./scripts/smoke-test.sh                  # End-to-end: real activity build + Firebase emulators, full spin (needs Java + `npx -w activity playwright install chromium`)
 
 # Individual backend steps
-npm run lint                             # ESLint over packages/
+npm run lint                             # ESLint over packages/ and activity/
 npm run typecheck                        # shared + bot + functions + activity
 npm run test                             # shared + functions + bot + activity unit tests (vitest)
 
@@ -150,7 +150,7 @@ When you change UI code in `activity/src/`, regenerate the visual snapshots and 
 
 Snapshots generated outside Docker won't match, so don't commit them.
 
-If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment and commits them to the branch. It pushes with the `SNAPSHOTS_PUSH_TOKEN` secret, so CI runs on the PR and auto-merge still fires; without that secret it falls back to `GITHUB_TOKEN`, whose push leaves the PR's runs awaiting approval, and re-dispatches `CI Retrigger` and `Verify Activity` instead. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
+If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whose container renders differently), run the **Update Snapshots** workflow (`.github/workflows/update-snapshots.yml`) from the Actions tab on your branch. It regenerates and verifies them in CI's environment and commits them to the branch. It pushes with a token from the repo's GitHub App (`CI_APP_ID` variable, `CI_APP_PRIVATE_KEY` secret), so CI runs on the PR and auto-merge still fires. Without the app it falls back to the `SNAPSHOTS_PUSH_TOKEN` PAT, then to `GITHUB_TOKEN`, whose push leaves the PR's runs awaiting approval, and re-dispatches `CI Retrigger` and `Verify Activity` instead. Mode `changed` (default) only rewrites failing snapshots; `all` rewrites every one. It refuses to run on `main`.
 
 ## Environment Variables
 
@@ -164,11 +164,12 @@ Production secrets live in Doppler. For production host access and logs, see the
 
 When touching GitHub Actions workflows: read the **Secrets in Workflows** section in [docs/CI_STANDARDS.md](docs/CI_STANDARDS.md). Never log secrets, and never inline multi-line secrets (JSON, PEM) in heredocs; use base64 encode on the runner and decode on the remote. The workflow-lint job enforces this.
 
-**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests, including `firestore.rules`), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` and `deploy-activity.yml` also call `ci-shared.yml`, and their deploy jobs wait on it, so nothing reaches production (Pi, Firebase, or GitHub Pages) unless CI passes on the merged commit. The required `CI / Build` and `CI / Test` checks also cover the activity typecheck and its jsdom unit tests (through `./scripts/verify-ts.sh`); the Playwright screenshot tests run only in the non-required `Verify Activity` workflow, and no CI job runs the Storybook vitest project. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
+**CI job naming constraint:** `.github/workflows/ci-shared.yml` is a reusable workflow (`workflow_call` only) that defines the jobs `Lint`, `Build`, `Test`, `Integration` (Firestore emulator tests, including `firestore.rules`), and `Smoke` (end-to-end spin against the emulators, `activity/smoke/`). It is called by `.github/workflows/ci.yml` (trigger: `pull_request` only) via a calling job with ID `CI`. GitHub Actions names reusable workflow checks as `<calling_job_id> / <reusable_job_id>`, producing `CI / Lint`, `CI / Build`, `CI / Test` — which branch protection and `auto-approve.yml` require — plus `CI / Integration` and `CI / Smoke`; `CI / Smoke` is meant to be a required check in branch protection. `deploy.yml` also calls `ci-shared.yml` once, and its deploy jobs (Firebase, Pi, GitHub Pages) all wait on it, so nothing reaches production unless CI passes on the merged commit. Deploys are serialized (workflow-level `concurrency`), and a manual run from any branch but `main` deploys nothing. The required `CI / Build` and `CI / Test` checks also cover the activity typecheck and its jsdom unit tests (through `./scripts/verify-ts.sh`); the Playwright screenshot tests run in the `Verify Activity` workflow, whose `verify-activity` job runs on every PR (passing straight away when the PR touches nothing the activity depends on) so it can be a required check. No CI job runs the Storybook vitest project. Do not rename the calling job ID in `ci.yml` or the job IDs in `ci-shared.yml`, and do not add extra triggers to `ci.yml`.
 
 ## Git Workflow
 
 - **Never push directly to `main`.** Always work on a feature branch and open a PR for review.
 - There is no code review step. Once `CI / Lint`, `CI / Build`, and `CI / Test` pass on a PR by the repo owner, `auto-approve.yml` approves it to satisfy branch protection. Green CI is the merge gate, so run the verify scripts before pushing.
 - When you open a PR, enable auto-merge on it with the squash method (`gh pr merge --auto --squash`, or the equivalent GitHub API/MCP call) so it merges itself once required checks pass.
-- Merging to `main` deploys (`deploy.yml`, `deploy-activity.yml`).
+- Merging to `main` deploys (`deploy.yml`).
+- Dependabot opens weekly dependency PRs (`.github/dependabot.yml`). `dependabot-auto-merge.yml` approves the minor and patch ones and turns on auto-merge; major bumps wait for a human.

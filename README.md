@@ -37,10 +37,10 @@ Get up and running in less than 5 minutes.
     ```
 
 3.  **Configure Environment**
-    Create a `.env` file in the `packages/bot` directory (or the root directory):
+    Create a `.env` file in `packages/bot` (the bot reads it from its working directory, which is `packages/bot` when run as below):
     ```bash
-    echo "BOT_TOKEN=your_token_here" > .env
-    echo "DISCORD_APPLICATION_ID=your_app_id" >> .env
+    echo "BOT_TOKEN=your_token_here" > packages/bot/.env
+    echo "DISCORD_APPLICATION_ID=your_app_id" >> packages/bot/.env
     ```
 
 4.  **Run the Bot**

@@ -48,8 +48,6 @@ export function GroupCarousel({
 }: GroupCarouselProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  if (items.length === 0) return null;
-
   const clamped = Math.max(0, Math.min(activeIndex, items.length - 1));
   const single = items.length === 1;
   const wrap = (i: number) => ((i % items.length) + items.length) % items.length;
@@ -137,6 +135,10 @@ export function GroupCarousel({
     if (dx < 0) goNext();
     else goPrev();
   };
+
+  // After every hook: returning earlier would change the hook count between
+  // renders when items goes from empty to non-empty.
+  if (items.length === 0) return null;
 
   return (
     <div

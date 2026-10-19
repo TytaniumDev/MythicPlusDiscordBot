@@ -1,8 +1,9 @@
 {
   "name": "activity",
   "version": "1.0.0",
-  "description": "",
-  "main": "script.js",
+  "private": true,
+  "license": "MIT",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "dev:doppler": "doppler run -- vite",
@@ -13,10 +14,6 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.4.0",
     "@floating-ui/react": "^0.27.19",
