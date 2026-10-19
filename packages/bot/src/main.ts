@@ -14,6 +14,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   InviteTargetType,
+  Status,
   type ChatInputCommandInteraction,
   type ModalSubmitInteraction,
   type Message as DjsMessage,
@@ -32,6 +33,7 @@ import { WoWPlayer, WoWGroup, decodeGroupHistoryRounds } from '@mythicplus/share
 import { reportBadGroup, submitGithubIssueModal, GitHubError } from './core/issues.js';
 import type { GitHubIssueResponse } from './core/issues.js';
 import { IssueTrackingService } from './services/issueTrackingService.js';
+import { startHeartbeat } from './core/heartbeat.js';
 
 // ---------------------------------------------------------------------------
 // Helpers: convert plain embed objects → discord.js EmbedBuilder
@@ -263,6 +265,8 @@ async function main() {
 
   const groupsHandler = new GroupsHandler(botAdapter, groupService, sessionService);
   const debugHandler = new DebugHandler(groupService);
+
+  const stopHeartbeat = startHeartbeat(() => client.ws.status === Status.Ready, config.HEARTBEAT_FILE);
 
   // Track listeners for shutdown cleanup
   let badGroupReportListener: { unsubscribe(): void } | null = null;
@@ -762,6 +766,7 @@ async function main() {
   // -- Graceful shutdown --
   async function shutdown() {
     logger.info('Shutting down...');
+    stopHeartbeat();
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
     channelListener?.unsubscribe();
