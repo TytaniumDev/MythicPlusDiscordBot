@@ -34,7 +34,7 @@ echo "=== TypeScript Verification ==="
 
 if [ "$RUN_LINT" -eq 1 ]; then
   echo ""
-  echo "--- Linting: Backend Packages ---"
+  echo "--- Linting: packages/ and activity/ ---"
   npm run lint
 fi
 

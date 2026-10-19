@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useEffectEvent, useRef, useCallback, useState, useMemo } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { useIdentityResolver } from '../hooks/useIdentityResolver';
@@ -119,7 +119,10 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     }
   }, [channelStatus, groupsCount, isStaticWheel, spinSequenceStarted]);
 
-  useEffect(() => {
+  // An effect event reads the latest channel data, service and callbacks
+  // without making them re-trigger the effect, which runs only when the
+  // revealed count or the sequence state changes.
+  const advanceIfRevealed = useEffectEvent(() => {
     if (!channelData || !spinSequenceStarted) return;
     const store = useAppStore.getState();
     const revealed = channelData.revealedGroups ?? 0;
@@ -140,6 +143,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
         reportError(err, { tag: 'WheelsView.autoAdvanceEffect' });
       });
     }
+  });
+  useEffect(() => {
+    advanceIfRevealed();
   }, [channelData?.revealedGroups, spinSequenceStarted, autoAdvanceRunning]);
 
   const autoAdvanceRef = useRef(false);

@@ -143,14 +143,15 @@ export function App() {
   }, []);
 
   // Auto-navigate based on Firestore channel status
+  const channelStatus = channelData?.status;
   useEffect(() => {
-    if (isDemoMode || !channelData || !useAppStore.getState().currentChannelId) return;
-    const targetView = statusToView(channelData.status);
+    if (isDemoMode || !channelStatus || !useAppStore.getState().currentChannelId) return;
+    const targetView = statusToView(channelStatus);
     if (targetView === 'lobby' && waitingForMyProfile) return;
     if (useAppStore.getState().currentView !== targetView) {
       navigateTo(targetView, { replace: true });
     }
-  }, [channelData?.status, isDemoMode, navigateTo, waitingForMyProfile]);
+  }, [channelStatus, isDemoMode, navigateTo, waitingForMyProfile]);
 
   // Browser back/forward navigation
   useEffect(() => {

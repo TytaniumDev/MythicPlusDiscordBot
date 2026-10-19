@@ -18,7 +18,7 @@ npx -w packages/bot tsx src/main.ts
 ./scripts/smoke-test.sh                  # End-to-end: real activity build + Firebase emulators, full spin (needs Java + `npx -w activity playwright install chromium`)
 
 # Individual backend steps
-npm run lint                             # ESLint over packages/
+npm run lint                             # ESLint over packages/ and activity/
 npm run typecheck                        # shared + bot + functions + activity
 npm run test                             # shared + functions + bot + activity unit tests (vitest)
 

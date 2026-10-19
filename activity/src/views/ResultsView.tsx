@@ -54,8 +54,7 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   useEffect(() => {
     // Reseed when the viewer's group changes (e.g., late identity resolution).
     if (yourGroupIndex >= 0) setActiveSlideIndex(yourGroupIndex);
-    // Intentionally omit activeSlideIndex from deps so manual nav isn't overridden.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Not keyed on activeSlideIndex, so manual navigation isn't overridden.
   }, [yourGroupIndex]);
 
   const carouselItems = useMemo<GroupCarouselItem[]>(() => {

@@ -46,6 +46,13 @@ describe('GroupCarousel navigation', () => {
     expect(screen.getByTestId('active').textContent).toBe('0');
   });
 
+  it('renders nothing for no items, then the groups once they arrive', () => {
+    const { container, rerender } = render(<Harness initial={0} items={[]} />);
+    expect(screen.queryByTestId('group-carousel')).toBeNull();
+    rerender(<Harness initial={0} items={items} />);
+    expect(container.querySelector('[data-testid="group-carousel"]')).not.toBeNull();
+  });
+
   it('hides arrows for a single-item carousel', () => {
     render(<Harness initial={0} items={[items[0]]} />);
     expect(screen.queryByLabelText('Previous group')).toBeNull();
