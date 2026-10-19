@@ -5,11 +5,14 @@ name: Update Snapshots
 # pick your branch) when snapshots drift for reasons outside the UI code, such
 # as a dependency bump.
 #
-# It pushes with the SNAPSHOTS_PUSH_TOKEN secret (a fine-grained token with
-# Contents: write on this repo) when one is set. A push made with the
+# It pushes with a token from the repo's GitHub App (CI_APP_ID variable and
+# CI_APP_PRIVATE_KEY secret, Contents: read and write). A push made with the
 # workflow's own GITHUB_TOKEN leaves the PR's pull_request runs waiting for a
 # maintainer's approval, and those pending runs keep auto-merge from firing.
-# A push made with the token runs CI on the PR like any other push.
+# A push made with the app's token runs CI on the PR like any other push. App
+# tokens are minted per run and last an hour, so there is nothing to renew.
+# Until the app is set up it falls back to the SNAPSHOTS_PUSH_TOKEN secret
+# (a fine-grained PAT), then to GITHUB_TOKEN.
 on:
   workflow_dispatch:
     inputs:
@@ -32,12 +35,20 @@ jobs:
       contents: write
       actions: write
     env:
-      HAS_PUSH_TOKEN: ${{ secrets.SNAPSHOTS_PUSH_TOKEN != '' }}
+      HAS_PUSH_TOKEN: ${{ vars.CI_APP_ID != '' || secrets.SNAPSHOTS_PUSH_TOKEN != '' }}
     steps:
+      - name: Get a GitHub App token
+        id: app-token
+        if: vars.CI_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.SNAPSHOTS_PUSH_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token || secrets.SNAPSHOTS_PUSH_TOKEN || github.token }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -72,7 +83,7 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      # Without SNAPSHOTS_PUSH_TOKEN the push was made with GITHUB_TOKEN, so the
+      # Without the app or SNAPSHOTS_PUSH_TOKEN the push was made with GITHUB_TOKEN, so the
       # PR's own runs wait for approval. Dispatch the checks so the new head
       # still reports them; the PR then needs its pending runs approved (or
       # another push) before auto-merge fires.
