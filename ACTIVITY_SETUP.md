@@ -11,8 +11,8 @@ We have added a GitHub Action to automatically deploy your activity files. You j
 3.  In the left sidebar, click on **Pages** (under the "Code and automation" section).
 4.  Under **Build and deployment**:
     *   **Source**: Select **GitHub Actions**.
-5.  Once saved, the `Deploy Activity to Pages` workflow should run automatically on the next push.
-    *   *To trigger it manually now:* Go to the **Actions** tab, select "Deploy Activity to Pages", and click "Run workflow".
+5.  Once saved, the `Deploy` workflow publishes the activity on the next push to `main`.
+    *   *To trigger it manually now:* Go to the **Actions** tab, select "Deploy", and click "Run workflow" on `main`.
 6.  After the workflow finishes, you will see your **site URL** in the Pages settings (usually `https://<user>.github.io/<repo>/`). **Copy this URL.**
 
 ## 2. Discord Developer Portal Configuration

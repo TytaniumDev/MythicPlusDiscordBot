@@ -89,13 +89,13 @@ sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git
 ```
 Use this path for the `PI_APP_DIR` secret.
 
-## 2. GitHub Secrets for CI/CD
+## 2. Secrets for CI/CD
 
-Go to GitHub repo -> Settings -> Secrets and variables -> Actions.
-Click New repository secret for each:
+The deploy workflow reads its secrets from Doppler. The only GitHub Actions secret it needs is `DOPPLER_TOKEN` (repo -> Settings -> Secrets and variables -> Actions), a Doppler service token for the production config.
 
-### Required
-- `TS_AUTHKEY`: Tailscale auth key (reusable + ephemeral recommended).
+Set these in Doppler:
+
+- `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`: Tailscale OAuth client (see below).
 - `PI_HOST`: Tailscale hostname or IP (example: `pi.something.ts.net`).
 - `PI_USER`: SSH user on the Pi (example: `deploy`).
 - `PI_SSH_KEY`: Private SSH key contents from step 1.4.
@@ -105,17 +105,12 @@ Click New repository secret for each:
   (and `repo` if the repo is private).
 - `BOT_TOKEN`: Discord bot token.
 - `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `/wheelson` invite).
-- `GH_ISSUE_TOKEN`: GitHub PAT with `repo` scope for creating issues.
+- `FIREBASE_CREDENTIALS_JSON`: Firebase service-account JSON (also used to deploy rules and functions).
+- `GH_ISSUE_TOKEN`: GitHub PAT for creating issues (section 7).
+- `VITE_FIREBASE_*`, `VITE_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`: activity build settings for the Pages deploy.
 
-### Optional
-- `PI_SSH_PORT`: Defaults to 22 if omitted.
-- `DEPLOY_WEBHOOK_URL`: Discord webhook for deploy notifications.
-
-### Create a Tailscale auth key
-In the Tailscale admin console: Settings -> Keys -> Generate auth key.
-Recommended settings:
-- Reusable: on
-- Ephemeral: on
+### Create a Tailscale OAuth client
+In the Tailscale admin console: Settings -> OAuth clients -> Generate OAuth client, with the `devices:write` scope and the `tag:ci-runner` tag (your ACLs must allow that tag to reach the Pi).
 
 ## 3. Discord Developer Portal (bot permissions)
 
@@ -161,7 +156,7 @@ If Activities are not set up, `/wheelson` will fail; `/wheel` (voice + GIFs) sti
 
 ## 4. First deploy
 
-1. Push to `main`/`master`.
+1. Merge a PR into `main`.
 2. Watch the GitHub Actions workflow run.
 3. On the Pi, confirm the container is running:
    ```bash
@@ -203,10 +198,11 @@ docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
 docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
 docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
 ```
+`healthy` means the bot touched its heartbeat file in the last 90 seconds, which it does only while connected to Discord. `unhealthy` with a running container means it lost its gateway connection; check `docker logs mythic-plus-bot`.
 
 ### 5.5 GitHub Actions logs
 In GitHub:
-**Actions → CI and Deploy → deploy job**
+**Actions → Deploy → deploy-pi job**
 Look for:
 - Successful Tailscale connection
 - SSH step completed
@@ -214,8 +210,8 @@ Look for:
 
 ## 6. Updates
 
-Any push to `main`/`master` rebuilds the image and redeploys to the Pi automatically.
-Each deploy runs `git fetch origin` and `git reset --hard origin/<branch>` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with the deployed branch. Any local changes in that directory will be overwritten.
+Any push to `main` runs CI once, then deploys Firebase, the Pi and GitHub Pages (`.github/workflows/deploy.yml`). Deploys run one at a time in merge order. Running the workflow by hand from any other branch deploys nothing.
+Each deploy runs `git fetch origin` and `git reset --hard origin/main` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with what was deployed. Any local changes in that directory will be overwritten.
 
 Note: The production Docker image is built using `package.json` and `npm ci`. If you add dependencies, ensure they are reflected in the package.json and package-lock.json.
 
@@ -240,11 +236,8 @@ You can use either a **Classic** or **Fine-grained** Personal Access Token.
    *(Note: **Metadata** read-only access is usually included by default, which is sufficient).*
 4. Copy the generated token.
 
-### 7.2 Add GitHub Secret
+### 7.2 Add it to Doppler
 
-Go to your repository **Settings** -> **Secrets and variables** -> **Actions**.
-Create a new repository secret:
-- Name: `GH_ISSUE_TOKEN`
-- Value: (The token you copied in the previous step)
+Store the token in Doppler as `GH_ISSUE_TOKEN`.
 
 This token will be injected into the container at runtime.
