@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sendDiscordDm } from '../src/discordApi';
+import { fetchVerifyKey, sendDiscordDm } from '../src/discordApi';
 
 describe('sendDiscordDm', () => {
   beforeEach(() => {
@@ -38,5 +38,29 @@ describe('sendDiscordDm', () => {
     await expect(sendDiscordDm('bot-token', '123456789', 'Hello!')).rejects.toThrow(
       'Failed to open DM channel: 403',
     );
+  });
+});
+
+describe('fetchVerifyKey', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reads the application's public key with the bot token", async () => {
+    const key = 'a'.repeat(64);
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: '1', verify_key: key }) });
+
+    expect(await fetchVerifyKey('bot-token')).toBe(key);
+    const [url, init] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe('https://discord.com/api/v10/applications/@me');
+    expect(init?.headers).toEqual({ Authorization: 'Bot bot-token' });
+  });
+
+  it('throws when Discord refuses or has no key', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    await expect(fetchVerifyKey('bad')).rejects.toThrow('401');
+
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: '1' }) });
+    await expect(fetchVerifyKey('bot-token')).rejects.toThrow('no verify key');
   });
 });

@@ -91,13 +91,21 @@ export function versionLink(version: string): string {
   return `[\`${version.slice(0, 7)}\`](${url})`;
 }
 
-function header(reporterName: string, version: string): string {
+/** Where a report came from, for the issue header. */
+export type ReportSource = 'activity' | 'discord';
+
+const SOURCE_LABELS: Record<ReportSource, string> = {
+  activity: 'the Wheelson activity',
+  discord: 'a Wheelson slash command',
+};
+
+function header(reporterName: string, version: string, source: ReportSource): string {
   const reporter = reporterName ? cleanForIssue(reporterName) : 'Unknown';
-  return `**Reporter:** ${reporter}\n**Version:** ${versionLink(version)}\n**Sent from:** the Wheelson activity\n\n`;
+  return `**Reporter:** ${reporter}\n**Version:** ${versionLink(version)}\n**Sent from:** ${SOURCE_LABELS[source]}\n\n`;
 }
 
-export function formatIssueReport(report: IssueReport): NewGithubIssue {
-  let body = header(report.reporterName, report.version)
+export function formatIssueReport(report: IssueReport, source: ReportSource): NewGithubIssue {
+  let body = header(report.reporterName, report.version, source)
     + `**Description:**\n${cleanForIssue(report.description)}\n`;
   if (report.details) {
     const heading = report.kind === 'bug' ? 'Reproduction Steps' : 'Benefit/Impact';
@@ -123,7 +131,7 @@ export function formatBadGroupReport(
   const groups = groupDicts.map((g) => WoWGroup.fromDict({ ...g }));
   const players = groups.flatMap((g) => g.players);
 
-  let body = header(report.reporterName, report.version)
+  let body = header(report.reporterName, report.version, 'activity')
     + `**Description:**\n${cleanForIssue(report.description)}\n\n`
     + `**Input Players:**\n\`\`\`python\n[${players.map((p) => p.toTestString()).join(', ')}]\n\`\`\`\n`
     + `**Resulting Groups:**\n\`\`\`python\n[${groups.map((g) => g.toTestString()).join(', ')}]\n\`\`\`\n`;

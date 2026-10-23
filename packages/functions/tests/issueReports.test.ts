@@ -85,16 +85,18 @@ describe('versionLink', () => {
 
 describe('formatIssueReport', () => {
   it('labels a bug and adds its reproduction steps', () => {
-    const issue = formatIssueReport({ ...BUG, details: 'Press Spin twice' });
+    const issue = formatIssueReport({ ...BUG, details: 'Press Spin twice' }, 'activity');
     expect(issue.title).toBe('Wheel stuck');
     expect(issue.labels).toEqual(['bug']);
     expect(issue.body).toContain('**Reporter:** Ty');
+    expect(issue.body).toContain('**Sent from:** the Wheelson activity');
     expect(issue.body).toContain('**Description:**\nIt stopped spinning.');
     expect(issue.body).toContain('**Reproduction Steps:**\nPress Spin twice');
   });
 
   it('labels a feature request and leaves out empty details', () => {
-    const issue = formatIssueReport({ ...BUG, kind: 'feature' });
+    const issue = formatIssueReport({ ...BUG, kind: 'feature' }, 'discord');
+    expect(issue.body).toContain('**Sent from:** a Wheelson slash command');
     expect(issue.labels).toEqual(['enhancement']);
     expect(issue.body).not.toContain('Benefit/Impact');
   });

@@ -9,3 +9,4 @@ export { refreshCharacterMedia } from './refreshCharacterMedia.js';
 export { onGithubIssueWebhook } from './githubWebhook.js';
 export { reportIssue } from './reportIssue.js';
 export { reportBadGroup } from './reportBadGroup.js';
+export { discordInteractions } from './discordInteractions.js';
