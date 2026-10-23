@@ -2,7 +2,6 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from './store/store';
 import { loadStoredDiscordId } from './lib/storedDiscordId';
 import { useGuildSubscription, useChannelSubscription, useProfilesSubscription, selectMyDiscordId } from './hooks/useSession';
-import { useRecentGuilds } from './hooks/useRecentGuilds';
 import { usePreloadPortraits } from './hooks/usePreloadPortraits';
 import { usePortraitRepair } from './hooks/usePortraitRepair';
 import { firestoreService } from './services/firestoreService';
@@ -12,7 +11,8 @@ import { isPlayerReady } from './lib/roles';
 import { isProfileLoading } from './lib/profiles';
 import { Layout } from './components/Layout';
 import { HomeView } from './views/HomeView';
-import { ChannelsView } from './views/ChannelsView';
+import { ConnectingView } from './views/ConnectingView';
+import { launchContext } from './discordSdk';
 import { IdentityView } from './views/IdentityView';
 import { SetupView } from './views/SetupView';
 import { LobbyView } from './views/LobbyView';
@@ -53,14 +53,24 @@ function awaitingMyProfile(s: AppState): boolean {
 }
 
 /**
- * Tear-down side effects when entering home or channels. Both navigateTo and
- * the browser popstate handler need this — keep the teardown set in one place.
+ * Inside Discord there is no home screen to go to: going home reopens the
+ * lobby of the channel the activity runs in.
+ */
+function resolveHome(view: ViewName): ViewName {
+  const store = useAppStore.getState();
+  return view === 'home' && !store.isDemoMode && launchContext() ? 'connecting' : view;
+}
+
+/**
+ * Tear-down side effects when entering home or connecting. Both navigateTo
+ * and the browser popstate handler need this — keep the teardown set in one
+ * place.
  */
 function applyNavigationTearDown(view: ViewName): void {
   const store = useAppStore.getState();
   if (view === 'home') {
     store.resetSession();
-  } else if (view === 'channels') {
+  } else if (view === 'connecting') {
     store.setChannelId(null);
     store.setChannelData(null);
     store.resetSpinState();
@@ -70,15 +80,12 @@ function applyNavigationTearDown(view: ViewName): void {
 
 export function App() {
   const currentView = useAppStore((s) => s.currentView);
-  const currentGuildId = useAppStore((s) => s.currentGuildId);
   const channelData = useAppStore((s) => s.channelData);
   const players = useAppStore((s) => s.players);
   const waitingForMyProfile = useAppStore(awaitingMyProfile);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const guildData = useAppStore((s) => s.guildData);
   const connectionsOpen = useAppStore((s) => s.connectionsOpen);
   const closeConnections = useCallback(() => useAppStore.getState().setConnectionsOpen(false), []);
-  const { saveRecentGuild } = useRecentGuilds();
 
   // Subscribe to the guild and channel docs, and the members' profiles
   useGuildSubscription();
@@ -113,18 +120,8 @@ export function App() {
     lastSpinStatusRef.current = status;
   }, [channelData?.status]);
 
-  // Save recent guilds when guild data arrives
-  const savedGuildRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (currentGuildId && guildData?.guildName && !isDemoMode && /^\d+$/.test(currentGuildId)) {
-      if (savedGuildRef.current !== currentGuildId) {
-        savedGuildRef.current = currentGuildId;
-        saveRecentGuild(currentGuildId, guildData.guildName, guildData.guildIconUrl);
-      }
-    }
-  }, [currentGuildId, guildData?.guildName, guildData?.guildIconUrl, isDemoMode, saveRecentGuild]);
-
-  const navigateTo = useCallback((view: ViewName, opts?: { replace?: boolean }) => {
+  const navigateTo = useCallback((target: ViewName, opts?: { replace?: boolean }) => {
+    let view = resolveHome(target);
     applyNavigationTearDown(view);
     if (view === 'lobby') view = resolveLobbyGate();
 
@@ -186,11 +183,12 @@ export function App() {
       if (view === store.currentView && !guildChanged) return;
 
       if ((view === 'wheels' || view === 'results') && !store.channelData?.groups?.length) {
-        view = store.currentGuildId ? 'channels' : 'home';
+        view = store.currentGuildId ? 'connecting' : 'home';
         history.replaceState({ view }, '', viewToRoute(view, store.currentGuildId));
       }
 
       // Don't push — browser already changed URL
+      view = resolveHome(view);
       applyNavigationTearDown(view);
       if (view === 'lobby') {
         view = resolveLobbyGate();
@@ -210,7 +208,7 @@ export function App() {
   return (
     <Layout>
       {currentView === 'home' && <HomeView onNavigate={navigateTo} />}
-      {currentView === 'channels' && <ChannelsView onNavigate={navigateTo} />}
+      {currentView === 'connecting' && <ConnectingView />}
       {currentView === 'identity' && <IdentityView onNavigate={navigateTo} />}
       {currentView === 'setup' && <SetupView onNavigate={navigateTo} />}
       {currentView === 'lobby' && <LobbyView onNavigate={navigateTo} />}

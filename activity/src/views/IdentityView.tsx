@@ -10,7 +10,7 @@ import { CharacterImage } from '../components/CharacterImage';
 import { DiscordSignInButton } from '../components/DiscordSignInButton';
 
 interface IdentityViewProps {
-  onNavigate: (view: 'channels' | 'setup' | 'home', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'setup' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function IdentityView({ onNavigate }: IdentityViewProps) {
@@ -38,7 +38,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
         <HeaderBar
           title="Wheelson"
           subtitle="Join the voice channel to get started"
-          onBack={() => onNavigate('channels')}
+          onBack={() => onNavigate('home')}
           onTitleClick={() => onNavigate('home')}
           className="app-header"
           avatar={<HeaderProfileSlot />}
@@ -57,7 +57,7 @@ export function IdentityView({ onNavigate }: IdentityViewProps) {
       <HeaderBar
         title="Wheelson"
         subtitle={`${players.length} in voice`}
-        onBack={() => onNavigate('channels')}
+        onBack={() => onNavigate('home')}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
         avatar={<HeaderProfileSlot />}

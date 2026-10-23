@@ -9,7 +9,7 @@ import {
   toSessionStatus,
 } from '@mythicplus/shared';
 import type { AffixDisplay, Decoded } from '@mythicplus/shared';
-import type { AffixData, ChannelData, GuildData, VoiceChannel } from '../types';
+import type { AffixData, ChannelData, GuildData } from '../types';
 import { reportError } from '../lib/sentry';
 
 // Decoders for the Firestore docs the activity subscribes to. Each one turns a
@@ -70,28 +70,6 @@ function optionalStringArray(
   return strings;
 }
 
-function parseVoiceChannels(raw: unknown, issues: string[]): VoiceChannel[] {
-  if (raw === undefined || raw === null) return [];
-  if (!Array.isArray(raw)) {
-    issues.push('voiceChannels: not an array');
-    return [];
-  }
-  const channels: VoiceChannel[] = [];
-  raw.forEach((entry, i) => {
-    if (
-      isRecord(entry)
-      && typeof entry.id === 'string'
-      && typeof entry.name === 'string'
-      && typeof entry.userCount === 'number'
-    ) {
-      channels.push({ id: entry.id, name: entry.name, userCount: entry.userCount });
-    } else {
-      issues.push(`voiceChannels[${i}]: invalid`);
-    }
-  });
-  return channels;
-}
-
 function parseGroupHistory(raw: unknown, issues: string[]): GuildData['groupHistory'] {
   if (raw === undefined || raw === null) return undefined;
   if (!isRecord(raw) || typeof raw.date !== 'string' || !Array.isArray(raw.rounds)) {
@@ -115,10 +93,8 @@ export function decodeGuildData(raw: unknown, guildId: string): Decoded<GuildDat
       guildId: requiredString(data, 'guildId', guildId, issues),
       guildName: optionalString(data, 'guildName', issues),
       guildIconUrl: optionalString(data, 'guildIconUrl', issues),
-      voiceChannels: parseVoiceChannels(data.voiceChannels, issues),
       groupHistory: parseGroupHistory(data.groupHistory, issues),
       seasonPairs: seasonPairs ?? undefined,
-      refreshRequest: data.refreshRequest,
       createdAt: data.createdAt,
       lastActive: data.lastActive,
     },

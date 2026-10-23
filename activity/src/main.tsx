@@ -25,9 +25,9 @@ import { canAuthorizeWithDiscord, setupDiscordSdk } from './discordSdk';
 import { watchDiscordSignIn } from './services/discordAuth';
 import { migrateLegacyStorage } from './lib/storedDiscordId';
 import { splitPlayers } from './lib/profiles';
-import { statusToView, routeToView } from './lib/routing';
+import { statusToView } from './lib/routing';
 import { isPlayerReady } from './lib/roles';
-import type { ChannelData, GuildData, WoWPlayer } from './types';
+import type { ChannelData, WoWPlayer } from './types';
 import './index.css';
 
 // ── Pre-render initialization ──────────────────────────────
@@ -72,9 +72,6 @@ async function init() {
         const view = statusToView((data.channel as ChannelData).status);
         store.setView(view);
         loadFixtureChannel(data.channel);
-      } else if ('voiceChannels' in data && !('status' in data)) {
-        store.setGuildData(data as GuildData);
-        store.setView('channels');
       } else {
         const cd = loadFixtureChannel(data);
         // If identity is injected, use statusToView; otherwise gate to identity for lobby
@@ -117,21 +114,21 @@ async function init() {
   // Restores a Discord sign-in from an earlier launch, if there was one.
   watchDiscordSignIn();
 
-  // Resolve guild ID: URL params first, then hash route, then Discord SDK
-  let currentGuildId = urlParams.get('guildId') || urlParams.get('sessionId');
-  const urlChannelId = urlParams.get('channelId');
-  const initialRoute = routeToView(location.hash);
-  let discordChannelId: string | null = null;
-
-  if (!currentGuildId && initialRoute.guildId) {
-    currentGuildId = initialRoute.guildId;
+  // Real lobbies open inside the Discord activity. Outside it the app offers
+  // the demo, except that the smoke tests open a lobby with a
+  // `?guildId=&channelId=` link, which only works against the emulators.
+  let guildId: string | null = null;
+  let channelId: string | null = null;
+  if (import.meta.env.VITE_FIRESTORE_EMULATOR_HOST) {
+    guildId = urlParams.get('guildId');
+    channelId = urlParams.get('channelId');
   }
-
-  if (!currentGuildId) {
+  let discordChannelId: string | null = null;
+  if (!guildId) {
     const discordContext = await setupDiscordSdk();
     if (discordContext) {
-      currentGuildId = discordContext.guildId;
-      discordChannelId = discordContext.channelId;
+      guildId = discordContext.guildId;
+      channelId = discordChannelId = discordContext.channelId;
     } else {
       console.warn('[Wheelson] Discord SDK returned null context');
     }
@@ -140,28 +137,16 @@ async function init() {
   const store = useAppStore.getState();
   store.setDiscordSignInAvailable(canAuthorizeWithDiscord());
 
-  if (!currentGuildId) {
+  if (!guildId) {
     store.setView('home');
     render();
     return;
   }
 
-  store.setGuildId(currentGuildId);
-  if (discordChannelId) {
-    store.setDiscordChannelId(discordChannelId);
-  }
-
-  const resolvedChannelId = urlChannelId || discordChannelId;
-  if (resolvedChannelId) {
-    store.setChannelId(resolvedChannelId);
-    store.setView('channels');
-    store.setStatusMessage('Loading...');
-  } else {
-    if (initialRoute.guildId && (initialRoute.view === 'wheels' || initialRoute.view === 'results')) {
-      console.warn('[Wheelson] Stale hash', initialRoute.view, ', redirecting to channels');
-    }
-    store.setView('channels');
-  }
+  store.setGuildId(guildId);
+  if (discordChannelId) store.setDiscordChannelId(discordChannelId);
+  if (channelId) store.setChannelId(channelId);
+  store.setView('connecting');
 
   render();
 }

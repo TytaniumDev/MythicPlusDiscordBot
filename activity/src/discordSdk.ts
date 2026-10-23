@@ -1,7 +1,7 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
 
-interface DiscordContext {
+export interface DiscordContext {
   guildId: string;
   channelId: string | null;
 }
@@ -77,6 +77,12 @@ export function remapImageUrl(url: string | null | undefined): string | null {
 }
 
 let _sdkInstance: DiscordSDK | null = null;
+let _launchContext: DiscordContext | null = null;
+
+/** Where the activity was launched (from `setupDiscordSdk`), or null outside Discord. */
+export function launchContext(): DiscordContext | null {
+  return _launchContext;
+}
 
 /**
  * Initialize the Discord Embedded App SDK and return the guild/channel context.
@@ -100,10 +106,11 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
 
     if (!discordSdk.guildId) return null;
 
-    return {
+    _launchContext = {
       guildId: discordSdk.guildId,
       channelId: discordSdk.channelId,
     };
+    return _launchContext;
   } catch (e) {
     reportError(e, { tag: 'discordSdk.init' });
     return null;

@@ -81,18 +81,16 @@ class FirestoreSessionService implements SessionService {
           useAppStore.getState().setChannelData(value);
           return;
         }
-        // The listener fires `exists()=false` during normal lifecycle —
-        // before `selectChannel` finishes creating the doc, or before the bot
-        // has written it on activity launch. Only escalate if the server
-        // still has no doc after a grace period AND the user is on a view that
-        // depends on channel data; on home/channels the doc may legitimately
-        // not exist yet (URL/Discord SDK sets currentChannelId before the
-        // user has selected a channel, which is what bootstraps the doc).
+        // The listener fires `exists()=false` during normal lifecycle, before
+        // `selectChannel` finishes creating the doc on activity launch. Only
+        // escalate if the server still has no doc after a grace period AND
+        // the user is on a view that depends on channel data; on home and
+        // connecting the doc may legitimately not exist yet.
         if (docSnap.metadata.fromCache || missingTimer !== null) return;
         missingTimer = setTimeout(() => {
           missingTimer = null;
           const view = useAppStore.getState().currentView;
-          if (view === 'home' || view === 'channels') return;
+          if (view === 'home' || view === 'connecting') return;
           reportError(
             new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
             { tag: 'firestoreService.channelDocMissing', extra: { channelId, view } },
@@ -239,12 +237,6 @@ class FirestoreSessionService implements SessionService {
     await setDoc(prefRef, payload, { merge: true });
   }
 
-  async refreshChannels(guildId: string): Promise<void> {
-    await authReady;
-    const docRef = doc(db, 'guilds', guildId);
-    await updateDoc(docRef, { refreshRequest: serverTimestamp() });
-  }
-
   async selectChannel(channelId: string, channelName: string, guildId: string): Promise<void> {
     await authReady;
     await ensureLobby(db, channelId, channelName || '', guildId);
@@ -330,8 +322,6 @@ class FirestoreSessionService implements SessionService {
     const guildDocRef = doc(db, 'guilds', guildId);
     await setDoc(guildDocRef, {
       guildId,
-      voiceChannels: [],
-      refreshRequest: serverTimestamp(),
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true });

@@ -12,10 +12,6 @@ const envSchema = z.object({
   GITHUB_REPO_NAME: z.string().trim().default('MythicPlusDiscordBot'),
   GIT_SHA: z.string().trim().optional(),
   SENTRY_DSN: z.string().trim().optional(),
-  ACTIVITY_URL: z
-    .string()
-    .trim()
-    .default('https://tytaniumdev.github.io/MythicPlusDiscordBot/'),
   FIREBASE_CREDENTIALS_JSON: z.string().optional(),
 });
 
@@ -38,7 +34,6 @@ export const GIT_SHA = env.GIT_SHA;
 export const SENTRY_DSN = env.SENTRY_DSN;
 
 // Activity Link
-export const ACTIVITY_URL = env.ACTIVITY_URL;
 
 // Firebase Credentials (JSON)
 export const FIREBASE_CREDENTIALS_JSON = env.FIREBASE_CREDENTIALS_JSON;

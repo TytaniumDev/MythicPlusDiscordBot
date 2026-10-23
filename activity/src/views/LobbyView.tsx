@@ -20,7 +20,7 @@ const SpinIcon = () => (
 );
 
 interface LobbyViewProps {
-  onNavigate: (view: 'channels' | 'wheels' | 'home', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'wheels' | 'home', opts?: { replace?: boolean }) => void;
 }
 
 export function LobbyView({ onNavigate }: LobbyViewProps) {
@@ -152,7 +152,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
         <HeaderBar
           title="Players"
           subtitle="0 players"
-          onBack={() => onNavigate('channels')}
+          onBack={() => onNavigate('home')}
           onTitleClick={() => onNavigate('home')}
           className="app-header"
           subtitleId="player-count"
@@ -179,7 +179,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
       <HeaderBar
         title="Players"
         subtitle={subtitleText}
-        onBack={() => onNavigate('channels')}
+        onBack={() => onNavigate('home')}
         onTitleClick={() => onNavigate('home')}
         className="app-header"
         subtitleId="player-count"

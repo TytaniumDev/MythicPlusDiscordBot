@@ -49,7 +49,7 @@ The WoW addon (Wheelson, https://github.com/TytaniumDev/Wheelson) is deprecated.
 This is a Discord bot for forming World of Warcraft Mythic+ groups. It has two main modes:
 
 1. **Discord-only** (`/wheel`): Bot computes groups and posts results directly in Discord
-2. **Activity mode** (the Wheelson Discord Activity, or `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side
+2. **Activity mode** (the Wheelson Discord Activity, or `/wheelson`): Real-time lobby experience via Firebase, with a web frontend that computes groups client-side. Real lobbies only open inside the Discord activity; the page in a plain browser offers the demo
 
 See `ARCHITECTURE.md` for the deep dive.
 
@@ -156,7 +156,7 @@ If you can't produce CI-matching snapshots locally (no Docker, or a sandbox whos
 
 Required for bot: `BOT_TOKEN`, `DISCORD_APPLICATION_ID`
 Required for Firebase features: `FIREBASE_CREDENTIALS_JSON`
-Optional: `DEVELOPER_ID`, `ACTIVITY_URL`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
+Optional: `DEVELOPER_ID`, `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GIT_SHA`, `SENTRY_DSN` (see `packages/bot/src/core/config.ts`)
 
 Production secrets live in Doppler. For production host access and logs, see the `pi-ops` skill.
 

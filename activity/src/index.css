@@ -305,85 +305,12 @@ button:focus-visible,
 }
 
 /* ============================================
-   View: Home (Recent Guilds)
+   View: Home (outside Discord) and Connecting
    ============================================ */
-#view-home {
+#view-home,
+#view-connecting {
   max-width: 500px;
   margin: 0 auto;
-}
-
-#view-home h2 {
-  font-size: 1.1rem;
-  color: var(--text-heading);
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-#recent-guilds-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.guild-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.guild-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-accent);
-  padding-left: 22px;
-}
-
-.guild-card:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-  background: var(--bg-card-hover);
-  border-color: var(--border-accent);
-  padding-left: 22px;
-}
-
-.guild-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.guild-icon-placeholder {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-purple);
-  flex-shrink: 0;
-}
-
-.guild-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.guild-card-name {
-  font-weight: 600;
-  color: var(--text-heading);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.guild-last-visited {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-top: 2px;
 }
 
 .empty-message {
@@ -391,92 +318,6 @@ button:focus-visible,
   color: var(--text-secondary);
   font-size: 0.9rem;
   margin-top: 16px;
-}
-
-/* ============================================
-   View: Channel Picker
-   ============================================ */
-#view-channels {
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-#view-channels h2 {
-  font-size: 1.1rem;
-  color: var(--text-heading);
-  margin-bottom: 12px;
-  text-align: center;
-}
-
-.btn-refresh {
-  display: flex;
-  margin: 0 auto 20px;
-  font-size: 0.85rem;
-  padding: 6px 16px;
-}
-
-#channel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.channel-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.channel-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-accent);
-  padding-left: 22px;
-}
-
-.channel-card:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-  background: var(--bg-card-hover);
-  border-color: var(--border-accent);
-  padding-left: 22px;
-}
-
-.channel-card .channel-name {
-  font-weight: 600;
-  color: var(--text-heading);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.channel-card .channel-name::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--color-gold);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.channel-card .channel-count {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--bg-primary);
-  background: var(--color-gold);
-  padding: 2px 10px;
-  border-radius: 12px;
-}
-
-.channel-card.channel-empty {
-  opacity: 0.75;
 }
 
 /* ============================================

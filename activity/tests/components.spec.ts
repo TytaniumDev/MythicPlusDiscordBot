@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 
 const encodeData = (data: unknown) => Buffer.from(JSON.stringify(data)).toString('base64');
 
@@ -33,15 +33,6 @@ test.describe('Component: HeaderBar', () => {
     await expect(header).toHaveScreenshot('header-bar-home.png');
   });
 
-  test('Channels header (with back button)', async ({ page }) => {
-    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    await page.goto(`/?data=${encodeData(mockGuildData)}`);
-    await expect(page.locator('#view-channels')).toBeVisible();
-    const header = page.locator('.header-bar').first();
-    await expect(header).toBeVisible();
-    await expect(header).toHaveScreenshot('header-bar-channels.png');
-  });
-
   test('Results header (gold title)', async ({ page }) => {
     await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
     const resultsData = { ...mockChannelData, status: 'completed', players: mockPlayers, groups: mockGroups };
@@ -50,38 +41,6 @@ test.describe('Component: HeaderBar', () => {
     const header = page.locator('.header-bar').first();
     await expect(header).toBeVisible();
     await expect(header).toHaveScreenshot('header-bar-results.png');
-  });
-});
-
-// ── Component: GuildCard ─────────────────────────────────────
-test.describe('Component: GuildCard', () => {
-  const recentGuilds = [
-    { guildId: 'guild-1', guildName: 'Mythic Monday', guildIconUrl: undefined, lastVisited: Date.now() - 7200000 },
-  ];
-
-  test('Guild card appearance', async ({ page }) => {
-    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    await page.addInitScript((guilds) => {
-      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
-    }, recentGuilds);
-
-    await page.goto('/');
-    await expect(page.locator('#view-home')).toBeVisible();
-    const card = page.locator('.guild-card').first();
-    await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('guild-card.png');
-  });
-});
-
-// ── Component: ChannelCard ───────────────────────────────────
-test.describe('Component: ChannelCard', () => {
-  test('Channel card with user count', async ({ page }) => {
-    await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-    await page.goto(`/?data=${encodeData(mockGuildData)}`);
-    await expect(page.locator('#view-channels')).toBeVisible();
-    const card = page.locator('.channel-card').first();
-    await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot('channel-card.png');
   });
 });
 

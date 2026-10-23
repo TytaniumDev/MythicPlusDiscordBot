@@ -1,27 +1,20 @@
 import { useAppStore } from '../store/store';
-import { useRecentGuilds } from '../hooks/useRecentGuilds';
-import { GuildCard } from '../components/GuildCard';
+import { getSessionService } from '../hooks/useSession';
 import { HeaderBar } from '../components/HeaderBar';
 import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 import { PrimaryCTA } from '../components/ui';
-import { mockGuildData } from '../lib/mockData';
+import { mockChannelData, mockGuildData } from '../lib/mockData';
 
 interface HomeViewProps {
-  onNavigate: (view: 'channels' | 'home', opts?: { replace?: boolean }) => void;
+  onNavigate: (view: 'lobby', opts?: { replace?: boolean }) => void;
 }
 
+/**
+ * The page outside Discord. Real lobbies only open inside the Discord
+ * activity, so this offers the demo.
+ */
 export function HomeView({ onNavigate }: HomeViewProps) {
-  const { guilds } = useRecentGuilds();
-
-  const handleGuildClick = (guildId: string) => {
-    const store = useAppStore.getState();
-    store.setChannelId(null);
-    store.setChannelData(null);
-    store.setGuildId(guildId);
-    onNavigate('channels');
-  };
-
-  const startDemo = () => {
+  const startDemo = async () => {
     const store = useAppStore.getState();
     store.setDemoMode(true);
     store.setGuildId('demo-guild');
@@ -29,32 +22,23 @@ export function HomeView({ onNavigate }: HomeViewProps) {
     // Clear identity so the guided flow (identity → setup → lobby) shows fresh
     store.resetIdentity();
     localStorage.removeItem('wheelson-player-demo-guild');
-    onNavigate('channels');
+    store.setChannelId(mockChannelData.channelId);
+    await getSessionService(true).selectChannel(mockChannelData.channelId, mockChannelData.channelName, 'demo-guild');
+    onNavigate('lobby');
   };
 
   return (
     <div className="main-layout">
       <HeaderBar
-        title="Recent Guilds"
+        title="Wheelson"
         className="app-header"
         avatar={<HeaderProfileSlot />}
       />
       <main className="content-area">
         <section id="view-home">
-          <div id="recent-guilds-list">
-            {guilds.map((guild) => (
-              <GuildCard
-                key={guild.guildId}
-                guild={guild}
-                onClick={() => handleGuildClick(guild.guildId)}
-              />
-            ))}
-          </div>
-          {guilds.length === 0 && (
-            <p id="no-recent-guilds" className="empty-message">
-              No recent guilds. Use a direct link or start from Discord to begin.
-            </p>
-          )}
+          <p id="home-discord-hint" className="empty-message">
+            Open Wheelson from a voice channel in Discord to start a lobby.
+          </p>
           <div id="demo-controls">
             <PrimaryCTA id="start-demo-btn" onClick={startDemo}>
               Start Demo

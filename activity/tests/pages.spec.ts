@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 import { mockRaiderio } from './helpers/raiderio';
 
 test.beforeEach(async ({ page }) => {
@@ -29,8 +29,6 @@ const DESIGN_VIEWPORTS = {
 } as const;
 
 // ── Test Data ────────────────────────────────────────────────
-const channelPickerData = mockGuildData;
-
 // Use Gazzi (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
 const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
 
@@ -77,13 +75,6 @@ const resultsData = {
   groups: mockGroups,
 };
 
-// ── Recent guilds for Home view ──────────────────────────────
-const recentGuilds = [
-  { guildId: 'guild-1', guildName: 'Mythic Monday', guildIconUrl: undefined, lastVisited: Date.now() - 7200000 },
-  { guildId: 'guild-2', guildName: 'Pushing Keys', guildIconUrl: undefined, lastVisited: Date.now() - 86400000 },
-  { guildId: 'guild-3', guildName: 'Weekend Warriors', guildIconUrl: undefined, lastVisited: Date.now() - 259200000 },
-];
-
 // ── Helper: Generate tests for a single viewport ────────────
 function designViewportTests(
   vpName: string,
@@ -92,33 +83,11 @@ function designViewportTests(
   test.describe(`${vpName} (${viewport.width}x${viewport.height})`, () => {
     test.use({ viewport });
 
-    test('Home View — with guilds', async ({ page }) => {
-      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-      await page.addInitScript((guilds) => {
-        localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
-      }, recentGuilds);
-
-      await page.goto('/');
-      await expect(page.locator('#view-home')).toBeVisible();
-      await expect(page.locator('.guild-card')).toHaveCount(3);
-      await expect(page).toHaveScreenshot(`home-guilds-${viewport.width}x${viewport.height}.png`);
-    });
-
     test('Home View — empty', async ({ page }) => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
       await page.goto('/');
       await expect(page.locator('#view-home')).toBeVisible();
       await expect(page).toHaveScreenshot(`home-empty-${viewport.width}x${viewport.height}.png`);
-    });
-
-    test('Channels View', async ({ page }) => {
-      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-      await page.goto(`/?data=${encodeData(channelPickerData)}`);
-      await expect(page.locator('#view-channels')).toBeVisible();
-
-      const channelCount = mockGuildData.voiceChannels?.length || 0;
-      await expect(page.locator('.channel-card')).toHaveCount(channelCount);
-      await expect(page).toHaveScreenshot(`channels-${viewport.width}x${viewport.height}.png`);
     });
 
     test('Identity View', async ({ page }) => {

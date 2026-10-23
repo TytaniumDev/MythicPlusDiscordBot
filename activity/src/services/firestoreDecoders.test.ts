@@ -106,7 +106,6 @@ describe('decodeGuildData', () => {
     const { value, issues } = decodeGuildData({
       guildId: 'g1',
       guildName: 'Guild',
-      voiceChannels: [{ id: 'v1', name: 'Voice', userCount: 3 }],
       groupHistory: { date: '2026-09-28', rounds: [{ groups: round }] },
       seasonPairs: { seasonSlug: 's1', counts: { 'a|b': 1 } },
     }, 'g1');
@@ -114,7 +113,6 @@ describe('decodeGuildData', () => {
     expect(value).toMatchObject({
       guildId: 'g1',
       guildName: 'Guild',
-      voiceChannels: [{ id: 'v1', name: 'Voice', userCount: 3 }],
       groupHistory: { date: '2026-09-28', rounds: [round] },
       seasonPairs: { seasonSlug: 's1', counts: { 'a|b': 1 } },
     });
@@ -122,18 +120,15 @@ describe('decodeGuildData', () => {
 
   it('drops malformed parts and keeps the rest', () => {
     const { value, issues } = decodeGuildData({
-      voiceChannels: [{ id: 'v1', name: 'Voice', userCount: 3 }, { id: 'v2' }],
       groupHistory: { date: 20260928, rounds: [] },
       seasonPairs: { counts: {} },
     }, 'g1');
     expect(value.guildId).toBe('g1');
-    expect(value.voiceChannels).toEqual([{ id: 'v1', name: 'Voice', userCount: 3 }]);
     expect(value.groupHistory).toBeUndefined();
     expect(value.seasonPairs).toBeUndefined();
     expect(issues).toEqual([
       'seasonPairs: invalid',
       'guildId: missing',
-      'voiceChannels[1]: invalid',
       'groupHistory: invalid',
     ]);
   });

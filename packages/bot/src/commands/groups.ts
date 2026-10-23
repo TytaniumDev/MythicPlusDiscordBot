@@ -1,6 +1,6 @@
 import { SessionService, type Bot, type Guild } from '../services/sessionService.js';
 import type { CommandContext, GroupService } from '../services/groupService.js';
-import { ACTIVITY_URL, DISCORD_APPLICATION_ID } from '../core/config.js';
+import { DISCORD_APPLICATION_ID } from '../core/config.js';
 import { reportError } from '../core/sentry.js';
 
 export interface GroupsContext {
@@ -64,8 +64,6 @@ export class GroupsHandler {
       return;
     }
 
-    const [guildId, channelId] = result;
-
     let inviteUrl = 'N/A';
     if (DISCORD_APPLICATION_ID && ctx.author.voice.channel.createInvite) {
       try {
@@ -73,23 +71,15 @@ export class GroupsHandler {
         inviteUrl = invite.url;
       } catch (e) {
         // Invite creation can fail for many benign reasons (missing perms,
-        // channel type, rate limit). The activity link still works without
-        // it; surface to Sentry but don't break the response.
+        // channel type, rate limit). The lobby is still open from the voice
+        // channel's activity launcher; surface to Sentry but don't break the
+        // response.
         reportError(e, { tags: { handler: 'activity.createInvite' } });
       }
     }
 
-    const activityUrlBase = ACTIVITY_URL;
-    let msg = '🎮 **Join the Activity!**\n';
-    msg += `**Voice Channel Activity:** ${inviteUrl}\n`;
-
-    if (activityUrlBase) {
-      const directLink = `${activityUrlBase}?guildId=${guildId}&channelId=${channelId}`;
-      msg += `**Browser Link:** [Click Here](${directLink})\n`;
-    } else {
-      msg += '⚠️ `ACTIVITY_URL` not set in .env.';
-    }
-
-    await ctx.send(msg);
+    // Real lobbies only open inside the Discord activity, so there is no
+    // browser link.
+    await ctx.send(`🎮 **Join the Activity!**\n**Voice Channel Activity:** ${inviteUrl}\n`);
   }
 }
