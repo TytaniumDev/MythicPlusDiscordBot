@@ -17,7 +17,17 @@ export const SPOTLIGHT_ENTER_DURATION = 500;  // ms for spotlight card enter ani
 export const SPOTLIGHT_EXIT_DURATION = 400;   // ms for spotlight card exit animation
 export const WHEELS_FADE_DURATION = 350;      // ms for wheels fade in/out
 export const POST_LAND_PAUSE = 700;           // ms pause after wheels land before transitioning
+export const RESULTS_PAUSE = 300;             // ms after the last group before the results screen
+
+// Synced reveal (lib/revealTimeline.ts)
+export const REVEAL_LEAD_MS = 1500;           // ms between pressing Spin and the reveal starting on every screen
+export const MIN_CATCH_UP_SPIN = 600;         // ms; a late client's wheels spin at least this long
 
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Resolve at `time` (ms since the epoch), or right away if it has passed. */
+export function delayUntil(time: number, now: number = Date.now()): Promise<void> {
+  return delay(Math.max(0, time - now));
 }

@@ -22,6 +22,7 @@ export interface SessionService {
   subscribeToChannel(channelId: string): () => void;
   /** Start a round from these players; a no-op when a round has already started. */
   requestSpin(channelId: string, players: readonly WoWPlayer[], seasonSlug: string | null): Promise<void>;
+  /** Start the reveal on every screen; a no-op when it has already started. */
   revealAllGroups(channelId: string, groupCount: number): Promise<void>;
   finishSequence(channelId: string): Promise<void>;
   newRound(channelId: string): Promise<void>;

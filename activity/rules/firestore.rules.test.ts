@@ -36,7 +36,7 @@ import {
   todayPST,
   type WoWGroupDict,
 } from '@mythicplus/shared';
-import { ensureLobby, lobbyReset, startSpin } from '../src/services/lobby';
+import { ensureLobby, lobbyReset, startReveal, startSpin } from '../src/services/lobby';
 
 const projectId = process.env.GCLOUD_PROJECT;
 const emulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
@@ -199,10 +199,28 @@ describe('channels', () => {
     await seedGuild();
     await seedChannel('lobby');
     await expect(startSpin(db, CHANNEL_ID, PLAYERS, 'season-1')).resolves.toBe(true);
-    await allowed(updateDoc(channelRef(), { revealedGroups: 1 }));
+    await expect(startReveal(db, CHANNEL_ID, 1)).resolves.toBe(true);
     await allowed(updateDoc(channelRef(), { status: 'completed' }));
     await allowed(updateDoc(channelRef(), { status: 'completed' }));
     await allowed(updateDoc(channelRef(), lobbyReset()));
+  });
+
+  it('reveals a round once, stamped with the server time (revealAllGroups)', async () => {
+    await seedGuild();
+    await seedChannel('spinning');
+    await expect(startReveal(db, CHANNEL_ID, 1)).resolves.toBe(true);
+    const first = (await admin.doc(`channels/${CHANNEL_ID}`).get()).get('revealStartAt');
+    expect(first).toBeTruthy();
+    // A second Spin click leaves the start time every client is playing from.
+    await expect(startReveal(db, CHANNEL_ID, 1)).resolves.toBe(false);
+    const second = (await admin.doc(`channels/${CHANNEL_ID}`).get()).get('revealStartAt');
+    expect(second.isEqual(first)).toBe(true);
+  });
+
+  it('rejects a reveal start time chosen by the client', async () => {
+    await seedGuild();
+    await seedChannel('spinning');
+    await denied(updateDoc(channelRef(), { revealedGroups: 1, revealStartAt: new Date(Date.now() + 60_000) }));
   });
 
   it('allows cancelling a spin back to the lobby (cancelToLobby)', async () => {

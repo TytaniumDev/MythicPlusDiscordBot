@@ -16,7 +16,7 @@ import { decodeChannelData, decodeGuildData } from './firestoreDecoders';
 // service and the firestore.rules tests both call these, so the rules are
 // tested against the writes the activity really makes.
 
-type NewLobbyDoc = Omit<ChannelData, 'members' | 'revealedGroups' | 'claimedPlayers' | 'staticWheel'>;
+type NewLobbyDoc = Omit<ChannelData, 'members' | 'revealedGroups' | 'revealStartAt' | 'claimedPlayers' | 'staticWheel'>;
 
 /**
  * An empty lobby as the activity creates it. `members` and `expireAt` are left
@@ -124,6 +124,26 @@ export async function startSpin(
         : { merge: true };
       transaction.set(guildRef, { groupHistory, ...pairs?.data }, options);
     }
+    return true;
+  });
+}
+
+/**
+ * Reveal a round's groups: record how many and the server time Spin was
+ * pressed, which every client plays the reveal from. Like `startSpin`, no
+ * screen starts until the server accepts it, so a second Spin click can't move
+ * the start time under clients already playing. Resolves false when the round
+ * isn't spinning or its groups are already revealed. The caller must be
+ * signed in (firestore.rules).
+ */
+export async function startReveal(db: Firestore, channelId: string, groupCount: number): Promise<boolean> {
+  const lobbyRef = doc(db, 'channels', channelId);
+  return runTransaction(db, async (transaction) => {
+    const lobbySnap = await transaction.get(lobbyRef);
+    if (!lobbySnap.exists()) return false;
+    const lobby = decodeChannelData(lobbySnap.data(), channelId).value;
+    if (lobby.status !== 'spinning' || (lobby.revealedGroups ?? 0) >= groupCount) return false;
+    transaction.update(lobbyRef, { revealedGroups: groupCount, revealStartAt: serverTimestamp() });
     return true;
   });
 }

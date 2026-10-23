@@ -97,12 +97,13 @@ service cloud.firestore {
     function validChannelWrite(channelId) {
       let data = request.resource.data;
       let keys = writtenKeys();
-      return keys.hasOnly(['channelId', 'channelName', 'guildId', 'status', 'groups', 'revealedGroups', 'sittingOut', 'claimedPlayers', 'isDebug', 'createdAt', 'lastActive'])
+      return keys.hasOnly(['channelId', 'channelName', 'guildId', 'status', 'groups', 'revealedGroups', 'revealStartAt', 'sittingOut', 'claimedPlayers', 'isDebug', 'createdAt', 'lastActive'])
         && (!('channelId' in keys) || data.channelId == channelId)
         && (!('channelName' in keys) || isShortString(data.channelName, 100))
         && (!('status' in keys) || data.status in ['lobby', 'spinning', 'completed'])
         && (!('groups' in keys) || (data.groups is list && data.groups.size() <= 20))
         && (!('revealedGroups' in keys) || (data.revealedGroups is int && data.revealedGroups >= 0 && data.revealedGroups <= 20))
+        && (!('revealStartAt' in keys) || isServerTime(data.revealStartAt))
         && (!('sittingOut' in keys) || (data.sittingOut is list && data.sittingOut.size() <= 100))
         && (!('claimedPlayers' in keys) || (data.claimedPlayers is list && data.claimedPlayers.size() <= 100))
         && (!('isDebug' in keys) || data.isDebug == false)

@@ -52,6 +52,11 @@ export interface ChannelData {
   members?: LobbyMember[];
   groups: WoWGroup[];
   revealedGroups?: number;
+  /**
+   * Server time (ms since the epoch) Spin was pressed. Every client plays the
+   * reveal from it, so all screens animate together (lib/revealTimeline.ts).
+   */
+  revealStartAt?: number;
   claimedPlayers?: string[];
   sittingOut?: string[];
   staticWheel?: boolean;
