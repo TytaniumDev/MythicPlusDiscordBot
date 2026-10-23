@@ -171,24 +171,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // --- Bad Group Reports ---
-    // Clients file a report; the bot reads it, opens a GitHub issue and deletes
-    // it. The guild must exist so reports can't dodge the bot's per-guild rate
-    // limit with made-up guild IDs.
-    match /badGroupReports/{docId} {
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['title', 'description', 'reporterName', 'reporterId', 'guildId', 'players', 'groups', 'priorRounds', 'createdAt'])
-        && isShortString(request.resource.data.title, 200)
-        && isShortString(request.resource.data.description, 2000)
-        && isShortString(request.resource.data.reporterName, 100)
-        && isShortString(request.resource.data.reporterId, 32)
-        && request.resource.data.guildId is string
-        && guildExists(request.resource.data.guildId)
-        && request.resource.data.players is list && request.resource.data.players.size() <= 100
-        && request.resource.data.groups is list && request.resource.data.groups.size() <= 30
-        && request.resource.data.priorRounds is list && request.resource.data.priorRounds.size() <= 50
-        && isServerTime(request.resource.data.createdAt);
-      allow read, update, delete: if false;
-    }
+    // No rule for issueTracking (or the retired badGroupReports), so clients
+    // can't touch it; the reportIssue Cloud Function writes it.
   }
 }

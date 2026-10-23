@@ -1,15 +1,22 @@
 import type { CharacterClass } from '@mythicplus/shared';
-import type { ChannelData, WoWPlayer } from '../types';
+import type { WoWPlayer } from '../types';
 
-/** What a bad-group report is built from: the finished round and who filed it. */
+/** A report that the current round's groups in this lobby look wrong. */
 export interface BadGroupReportInput {
+  channelId: string;
   title: string;
   description: string;
   reporterName: string | null;
-  reporterId: string | null;
-  lobby: ChannelData;
-  /** Fallback for the report's player list when the round has no groups. */
-  lobbyPlayers: readonly WoWPlayer[];
+}
+
+export type IssueKind = 'bug' | 'feature';
+
+/** A bug report or feature request. */
+export interface IssueReportInput {
+  kind: IssueKind;
+  title: string;
+  description: string;
+  reporterName: string | null;
 }
 
 /**
@@ -31,6 +38,8 @@ export interface SessionService {
   saveLinkedCharacter(playerId: string, linkedCharacter: { name: string; realm: string; region: string }, mediaUrl?: string | null, characterClass?: CharacterClass | null): Promise<void>;
   selectChannel(channelId: string, channelName: string, guildId: string): Promise<void>;
   reportBadGroup(report: BadGroupReportInput): Promise<void>;
+  /** Needs a Discord sign-in, so Wheelson can DM the reporter when it's resolved. */
+  reportIssue(report: IssueReportInput): Promise<void>;
   claimPlayer(channelId: string, playerId: string): Promise<void>;
   unclaimPlayer(channelId: string, playerId: string): Promise<void>;
   setSittingOut(channelId: string, discordId: string, sittingOut: boolean): Promise<void>;

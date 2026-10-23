@@ -12,6 +12,7 @@ const meta = {
     open: true,
     onClose: fn(),
     onOpenConnections: fn(),
+    onOpenReport: fn(),
   },
 } satisfies Meta<typeof ProfileModal>;
 

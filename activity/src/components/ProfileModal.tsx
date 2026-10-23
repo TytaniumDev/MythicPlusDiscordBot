@@ -14,6 +14,7 @@ interface ProfileModalProps {
   open: boolean;
   onClose: () => void;
   onOpenConnections: () => void;
+  onOpenReport: () => void;
 }
 
 /**
@@ -21,9 +22,11 @@ interface ProfileModalProps {
  * Every screen showing the player (this modal, the avatar, everyone's lobby)
  * follows that doc, so there is nothing to keep in sync by hand.
  */
-export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalProps) {
+export function ProfileModal({ open, onClose, onOpenConnections, onOpenReport }: ProfileModalProps) {
   const { discordId, player, displayName } = useMyProfile();
   const verifiedDiscordId = useAppStore((s) => s.verifiedDiscordId);
+  // Reports need a Discord sign-in, which only works inside the Discord activity.
+  const canReport = useAppStore((s) => s.discordSignInAvailable || s.verifiedDiscordId !== null);
   const inGameName = player?.inGameName ?? '';
 
   const { lookup, loading: refreshLoading } = useCharacterLookup();
@@ -108,6 +111,15 @@ export function ProfileModal({ open, onClose, onOpenConnections }: ProfileModalP
         >
           View Connections →
         </button>
+        {canReport && (
+          <button
+            type="button"
+            className="profile-modal__report-link"
+            onClick={onOpenReport}
+          >
+            Report a bug or request a feature
+          </button>
+        )}
         <button type="button" className="profile-modal__close" onClick={onClose} aria-label="Close">×</button>
       </div>
     </div>

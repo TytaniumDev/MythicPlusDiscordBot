@@ -152,17 +152,10 @@ export function ResultsView({ onNavigate }: ResultsViewProps) {
   };
 
   const handleReportSubmit = useCallback(async (title: string, description: string) => {
-    const { channelData: lobby, currentPlayerName, currentPlayerId: reporterId, players: lobbyPlayers } = useAppStore.getState();
+    const { currentChannelId: channelId, currentPlayerName } = useAppStore.getState();
     try {
-      if (lobby) {
-        await service.reportBadGroup({
-          title,
-          description,
-          reporterName: currentPlayerName,
-          reporterId,
-          lobby,
-          lobbyPlayers,
-        });
+      if (channelId) {
+        await service.reportBadGroup({ channelId, title, description, reporterName: currentPlayerName });
       }
       setReportSubmitted(true);
       setTimeout(() => setReportSubmitted(false), 5000);
