@@ -11,7 +11,6 @@ vi.mock('../src/core/config.js', () => ({
   GITHUB_REPO_NAME: 'repo',
   GIT_SHA: 'abc123',
   DISCORD_APPLICATION_ID: '12345',
-  ACTIVITY_URL: 'https://tytaniumdev.github.io/MythicPlusDiscordBot/',
   PLACEHOLDER_CHAR: '❓',
 }));
 
@@ -84,7 +83,7 @@ beforeEach(() => {
 });
 
 describe('GroupsHandler.activity', () => {
-  it('sends activity URL with default base URL', async () => {
+  it('sends the voice channel invite, with no browser link', async () => {
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       new GroupService(),
@@ -96,15 +95,13 @@ describe('GroupsHandler.activity', () => {
 
     const calls = vi.mocked(ctx.send).mock.calls;
     const msgCall = calls.find(
-      ([msg]) => typeof msg === 'string' && msg.includes('guildId=123&channelId=456'),
+      ([msg]) => typeof msg === 'string' && msg.includes('http://discord.invite'),
     );
     expect(msgCall).toBeTruthy();
-    expect(msgCall![0]).toContain(
-      'https://tytaniumdev.github.io/MythicPlusDiscordBot/?guildId=123&channelId=456',
-    );
+    expect(msgCall![0]).not.toContain('guildId=');
   });
 
-  it('sends activity URL in debug mode', async () => {
+  it('sends the invite in debug mode', async () => {
     const handler = new GroupsHandler(
       makeMockBot() as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       new GroupService(),
@@ -116,7 +113,7 @@ describe('GroupsHandler.activity', () => {
 
     const calls = vi.mocked(ctx.send).mock.calls;
     const msgCall = calls.find(
-      ([msg]) => typeof msg === 'string' && msg.includes('guildId=123&channelId=456'),
+      ([msg]) => typeof msg === 'string' && msg.includes('http://discord.invite'),
     );
     expect(msgCall).toBeTruthy();
   });

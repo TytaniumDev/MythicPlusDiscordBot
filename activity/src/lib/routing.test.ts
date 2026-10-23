@@ -50,11 +50,11 @@ describe('viewToRoute', () => {
     expect(viewToRoute('wheels', 'g1')).toBe('#/guild/g1/wheels');
   });
   it('round-trips through routeToView', () => {
-    const cases: Array<['lobby' | 'wheels' | 'results' | 'channels', string]> = [
+    const cases: Array<['lobby' | 'wheels' | 'results' | 'connecting', string]> = [
       ['lobby', 'g1'],
       ['wheels', 'guild-2'],
       ['results', 'gg'],
-      ['channels', 'xyz'],
+      ['connecting', 'xyz'],
     ];
     for (const [view, guild] of cases) {
       const route = viewToRoute(view, guild);

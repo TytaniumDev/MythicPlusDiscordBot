@@ -51,10 +51,8 @@ service cloud.firestore {
     function validGuildWrite(guildId) {
       let data = request.resource.data;
       let keys = writtenKeys();
-      return keys.hasOnly(['guildId', 'voiceChannels', 'refreshRequest', 'createdAt', 'lastActive', 'groupHistory', 'seasonPairs'])
+      return keys.hasOnly(['guildId', 'createdAt', 'lastActive', 'groupHistory', 'seasonPairs'])
         && (!('guildId' in keys) || data.guildId == guildId)
-        && (!('voiceChannels' in keys) || (data.voiceChannels is list && data.voiceChannels.size() == 0))
-        && (!('refreshRequest' in keys) || isServerTime(data.refreshRequest))
         && (!('createdAt' in keys) || isServerTime(data.createdAt))
         && (!('lastActive' in keys) || isServerTime(data.lastActive))
         && (!('groupHistory' in keys) || isGroupHistory(data.groupHistory))

@@ -21,24 +21,16 @@ export interface WheelEntry {
 export type WoWPlayer = WoWPlayerDict;
 export type WoWGroup = WoWGroupDict;
 
-export interface VoiceChannel {
-  id: string;
-  name: string;
-  userCount: number;
-}
-
 export interface GuildData {
   guildId: string;
   guildName?: string;
   guildIconUrl?: string;
-  voiceChannels: VoiceChannel[];
   /** Decoded from either wire shape by `decodeGroupHistoryRounds`. */
   groupHistory?: {
     date: string;
     rounds: WoWGroup[][];
   };
   seasonPairs?: SeasonPairs;
-  refreshRequest?: unknown;
   createdAt: unknown;
   lastActive: unknown;
 }
@@ -63,13 +55,6 @@ export interface ChannelData {
   isDebug: boolean;
   createdAt: unknown;
   lastActive: unknown;
-}
-
-export interface RecentGuild {
-  guildId: string;
-  guildName: string;
-  guildIconUrl?: string;
-  lastVisited: number;
 }
 
 export interface SeasonConfig {

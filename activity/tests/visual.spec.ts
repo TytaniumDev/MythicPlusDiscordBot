@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { mockGuildData, mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
+import { mockChannelData, mockPlayers, mockGroups } from '../src/lib/mockData';
 import { mockRaiderio } from './helpers/raiderio';
 
 test.beforeEach(async ({ page }) => {
@@ -34,8 +34,6 @@ const VIEWPORTS = {
 } as const;
 
 // ── Shared Test Data (using new guild + channel model) ────────
-const channelPickerData = mockGuildData;
-
 // Use Gazzi (index 4) as identity — has mainRole + inGameName so isPlayerReady passes
 const lobbyIdentity = { id: mockPlayers[4].discordId, name: mockPlayers[4].name };
 
@@ -89,17 +87,6 @@ function viewportTests(
 ) {
   test.describe(`${name} (${viewport.width}x${viewport.height})`, () => {
     test.use({ viewport });
-
-    test('Channel Picker', async ({ page }) => {
-      await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
-      await page.goto(`/?data=${encodeData(channelPickerData)}`);
-      await expect(page.locator('#view-channels')).toBeVisible();
-
-      const channelCount = mockGuildData.voiceChannels?.length || 0;
-      await expect(page.locator('.channel-card')).toHaveCount(channelCount);
-
-      await expect(page).toHaveScreenshot(`channels-${viewport.width}x${viewport.height}.png`);
-    });
 
     test('Lobby', async ({ page }) => {
       await page.addInitScript(DETERMINISTIC_RANDOM_SCRIPT);
@@ -333,56 +320,19 @@ test.describe('Functional Tests', () => {
   });
 });
 
-// ── Home View (Recent Guilds) Tests ──────────────────────────
+// ── Home View Tests ──────────────────────────────────────────
 test.describe('Home View Tests', () => {
-  const recentGuilds = [
-    { guildId: 'guild-1', guildName: 'Gif or Gif', guildIconUrl: undefined, lastVisited: Date.now() - 60000 },
-    { guildId: 'guild-2', guildName: 'Another Guild', guildIconUrl: undefined, lastVisited: Date.now() - 3600000 },
-  ];
-
-  test('Shows home view with recent guilds from localStorage', async ({ page }) => {
-    await page.addInitScript((guilds) => {
-      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
-    }, recentGuilds);
-
+  test('Points real lobbies to Discord and offers the demo', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#view-home')).toBeVisible();
-    await expect(page.locator('.guild-card')).toHaveCount(2);
-    await expect(page.locator('.guild-card-name').first()).toHaveText('Gif or Gif');
-    await expect(page.locator('.guild-card-name').nth(1)).toHaveText('Another Guild');
-  });
-
-  test('Shows empty state when no recent guilds', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('#view-home')).toBeVisible();
-    await expect(page.locator('.guild-card')).toHaveCount(0);
-    await expect(page.locator('#no-recent-guilds')).toBeVisible();
-  });
-
-  test('Demo controls visible on home view', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('#view-home')).toBeVisible();
+    await expect(page.locator('#home-discord-hint')).toBeVisible();
     await expect(page.locator('#demo-controls')).toBeVisible();
   });
 
-  test('Guild cards are keyboard accessible', async ({ page }) => {
-    await page.addInitScript((guilds) => {
-      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
-    }, recentGuilds);
-
+  test('Start Demo opens the demo lobby at the name picker', async ({ page }) => {
     await page.goto('/');
-    const firstCard = page.locator('.guild-card').first();
-    await expect(firstCard).toHaveAttribute('role', 'button');
-    await expect(firstCard).toHaveAttribute('tabindex', '0');
-  });
-
-  test('Guild icon placeholder shown when no icon URL', async ({ page }) => {
-    await page.addInitScript((guilds) => {
-      localStorage.setItem('wheelson-recent-guilds', JSON.stringify(guilds));
-    }, recentGuilds);
-
-    await page.goto('/');
-    await expect(page.locator('.guild-icon-placeholder').first()).toBeVisible();
+    await page.locator('#start-demo-btn').click();
+    await expect(page.locator('#view-identity')).toBeVisible();
   });
 });
 

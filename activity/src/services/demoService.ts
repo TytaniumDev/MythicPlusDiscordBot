@@ -76,10 +76,6 @@ class DemoSessionService implements SessionService {
     useAppStore.getState().updateProfile(playerId, patch);
   }
 
-  async refreshChannels(_guildId: string): Promise<void> {
-    // No-op in demo
-  }
-
   async selectChannel(channelId: string, channelName?: string): Promise<void> {
     const store = useAppStore.getState();
     store.setProfiles(mockProfiles);

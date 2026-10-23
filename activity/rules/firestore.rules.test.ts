@@ -130,8 +130,6 @@ describe('guilds', () => {
   it('allows setting up a new guild (createGuildEntry)', async () => {
     await allowed(setDoc(guildRef(), {
       guildId: GUILD_ID,
-      voiceChannels: [],
-      refreshRequest: serverTimestamp(),
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true }));
@@ -141,28 +139,22 @@ describe('guilds', () => {
     await seedGuild({ groupHistory: { date: todayPST(), rounds: encodeGroupHistoryRounds([[GROUP]]) } });
     await allowed(setDoc(guildRef(), {
       guildId: GUILD_ID,
-      voiceChannels: [],
-      refreshRequest: serverTimestamp(),
       createdAt: serverTimestamp(),
       lastActive: serverTimestamp(),
     }, { merge: true }));
     expect((await admin.doc(`guilds/${GUILD_ID}`).get()).get('groupHistory.date')).toBe(todayPST());
   });
 
-  it('allows requesting a channel refresh (refreshChannels)', async () => {
-    await seedGuild();
-    await allowed(updateDoc(guildRef(), { refreshRequest: serverTimestamp() }));
-  });
-
   it('rejects writes from a client that has not signed in', async () => {
     await seedGuild();
-    await denied(updateDoc(doc(client(null), 'guilds', GUILD_ID), { refreshRequest: serverTimestamp() }));
+    await denied(updateDoc(doc(client(null), 'guilds', GUILD_ID), { lastActive: serverTimestamp() }));
   });
 
   it('rejects changing bot-owned fields', async () => {
     await seedGuild();
     await denied(updateDoc(guildRef(), { guildName: 'Renamed' }));
     await denied(updateDoc(guildRef(), { voiceChannels: [{ id: '1', name: 'Fake', userCount: 1 }] }));
+    await denied(updateDoc(guildRef(), { refreshRequest: serverTimestamp() }));
   });
 
   it('rejects malformed history, unknown fields, bad IDs and deletes', async () => {
