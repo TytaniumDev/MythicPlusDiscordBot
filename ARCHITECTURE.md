@@ -122,6 +122,8 @@ Firestore is the only store. Per-channel `channels/` docs are ephemeral (deleted
 | `status`   | string    | `lobby` → `spinning` → `completed` |
 | `members`  | array     | `{ discordId, name }` for everyone in the voice channel (name = display name, dots stripped). Written only by the bot; clients join it with `preferences` |
 | `groups`   | array     | Computed groups (tank, healer, dps); filled by the frontend on transition to `spinning` |
+| `revealedGroups` | number | How many groups are revealed; set with `revealStartAt` when someone presses Spin on the wheels screen |
+| `revealStartAt` | timestamp | Server time Spin was pressed. Every client plays the reveal from it (`activity/src/lib/revealTimeline.ts`), so all screens animate together |
 | `sittingOut` | array   | IDs of players sitting out the current round |
 | `isDebug`  | boolean   | Whether this lobby is from `/test` |
 | `createdAt`| timestamp | When the lobby was created |
@@ -185,7 +187,7 @@ Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonica
   - **Connections**: "View Connections" in the profile modal opens a per-player overlay of the guild's season pairings. It isn't part of the status-driven navigation, so it moves no one else, and the round keeps going underneath.
   3. **Spin**: User clicks “Spin” → one transaction (`startSpin` in `activity/src/services/lobby.ts`) reads the lobby and guild docs, runs `createMythicPlusGroups` client-side, and writes `groups` + `status: 'spinning'` to the lobby together with the guild's `groupHistory` and `seasonPairs` (each pair's count is incremented; the whole map is replaced when `config/season` changes). No client shows the round until the server accepts it, so a second Spin click can't put different groups on one screen.
   - **Connection**: the SDK reconnects its listeners by itself. The `config/season` listener's `fromCache` flag (every client follows it and none writes it) drives the "Reconnecting…" status.
-  4. **Spinning**: Frontend animates the reveal in `activity/src/views/WheelsView.tsx`, then writes `status: 'completed'`.
+  4. **Spinning**: Pressing Spin on the wheels screen writes `revealedGroups` and `revealStartAt` (server time) in one transaction (`startReveal` in `activity/src/services/lobby.ts`). Every client then plays the reveal in `activity/src/views/WheelsView.tsx` from that start time plus a short lead, waiting until each step's time on the timeline (`activity/src/lib/revealTimeline.ts`) rather than for fixed delays. Screens stay together, one that falls behind catches up, and one that joins mid-reveal skips what it missed. Each client then writes `status: 'completed'`.
   5. **Completed**: Show final groups; if the channel doc is deleted (e.g. new `/wheelson` in same channel), show “Activity ended.”
 
 So the frontend is a **state machine** driven by the guild + channel documents in Firestore.

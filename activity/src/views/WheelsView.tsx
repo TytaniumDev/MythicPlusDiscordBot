@@ -16,12 +16,8 @@ import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
 import { reportError } from '../lib/sentry';
-import {
-  delay,
-  WHEEL_SPIN_DURATIONS,
-  SPOTLIGHT_HOLD_DURATION, SPOTLIGHT_ENTER_DURATION, SPOTLIGHT_EXIT_DURATION,
-  WHEELS_FADE_DURATION, POST_LAND_PAUSE,
-} from '../lib/timing';
+import { delayUntil, MIN_CATCH_UP_SPIN } from '../lib/timing';
+import { catchUpSpinDurations, revealStart, revealTimeline } from '../lib/revealTimeline';
 
 interface WheelsViewProps {
   onNavigate: (view: 'lobby' | 'results' | 'home', opts?: { replace?: boolean }) => void;
@@ -139,7 +135,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
         }
         return;
       }
-      runAutoAdvanceLoop().catch((err) => {
+      runAutoAdvanceLoop(channelData.revealStartAt).catch((err) => {
         reportError(err, { tag: 'WheelsView.autoAdvanceEffect' });
       });
     }
@@ -153,8 +149,9 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
   // Every layout spins all five wheels together, so everyone in the voice
   // channel sees the same wheel land at the same moment. The carousel layout
   // (Discord's picture-in-picture) stays on the tank wheel and ticks off each
-  // dot as its wheel lands.
-  const spinOneGroup = useCallback(async (groupIndex: number) => {
+  // dot as its wheel lands. `durations` are shorter than usual when this
+  // client starts the spin late, so it still lands with everyone else.
+  const spinOneGroup = useCallback(async (groupIndex: number, durations: readonly number[]) => {
     const grid = gridRef.current?.grid;
     if (!grid) return;
     const store = useAppStore.getState();
@@ -173,7 +170,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     winners.forEach((winner, i) => {
       if (winner && wheels[i]) {
         spinPromises.push(
-          wheels[i].spinTo(winner.name, WHEEL_SPIN_DURATIONS[i]).then(() => grid.markDotCompleted(i)),
+          wheels[i].spinTo(winner.name, durations[i]).then(() => grid.markDotCompleted(i)),
         );
       }
     });
@@ -181,7 +178,11 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     await Promise.all(spinPromises);
   }, [markedPools]);
 
-  const runAutoAdvanceLoop = useCallback(async () => {
+  // Plays the reveal timeline from the round's shared start time. Every step
+  // waits until its time on that timeline rather than for a fixed delay, so
+  // all screens stay together and one that falls behind catches up. A step
+  // that is already over (this client joined late) is skipped.
+  const runAutoAdvanceLoop = useCallback(async (revealStartAt?: number) => {
     const store = useAppStore.getState();
     const grid = gridRef.current?.grid;
     if (!grid || autoAdvanceRef.current) return;
@@ -192,73 +193,88 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     store.setSpinAnimating(true);
 
     const totalFull = store.fullGroups.length;
+    const timeline = revealTimeline(totalFull, store.remainderGroups.length);
+    const base = revealStart(revealStartAt, Date.now());
+    const at = (offset: number) => delayUntil(base + offset);
+    const isOver = (offset: number) => Date.now() >= base + offset;
+
+    if (!isOver(0)) {
+      setWheelStatus('Get ready...');
+      await at(0);
+    }
 
     for (let i = 0; i < totalFull; i++) {
       if (!autoAdvanceRef.current) break;
 
+      const steps = timeline.groups[i];
+      const group = store.fullGroups[i];
       store.setCurrentGroupIndex(i);
+      if (isOver(steps.end)) {
+        store.addGroupCard({ group, index: i });
+        continue;
+      }
       setWheelStatus(`Spinning for Group ${i + 1}...`);
 
       // Fade wheels in (skip for first group — already visible)
       if (i > 0) {
         setWheelsHidden(false);
-        await delay(WHEELS_FADE_DURATION);
+        await at(steps.spinStart);
       }
 
       // Spin wheels
-      await spinOneGroup(i);
+      await spinOneGroup(i, catchUpSpinDurations(Date.now() - (base + steps.spinStart), MIN_CATCH_UP_SPIN));
 
       // Post-land pause
       setWheelStatus(`Group ${i + 1} Formed!`);
-      await delay(POST_LAND_PAUSE);
+      await at(steps.fadeOut);
 
       // Fade out wheels
       setWheelsHidden(true);
-      await delay(WHEELS_FADE_DURATION);
+      await at(steps.spotlightIn);
 
-      // Show spotlight card
-      const group = store.fullGroups[i];
+      // Show and hold the spotlight card
       setSpotlightGroup({ group, index: i });
       setSpotlightExit(false);
       setSpotlightVisible(true);
       audio.victory();
-      await delay(SPOTLIGHT_ENTER_DURATION);
-
-      // Hold spotlight
-      await delay(SPOTLIGHT_HOLD_DURATION);
+      await at(steps.spotlightOut);
 
       // Exit spotlight
       setSpotlightVisible(false);
       setSpotlightExit(true);
-      await delay(SPOTLIGHT_EXIT_DURATION);
+      await at(steps.end);
 
       // Add to group cards and hide spotlight
       store.addGroupCard({ group, index: i });
       setSpotlightGroup(null);
       setSpotlightExit(false);
-
     }
 
     // Show remainder groups with spotlight cards (no wheel spin)
     for (let ri = 0; ri < store.remainderGroups.length; ri++) {
       if (!autoAdvanceRef.current) break;
 
+      const steps = timeline.remainders[ri];
       const rg = store.remainderGroups[ri];
       const rgIndex = totalFull + ri;
+      const card = { group: rg, index: rgIndex, label: 'Remainder', hideEmpty: true };
+      if (isOver(steps.end)) {
+        store.addGroupCard(card);
+        continue;
+      }
 
+      await at(steps.start);
       setSpotlightGroup({ group: rg, index: rgIndex, label: 'Remainder' });
       setSpotlightExit(false);
       setSpotlightVisible(true);
       audio.victory();
-      await delay(SPOTLIGHT_ENTER_DURATION);
-
-      await delay(SPOTLIGHT_HOLD_DURATION);
+      await at(steps.spotlightOut);
 
       setSpotlightVisible(false);
       setSpotlightExit(true);
-      await delay(SPOTLIGHT_EXIT_DURATION);
+      await at(steps.end);
 
-      store.addGroupCard({ group: rg, index: rgIndex, label: 'Remainder', hideEmpty: true });
+      store.addGroupCard(card);
       setSpotlightGroup(null);
       setSpotlightExit(false);
     }
@@ -269,7 +285,7 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
     autoAdvanceRef.current = false;
     setAutoAdvanceRunning(false);
 
-    await delay(300);
+    await at(timeline.end);
     onNavigate('results', { replace: true });
     const channelId = useAppStore.getState().currentChannelId;
     if (!channelId) return;

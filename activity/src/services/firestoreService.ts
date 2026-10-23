@@ -7,7 +7,7 @@ import { encodeGroupHistoryRounds, parsePlayerPreferences, todayPST } from '@myt
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
-import { ensureLobby, lobbyReset, startSpin, todaysRounds } from './lobby';
+import { ensureLobby, lobbyReset, startReveal, startSpin, todaysRounds } from './lobby';
 
 const CHANNEL_DOC_MISSING_GRACE_MS = 10000;
 // A listener's error callback is final: the SDK retries network trouble on its
@@ -194,7 +194,7 @@ class FirestoreSessionService implements SessionService {
 
   async revealAllGroups(channelId: string, groupCount: number): Promise<void> {
     await authReady;
-    await updateDoc(doc(db, 'channels', channelId), { revealedGroups: groupCount });
+    await startReveal(db, channelId, groupCount);
   }
 
   async finishSequence(channelId: string): Promise<void> {

@@ -132,6 +132,8 @@ async function spinFromLobby(page: Page): Promise<WoWGroupDict[]> {
   await expect.poll(async () => (await channel.get()).get('status')).toBe('completed');
   const groups = (await channel.get()).get('groups') as WoWGroupDict[];
   expectValidGroups(groups);
+  // Every client played the reveal from the same server-stamped start.
+  expect((await channel.get()).get('revealStartAt')).toBeTruthy();
   return groups;
 }
 

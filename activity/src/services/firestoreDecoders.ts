@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import {
   STATIC_AFFIXES,
   decodeGroupHistoryRounds,
@@ -152,6 +153,14 @@ export function decodeChannelData(raw: unknown, channelId: string): Decoded<Chan
     issues.push('revealedGroups: invalid');
   }
 
+  // Null is a server timestamp this client hasn't had resolved yet.
+  let revealStartAt: number | undefined;
+  if (data.revealStartAt instanceof Timestamp) {
+    revealStartAt = data.revealStartAt.toMillis();
+  } else if (data.revealStartAt !== undefined && data.revealStartAt !== null) {
+    issues.push('revealStartAt: invalid');
+  }
+
   return {
     value: {
       channelId: requiredString(data, 'channelId', channelId, issues),
@@ -161,6 +170,7 @@ export function decodeChannelData(raw: unknown, channelId: string): Decoded<Chan
       members,
       groups: groups.value,
       revealedGroups,
+      revealStartAt,
       claimedPlayers: optionalStringArray(data, 'claimedPlayers', issues),
       sittingOut: optionalStringArray(data, 'sittingOut', issues),
       staticWheel: optionalBoolean(data, 'staticWheel', issues),

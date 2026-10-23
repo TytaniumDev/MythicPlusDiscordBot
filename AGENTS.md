@@ -91,7 +91,7 @@ A player's profile (roles, in-game name, portrait, class) lives only in `prefere
 5. The frontend subscribes to the lobby doc and to the members' `preferences` docs, and joins them into players with `WoWPlayer.fromPreferences`. Profile edits write only `preferences`, so every client's lobby follows
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
-8. Frontend animates the wheel reveal sequence
+8. Pressing Spin on the wheels screen writes a server-time `revealStartAt`, and every client plays the wheel reveal from it so all screens animate together (`activity/src/lib/revealTimeline.ts`)
 9. Frontend sets status: `completed`; every client shows the results
 
 Who the current user is: the activity guesses (remembered ID, Discord participant match, or the "Select Your Name" picker) unless they opt in to Sign in with Discord (`activity/src/services/discordAuth.ts` + the `discordSignIn` Cloud Function). That makes their Firebase Auth uid their Discord ID, and it overrides every guess. Anonymous sign-in stays the default, and `firestore.rules` don't distinguish the two.
@@ -137,7 +137,7 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 - Shared package tests live in `packages/shared/tests/`
 - Frontend E2E tests use Playwright and are in `activity/tests/`. Import `test`/`expect` from `activity/tests/fixtures.ts`, not `@playwright/test`: it serves Blizzard character renders from saved copies (`activity/tests/character-renders/`, one avatar and one half-size main-raw per mock player) and holds Firestore requests open so screenshots don't depend on the network. Save both renders there when you add a mock player.
 - The end-to-end smoke test (`activity/smoke/`, run by `./scripts/smoke-test.sh`) drives the production activity build against the Firestore and Auth emulators. It seeds a lobby with the admin SDK as the bot would, spins twice through the real UI, and checks the groups, group history, and season pairs in Firestore. Keep it passing whenever the spin flow, wire format, or `firestore.rules` change.
-- `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production. Lobby writes that span several fields or read first (`ensureLobby`, `startSpin`, `lobbyReset` in `activity/src/services/lobby.ts`) are called by the rules tests directly; keep such writes there.
+- `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production. Lobby writes that span several fields or read first (`ensureLobby`, `startSpin`, `startReveal`, `lobbyReset` in `activity/src/services/lobby.ts`) are called by the rules tests directly; keep such writes there.
 - Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 
 ### Visual Snapshot Tests

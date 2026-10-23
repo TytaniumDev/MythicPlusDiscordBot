@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Timestamp } from 'firebase/firestore';
 import { STATIC_AFFIXES } from '@mythicplus/shared';
 import type { WoWPlayerDict } from '@mythicplus/shared';
 import {
@@ -78,6 +79,18 @@ describe('decodeChannelData', () => {
       'sittingOut: dropped 1 non-string entries',
       'isDebug: not a boolean',
     ]);
+  });
+
+  it('reads the reveal start time as ms, waiting out an unresolved server timestamp', () => {
+    const at = Timestamp.fromMillis(1_700_000_000_000);
+    expect(decodeChannelData({ ...validChannel, revealStartAt: at }, 'c1')).toEqual({
+      value: { ...validChannel, revealStartAt: 1_700_000_000_000 },
+      issues: [],
+    });
+    expect(decodeChannelData({ ...validChannel, revealStartAt: null }, 'c1').value.revealStartAt).toBeUndefined();
+    const junk = decodeChannelData({ ...validChannel, revealStartAt: 'soon' }, 'c1');
+    expect(junk.value.revealStartAt).toBeUndefined();
+    expect(junk.issues).toEqual(['revealStartAt: invalid']);
   });
 
   it('handles a doc that is not an object', () => {
