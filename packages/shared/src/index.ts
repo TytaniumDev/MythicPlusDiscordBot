@@ -64,6 +64,8 @@ export { CHARACTER_CLASSES, toCharacterClass, toRole, toSessionStatus, toUtility
 
 export { todayPST } from './dateHelpers.js';
 
+export { obfuscatePii } from './pii.js';
+
 export { realmToSlug, parseInGameName, DEFAULT_REGION } from './realmSlug.js';
 
 export {

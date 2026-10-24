@@ -1500,6 +1500,39 @@ button:focus-visible,
   margin-top: 6px;
 }
 
+.report-dialog__kinds {
+  display: flex;
+  gap: 8px;
+}
+
+.report-dialog__sign-in {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-dialog__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-danger, #f06c6c);
+}
+
+.profile-modal__report-link {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.profile-modal__report-link:hover {
+  color: var(--text-primary);
+}
+
 /* ============================================
    Dungeon Suggestions
    ============================================ */

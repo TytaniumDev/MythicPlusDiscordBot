@@ -7,3 +7,6 @@ export { lookupCharacter } from './lookupCharacter.js';
 export { discordSignIn } from './discordSignIn.js';
 export { refreshCharacterMedia } from './refreshCharacterMedia.js';
 export { onGithubIssueWebhook } from './githubWebhook.js';
+export { reportIssue } from './reportIssue.js';
+export { reportBadGroup } from './reportBadGroup.js';
+export { discordInteractions } from './discordInteractions.js';

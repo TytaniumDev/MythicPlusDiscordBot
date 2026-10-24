@@ -411,30 +411,22 @@ describe('preferences', () => {
 });
 
 describe('badGroupReports', () => {
-  const report = (overrides: Record<string, unknown> = {}) => ({
-    title: 'Two tanks in one group',
-    description: 'Tankone and Tanktwo both landed in group 1.',
-    reporterName: 'Healone',
-    reporterId: '1002',
-    guildId: GUILD_ID,
-    players: [tank, healer, ...dps],
-    groups: [GROUP],
-    priorRounds: encodeGroupHistoryRounds([]),
-    createdAt: serverTimestamp(),
-    ...overrides,
-  });
-
-  it('allows filing a report (reportBadGroup)', async () => {
+  it('rejects client reports (the reportBadGroup function files them now)', async () => {
     await seedGuild();
-    await allowed(addDoc(collection(db, 'badGroupReports'), report()));
+    await denied(addDoc(collection(db, 'badGroupReports'), {
+      title: 'Two tanks in one group',
+      description: 'Tankone and Tanktwo both landed in group 1.',
+      guildId: GUILD_ID,
+      createdAt: serverTimestamp(),
+    }));
   });
+});
 
-  it('rejects reports for unknown guilds, extra fields and reads', async () => {
-    await denied(addDoc(collection(db, 'badGroupReports'), report()));
-    await seedGuild();
-    await denied(addDoc(collection(db, 'badGroupReports'), report({ labels: ['urgent'] })));
-    await admin.doc('badGroupReports/r1').set(report({ createdAt: new Date() }));
-    await denied(getDoc(doc(db, 'badGroupReports', 'r1')));
+describe('issueTracking', () => {
+  it('rejects client reads and writes (the reportIssue function owns it)', async () => {
+    await admin.doc('issueTracking/42').set({ discordUserId: '1002', issueUrl: 'https://github.com/o/r/issues/42', issueTitle: 'Bug' });
+    await denied(getDoc(doc(db, 'issueTracking', '42')));
+    await denied(setDoc(doc(db, 'issueTracking', '43'), { discordUserId: '1002' }));
   });
 });
 

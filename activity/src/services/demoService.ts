@@ -1,6 +1,6 @@
 import { mockChannelData, mockProfiles, mockGuildData } from '../lib/mockData';
 import { useAppStore } from '../store/store';
-import type { BadGroupReportInput, SessionService } from './types';
+import type { BadGroupReportInput, IssueReportInput, SessionService } from './types';
 import type { ChannelData, WoWPlayer } from '../types';
 import { createMythicPlusGroups, parsePlayerPreferences } from '@mythicplus/shared';
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
@@ -87,6 +87,10 @@ class DemoSessionService implements SessionService {
   }
 
   async reportBadGroup(_report: BadGroupReportInput): Promise<void> {
+    // No-op in demo
+  }
+
+  async reportIssue(_report: IssueReportInput): Promise<void> {
     // No-op in demo
   }
 

@@ -1,13 +1,14 @@
-import { doc, collection, addDoc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { authReady, db } from '../firebase';
 import type { GuildData, WoWPlayer } from '../types';
 import { useAppStore } from '../store/store';
-import type { BadGroupReportInput, SessionService } from './types';
-import { encodeGroupHistoryRounds, parsePlayerPreferences, todayPST } from '@mythicplus/shared';
+import type { BadGroupReportInput, IssueReportInput, SessionService } from './types';
+import { fileBadGroupReport, fileIssueReport } from './reports';
+import { parsePlayerPreferences } from '@mythicplus/shared';
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
-import { ensureLobby, lobbyReset, startReveal, startSpin, todaysRounds } from './lobby';
+import { ensureLobby, lobbyReset, startReveal, startSpin } from './lobby';
 
 const CHANNEL_DOC_MISSING_GRACE_MS = 10000;
 // A listener's error callback is final: the SDK retries network trouble on its
@@ -242,50 +243,12 @@ class FirestoreSessionService implements SessionService {
     await ensureLobby(db, channelId, channelName || '', guildId);
   }
 
-  async reportBadGroup({ title, description, reporterName, reporterId, lobby, lobbyPlayers }: BadGroupReportInput): Promise<void> {
-    // Use the players actually in the spin output, not the lobby roster —
-    // voice-channel membership drifts (people leave to start the dungeon)
-    // between spin and report, which would otherwise silently truncate the
-    // input list and make the report unreproducible.
-    const playersFromGroups = lobby.groups.flatMap((g) => {
-      const members: WoWPlayer[] = [];
-      if (g.tank) members.push(g.tank);
-      if (g.healer) members.push(g.healer);
-      if (g.dps) members.push(...g.dps);
-      return members;
-    });
-    const players = playersFromGroups.length > 0 ? playersFromGroups : lobbyPlayers;
+  async reportBadGroup(report: BadGroupReportInput): Promise<void> {
+    await fileBadGroupReport(report);
+  }
 
-    // Read the guild's history fresh: the report needs the rounds before this
-    // one. A failed read still files the report, without history.
-    let guild: GuildData | null = null;
-    if (lobby.guildId) {
-      try {
-        const snap = await getDoc(doc(db, 'guilds', lobby.guildId));
-        if (snap.exists()) guild = readGuildData(snap.data(), lobby.guildId);
-      } catch (err) {
-        reportError(err, { tag: 'firestoreService.reportBadGroup.getGuildDoc' });
-      }
-    }
-
-    // Prior rounds = persisted group history minus the round being reported.
-    // The algorithm's pair-history scoring depends on these, so omitting them
-    // makes "shouldn't have grouped me with X again" complaints undebuggable.
-    const allRounds = todaysRounds(guild, todayPST());
-    const priorRounds = allRounds.slice(0, Math.max(0, allRounds.length - 1));
-
-    await authReady;
-    await addDoc(collection(db, 'badGroupReports'), {
-      title,
-      description,
-      reporterName: reporterName || 'Unknown',
-      reporterId: reporterId || 'Unknown',
-      guildId: lobby.guildId || null,
-      players,
-      groups: lobby.groups,
-      priorRounds: encodeGroupHistoryRounds(priorRounds),
-      createdAt: serverTimestamp(),
-    });
+  async reportIssue(report: IssueReportInput): Promise<void> {
+    await fileIssueReport(report);
   }
 
   async claimPlayer(channelId: string, playerId: string): Promise<void> {

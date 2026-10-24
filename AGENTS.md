@@ -69,7 +69,7 @@ packages/
 │       ├── commands/      # Slash command handlers (groups, debug)
 │       ├── services/      # GroupService, SessionService
 │       └── core/          # Config, Firebase, UI formatting, Discord adapters
-└── functions/             # Firebase Cloud Functions: affix sync, character lookup, GitHub webhook
+└── functions/             # Firebase Cloud Functions: affix sync, character lookup, Discord sign-in, issue reports, GitHub webhook
 activity/                  # React/Vite frontend (npm workspace)
 └── src/
     ├── services/          # Firestore + Demo session services
