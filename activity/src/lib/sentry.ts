@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react';
+import { isDiscordEmbedded } from './embedded';
 
 const ANONYMOUS_ID_KEY = 'wheelson-anonymous-id';
 
@@ -24,6 +25,25 @@ function getAnonymousId(): string {
 
 let initialized = false;
 
+/** The Developer Portal URL mapping that proxies Sentry's ingest host. */
+export const SENTRY_PROXY_PREFIX = '/sentry';
+
+/**
+ * Where reports go inside Discord: an activity can only reach hosts in its URL
+ * mappings, and Sentry sends with a fetch the SDK's `patchUrlMappings` can't
+ * rewrite, so reports are posted to the project's envelope endpoint through
+ * the `/sentry` mapping instead. Null when the DSN has no project ID.
+ */
+export function sentryTunnel(dsn: string): string | null {
+  try {
+    const projectId = new URL(dsn).pathname.split('/').filter(Boolean).pop();
+    return projectId ? `${SENTRY_PROXY_PREFIX}/api/${projectId}/envelope/` : null;
+  } catch {
+    // intentional: a malformed DSN means no tunnel; Sentry.init reports it
+    return null;
+  }
+}
+
 /**
  * Initialize Sentry. No-op when VITE_SENTRY_DSN is absent (local dev, CI
  * without the secret, preview builds), so the app keeps working without it.
@@ -37,6 +57,7 @@ export function initSentry(): void {
 
   Sentry.init({
     dsn,
+    tunnel: isDiscordEmbedded() ? sentryTunnel(dsn) ?? undefined : undefined,
     environment: import.meta.env.MODE,
     release: typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : undefined,
     // Keep the payload small — we care about errors, not performance traces.
