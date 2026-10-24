@@ -144,6 +144,7 @@ export function decodeChannelData(raw: unknown, channelId: string): Decoded<Chan
       guildId: requiredString(data, 'guildId', '', issues),
       status: status ?? 'lobby',
       members,
+      instanceId: optionalString(data, 'instanceId', issues),
       groups: groups.value,
       revealedGroups,
       revealStartAt,

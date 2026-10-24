@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective date:** September 29, 2026
+**Effective date:** October 24, 2026
 
 This Privacy Policy explains what information the Wheelson Discord app collects and how it is used. The app includes the Discord bot, the Wheelson Discord Activity, and the web app at <https://tytaniumdev.github.io/MythicPlusDiscordBot/>, all referred to here as "the App." The App is a free, open-source hobby project run by Tyler Holland ("we", "us"). Its full source code is public at <https://github.com/TytaniumDev/MythicPlusDiscordBot>, so you can check everything described here.
 
@@ -18,7 +18,7 @@ This Privacy Policy explains what information the Wheelson Discord app collects 
 When the App is in a server, the bot receives information from Discord through its gateway connection:
 
 - **Server information:** server ID, name, icon, and the names and IDs of voice channels.
-- **Voice channel membership:** the Discord user ID and display name of each member in a voice channel where a Wheelson lobby is open, or where someone runs `/wheel`.
+- **Who is in a lobby:** the Discord user ID and name (server nickname, display name or username) of each person with the Wheelson Activity open, and of each member of a voice channel where someone runs `/wheel`.
 - **Server member and role information:** your Discord user ID, display name, and server roles. When you use `/wheel`, the bot may read role names such as "Tank" or "Healer" to work out which roles you can play.
 - **Commands you run:** the slash command and the text you enter into it, such as a `/bug` description.
 
@@ -79,7 +79,7 @@ We may also disclose information if required by law.
 
 ## How long we keep information
 
-- **Lobbies** are deleted when the last person leaves the voice channel, or automatically 24 hours after their last activity.
+- **Lobbies** are deleted automatically 24 hours after their last activity, and a lobby's round is cleared when the activity is opened again after everyone closed it.
 - **Today's group history** is replaced each day. **Season pair counts** are replaced when a new Mythic+ season starts.
 - **Player preferences** and **sign-in accounts** are kept until you ask us to delete them.
 - **Bad group reports** are deleted from our database once they've been turned into a GitHub issue. The GitHub issue stays public.
@@ -90,7 +90,7 @@ We may also disclose information if required by law.
 
 - **Change your data:** you can update your roles, in-game name, and linked character in the App at any time.
 - **Delete your data:** to delete your player preferences and any other data tied to your Discord user ID, contact us (see below). We'll handle requests within 30 days.
-- **Stop data collection:** don't use the App's commands or Activity, and leave voice channels where a Wheelson lobby is open. Server admins can remove the bot from their server at any time.
+- **Stop data collection:** don't use the App's commands or Activity. Server admins can remove the bot from their server at any time.
 
 Depending on where you live (for example, in the EU, the UK, or California), you may have additional rights to access, correct, or delete your personal data, or to object to its processing. Contact us to exercise them.
 

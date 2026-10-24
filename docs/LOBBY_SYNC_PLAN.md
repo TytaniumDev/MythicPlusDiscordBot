@@ -1,6 +1,6 @@
 # Plan: Lobby Sync Without the Pi
 
-**Status:** Deferred until the next Mythic+ season. Written 2026-09-29. Nothing in this plan is implemented yet.
+**Status:** Superseded. Written 2026-09-29. A simpler version shipped on 2026-10-24: the lobby lists only the people with the activity open (no voice list, so no `guilds` scope or sign-in changes), and the bot no longer writes `members`. `ARCHITECTURE.md` describes what was built. This plan is kept for its notes on Discord's APIs.
 
 **Goal:** Stop depending on the Raspberry Pi to keep lobby `members` in sync with voice. The activity reports who is there, and a Cloud Function checks everyone against Discord before writing `members`. If the Pi goes down, the activity keeps working.
 

@@ -320,6 +320,18 @@ describe('channels', () => {
     }));
   });
 
+  it('rejects clients setting the activity instance', async () => {
+    await seedGuild();
+    await seedChannel('lobby');
+    await denied(updateDoc(channelRef(), { instanceId: 'i-forged' }));
+    await denied(setDoc(doc(db, 'channels', '200000000000000009'), {
+      channelId: '200000000000000009',
+      guildId: GUILD_ID,
+      status: 'lobby',
+      instanceId: 'i-forged',
+    }));
+  });
+
   it('rejects clients setting or clearing the TTL expiry', async () => {
     await seedGuild();
     await seedChannel('lobby');

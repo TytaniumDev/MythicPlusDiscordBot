@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchVerifyKey, sendDiscordDm } from '../src/discordApi';
+import { fetchActivityInstance, fetchGuildMemberNames, fetchVerifyKey, sendDiscordDm } from '../src/discordApi';
 
 describe('sendDiscordDm', () => {
   beforeEach(() => {
@@ -62,5 +62,63 @@ describe('fetchVerifyKey', () => {
 
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: '1' }) });
     await expect(fetchVerifyKey('bot-token')).rejects.toThrow('no verify key');
+  });
+});
+
+function respond(status: number, body: unknown = {}) {
+  return vi.fn().mockResolvedValue({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) });
+}
+
+describe('fetchActivityInstance', () => {
+  it("reads the instance's channel, guild and users with the bot token", async () => {
+    global.fetch = respond(200, {
+      instance_id: 'i-1',
+      location: { id: 'gc-1-2', kind: 'gc', channel_id: '2', guild_id: '1' },
+      users: ['10', '11', 12],
+    });
+
+    await expect(fetchActivityInstance('bot-token', 'app', 'i-1')).resolves.toEqual({
+      channelId: '2',
+      guildId: '1',
+      userIds: ['10', '11'],
+    });
+    const [url, init] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe('https://discord.com/api/v10/applications/app/activity-instances/i-1');
+    expect(init?.headers).toEqual({ Authorization: 'Bot bot-token' });
+  });
+
+  it('returns null for an instance Discord no longer has', async () => {
+    global.fetch = respond(404);
+    await expect(fetchActivityInstance('bot-token', 'app', 'gone')).resolves.toBeNull();
+  });
+
+  it('throws on other failures and unexpected shapes', async () => {
+    global.fetch = respond(500);
+    await expect(fetchActivityInstance('bot-token', 'app', 'i-1')).rejects.toThrow('500');
+    global.fetch = respond(200, { location: {}, users: [] });
+    await expect(fetchActivityInstance('bot-token', 'app', 'i-1')).rejects.toThrow('unexpected');
+  });
+});
+
+describe('fetchGuildMemberNames', () => {
+  it("reads the member's nickname, display name and username", async () => {
+    global.fetch = respond(200, { nick: 'Nick', user: { username: 'user', global_name: 'Global' } });
+
+    await expect(fetchGuildMemberNames('bot-token', '1', '10')).resolves.toEqual({
+      nick: 'Nick',
+      globalName: 'Global',
+      username: 'user',
+    });
+    expect(vi.mocked(global.fetch).mock.calls[0][0]).toBe('https://discord.com/api/v10/guilds/1/members/10');
+  });
+
+  it('returns null for someone not in the server', async () => {
+    global.fetch = respond(404);
+    await expect(fetchGuildMemberNames('bot-token', '1', '10')).resolves.toBeNull();
+  });
+
+  it('throws on other failures', async () => {
+    global.fetch = respond(429);
+    await expect(fetchGuildMemberNames('bot-token', '1', '10')).rejects.toThrow('429');
   });
 });

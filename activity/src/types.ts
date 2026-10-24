@@ -40,8 +40,13 @@ export interface ChannelData {
   channelName: string;
   guildId: string;
   status: SessionStatus;
-  /** Who is in the voice channel. Written only by the bot; absent until it does. */
+  /**
+   * Who has the activity open. Written only by the `syncLobbyMembers` Cloud
+   * Function; absent until it first runs.
+   */
   members?: LobbyMember[];
+  /** The activity instance `members` came from. A new one clears the round. */
+  instanceId?: string;
   groups: WoWGroup[];
   revealedGroups?: number;
   /**

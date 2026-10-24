@@ -74,9 +74,10 @@ service cloud.firestore {
     }
 
     // --- Channels ---
-    // One lobby per voice channel. Only the bot writes `members` (who is in
-    // voice) and `expireAt` (the TTL expiry); clients drive a round's status
-    // and groups. Player profiles live
+    // One lobby per voice channel. Only the syncLobbyMembers Cloud Function
+    // writes `members` (who has the activity open), `instanceId` (the activity
+    // run they came from) and `expireAt` (the TTL expiry), after checking with
+    // Discord; clients drive a round's status and groups. Player profiles live
     // in preferences, never on the lobby.
     match /channels/{channelId} {
       allow read: if true;

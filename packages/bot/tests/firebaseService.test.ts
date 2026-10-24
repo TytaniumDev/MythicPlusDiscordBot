@@ -142,15 +142,6 @@ describe('FirebaseService lobby expiry', () => {
     vi.useRealTimers();
   });
 
-  it('sets expireAt 24h out when writing lobby members', async () => {
-    await service.setChannelMembers('c1', [{ discordId: '1', name: 'Ay' }]);
-    expect(mockDocRef.update).toHaveBeenCalledWith({
-      members: [{ discordId: '1', name: 'Ay' }],
-      lastActive: expect.anything(),
-      expireAt: EXPIRE_AT,
-    });
-  });
-
   it('sets expireAt when creating a lobby', async () => {
     mockDocRef.get.mockResolvedValue({ exists: false });
     await service.getOrCreateChannelDoc('c1', 'g1', 'Voice');
