@@ -17,8 +17,8 @@ updates:
       npm-minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # Node types follow the runtime (Node 22 in the Dockerfile, CI and
-      # Cloud Functions); bump them with the runtime, not on their own.
+      # Node types follow the runtime (Node 22 in CI and Cloud Functions);
+      # bump them with the runtime, not on their own.
       - dependency-name: '@types/node'
         update-types: [version-update:semver-major]
     commit-message:

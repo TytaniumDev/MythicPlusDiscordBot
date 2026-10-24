@@ -31,8 +31,8 @@ export function lobbyMemberName({ nick, globalName, username }: DiscordNames): s
 
 /**
  * The parts of a `preferences/{discordId}` doc that describe a player. The doc
- * is the single source of truth for a player's profile; the bot and the
- * activity both read it through `parsePlayerPreferences`.
+ * is the single source of truth for a player's profile; the activity reads it
+ * through `parsePlayerPreferences`.
  */
 export interface PlayerPreferences {
   roles: RoleName[];

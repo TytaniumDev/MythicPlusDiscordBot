@@ -88,8 +88,7 @@ export class WoWPlayer {
   /**
    * Build a player from the raw Discord role-name list, mapping role strings
    * (see `config.ts`) into the compact `mainRole`/`offspecs`/`utilities` shape.
-   * Used both by the bot when parsing Discord members and by the frontend when
-   * parsing Activity preference toggles.
+   * Used when parsing Activity preference toggles.
    */
   static create(
     name: string,
@@ -129,8 +128,8 @@ export class WoWPlayer {
 
   /**
    * Join a lobby member with their `preferences` doc. The one place a player is
-   * built from live data: the bot's `/wheel` and the activity's lobby both use
-   * it, so they always agree. A member with no preferences doc has no roles.
+   * built from live data, by the activity's lobby. A member with no
+   * preferences doc has no roles.
    */
   static fromPreferences(member: LobbyMember, prefs: PlayerPreferences | null): WoWPlayer {
     return WoWPlayer.create(

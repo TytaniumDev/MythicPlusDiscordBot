@@ -45,7 +45,7 @@ if (!projectId || !emulatorHost) {
 }
 const [host, port] = [emulatorHost.slice(0, emulatorHost.lastIndexOf(':')), Number(emulatorHost.slice(emulatorHost.lastIndexOf(':') + 1))];
 
-// The bot's view: Admin SDK, rules bypassed. Used to seed and inspect.
+// The server's view: Admin SDK, rules bypassed. Used to seed and inspect.
 if (getApps().length === 0) initializeAdminApp({ projectId });
 const admin = getAdminFirestore();
 
@@ -100,7 +100,7 @@ async function seedChannel(status: 'lobby' | 'spinning' | 'completed'): Promise<
     revealedGroups: 0,
     sittingOut: [],
     isDebug: false,
-    // The bot stamps a TTL expiry on every lobby write.
+    // syncLobbyMembers stamps a TTL expiry on every lobby write.
     expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 }
@@ -150,7 +150,7 @@ describe('guilds', () => {
     await denied(updateDoc(doc(client(null), 'guilds', GUILD_ID), { lastActive: serverTimestamp() }));
   });
 
-  it('rejects changing bot-owned fields', async () => {
+  it('rejects the fields the retired bot wrote', async () => {
     await seedGuild();
     await denied(updateDoc(guildRef(), { guildName: 'Renamed' }));
     await denied(updateDoc(guildRef(), { voiceChannels: [{ id: '1', name: 'Fake', userCount: 1 }] }));

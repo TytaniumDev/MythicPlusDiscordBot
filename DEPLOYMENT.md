@@ -1,243 +1,64 @@
-# Deployment Guide (Docker + GitHub Actions over Tailscale)
+# Deployment Guide
 
-This guide documents the only supported deployment flow for this project:
-Docker images built by GitHub Actions and deployed to a Raspberry Pi over Tailscale.
-There are no `.env` files on the Pi; secrets are injected at deploy time.
+Everything runs on managed services: Firebase (Firestore, Cloud Functions, Authentication), GitHub Pages (the activity) and Discord (application commands). There is no server to run. A merge to `main` deploys all of it through `.github/workflows/deploy.yml`.
 
-## 1. Raspberry Pi bootstrap (new device)
+## 1. What a deploy does
 
-Run these steps once on a fresh Pi.
+The `Deploy` workflow runs CI once against the merged commit (`ci-shared.yml`), then:
 
-### 1.1 Create a deploy user (recommended)
-```bash
-sudo adduser deploy
-sudo usermod -aG sudo deploy
-```
-Use `pi` instead of `deploy` if you prefer.
+| Job | Deploys |
+|-----|---------|
+| `deploy-firebase` | `firestore.rules`, `firestore.indexes.json` (including the TTL policies) and every Cloud Function in `packages/functions` |
+| `register-commands` | Discord's global application commands: `/bug`, `/featurerequest` and the activity's Entry Point command (`packages/functions/src/applicationCommands.ts`) |
+| `deploy-pages` | The activity build and Storybook to GitHub Pages |
 
-### 1.2 Install Docker and Compose (v2)
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo apt-get install -y docker-compose-plugin
-sudo systemctl enable --now docker
-sudo usermod -aG docker deploy
-```
-Log out and back in (or run `newgrp docker`) for group changes to apply.
-
-### 1.3 Install and enable Tailscale
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-sudo systemctl enable --now tailscaled
-```
-Find the Tailscale hostname or IP:
-```bash
-tailscale status
-tailscale ip -4
-```
-Use this value for the `PI_HOST` secret (example: `pi.something.ts.net`).
-
-### 1.4 Install SSH server and add deploy key
-```bash
-sudo apt-get install -y openssh-server
-sudo systemctl enable --now ssh
-```
-
-Generate a deploy key (do this on the Pi or your local machine):
-```bash
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions_ed25519
-```
-
-Add the public key to the deploy user on the Pi:
-```bash
-sudo -u deploy mkdir -p /home/deploy/.ssh
-sudo -u deploy chmod 700 /home/deploy/.ssh
-cat ~/.ssh/github_actions_ed25519.pub | sudo -u deploy tee -a /home/deploy/.ssh/authorized_keys >/dev/null
-sudo -u deploy chmod 600 /home/deploy/.ssh/authorized_keys
-```
-
-Save the private key for the `PI_SSH_KEY` secret:
-```bash
-cat ~/.ssh/github_actions_ed25519
-```
-
-### 1.5 Lock down SSH (Tailscale-only)
-```bash
-sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-sudo tee /etc/ssh/sshd_config.d/99-tailscale.conf >/dev/null <<'EOF'
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin no
-PubkeyAuthentication yes
-AuthenticationMethods publickey
-AllowTcpForwarding no
-X11Forwarding no
-EOF
-sudo apt-get update && sudo apt-get install -y ufw
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow in on tailscale0 to any port 22
-sudo ufw enable
-sudo sshd -t
-sudo systemctl restart ssh
-```
-Keep your current SSH session open while testing new settings.
-
-### 1.6 Clone the repo on the Pi
-```bash
-sudo -u deploy git clone https://github.com/TytaniumDev/MythicPlusDiscordBot.git /home/deploy/mythic-plus-bot
-```
-Use this path for the `PI_APP_DIR` secret.
+Deploys run one at a time in merge order. Running the workflow by hand from any branch but `main` deploys nothing.
 
 ## 2. Secrets for CI/CD
 
-The deploy workflow reads its secrets from Doppler. The only GitHub Actions secret it needs is `DOPPLER_TOKEN` (repo -> Settings -> Secrets and variables -> Actions), a Doppler service token for the production config.
+The deploy workflow reads its secrets from Doppler. The only GitHub Actions secret it needs is `DOPPLER_TOKEN` (repo → Settings → Secrets and variables → Actions), a Doppler service token for the production config.
 
 Set these in Doppler:
 
-- `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`: Tailscale OAuth client (see below).
-- `PI_HOST`: Tailscale hostname or IP (example: `pi.something.ts.net`).
-- `PI_USER`: SSH user on the Pi (example: `deploy`).
-- `PI_SSH_KEY`: Private SSH key contents from step 1.4.
-- `PI_APP_DIR`: Repo path on the Pi (example: `/home/deploy/mythic-plus-bot`).
-- `GHCR_TOKEN`: GitHub PAT with `read:packages`.
-  If fine-grained tokens do not show Packages, use a classic PAT with `read:packages`
-  (and `repo` if the repo is private).
-- `BOT_TOKEN`: Discord bot token.
-- `DISCORD_APPLICATION_ID`: Discord app ID (same as the Application ID in the portal; needed for the `/wheelson` invite).
-- `FIREBASE_CREDENTIALS_JSON`: Firebase service-account JSON (also used to deploy rules and functions).
-- `GH_ISSUE_TOKEN`: GitHub PAT for creating issues (section 7).
+- `FIREBASE_CREDENTIALS_JSON`: Firebase service-account JSON, used to deploy rules and functions.
+- `BOT_TOKEN`: Discord bot token, used to register the commands.
+- `DISCORD_APPLICATION_ID`: Discord application ID (Application → General Information). Also the activity's `VITE_DISCORD_CLIENT_ID`.
 - `VITE_FIREBASE_*`, `VITE_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`: activity build settings for the Pages deploy.
 
-### Create a Tailscale OAuth client
-In the Tailscale admin console: Settings -> OAuth clients -> Generate OAuth client, with the `devices:write` scope and the `tag:ci-runner` tag (your ACLs must allow that tag to reach the Pi).
+Cloud Functions read their own credentials from Google Secret Manager instead (`BOT_TOKEN`, `DISCORD_APPLICATION_ID`, `GITHUB_ISSUES_TOKEN` and others). See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) section 7.
 
-## 3. Discord Developer Portal (bot permissions)
+## 3. Discord Developer Portal
 
-Configure the bot in the [Discord Developer Portal](https://discord.com/developers/applications): select your application → **Bot** and **OAuth2**.
+Configure the application in the [Discord Developer Portal](https://discord.com/developers/applications).
 
-### 3.1 Privileged intents (Bot → Privileged Gateway Intents)
+### 3.1 Interactions Endpoint URL (General Information)
 
-Enable these so the bot can read members and message content:
+Set it to the `discordInteractions` Cloud Function:
 
-- **Server Members Intent** — required for role-based player lists and nicknames (e.g. `/wheel`).
-- **Message Content Intent** — required if the bot uses the message content of legacy prefix commands.
+```
+https://us-central1-mythicplusdiscordbot.cloudfunctions.net/discordInteractions
+```
 
-Save changes after toggling intents.
+Discord sends a signed test request when you save, and refuses the URL if the function doesn't answer it, so a typo can't break anything. Every slash command and form submission then goes to the function.
 
-### 3.2 Bot permissions (OAuth2 → URL Generator or invite)
+### 3.2 Bot
 
-When inviting the bot or generating an invite URL, include at least these **scopes** and **permissions**:
+Wheelson keeps a bot user in each server, but nothing connects to Discord's gateway. The Cloud Functions use the bot token to read activity instances and server nicknames for the lobby, and to DM players about their reports. No privileged gateway intents are needed.
 
-| Permission        | Why |
-|-------------------|-----|
-| **View Channel**  | See text and voice channels. |
-| **Send Messages**  | Send group results and GIFs. |
-| **Embed Links**    | Send embeds (e.g. group cards). |
-| **Attach Files**   | Post the wheel GIF and other assets. |
-| **Connect**        | Join voice channels. |
-| **Speak**          | Play spin/reveal sounds in voice. |
-| **Create Instant Invite** | Required for `/wheelson` (embedded activity invite). |
-| **Read Message History** | Recommended so the bot can work in existing channels. |
+Invite it with the **bot** and **applications.commands** scopes. It needs no channel permissions: it never posts in channels.
 
-Use **Bot** scope and the permissions above; add **applications.commands** if you use slash commands.
+### 3.3 Activity
 
-To update an already-invited bot: use a new invite URL with the same permissions and re-invite (or re-authorize when Discord prompts). Role/position of the bot in the server can affect whether it can create invites or speak in voice.
+See [ACTIVITY_SETUP.md](ACTIVITY_SETUP.md) for the Activity and its URL mappings.
 
-### 3.3 Activity (optional, for `/wheelson`)
+## 4. Verification checklist
 
-The `/wheelson` command creates an embedded-application invite. Your app must be configured as an **Activity** in the portal:
+If a deploy fails or something looks wrong in production:
 
-1. In the Developer Portal: your application → **Activities** (or **Rich Presence** / app type).
-2. Create or link an Activity so Discord allows `target_type=embedded_application` invites.
-3. Set the **DISCORD_APPLICATION_ID** secret (and `DISCORD_APPLICATION_ID` in `.env` locally) to your application’s **Application ID** (Application → General Information).
-
-If Activities are not set up, `/wheelson` will fail; `/wheel` (voice + GIFs) still works with the permissions above.
-
-## 4. First deploy
-
-1. Merge a PR into `main`.
-2. Watch the GitHub Actions workflow run.
-3. On the Pi, confirm the container is running:
+1. **Actions → Deploy**: check which job failed. A `deploy-firebase` failure that names a secret usually means a Secret Manager secret is missing or its access isn't set up (FIREBASE_SETUP.md section 7).
+2. **Commands**: `register-commands` logs the names it registered. Discord can take a few minutes to show a change in the command picker.
+3. **Function logs**: for the lobby roster or reports, read the function's logs:
    ```bash
-   docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
+   npx firebase-tools@14 functions:log --only syncLobbyMembers --project mythicplusdiscordbot
    ```
-
-### 4.1 Data Persistence
-
-The bot keeps no state on the Pi. Player preferences live in the Firestore `preferences/` collection and lobbies in `channels/`; without `FIREBASE_CREDENTIALS_JSON`, `/wheel` treats every player as having no roles and `/wheelson` is unavailable.
-
-## 5. Verification checklist
-
-Run these checks if a deploy fails or you want to validate the setup.
-
-### 5.1 Tailscale connectivity
-On your local machine (or another device on your tailnet):
-```bash
-ping -c 3 pi.something.ts.net
-ssh deploy@pi.something.ts.net
-```
-
-### 5.2 SSH access and permissions
-On the Pi:
-```bash
-whoami
-groups
-docker ps
-```
-You should see your user in the `docker` group.
-
-### 5.3 Repo path and compose config
-```bash
-ls -la /home/deploy/mythic-plus-bot
-docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml config
-```
-
-### 5.4 Container health
-```bash
-docker compose -f /home/deploy/mythic-plus-bot/docker-compose.yml ps
-docker inspect -f '{{.State.Health.Status}}' mythic-plus-bot
-```
-`healthy` means the bot touched its heartbeat file in the last 90 seconds, which it does only while connected to Discord. `unhealthy` with a running container means it lost its gateway connection; check `docker logs mythic-plus-bot`.
-
-### 5.5 GitHub Actions logs
-In GitHub:
-**Actions → Deploy → deploy-pi job**
-Look for:
-- Successful Tailscale connection
-- SSH step completed
-- `docker compose pull` and `up` succeeded
-
-## 6. Updates
-
-Any push to `main` runs CI once, then deploys Firebase, the Pi and GitHub Pages (`.github/workflows/deploy.yml`). Deploys run one at a time in merge order. Running the workflow by hand from any other branch deploys nothing.
-Each deploy runs `git fetch origin` and `git reset --hard origin/main` in the Pi's repo directory so the clone (including `docker-compose.yml`) stays in sync with what was deployed. Any local changes in that directory will be overwritten.
-
-Note: The production Docker image is built using `package.json` and `npm ci`. If you add dependencies, ensure they are reflected in the package.json and package-lock.json.
-
-## 7. GitHub Issues Integration
-
-To enable the `/bug` and `/featurerequest` commands, you need to configure the bot to interact with GitHub.
-
-### 7.1 Create a Personal Access Token (PAT)
-
-You can use either a **Classic** or **Fine-grained** Personal Access Token.
-
-**Option A: Classic Token (Easier)**
-1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Tokens (classic)**.
-2. Generate a new token.
-3. Select the **repo** scope (Full control of private repositories).
-4. Copy the generated token.
-
-**Option B: Fine-grained Token (More Secure)**
-1. Go to **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
-2. Generate a new token and select your repository.
-3. Under **Repository permissions**, grant **Issues** access: **Read and Write**.
-   *(Note: **Metadata** read-only access is usually included by default, which is sufficient).*
-4. Copy the generated token.
-
-### 7.2 Add it to Doppler
-
-Store the token in Doppler as `GH_ISSUE_TOKEN`.
-
-This token will be injected into the container at runtime.
+   The `firebase-debug` skill (`.claude/skills/firebase-debug/`) covers reading Firestore and logs in more depth.

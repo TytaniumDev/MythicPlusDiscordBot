@@ -95,7 +95,7 @@ describe('store players', () => {
     expect(useAppStore.getState().players.map((p) => p.name)).toEqual(['Ay', 'Bee']);
   });
 
-  it('treats a lobby the bot has not filled yet as empty', () => {
+  it('treats a lobby not filled in yet as empty', () => {
     useAppStore.getState().setChannelData({ ...lobby, members: undefined });
     expect(useAppStore.getState().players).toEqual([]);
   });

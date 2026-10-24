@@ -15,6 +15,7 @@
         "firebase-debug.*.log",
         "*.local",
         "src",
+        "scripts",
         "tests",
         "build.mjs",
         "tsconfig.json"

@@ -1,5 +1,4 @@
 // Discord role name constants (platform-agnostic defaults)
-// Bot-specific env var overrides live in packages/bot/src/core/config.ts
 
 export const ROLE_TANK = 'Tank';
 export const ROLE_HEALER = 'Healer';

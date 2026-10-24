@@ -1,6 +1,6 @@
 # Firebase Setup Instructions
 
-This project uses Firebase Firestore to synchronize the Discord Bot (Backend) and the Web Frontend.
+This project uses Firebase (Firestore, Cloud Functions and Authentication) as the backend for the Wheelson Activity.
 
 ## 1. Create a Firebase Project
 1. Go to [Firebase Console](https://console.firebase.google.com/).
@@ -23,19 +23,15 @@ The frontend needs public configuration to connect to Firebase.
    - `VITE_FIREBASE_APP_ID`
 
 ## 3. Backend Configuration (Service Account)
-The bot needs a Service Account to write to Firestore with admin privileges.
+The deploy workflow needs a Service Account to deploy the rules and Cloud Functions.
 
 1. In Firebase Console > Project Settings > **Service accounts**.
 2. Click "Generate new private key".
 3. This will download a `.json` file containing your credentials.
-3. **Minify** this JSON (optional but recommended for readability). You can use an online tool or `jq -c . file.json`.
-4. Add the JSON content as a GitHub Secret named `FIREBASE_CREDENTIALS_JSON`. The deployment pipeline handles both minified and multiline JSON safely. For local development, add it to your `.env` file:
-   ```env
-   FIREBASE_CREDENTIALS_JSON='{"type": "service_account", ...}'
-   ```
+4. Store its contents in Doppler as `FIREBASE_CREDENTIALS_JSON` (section 4).
 
 ## 4. Production Deploy (GitHub Actions)
-For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.yml`), set the repository secret `FIREBASE_CREDENTIALS_JSON` in GitHub (Settings → Secrets and variables → Actions). The deploy workflow passes it into the Pi environment so the container can use Firebase. Without this secret, the bot will run but Firebase features (e.g. the `/wheelson` live lobby and Firestore-backed preferences) will be disabled.
+Store the service-account JSON in Doppler as `FIREBASE_CREDENTIALS_JSON`. The `deploy-firebase` job in `.github/workflows/deploy.yml` reads it from there to deploy the rules, indexes and functions ([DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ## 5. Firestore Database and Rules
 1. Go to **Firestore Database** in the left sidebar.
@@ -44,15 +40,15 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
 4. After the database is created, open the **Rules** tab.
 5. The canonical security rules for this project live in [`firestore.rules`](firestore.rules) at the repo root. Copy that file into the Rules tab in the Firebase Console (or deploy via `firebase deploy --only firestore:rules,firestore:indexes`; `deploy.yml` does this on every merge to `main`). It covers all collections used at runtime:
 
-   Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). The bot and Cloud Functions use the Admin SDK, which bypasses the rules.
+   Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). Cloud Functions use the Admin SDK, which bypasses the rules.
 
-   - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs` / `refreshRequest`; `guildName`, `guildIconUrl` and `voiceChannels` are bot-owned. No delete.
+   - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs`. The fields the retired bot wrote (`guildName`, `guildIconUrl`, `voiceChannels`, `refreshRequest`) are rejected. No delete.
    - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `members` (who has the activity open), `instanceId` and `expireAt` (the TTL expiry) are server-only: clients can't write them at all, so a lobby a client opens stays empty until the `syncLobbyMembers` Cloud Function fills it in. No delete.
    - `preferences/{discordId}` — each player's profile, and its only copy. Doc ID must be a numeric Discord ID; roles must be known role names, `mediaUrl` must be a `render.worldofwarcraft.com` URL, `characterClass` a known class. No delete.
    - `config/{docId}` — public read; writes are server-only (Cloud Functions populate `config/affixes` and `config/season`).
    - `rateLimits/{docId}` — server-only (read and write deny).
    - `characterCache/{region}:{realm}:{name}` — server-only; the Battle.net lookup cache written by the `lookupCharacter` and `refreshCharacterMedia` Cloud Functions.
-   - `issueTracking/{issueNumber}` — implicitly server-only (no rule grants client access); written by the `reportIssue` Cloud Function and the bot, and consumed by the GitHub close webhook Cloud Function. Reports go through the `reportIssue` and `reportBadGroup` callables, not client writes.
+   - `issueTracking/{issueNumber}` — implicitly server-only (no rule grants client access); written by the `reportIssue` and `discordInteractions` Cloud Functions, and consumed by the GitHub close webhook Cloud Function. Reports go through the `reportIssue` and `reportBadGroup` callables, not client writes.
 
    The rules are tested against the emulator in `activity/rules/firestore.rules.test.ts` (run by `./scripts/emulator-test.sh`): every write the activity makes must stay allowed, and the tampering cases must stay rejected.
 
@@ -65,9 +61,8 @@ Channel documents are ephemeral lobbies and are cleaned up; guild documents are 
 - **Guild docs persist.** `guilds/{guildId}` is one small doc per server holding `groupHistory` and `seasonPairs`. Group history resets itself each day at midnight Pacific (it is stamped with `todayPST()` and ignored on any other date), and season pair counts reset when `config/season` changes.
 - **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the channel doc stays so results remain visible.
 - **New activity run.** When the activity is opened again in a channel after everyone closed it, Discord gives it a new instance ID, and `syncLobbyMembers` clears the last session's round.
-- **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
 - **TTL policies.** Firestore deletes docs whose `expireAt` has passed (usually within a day of it). The policies are code in the `fieldOverrides` of [`firestore.indexes.json`](firestore.indexes.json), applied by `firebase deploy --only firestore:indexes`:
-  - `channels.expireAt` — set to 24 hours ahead when `/wheelson` opens the lobby and whenever `syncLobbyMembers` writes it (it pushes the expiry out while the activity stays open), so an abandoned lobby goes away a day after it was last used.
+  - `channels.expireAt` — set to 24 hours ahead whenever `syncLobbyMembers` writes the lobby (it pushes the expiry out while the activity stays open), so an abandoned lobby goes away a day after it was last used.
   - `rateLimits.expireAt` — the end of the doc's rate-limit window.
   - `characterCache.expireAt` — 30 days after the entry was last refreshed.
 
@@ -89,7 +84,7 @@ Cloud Functions read their credentials from Google Secret Manager (`defineSecret
 | `BOT_TOKEN` | `onGithubIssueWebhook`, `reportIssue` (DMs as Wheelson), `discordInteractions` (reads the application's public key), `syncLobbyMembers` (reads activity instances and member names) |
 | `GITHUB_WEBHOOK_SECRET` | `onGithubIssueWebhook` |
 | `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET` | `discordSignIn` (the application ID and OAuth2 client secret from the Discord Developer Portal's **OAuth2** page); `syncLobbyMembers` uses the application ID too |
-| `GITHUB_ISSUES_TOKEN` | `reportIssue`, `reportBadGroup`, `discordInteractions` (a GitHub token with Issues read & write on this repo; the same value as Doppler's `GH_ISSUE_TOKEN`, which the Pi gets as `GITHUB_TOKEN`) |
+| `GITHUB_ISSUES_TOKEN` | `reportIssue`, `reportBadGroup`, `discordInteractions` (a GitHub token with Issues read & write on this repo; the same value as Doppler's `GH_ISSUE_TOKEN`) |
 
 The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:
 

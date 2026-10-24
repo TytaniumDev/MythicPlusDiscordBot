@@ -41,9 +41,9 @@ jobs:
       - run: ./scripts/verify-ts.sh --test
 
   Integration:
-    # Firestore emulator tests — catches data-model violations (like the
-    # nested-arrays bug from PR #383) that slip past mocks in unit tests.
-    # See packages/bot/tests/integration/*.integration.test.ts
+    # Firestore emulator tests: the firestore.rules tests in activity/rules/,
+    # which also run the activity's real lobby writes, so data-model
+    # violations (like the nested-arrays bug from PR #383) fail here.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

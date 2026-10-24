@@ -4,14 +4,14 @@ Thank you for your interest in contributing! This guide covers the technical sta
 
 ## Development Environment
 
-This project is a monorepo that uses **npm workspaces** for package management, encompassing both a Discord bot backend and a React frontend.
+This project is a monorepo that uses **npm workspaces** for package management: Firebase Cloud Functions, shared code, and a React frontend.
 
-1.  **Install Node.js 22**: the version in `.nvmrc`, which CI, the `Dockerfile` and Cloud Functions also use (`nvm use` picks it up).
+1.  **Install Node.js 22**: the version in `.nvmrc`, which CI and Cloud Functions also use (`nvm use` picks it up).
 2.  **Install dependencies**:
     ```bash
     npm ci
     ```
-    This installs dependencies for every workspace (`packages/shared`, `packages/bot`, `packages/functions`, and `activity/`) from the lockfile.
+    This installs dependencies for every workspace (`packages/shared`, `packages/functions`, and `activity/`) from the lockfile.
 
 ## Verification
 
@@ -66,21 +66,12 @@ This project has strict requirements to prevent secret leaks and ensure CI relia
 
 ## Project Structure
 
--   `packages/bot/`: The Discord bot backend (TypeScript).
-    -   `src/commands/`: Discord slash command handlers.
-    -   `src/core/`: Core configuration, utilities, and integrations.
-    -   `src/services/`: Services bridging commands and external systems (Firebase, state).
-    -   `tests/`: Unit tests using Vitest.
--   `packages/functions/`: Firebase Cloud Functions (TypeScript). Handles background syncing, external API integrations (Raider.IO, Battle.net), and webhooks.
+-   `packages/functions/`: Firebase Cloud Functions (TypeScript). Handles the lobby roster, reports and slash commands, background syncing, external API integrations (Raider.IO, Battle.net), and webhooks.
+    -   `scripts/registerCommands.ts`: registers Discord's application commands on every deploy.
 -   `packages/shared/`: Shared models and business logic (e.g., `parallelGroupCreator.ts`).
 -   `activity/`: Frontend code for the Discord Activity (React/TypeScript/Vite).
 -   `scripts/`: Utility scripts for verification and CI.
 
-## Production vs. Development
-
--   **Development**: Run the bot locally using `npm -w @mythicplus/bot run dev` (uses `tsx`).
--   **Production (Docker)**: The `Dockerfile` installs production dependencies only and runs the bot's TypeScript with `tsx`, as the unprivileged `node` user. The container's healthcheck reads a heartbeat file the bot touches while it is connected to Discord.
-
 ## Command Style
 
-All new commands should be implemented as **Slash Commands**. Prefix commands are deprecated. Define your commands using Discord's `SlashCommandBuilder` in `packages/bot/src/main.ts` and handle them within the dedicated `src/commands/` handler classes.
+Slash commands are Discord HTTP interactions answered by the `discordInteractions` Cloud Function. Define them in `packages/functions/src/applicationCommands.ts` (the deploy registers them) and handle them in `packages/functions/src/reportCommands.ts`.

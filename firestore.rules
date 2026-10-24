@@ -1,9 +1,8 @@
 rules_version = '2';
 
 // The activity (browser) writes through these rules after signing in
-// anonymously. The bot and Cloud Functions use the Admin SDK, which bypasses
-// them, so fields only they write (lobby members, guild name and icon) are
-// read-only here. Each collection lists exactly the fields the activity
+// anonymously. Cloud Functions use the Admin SDK, which bypasses them, so
+// fields only they write (lobby members) are read-only here. Each collection lists exactly the fields the activity
 // writes; every client write shape is exercised by
 // activity/rules/firestore.rules.test.ts.
 service cloud.firestore {
@@ -38,7 +37,8 @@ service cloud.firestore {
 
     // --- Guilds ---
     // Clients set up a guild doc and record each spin's history and season
-    // pair counts. Name, icon and the voice channel list come from the bot.
+    // pair counts. Fields the retired bot wrote (name, icon, voice channel
+    // list) stay rejected.
     match /guilds/{guildId} {
       allow read: if true;
       allow create: if signedIn()

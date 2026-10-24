@@ -14,9 +14,8 @@ export interface SeasonPairs {
 /**
  * Validate an unknown value against the {@link SeasonPairs} shape. Returns the
  * narrowed object when valid (string `seasonSlug`, non-null object `counts`,
- * with non-numeric counts dropped) and `null` otherwise. The bot and frontend
- * both run this on raw Firestore values, so they must not drift on what
- * "valid" means.
+ * with non-numeric counts dropped) and `null` otherwise. Every reader of raw
+ * Firestore values runs this, so they can't drift on what "valid" means.
  */
 export function parseSeasonPairs(raw: unknown): SeasonPairs | null {
   if (!raw || typeof raw !== 'object') return null;

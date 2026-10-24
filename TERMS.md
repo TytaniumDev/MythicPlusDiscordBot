@@ -1,8 +1,8 @@
 # Terms of Service
 
-**Effective date:** September 29, 2026
+**Effective date:** October 24, 2026
 
-These Terms of Service ("Terms") govern your use of the Wheelson Discord app, which includes the Discord bot, the Wheelson Discord Activity, and the web app at <https://tytaniumdev.github.io/MythicPlusDiscordBot/> (together, "the App"). The App is a free, open-source hobby project run by Tyler Holland ("we", "us").
+These Terms of Service ("Terms") govern your use of the Wheelson Discord app, which includes the Wheelson Discord Activity, its slash commands, and the web app at <https://tytaniumdev.github.io/MythicPlusDiscordBot/> (together, "the App"). The App is a free, open-source hobby project run by Tyler Holland ("we", "us").
 
 By adding the App to a Discord server or using it, you agree to these Terms. If you don't agree, don't use the App.
 
@@ -24,7 +24,7 @@ You agree not to:
 - Submit spam or automated requests, or pretend to be another user.
 - Use the App in a way that breaks Blizzard Entertainment's or Discord's terms.
 
-We may limit or block your access, or remove the bot from a server, if we believe you've broken these Terms.
+We may limit or block your access, or remove the App from a server, if we believe you've broken these Terms.
 
 ## 4. Your content
 
@@ -58,7 +58,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW, WE WILL NOT BE LIABLE FOR ANY INDIRECT, 
 
 ## 11. Termination
 
-You can stop using the App at any time. Server admins can remove the bot from their server whenever they like. We may suspend or end your access at any time for any reason, including if you break these Terms. Sections 4, 9, and 10 continue to apply after your use ends.
+You can stop using the App at any time. Server admins can remove the App from their server whenever they like. We may suspend or end your access at any time for any reason, including if you break these Terms. Sections 4, 9, and 10 continue to apply after your use ends.
 
 ## 12. Changes to these Terms
 
@@ -66,4 +66,4 @@ We may update these Terms from time to time. The latest version is always at thi
 
 ## 13. Contact
 
-For questions about these Terms, open an issue at <https://github.com/TytaniumDev/MythicPlusDiscordBot/issues> or use the `/bug` command in any server with the bot.
+For questions about these Terms, open an issue at <https://github.com/TytaniumDev/MythicPlusDiscordBot/issues> or use the `/bug` command in a server with Wheelson or in a DM with it.

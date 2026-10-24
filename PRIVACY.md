@@ -2,7 +2,7 @@
 
 **Effective date:** October 24, 2026
 
-This Privacy Policy explains what information the Wheelson Discord app collects and how it is used. The app includes the Discord bot, the Wheelson Discord Activity, and the web app at <https://tytaniumdev.github.io/MythicPlusDiscordBot/>, all referred to here as "the App." The App is a free, open-source hobby project run by Tyler Holland ("we", "us"). Its full source code is public at <https://github.com/TytaniumDev/MythicPlusDiscordBot>, so you can check everything described here.
+This Privacy Policy explains what information the Wheelson Discord app collects and how it is used. The app includes the Wheelson Discord Activity, its slash commands (`/bug` and `/featurerequest`), and the web app at <https://tytaniumdev.github.io/MythicPlusDiscordBot/>, all referred to here as "the App." The App is a free, open-source hobby project run by Tyler Holland ("we", "us"). Its full source code is public at <https://github.com/TytaniumDev/MythicPlusDiscordBot>, so you can check everything described here.
 
 ## Summary
 
@@ -15,14 +15,13 @@ This Privacy Policy explains what information the Wheelson Discord app collects 
 
 ### From Discord
 
-When the App is in a server, the bot receives information from Discord through its gateway connection:
+When you use the App, it receives information from Discord:
 
-- **Server information:** server ID, name, icon, and the names and IDs of voice channels.
-- **Who is in a lobby:** the Discord user ID and name (server nickname, display name or username) of each person with the Wheelson Activity open, and of each member of a voice channel where someone runs `/wheel`.
-- **Server member and role information:** your Discord user ID, display name, and server roles. When you use `/wheel`, the bot may read role names such as "Tank" or "Healer" to work out which roles you can play.
-- **Commands you run:** the slash command and the text you enter into it, such as a `/bug` description.
+- **Server and channel information:** the server ID, and the ID and name of the voice channel where the Activity is open.
+- **Who is in a lobby:** the Discord user ID and name (server nickname, display name or username) of each person with the Wheelson Activity open in that channel.
+- **Commands you run:** the slash command and the text you enter into it, such as a `/bug` description. The commands work in servers and in a DM with Wheelson.
 
-The bot does not read or store the content of ordinary chat messages.
+The App does not read or store the content of chat messages, and it doesn't read your server roles.
 
 ### Signing in
 
@@ -45,7 +44,7 @@ The web app uses your browser's local storage to remember your Discord user ID a
 
 ### Error reports
 
-When something breaks, error reports are sent to [Sentry](https://sentry.io), our error-monitoring service. Reports from the bot may include your Discord user ID and username, so a problem can be traced to the command that caused it. Reports from the web app don't include your Discord user ID. They may include technical details such as your browser type and the page or action that failed.
+When something breaks, error reports are sent to [Sentry](https://sentry.io), our error-monitoring service. Reports don't include your Discord user ID. They may include technical details such as your browser type and the page or action that failed.
 
 ## How we use information
 
@@ -67,7 +66,7 @@ We use the following third-party services to run the App. Each one processes dat
 
 | Service | What it does | Data involved |
 | --- | --- | --- |
-| [Discord](https://discord.com/privacy) | Hosts the bot and Activity | Everything received from Discord, and the Sign in with Discord authorization |
+| [Discord](https://discord.com/privacy) | Hosts the Activity and slash commands | Everything received from Discord, and the Sign in with Discord authorization |
 | [Google Firebase](https://firebase.google.com/support/privacy) (Firestore, Cloud Functions, Authentication) | Database and backend | Preferences, lobbies, group history, reports, sign-in accounts |
 | [Blizzard Battle.net API](https://www.blizzard.com/en-us/legal/privacy) | Character lookup | Character name, realm, region |
 | [Sentry](https://sentry.io/privacy/) | Error monitoring | Error reports as described above |
@@ -90,7 +89,7 @@ We may also disclose information if required by law.
 
 - **Change your data:** you can update your roles, in-game name, and linked character in the App at any time.
 - **Delete your data:** to delete your player preferences and any other data tied to your Discord user ID, contact us (see below). We'll handle requests within 30 days.
-- **Stop data collection:** don't use the App's commands or Activity. Server admins can remove the bot from their server at any time.
+- **Stop data collection:** don't use the App's commands or Activity. Server admins can remove the App from their server at any time.
 
 Depending on where you live (for example, in the EU, the UK, or California), you may have additional rights to access, correct, or delete your personal data, or to object to its processing. Contact us to exercise them.
 
@@ -107,6 +106,6 @@ We may update this policy as the App changes. The latest version is always at th
 For privacy questions or data deletion requests:
 
 - Open an issue at <https://github.com/TytaniumDev/MythicPlusDiscordBot/issues>, or
-- Use the `/bug` command in any server with the bot.
+- Use the `/bug` command in a server with Wheelson or in a DM with it.
 
 GitHub issues are public. For a deletion request, you only need to include your Discord user ID. Don't post anything else you want to keep private.
