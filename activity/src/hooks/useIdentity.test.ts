@@ -1,16 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 
-const mocks = vi.hoisted(() => ({ getParticipants: vi.fn() }));
-vi.mock('../discordSdk', () => ({ getParticipants: mocks.getParticipants }));
-
 import { useIdentity } from './useIdentity';
 import { useAppStore } from '../store/store';
 import { demoService } from '../services/demoService';
 import { mockPlayers } from '../lib/mockData';
 import { saveStoredDiscordId, loadStoredDiscordId } from '../lib/storedDiscordId';
 
-const [quill, schmeebs, kitchenstink] = mockPlayers;
+const [quill, schmeebs] = mockPlayers;
 const CHANNEL_ID = '200000000000000002';
 
 function resolve(players = mockPlayers) {
@@ -23,7 +20,6 @@ beforeEach(() => {
   useAppStore.setState({ isDemoMode: true, currentChannelId: CHANNEL_ID });
   vi.spyOn(demoService, 'claimPlayer').mockResolvedValue();
   vi.spyOn(demoService, 'unclaimPlayer').mockResolvedValue();
-  mocks.getParticipants.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -48,9 +44,6 @@ describe('resolveIdentity with a Discord sign-in', () => {
 
   it('does not guess when the signed-in player is not in the lobby', async () => {
     saveStoredDiscordId(quill.discordId);
-    mocks.getParticipants.mockResolvedValue([
-      { id: kitchenstink.discordId, nickname: kitchenstink.name, global_name: null, username: 'k' },
-    ]);
     useAppStore.setState({ verifiedDiscordId: '999999999999999999' });
 
     await resolve();
@@ -58,7 +51,6 @@ describe('resolveIdentity with a Discord sign-in', () => {
     const state = useAppStore.getState();
     expect(state.currentPlayerId).toBeNull();
     expect(state.identityResolved).toBe(false);
-    expect(mocks.getParticipants).not.toHaveBeenCalled();
   });
 
   it('replaces an earlier pick with the signed-in player', async () => {
@@ -88,6 +80,14 @@ describe('resolveIdentity with a Discord sign-in', () => {
     await resolve();
 
     expect(useAppStore.getState().currentPlayerId).toBe(quill.discordId);
+  });
+
+  it('leaves the pick to the player with nothing to go on', async () => {
+    await resolve();
+
+    const state = useAppStore.getState();
+    expect(state.currentPlayerId).toBeNull();
+    expect(state.identityResolved).toBe(false);
   });
 });
 

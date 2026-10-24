@@ -1,7 +1,5 @@
 import { useCallback } from 'react';
-import { lobbyMemberName } from '@mythicplus/shared';
 import { useAppStore } from '../store/store';
-import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
 import { loadStoredDiscordId, saveStoredDiscordId } from '../lib/storedDiscordId';
@@ -79,30 +77,6 @@ export function useIdentity() {
         commitIdentity(match, { persist: false });
         return;
       }
-    }
-
-    // Auto-match via Discord participants
-    const participants = await getParticipants();
-    if (participants.length === 0) return;
-
-    for (const participant of participants) {
-      const pName = lobbyMemberName({
-        nick: participant.nickname,
-        globalName: participant.global_name,
-        username: participant.username,
-      });
-      const match = players.find((p) => p.name === pName);
-      if (match && match.discordId) {
-        commitIdentity(match, { persist: true });
-        return;
-      }
-    }
-
-    // Try matching by discordId directly
-    const participantIds = new Set(participants.map((p) => p.id));
-    const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
-    if (idMatches.length === 1) {
-      commitIdentity(idMatches[0], { persist: true });
     }
 
     // Otherwise: no match — identity selector will show in lobby
