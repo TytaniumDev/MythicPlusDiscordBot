@@ -40,7 +40,7 @@ flowchart TB
     end
 
     User -->|launch the Activity| UI
-    SDK -->|participants, instanceId| UI
+    SDK -->|instanceId| UI
     FirestoreClient -->|read/write, onSnapshot| Guilds
     FirestoreClient -->|read/write, onSnapshot| Channels
     FirestoreClient -->|read/write, onSnapshot| Preferences
@@ -154,7 +154,7 @@ Security rules and cleanup are described in `FIREBASE_SETUP.md` and the canonica
 - **Identity**: By default the activity works out who the user is: the Discord ID remembered in localStorage, then a match against the activity's Discord participants, then the "Select Your Name" picker. Inside the Discord activity the user can opt in to **Sign in with Discord** (identity picker or profile modal; `activity/src/services/discordAuth.ts`). The Embedded App SDK's `authorize` returns an OAuth2 code (Discord shows its one-click consent modal the first time), the `discordSignIn` Cloud Function verifies it and returns a Firebase custom token whose uid is the Discord ID, and the activity signs in with it. That ID (`verifiedDiscordId` in the store) overrides every guess, and Firebase Auth keeps the session, so later launches restore it without asking. `firestore.rules` treat both kinds of user the same.
 - **Flow**:
   1. Subscribe to `guilds/{guildId}`, `channels/{channelId}` and the members' `preferences` docs with `onSnapshot`. The connecting screen opens the launch channel's lobby if there isn't one yet; an existing lobby is joined as it is, so a round in progress keeps going for everyone.
-  2. **Lobby**: Always render the joined roster (`members` + `preferences`); show/hide lobby vs wheel vs results based on `status`. `useLobbySync` (`activity/src/hooks/useLobbySync.ts`) keeps `members` to the activity's participants: when they differ, or the lobby's `instanceId` isn't this run's, the client with the lowest Discord ID calls `syncLobbyMembers` and the others wait a step each (`activity/src/lib/lobbySync.ts`), standing down when the roster catches up.
+  2. **Lobby**: Always render the joined roster (`members` + `preferences`); show/hide lobby vs wheel vs results based on `status`. `useLobbySync` (`activity/src/hooks/useLobbySync.ts`) keeps `members` to the people with the activity open: each client calls `syncLobbyMembers` when it opens the lobby and every 15 seconds while the status is `lobby`, and the function, which reads the instance's users from Discord, writes only on a change. The client can't follow joins and leaves itself: Discord refuses the SDK's participant calls (`getInstanceConnectedParticipants`, `ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE`) to an activity that hasn't run `authenticate`, and players sign in anonymously.
   - **Profile**: the header avatar and profile modal read the current user's `preferences` doc (their Discord ID is remembered in localStorage between visits; nothing else is). Without a known ID, the modal asks the user to pick themselves in a lobby first.
   - **Connections**: "View Connections" in the profile modal opens a per-player overlay of the guild's season pairings. It isn't part of the status-driven navigation, so it moves no one else, and the round keeps going underneath.
   3. **Spin**: User clicks “Spin” → one transaction (`startSpin` in `activity/src/services/lobby.ts`) reads the lobby and guild docs, runs `createMythicPlusGroups` client-side, and writes `groups` + `status: 'spinning'` to the lobby together with the guild's `groupHistory` and `seasonPairs` (each pair's count is incremented; the whole map is replaced when `config/season` changes). No client shows the round until the server accepts it, so a second Spin click can't put different groups on one screen.
@@ -237,8 +237,7 @@ sequenceDiagram
     Frontend->>Firestore: onSnapshot(guilds/{guildId}, channels/{channelId}, members' preferences)
 
     loop Lobby
-        User->>Discord: open/close the Activity
-        Discord-->>Frontend: ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE
+        Note over Frontend: on opening the lobby, then every 15s while status is lobby
         Frontend->>Functions: syncLobbyMembers(channelId, instanceId)
         Functions->>Discord: GET activity instance (bot token)
         Functions->>Firestore: update members
@@ -335,7 +334,7 @@ flowchart LR
     Reports --> Side
 ```
 
-- **Activity**: launched in a voice channel → subscribe to guild + channel docs and the members' preferences → keep the roster in step with Discord's participants → user clicks Spin → write status → read updates and drive UI.
+- **Activity**: launched in a voice channel → subscribe to guild + channel docs and the members' preferences → keep the roster in step with who has the activity open → user clicks Spin → write status → read updates and drive UI.
 - **Firestore**: shared real-time state plus durable `preferences/` and operational sidecars.
 - **Preferences**: each player's profile lives only in `preferences/{discordId}`. The Activity writes it; every Activity client reads it.
 - **Cloud Functions**: the roster, the reports (sent to GitHub), and the slash commands.

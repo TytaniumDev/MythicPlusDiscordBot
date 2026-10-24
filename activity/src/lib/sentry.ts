@@ -57,6 +57,23 @@ export function initSentry(): void {
 }
 
 /**
+ * A one-line message for the console. The Discord SDK rejects with plain
+ * `{ code, message }` objects, which `String()` turns into "[object Object]".
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      // intentional: a circular object falls back to String()
+      void 0;
+    }
+  }
+  return String(error);
+}
+
+/**
  * Report an error to Sentry with optional tagged context. Also logs to the
  * console so the error is still visible in local development without a DSN.
  */
@@ -65,7 +82,7 @@ export function reportError(
   context?: { tag?: string; extra?: Record<string, unknown> },
 ): void {
   const tag = context?.tag ? `[${context.tag}] ` : '';
-  console.error(`[Wheelson] ${tag}${error instanceof Error ? error.message : String(error)}`, error);
+  console.error(`[Wheelson] ${tag}${describeError(error)}`, error);
 
   if (!initialized) return;
 

@@ -165,25 +165,6 @@ export async function getParticipants(): Promise<DiscordParticipant[]> {
 }
 
 /**
- * Call `listener` with the instance's participants each time someone opens or
- * closes the activity. Returns the unsubscribe function; a no-op outside
- * Discord.
- */
-export function onParticipantsChange(listener: (participants: DiscordParticipant[]) => void): () => void {
-  const sdk = _sdkInstance;
-  if (!sdk) return () => {};
-  const handler = (event: { participants: Record<string, unknown>[] }) => {
-    listener((event.participants ?? []).map(toParticipant));
-  };
-  sdk.subscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch((e: unknown) => {
-    reportError(e, { tag: 'discordSdk.onParticipantsChange' });
-  });
-  return () => {
-    sdk.unsubscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch(() => {});
-  };
-}
-
-/**
  * The ID Discord gives this run of the activity. Everyone with the activity
  * open in a channel shares it; closing it for everyone ends it. Null outside
  * Discord.
