@@ -1,5 +1,6 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
+import { isDiscordEmbedded } from './lib/embedded';
 
 export interface DiscordContext {
   guildId: string;
@@ -16,17 +17,7 @@ export interface DiscordParticipant {
 // Detect embedded mode early and patch network URLs before Firebase initializes.
 // Discord's activity proxy blocks direct requests to external domains — all
 // traffic must go through URL mappings configured in the Developer Portal.
-// Being in an iframe isn't sufficient (Storybook's preview is also iframed);
-// we additionally require the `frame_id` query param that Discord always
-// appends to activity URLs.
-let _isEmbedded = false;
-try {
-  const inIframe = window.self !== window.top;
-  const hasFrameId = new URLSearchParams(window.location.search).has('frame_id');
-  _isEmbedded = inIframe && hasFrameId;
-} catch {
-  _isEmbedded = true;
-}
+const _isEmbedded = isDiscordEmbedded();
 
 // Hosts whose images are loaded via <img src>. They need both a patchUrlMappings
 // entry (so the SDK whitelists them) AND a Developer Portal URL mapping.
