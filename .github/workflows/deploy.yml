@@ -1,8 +1,8 @@
 name: Deploy
 
 # One workflow deploys everything a merge to main changes: Firebase (rules,
-# indexes, functions), the bot on the Pi, and the activity on GitHub Pages.
-# Every deploy job waits on one CI run against the merged commit.
+# indexes, functions), Discord's application commands, and the activity on
+# GitHub Pages. Every deploy job waits on one CI run against the merged commit.
 on:
   push:
     branches: [main]
@@ -88,48 +88,19 @@ jobs:
         run: |
           rm -f "$RUNNER_TEMP/firebase-sa.json"
 
-  build-and-push:
+  register-commands:
+    # Discord's command list is replaced on every deploy: /bug and
+    # /featurerequest, which the discordInteractions function answers, plus
+    # the activity's Entry Point command (packages/functions/src/applicationCommands.ts).
     needs: [ci]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set image name
-        run: echo "IMAGE_NAME=$(echo ghcr.io/${GITHUB_REPOSITORY} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-      - name: Build and push image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            GIT_SHA=${{ github.sha }}
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
-  deploy-pi:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 20
-    steps:
       - name: Install Doppler CLI
         uses: dopplerhq/cli-action@v3
 
@@ -139,113 +110,28 @@ jobs:
         run: |
           DELIM=$(openssl rand -hex 16)
           SECRETS=$(doppler secrets download --no-file --format json)
-          KEYS='["TS_OAUTH_CLIENT_ID","TS_OAUTH_SECRET","PI_SSH_KEY","PI_HOST","PI_USER","PI_APP_DIR","FIREBASE_CREDENTIALS_JSON","GH_ISSUE_TOKEN","GHCR_TOKEN","BOT_TOKEN","DISCORD_APPLICATION_ID"]'
+          KEYS='["BOT_TOKEN","DISCORD_APPLICATION_ID"]'
           # Mask each secret value so it cannot appear in workflow logs
           echo "$SECRETS" | jq -r --argjson keys "$KEYS" '
             to_entries[] | select(.key | IN($keys[])) | .value
           ' | while IFS= read -r val; do
             [ -n "$val" ] && echo "::add-mask::$val"
           done
-          # Export only the secrets needed by the deploy job
           echo "$SECRETS" | jq -r --argjson keys "$KEYS" --arg d "$DELIM" '
             to_entries[] | select(.key | IN($keys[])) | "\(.key)<<\($d)\n\(.value)\n\($d)"
           ' >> "$GITHUB_ENV"
 
-      - name: Connect to Tailscale
-        id: tailscale
-        continue-on-error: true
-        uses: tailscale/github-action@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
-          tags: tag:ci-runner
-      - name: Verify Tailscale connection
-        run: |
-          if [ "${{ steps.tailscale.outcome }}" != "success" ]; then
-            echo "::error::============================================"
-            echo "::error::TAILSCALE CONNECTION FAILED"
-            echo "::error::============================================"
-            echo "::error::The Tailscale OAuth credentials may be invalid!"
-            echo "::error::"
-            echo "::error::To fix this:"
-            echo "::error::1. Go to Tailscale Admin Console → Settings → OAuth clients"
-            echo "::error::2. Create/verify OAuth client with 'devices:write' scope"
-            echo "::error::3. Ensure TS_OAUTH_CLIENT_ID and TS_OAUTH_SECRET are set in Doppler"
-            echo "::error::4. Verify ACLs allow tag:ci-runner"
-            echo "::error::============================================"
-            exit 1
-          fi
-          echo "Tailscale connected successfully"
-          echo "Tailscale status:"
-          tailscale status
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "$PI_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          # Add Pi to known hosts (get the host key)
-          ssh-keyscan -H "$PI_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-      - name: Test SSH connection
-        run: |
-          echo "Testing SSH connection to $PI_HOST..."
-          ssh -v -i ~/.ssh/deploy_key -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
-            "$PI_USER@$PI_HOST" "echo 'SSH connection successful!'"
-      - name: Encode Firebase credentials
-        id: firebase_b64
-        run: |
-          # Encode as single-line base64 so multiline JSON is not inlined in the deploy script
-          # (inlining would break bash and can leak secrets in error messages)
-          # We use an environment variable to avoid shell interpolation of the JSON content.
-          firebase_b64=$(echo "$FIREBASE_CREDENTIALS_JSON" | base64 -w0)
-          echo "firebase_b64<<OUTPUT_EOF" >> $GITHUB_OUTPUT
-          echo "$firebase_b64" >> $GITHUB_OUTPUT
-          echo "OUTPUT_EOF" >> $GITHUB_OUTPUT
-      - name: Deploy to Raspberry Pi
-        env:
-          GH_ISSUE_TOKEN: ${{ env.GH_ISSUE_TOKEN }}
-        run: |
-          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 \
-            "$PI_USER@$PI_HOST" bash << DEPLOY_SCRIPT
-            set -e
-            echo "=== Deploy started ==="
+          node-version: 22
+          cache: npm
 
-            # Login to GHCR
-            echo "Logging into GHCR..."
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      - name: Install dependencies
+        run: npm ci
 
-            # Update repo
-            cd "$PI_APP_DIR"
-            echo "Updating repo..."
-            git gc --auto 2>/dev/null || true
-            git fetch origin && git reset --hard origin/${{ github.ref_name }}
-
-            # Set environment for docker compose (Firebase passed as base64 to avoid multiline/leak)
-            export IMAGE_NAME=$(echo ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
-            export IMAGE_TAG=${{ github.sha }}
-            export BOT_TOKEN="$BOT_TOKEN"
-            export DISCORD_APPLICATION_ID="$DISCORD_APPLICATION_ID"
-            export GITHUB_TOKEN="$GH_ISSUE_TOKEN"
-            FIREBASE_B64='${{ steps.firebase_b64.outputs.firebase_b64 }}'
-            export FIREBASE_CREDENTIALS_JSON="\$(echo "\$FIREBASE_B64" | base64 -d)"
-
-            # Free disk space before pulling new image
-            echo "Cleaning up old Docker resources..."
-            docker system prune -af --filter "until=1h" > /dev/null 2>&1 || true
-
-            # Deploy
-            echo "Pulling image..."
-            docker compose pull --quiet
-            echo "Starting containers..."
-            docker compose up -d --remove-orphans
-
-            # Verify container is running
-            echo "Verifying deployment..."
-            docker compose ps
-
-            # Cleanup
-            docker image prune -f > /dev/null
-            echo "=== Deploy finished ==="
-          DEPLOY_SCRIPT
+      - name: Register application commands
+        run: npm -w packages/functions run register-commands
 
   deploy-pages:
     needs: [ci]

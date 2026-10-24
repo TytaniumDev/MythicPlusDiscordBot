@@ -15,8 +15,8 @@ import { reportError } from '../lib/sentry';
 // Decoders for the Firestore docs the activity subscribes to. Each one turns a
 // raw snapshot into typed data with safe defaults, and lists what it had to
 // drop or default so the caller can report it. A malformed doc degrades the
-// UI instead of crashing it. Wire shapes the bot also reads are validated by
-// the codecs in @mythicplus/shared.
+// UI instead of crashing it. Wire shapes Cloud Functions also read are
+// validated by the codecs in @mythicplus/shared.
 
 function optionalString(
   data: Record<string, unknown>,

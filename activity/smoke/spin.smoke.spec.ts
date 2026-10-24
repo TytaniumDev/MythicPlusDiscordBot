@@ -24,7 +24,7 @@ import { mockCharacterRenders } from '../tests/helpers/renders';
 import { mockRaiderio } from '../tests/helpers/raiderio';
 
 // The admin SDK talks to the emulator via FIRESTORE_EMULATOR_HOST and bypasses
-// security rules — the same privileges the bot and Cloud Functions have. The browser goes through
+// security rules — the same privileges Cloud Functions have. The browser goes through
 // the client SDK, so its writes are checked against firestore.rules.
 if (getApps().length === 0) initializeApp({ projectId: process.env.GCLOUD_PROJECT });
 const db = getFirestore();

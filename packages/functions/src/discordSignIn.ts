@@ -6,7 +6,7 @@ import { enforceRateLimit } from './rateLimit.js';
 const DISCORD_API = 'https://discord.com/api/v10';
 
 // Stored in Secret Manager. DISCORD_APPLICATION_ID is the same value as the
-// bot's env var and the activity's VITE_DISCORD_CLIENT_ID.
+// activity's VITE_DISCORD_CLIENT_ID.
 const discordApplicationId = defineSecret('DISCORD_APPLICATION_ID');
 const discordClientSecret = defineSecret('DISCORD_CLIENT_SECRET');
 

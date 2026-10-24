@@ -1,6 +1,6 @@
 # Discord Activity Setup Guide
 
-This guide details how to set up the Wheelson activity for your Discord bot. This involves hosting the web files on GitHub Pages and configuring your Discord Application to recognize them.
+This guide details how to set up the Wheelson activity for your Discord application. This involves hosting the web files on GitHub Pages and configuring your Discord Application to recognize them.
 
 ## 1. Hosting the Activity (GitHub Pages)
 
@@ -20,7 +20,7 @@ We have added a GitHub Action to automatically deploy your activity files. You j
 1.  Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2.  Select your application.
 3.  Copy the **Application ID** from the **General Information** page.
-    *   Ensure this ID is set as `DISCORD_APPLICATION_ID` in your bot's `.env` file or environment variables.
+    *   Store it in Doppler as `DISCORD_APPLICATION_ID` (the deploy builds the activity with it) and in Secret Manager under the same name ([FIREBASE_SETUP.md](FIREBASE_SETUP.md) section 7).
 
 ### Configure the Activity
 
@@ -46,15 +46,14 @@ If sign-in fails or a player closes Discord's consent prompt, the activity keeps
 
 The activity uses Firebase (Firestore + Auth + Functions) for real-time lobby
 state and group reveals. Without these credentials the frontend will fail to
-initialize and the bot cannot persist sessions.
+initialize.
 
 ### Frontend (`activity/`)
 
 The Vite frontend reads the following variables at **build time** (Vite inlines
 `import.meta.env.VITE_*` into the bundle), so they must be present whenever the
-activity is built — including in CI when the GitHub Pages workflow runs. Add
-each one as a **repository secret** in GitHub (`Settings` → `Secrets and
-variables` → `Actions`) so the deploy workflow can pass them through:
+activity is built, including when the deploy workflow builds it for GitHub
+Pages. Store each one in Doppler, where the deploy workflow reads them:
 
 | Variable                            | Source (Firebase Console → Project Settings) |
 | ----------------------------------- | -------------------------------------------- |
@@ -67,26 +66,17 @@ variables` → `Actions`) so the deploy workflow can pass them through:
 
 For local development, place the same values in `activity/.env.local`.
 
-### Bot
-
-The bot writes session state to Firestore using a service account. Set
-`FIREBASE_CREDENTIALS_JSON` in the bot's environment to the full JSON of a
-Firebase Admin SDK service account key.
-
 See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for instructions on provisioning the
-Firebase project, enabling Firestore, and generating both the web app config
-and the service account credentials.
+Firebase project, enabling Firestore, and generating the web app config.
 
 ## 3. Running the Activity
 
-1.  Start your bot.
-2.  Join a Voice Channel in Discord.
-3.  Run the command: `/wheelson`.
-4.  The bot should reply with a "Join Activity" link.
-5.  Clicking the link will open the Wheelson activity directly inside Discord!
+1.  Join a voice channel in Discord.
+2.  Open the Activities launcher (the rocket button) and pick Wheelson.
+3.  Everyone who opens it in that voice channel shares one lobby.
 
 ## Troubleshooting
 
 *   **"404 Not Found" in the Activity:** Check your GitHub Pages URL in the Developer Portal. It must match exactly where your `index.html` is hosted.
-*   **Bot says "Application ID not available":** You forgot to set `DISCORD_APPLICATION_ID` in your environment variables.
+*   **The lobby stays empty:** the `syncLobbyMembers` Cloud Function fills it in. Check its logs (DEPLOYMENT.md section 4).
 *   **Activity doesn't load:** Open the Discord Console (Ctrl+Shift+I) to check for errors (like CORS or CSP issues, though GitHub Pages is usually fine).

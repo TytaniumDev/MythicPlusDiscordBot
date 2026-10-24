@@ -20,7 +20,7 @@ type NewLobbyDoc = Omit<ChannelData, 'members' | 'revealedGroups' | 'revealStart
 
 /**
  * An empty lobby as the activity creates it. `members` and `expireAt` are left
- * to the bot: firestore.rules reject them from clients.
+ * to `syncLobbyMembers`: firestore.rules reject them from clients.
  */
 export function newLobbyDoc(channelId: string, channelName: string, guildId: string): NewLobbyDoc {
   return {

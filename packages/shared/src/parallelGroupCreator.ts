@@ -414,15 +414,15 @@ function diversifyGroups(
 }
 
 /**
- * Form balanced Mythic+ groups from a player pool. Used by both the bot
- * (Discord-only `/wheel`) and the frontend (Activity spin).
+ * Form balanced Mythic+ groups from a player pool. The Activity runs it when
+ * someone spins.
  *
  * Three things that aren't obvious from the signature:
  *
  * 1. **Diversity across rounds.** A pair-count matrix tracks how often each
  *    pair of players has played in a group together tonight, scoped per
  *    `guildId`. The grabber-loop scoring penalizes repeats, so successive
- *    `/wheel` calls or Activity spins in the same guild produce minimally
+ *    Activity spins in the same guild produce minimally
  *    repeated groupings. A sit-out count per player tracks who sat out
  *    earlier rounds (in a group without a tank or healer), and the swap pass
  *    rotates sit-outs before it minimizes repeats.

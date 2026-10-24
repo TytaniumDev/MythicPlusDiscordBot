@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Run integration tests against a local Firestore emulator: the bot's
-# Firestore wire-format tests, then the firestore.rules tests
-# (activity/rules/). Starts the emulator (on port 8080), runs the tests, then
-# shuts it down.
+# Run the firestore.rules tests (activity/rules/) against a local Firestore
+# emulator. Starts the emulator (on port 8080), runs the tests, then shuts it
+# down.
 #
 # Usage: ./scripts/emulator-test.sh [extra vitest args]
 set -euo pipefail
@@ -21,4 +20,4 @@ echo "Using emulator at $FIRESTORE_EMULATOR_HOST"
 exec npx -y firebase-tools@14 emulators:exec \
   --only firestore \
   --project "$GCLOUD_PROJECT" \
-  "npm -w packages/bot run test -- --run --no-file-parallelism integration $* && npm -w activity exec -- vitest run -c vitest.rules.config.ts"
+  "npm -w activity exec -- vitest run -c vitest.rules.config.ts $*"

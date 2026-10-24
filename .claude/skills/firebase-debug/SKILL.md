@@ -16,12 +16,12 @@ Never write to or delete from Firestore from this skill. For data fixes, propose
 
 ## Collections
 
-The source of truth for shapes is `packages/bot/src/core/firebaseService.ts` and `packages/shared/src/types.ts`.
+The source of truth for shapes is `ARCHITECTURE.md` (collection layout), `activity/src/services/firestoreDecoders.ts` and the codecs in `packages/shared/src`.
 
 | Collection | Doc ID | Contents |
 |---|---|---|
 | `channels` | voice channel ID | Session: `status` (`lobby` \| `spinning` \| `completed`), `members` (`{ discordId, name }` with the activity open, written by `syncLobbyMembers`), `instanceId`, `groups`, `guildId`, `channelName`, `isDebug`, `createdAt`, `lastActive` |
-| `guilds` | guild ID | `guildName`, `voiceChannels`, group history (`groupHistory`), `seasonPairs`, `lastActive` |
+| `guilds` | guild ID | Group history (`groupHistory`), `seasonPairs`, `lastActive`. Older docs may still hold `guildName` and `voiceChannels` from the retired bot |
 | `preferences` | Discord user ID | Each player's profile (roles, in-game name, character) — the only copy; lobbies join it with `members` |
 | `issueTracking` | GitHub issue number | Issue-reporter notification state |
 | `config` | `season` | Current season config |

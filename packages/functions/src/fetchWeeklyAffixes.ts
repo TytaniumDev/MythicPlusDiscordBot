@@ -47,7 +47,7 @@ const RAIDERIO_AFFIXES_URL = 'https://raider.io/api/v1/mythic-plus/affixes?regio
 type SeasonDocFields = SeasonInfo & { fetchedAt: unknown };
 
 /**
- * Persist `config/season` so consumers (bot, Activity) can detect season
+ * Persist `config/season` so the Activity can detect season
  * changes and lazy-reset per-guild pair counts. Written from the weekly
  * affixes cron right after the affixes themselves are persisted.
  */
