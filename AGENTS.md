@@ -75,8 +75,8 @@ A player's profile (roles, in-game name, portrait, class) lives only in `prefere
 
 1. Users join a voice channel and launch the Wheelson activity
 2. The activity creates `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
-3. The activity's `useLobbySync` hook compares Discord's activity participants with the lobby's `members`. When they differ, one client calls the `syncLobbyMembers` Cloud Function, which reads the activity instance from Discord with the bot token and writes `members: [{ discordId, name }]`. Only that function writes `members`
-4. Someone opening or closing the activity (`ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE`) → the roster is synced again. A new activity instance in the channel (everyone closed it, then someone opened it again) clears the last session's round
+3. The activity's `useLobbySync` hook calls the `syncLobbyMembers` Cloud Function when the lobby opens and every 15 seconds while its status is `lobby`. The function reads the activity instance from Discord with the bot token and writes `members: [{ discordId, name }]` when they changed. Only that function writes `members`. (The SDK's own participant calls and events need an authenticated SDK, which anonymous players don't have, so the activity doesn't use them)
+4. A new activity instance in the channel (everyone closed it, then someone opened it again) clears the last session's round on its first sync
 5. The frontend subscribes to the lobby doc and to the members' `preferences` docs, and joins them into players with `WoWPlayer.fromPreferences`. Profile edits write only `preferences`, so every client's lobby follows
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
