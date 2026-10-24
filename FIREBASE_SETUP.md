@@ -89,7 +89,7 @@ Cloud Functions read their credentials from Google Secret Manager (`defineSecret
 | `BOT_TOKEN` | `onGithubIssueWebhook`, `reportIssue` (DMs as Wheelson), `discordInteractions` (reads the application's public key) |
 | `GITHUB_WEBHOOK_SECRET` | `onGithubIssueWebhook` |
 | `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET` | `discordSignIn` (the application ID and OAuth2 client secret from the Discord Developer Portal's **OAuth2** page) |
-| `GITHUB_ISSUES_TOKEN` | `reportIssue`, `reportBadGroup`, `discordInteractions` (a GitHub token with Issues read & write on this repo; the same value as Doppler's `GITHUB_TOKEN`) |
+| `GITHUB_ISSUES_TOKEN` | `reportIssue`, `reportBadGroup`, `discordInteractions` (a GitHub token with Issues read & write on this repo; the same value as Doppler's `GH_ISSUE_TOKEN`, which the Pi gets as `GITHUB_TOKEN`) |
 
 The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:
 
