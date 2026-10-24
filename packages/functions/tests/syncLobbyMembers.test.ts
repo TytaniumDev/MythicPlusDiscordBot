@@ -5,13 +5,14 @@ const mockEnforceRateLimit = vi.fn();
 const mockFetchActivityInstance = vi.fn();
 const mockFetchGuildMemberNames = vi.fn();
 const mockUpdate = vi.fn();
+const mockWarn = vi.fn();
 const docs = new Map<string, Record<string, unknown>>();
 
 vi.mock('firebase-functions/params', () => ({
   defineSecret: (name: string) => ({ value: () => `${name}-value` }),
 }));
 vi.mock('firebase-functions', () => ({
-  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
+  logger: { warn: (...args: unknown[]) => mockWarn(...args), info: vi.fn(), error: vi.fn() },
 }));
 vi.mock('firebase-admin/firestore', () => {
   const doc = (path: string) => ({ path, get: () => Promise.resolve({ data: () => docs.get(path) }) });
@@ -55,6 +56,7 @@ beforeEach(() => {
   mockFetchGuildMemberNames.mockReset().mockImplementation((_t: string, _g: string, id: string) =>
     Promise.resolve({ nick: null, globalName: `Name.${id}`, username: `user${id}` }));
   mockUpdate.mockReset();
+  mockWarn.mockReset();
 });
 
 describe('syncLobbyMembers', () => {
@@ -117,6 +119,16 @@ describe('syncLobbyMembers', () => {
     await expect(call()).rejects.toMatchObject({ code: 'failed-precondition' });
     await expect(call({ channelId: 'x', instanceId: 'i-1' })).rejects.toMatchObject({ code: 'invalid-argument' });
     await expect(call(REQUEST, null)).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  it('logs why it refused, since the client only sees the error', async () => {
+    docs.set('channels/2001', { guildId: '1001', members: [] });
+    mockFetchActivityInstance.mockResolvedValueOnce({ ...INSTANCE, channelId: '2002' });
+    await expect(call()).rejects.toMatchObject({ code: 'permission-denied' });
+    expect(mockWarn).toHaveBeenCalledWith(
+      'syncLobbyMembers refused: The activity is not running in this channel',
+      expect.objectContaining({ code: 'permission-denied', channelId: '2001', instanceChannelId: '2002' }),
+    );
   });
 
   it('reports Discord failures as unavailable', async () => {

@@ -16,6 +16,14 @@ function toDate(value: unknown): Date | null {
   return typeof timestamp?.toDate === 'function' ? timestamp.toDate() : null;
 }
 
+type RejectCode = 'unauthenticated' | 'invalid-argument' | 'permission-denied' | 'failed-precondition';
+
+/** Log why a sync was turned down (the client only sees the error), then return the error to throw. */
+function reject(code: RejectCode, message: string, context: Record<string, unknown> = {}): HttpsError {
+  logger.warn(`syncLobbyMembers refused: ${message}`, { code, ...context });
+  return new HttpsError(code, message);
+}
+
 /**
  * Write a lobby's `members` from the people who have its activity open. Any
  * client in the activity can ask; the roster comes from Discord's record of
@@ -26,13 +34,13 @@ export const syncLobbyMembers = onCall(
   { secrets: [botToken, discordApplicationId] },
   async (request) => {
     if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Authentication required');
+      throw reject('unauthenticated', 'Authentication required');
     }
     await enforceRateLimit(request.auth.uid, 'syncLobbyMembers', 30, 60000);
 
     const sync = parseLobbySyncRequest(request.data);
     if (!sync) {
-      throw new HttpsError('invalid-argument', 'A sync needs a channel and an activity instance');
+      throw reject('invalid-argument', 'A sync needs a channel and an activity instance');
     }
 
     const token = botToken.value().trim();
@@ -44,7 +52,12 @@ export const syncLobbyMembers = onCall(
       throw new HttpsError('unavailable', 'Could not reach Discord');
     }
     if (!instance || instance.channelId !== sync.channelId || !instance.guildId) {
-      throw new HttpsError('permission-denied', 'The activity is not running in this channel');
+      throw reject('permission-denied', 'The activity is not running in this channel', {
+        channelId: sync.channelId,
+        instanceFound: instance !== null,
+        instanceChannelId: instance?.channelId ?? null,
+        instanceGuildId: instance?.guildId ?? null,
+      });
     }
     const guildId = instance.guildId;
 
@@ -52,10 +65,14 @@ export const syncLobbyMembers = onCall(
     const ref = db.doc(`channels/${sync.channelId}`);
     const lobby = (await ref.get()).data();
     if (!lobby) {
-      throw new HttpsError('failed-precondition', 'This channel has no lobby');
+      throw reject('failed-precondition', 'This channel has no lobby', { channelId: sync.channelId });
     }
     if (lobby.guildId !== guildId) {
-      throw new HttpsError('permission-denied', 'The activity is not running in this channel');
+      throw reject('permission-denied', 'The activity is not running in this channel', {
+        channelId: sync.channelId,
+        lobbyGuildId: typeof lobby.guildId === 'string' ? lobby.guildId : null,
+        instanceGuildId: guildId,
+      });
     }
 
     // Names are read once per newcomer; members who stay keep theirs.
@@ -88,6 +105,9 @@ export const syncLobbyMembers = onCall(
       transaction.update(ref, { ...update, lastActive: FieldValue.serverTimestamp() });
       return true;
     });
+    if (changed) {
+      logger.info('syncLobbyMembers updated a lobby', { channelId: sync.channelId, members: instance.userIds.length });
+    }
     return { changed };
   },
 );
