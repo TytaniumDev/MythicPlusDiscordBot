@@ -271,7 +271,6 @@ async function main() {
   // Track listeners for shutdown cleanup
   let badGroupReportListener: { unsubscribe(): void } | null = null;
   let guildRefreshListener: { unsubscribe(): void } | null = null;
-  let channelListener: { unsubscribe(): void } | null = null;
 
   // -- Ready event --
   client.once(Events.ClientReady, async (readyClient) => {
@@ -411,14 +410,6 @@ async function main() {
 
     if (guildRefreshListener) {
       logger.info('Listening for guild refresh requests from activity frontend');
-    }
-
-    // Track every lobby doc and keep its voice members in sync. Existing docs
-    // arrive as 'added' on startup, so tracking survives restarts.
-    channelListener = sessionService.listen();
-
-    if (channelListener) {
-      logger.info('Tracking lobby docs');
     }
   });
 
@@ -736,41 +727,12 @@ async function main() {
     await interaction.reply({ content: '❌ Unknown modal.', ephemeral: true });
   }
 
-  // -- Voice state update --
-  client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-    try {
-      const before = {
-        channel: oldState.channel
-          ? {
-              id: oldState.channel.id,
-              members: oldState.channel.members.map((m) => adaptMember(m)),
-            }
-          : null,
-      };
-
-      const after = {
-        channel: newState.channel
-          ? {
-              id: newState.channel.id,
-              members: newState.channel.members.map((m) => adaptMember(m)),
-            }
-          : null,
-      };
-
-      await sessionService.onVoiceStateUpdate(before, after);
-    } catch (e) {
-      reportError(e, { tags: { handler: 'voiceStateUpdate' } });
-    }
-  });
-
   // -- Graceful shutdown --
   async function shutdown() {
     logger.info('Shutting down...');
     stopHeartbeat();
     badGroupReportListener?.unsubscribe();
     guildRefreshListener?.unsubscribe();
-    channelListener?.unsubscribe();
-    sessionService.shutdown();
     client.destroy();
     await Sentry.flush(2000);
     process.exit(0);

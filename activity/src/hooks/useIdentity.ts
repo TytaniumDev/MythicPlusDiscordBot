@@ -1,14 +1,11 @@
 import { useCallback } from 'react';
+import { lobbyMemberName } from '@mythicplus/shared';
 import { useAppStore } from '../store/store';
 import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
 import { loadStoredDiscordId, saveStoredDiscordId } from '../lib/storedDiscordId';
 import { getSessionService } from './useSession';
-
-function stripDots(s: string): string {
-  return s.replace(/\./g, '');
-}
 
 interface CommitOptions {
   /** When true, also write the discordId to localStorage. Skip when the call
@@ -89,7 +86,11 @@ export function useIdentity() {
     if (participants.length === 0) return;
 
     for (const participant of participants) {
-      const pName = stripDots(participant.nickname ?? participant.global_name ?? participant.username);
+      const pName = lobbyMemberName({
+        nick: participant.nickname,
+        globalName: participant.global_name,
+        username: participant.username,
+      });
       const match = players.find((p) => p.name === pName);
       if (match && match.discordId) {
         commitIdentity(match, { persist: true });

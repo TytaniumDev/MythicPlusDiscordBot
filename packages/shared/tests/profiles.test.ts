@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WoWPlayer } from '../src/models';
-import { parseLobbyMembers, parsePlayerPreferences } from '../src/profiles';
+import { lobbyMemberName, parseLobbyMembers, parsePlayerPreferences } from '../src/profiles';
 
 describe('parsePlayerPreferences', () => {
   it('reads every profile field from a full doc', () => {
@@ -95,5 +95,17 @@ describe('WoWPlayer.fromPreferences', () => {
     });
     expect(player.mediaUrl).toBe('https://render.worldofwarcraft.com/us/character/x.jpg');
     expect(player.hasRoles()).toBe(false);
+  });
+});
+
+describe('lobbyMemberName', () => {
+  it('prefers the server nickname, then the display name, then the username', () => {
+    expect(lobbyMemberName({ nick: 'Nick', globalName: 'Global', username: 'user' })).toBe('Nick');
+    expect(lobbyMemberName({ nick: null, globalName: 'Global', username: 'user' })).toBe('Global');
+    expect(lobbyMemberName({ username: 'user' })).toBe('user');
+  });
+
+  it('skips empty names and strips dots', () => {
+    expect(lobbyMemberName({ nick: '', globalName: 'Mr.Ty.', username: 'ty' })).toBe('MrTy');
   });
 });

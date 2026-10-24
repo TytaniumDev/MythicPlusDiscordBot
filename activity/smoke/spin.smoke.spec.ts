@@ -24,7 +24,7 @@ import { mockCharacterRenders } from '../tests/helpers/renders';
 import { mockRaiderio } from '../tests/helpers/raiderio';
 
 // The admin SDK talks to the emulator via FIRESTORE_EMULATOR_HOST and bypasses
-// security rules — the same privileges the bot has. The browser goes through
+// security rules — the same privileges the bot and Cloud Functions have. The browser goes through
 // the client SDK, so its writes are checked against firestore.rules.
 if (getApps().length === 0) initializeApp({ projectId: process.env.GCLOUD_PROJECT });
 const db = getFirestore();
@@ -62,9 +62,10 @@ const ROSTER = [
 ];
 
 /**
- * Write what the bot, Cloud Functions and earlier activity sessions would
- * have: config, guild, each player's preferences, and a lobby listing who is
- * in voice. The activity joins the last two itself.
+ * Write what Cloud Functions and earlier activity sessions would have:
+ * config, guild, each player's preferences, and a lobby listing who has the
+ * activity open, as `syncLobbyMembers` writes it. The activity joins the last
+ * two itself.
  */
 async function seedLobby(): Promise<void> {
   const now = FieldValue.serverTimestamp();
@@ -84,6 +85,7 @@ async function seedLobby(): Promise<void> {
     guildId: GUILD_ID,
     status: 'lobby',
     members: ROSTER.map((p) => ({ discordId: p.discordId, name: p.name })),
+    instanceId: 'i-smoke',
     groups: [],
     sittingOut: [],
     isDebug: false,

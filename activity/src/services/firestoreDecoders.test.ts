@@ -22,6 +22,7 @@ const validChannel = {
   guildId: 'g1',
   status: 'completed',
   members: [{ discordId: '1', name: 'Ay' }],
+  instanceId: 'i-1',
   groups: [{ tank: player('t'), healer: null, dps: [player('d')] }],
   revealedGroups: 1,
   claimedPlayers: ['1'],

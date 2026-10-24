@@ -47,7 +47,7 @@ For the main bot deploy (e.g. to a Raspberry Pi via `.github/workflows/deploy.ym
    Reads are public. Every client write requires the anonymous Firebase sign-in the activity does on load, and may only touch the fields the activity actually writes (with type and size checks). The bot and Cloud Functions use the Admin SDK, which bypasses the rules.
 
    - `guilds/{guildId}` — clients can set up a guild doc and record `groupHistory` / `seasonPairs` / `refreshRequest`; `guildName`, `guildIconUrl` and `voiceChannels` are bot-owned. No delete.
-   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `members` (who is in voice) and `expireAt` (the TTL expiry) are bot-only: clients can't write them at all, so a lobby a client opens stays empty until the bot fills it in. No delete.
+   - `channels/{channelId}` — clients create a lobby (status `lobby`, parent guild must exist) and drive the round. Status moves `lobby` → `spinning` → `completed`, and anything can reset to `lobby`. `groups` can only be written when a spin starts or cleared on reset, so a second Spin can't overwrite a round in progress. `members` (who has the activity open), `instanceId` and `expireAt` (the TTL expiry) are server-only: clients can't write them at all, so a lobby a client opens stays empty until the `syncLobbyMembers` Cloud Function fills it in. No delete.
    - `preferences/{discordId}` — each player's profile, and its only copy. Doc ID must be a numeric Discord ID; roles must be known role names, `mediaUrl` must be a `render.worldofwarcraft.com` URL, `characterClass` a known class. No delete.
    - `config/{docId}` — public read; writes are server-only (Cloud Functions populate `config/affixes` and `config/season`).
    - `rateLimits/{docId}` — server-only (read and write deny).
@@ -64,10 +64,10 @@ Channel documents are ephemeral lobbies and are cleaned up; guild documents are 
 
 - **Guild docs persist.** `guilds/{guildId}` is one small doc per server holding `groupHistory` and `seasonPairs`. Group history resets itself each day at midnight Pacific (it is stamped with `todayPST()` and ignored on any other date), and season pair counts reset when `config/season` changes.
 - **Completion does not trigger cleanup.** When the frontend sets `status: 'completed'`, the channel doc stays so results remain visible.
-- **Empty lobby.** When the last person leaves a tracked voice channel, the bot deletes its channel doc.
+- **New activity run.** When the activity is opened again in a channel after everyone closed it, Discord gives it a new instance ID, and `syncLobbyMembers` clears the last session's round.
 - **New lobby replaces the previous one.** When someone runs `/wheelson` again in the same voice channel, the bot resets the existing channel document back to `status: 'lobby'` (clearing `groups`) so the Activity link continues to work.
 - **TTL policies.** Firestore deletes docs whose `expireAt` has passed (usually within a day of it). The policies are code in the `fieldOverrides` of [`firestore.indexes.json`](firestore.indexes.json), applied by `firebase deploy --only firestore:indexes`:
-  - `channels.expireAt` — the bot sets it to 24 hours after its latest write to the lobby (creating it, or rewriting `members` on a voice change or at bot startup), so an abandoned lobby goes away a day after the bot last saw activity.
+  - `channels.expireAt` — set to 24 hours ahead when `/wheelson` opens the lobby and whenever `syncLobbyMembers` writes it (it pushes the expiry out while the activity stays open), so an abandoned lobby goes away a day after it was last used.
   - `rateLimits.expireAt` — the end of the doc's rate-limit window.
   - `characterCache.expireAt` — 30 days after the entry was last refreshed.
 
@@ -86,9 +86,9 @@ Cloud Functions read their credentials from Google Secret Manager (`defineSecret
 | Secret | Used by |
 |--------|---------|
 | `BNET_CLIENT_ID`, `BNET_CLIENT_SECRET` | `lookupCharacter`, `refreshCharacterMedia` (Battle.net API client from https://develop.battle.net) |
-| `BOT_TOKEN` | `onGithubIssueWebhook`, `reportIssue` (DMs as Wheelson), `discordInteractions` (reads the application's public key) |
+| `BOT_TOKEN` | `onGithubIssueWebhook`, `reportIssue` (DMs as Wheelson), `discordInteractions` (reads the application's public key), `syncLobbyMembers` (reads activity instances and member names) |
 | `GITHUB_WEBHOOK_SECRET` | `onGithubIssueWebhook` |
-| `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET` | `discordSignIn` (the application ID and OAuth2 client secret from the Discord Developer Portal's **OAuth2** page) |
+| `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET` | `discordSignIn` (the application ID and OAuth2 client secret from the Discord Developer Portal's **OAuth2** page); `syncLobbyMembers` uses the application ID too |
 | `GITHUB_ISSUES_TOKEN` | `reportIssue`, `reportBadGroup`, `discordInteractions` (a GitHub token with Issues read & write on this repo; the same value as Doppler's `GH_ISSUE_TOKEN`, which the Pi gets as `GITHUB_TOKEN`) |
 
 The production values are in Doppler. To create or rotate one, run this from the repo root, logged in to both the Doppler CLI and `firebase-tools` with an account that has Secret Manager access on the project. The value goes straight from Doppler to Secret Manager and never lands in your shell history:

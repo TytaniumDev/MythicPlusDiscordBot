@@ -6,7 +6,6 @@ import {
   parsePlayerPreferences,
   parseSeasonPairs,
   seasonPairsUpdate,
-  type LobbyMember,
   type PlayerPreferences,
   type WoWGroup,
   type WoWGroupDict,
@@ -25,8 +24,8 @@ export let DELETE_FIELD: unknown = null;
 
 /**
  * A lobby the bot hasn't written to for this long is deleted by the
- * `channels.expireAt` TTL policy (firestore.indexes.json). The bot writes
- * `members` on every voice change and for every lobby when it starts.
+ * `channels.expireAt` TTL policy (firestore.indexes.json). `syncLobbyMembers`
+ * pushes it out too while the activity is open.
  */
 const LOBBY_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -95,8 +94,6 @@ export interface IFirebaseService {
     debug?: boolean,
   ): Promise<string>;
   updateChannelDoc(channelId: string, data: Record<string, unknown>): Promise<void>;
-  setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void>;
-  deleteChannelDoc(channelId: string): Promise<void>;
   getPreferences(discordIds: string[]): Promise<Map<string, PlayerPreferences>>;
   listenForBadGroupReports(
     callback: (docId: string, data: Record<string, unknown>) => void,
@@ -104,14 +101,7 @@ export interface IFirebaseService {
   listenForGuildRefreshRequests(
     callback: (guildId: string, data: Record<string, unknown>) => void,
   ): { unsubscribe(): void } | null;
-  listenForChannels(handlers: ChannelListenerHandlers): { unsubscribe(): void } | null;
   deleteDoc(collectionName: string, docId: string): Promise<void>;
-}
-
-export interface ChannelListenerHandlers {
-  /** A lobby doc appeared (including every existing doc when the listener starts). */
-  onAdded(channelId: string, data: Record<string, unknown>): void;
-  onRemoved(channelId: string): void;
 }
 
 let instance: FirebaseService | null = null;
@@ -269,14 +259,6 @@ export class FirebaseService implements IFirebaseService {
   }
 
   /**
-   * Write a lobby's voice membership and push out its expiry. Only the bot
-   * writes `members` and `expireAt` (firestore.rules reject client writes).
-   */
-  async setChannelMembers(channelId: string, members: LobbyMember[]): Promise<void> {
-    await this.updateChannelDoc(channelId, { members, ...lobbyActivity() });
-  }
-
-  /**
    * Read the preferences docs for these players. Players without a doc are
    * absent from the returned map.
    */
@@ -289,13 +271,6 @@ export class FirebaseService implements IFirebaseService {
       if (snap.exists) prefs.set(snap.id, parsePlayerPreferences(snap.data()));
     }
     return prefs;
-  }
-
-  async deleteChannelDoc(channelId: string): Promise<void> {
-    if (!this.db) return;
-    const docRef = this.db.collection('channels').doc(channelId);
-    await docRef.delete();
-    logger.debug(`Deleted channel doc ${channelId} from Firestore`);
   }
 
   // Bad Group Report Listener
@@ -430,36 +405,6 @@ export class FirebaseService implements IFirebaseService {
     if (!this.db) return;
     const docRef = this.db.collection(collectionName).doc(docId);
     await docRef.delete();
-  }
-
-  /**
-   * Follow the set of lobby docs. `added` fires for every existing doc when the
-   * listener starts, so the bot rebuilds its lobby tracking after a restart.
-   * Modifications are ignored: the bot's own `members` writes would otherwise
-   * echo back.
-   */
-  listenForChannels(handlers: ChannelListenerHandlers): { unsubscribe(): void } | null {
-    if (!this.db) return null;
-
-    const collectionRef = this.db.collection('channels');
-
-    const unsubscribe = collectionRef.onSnapshot(
-      (...args: unknown[]) => {
-        const snapshot = args[0] as { docChanges(): { type: string; doc: FirebaseDocSnapshot }[] };
-        for (const change of snapshot.docChanges()) {
-          if (change.type === 'added') {
-            handlers.onAdded(change.doc.id, change.doc.data() ?? {});
-          } else if (change.type === 'removed') {
-            handlers.onRemoved(change.doc.id);
-          }
-        }
-      },
-      (...errArgs: unknown[]) => {
-        reportError(errArgs[0], { tags: { handler: 'firebaseService.channelListener' } });
-      },
-    );
-
-    return { unsubscribe: unsubscribe as () => void };
   }
 
   // Collection Operations

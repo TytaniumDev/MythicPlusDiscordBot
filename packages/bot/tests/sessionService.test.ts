@@ -26,7 +26,6 @@ import {
   type Guild,
   type VoiceChannel,
 } from '../src/services/sessionService.js';
-import type { ChannelListenerHandlers } from '../src/core/firebaseService.js';
 
 // ---------- helpers ----------
 
@@ -35,9 +34,6 @@ interface MockFirebase {
   getOrCreateGuildDoc: ReturnType<typeof vi.fn>;
   getOrCreateChannelDoc: ReturnType<typeof vi.fn>;
   updateGuildDoc: ReturnType<typeof vi.fn>;
-  setChannelMembers: ReturnType<typeof vi.fn>;
-  deleteChannelDoc: ReturnType<typeof vi.fn>;
-  listenForChannels: ReturnType<typeof vi.fn>;
 }
 
 function createMockFirebase(): MockFirebase {
@@ -46,9 +42,6 @@ function createMockFirebase(): MockFirebase {
     getOrCreateGuildDoc: vi.fn().mockResolvedValue('guild-1'),
     getOrCreateChannelDoc: vi.fn().mockResolvedValue('channel-1'),
     updateGuildDoc: vi.fn().mockResolvedValue(undefined),
-    setChannelMembers: vi.fn().mockResolvedValue(undefined),
-    deleteChannelDoc: vi.fn().mockResolvedValue(undefined),
-    listenForChannels: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
   };
 }
 
@@ -128,27 +121,9 @@ describe('SessionService.getOrCreateSession', () => {
     const [guildDocId, channelDocId] = result!;
     expect(guildDocId).toBe('1');
     expect(channelDocId).toBe('99');
-    expect(service.activeChannels.has('99')).toBe(true);
 
     expect(firebase.getOrCreateGuildDoc).toHaveBeenCalledWith('1', 'Test Guild', 'http://icon');
     expect(firebase.getOrCreateChannelDoc).toHaveBeenCalledWith('99', '1', 'Raid', false);
-  });
-
-  it('publishes the voice members to the new lobby', async () => {
-    const vc = makeVoiceChannel('99', 'Raid', [makeMember('P1'), makeMember('Bot', true)]);
-    const guild = makeGuild('1', [vc]);
-    const firebase = createMockFirebase();
-    firebase.getOrCreateChannelDoc.mockResolvedValue('99');
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-
-    await service.getOrCreateSession({
-      guild,
-      author: { voice: { channel: { id: '99', name: 'Raid' } } },
-    });
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledWith('99', [{ discordId: 'P1', name: 'P1' }]);
   });
 
   it('returns null when firebase is unavailable', async () => {
@@ -184,178 +159,6 @@ describe('SessionService.getOrCreateSession', () => {
     const ctx = { guild, author: { voice: null } };
     const result = await service.getOrCreateSession(ctx);
     expect(result).toBeNull();
-  });
-});
-
-// ---------- syncMembers ----------
-
-describe('SessionService.syncMembers', () => {
-  function serviceWithGuild(guild: Guild | null) {
-    const firebase = createMockFirebase();
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-    return { service, firebase };
-  }
-
-  it('writes the human voice members, dots stripped from names', async () => {
-    const vc = makeVoiceChannel('42', 'Raid', [
-      makeMember('Mr.Tank'),
-      makeMember('Healer'),
-      makeMember('Music', true),
-    ]);
-    const { service, firebase } = serviceWithGuild(makeGuild('1', [vc]));
-    service.activeChannels.set('42', '1');
-
-    await service.syncMembers('42');
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledWith('42', [
-      { discordId: 'Mr.Tank', name: 'MrTank' },
-      { discordId: 'Healer', name: 'Healer' },
-    ]);
-  });
-
-  it('skips untracked channels', async () => {
-    const { service, firebase } = serviceWithGuild(makeGuild('1'));
-
-    await service.syncMembers('42');
-
-    expect(firebase.setChannelMembers).not.toHaveBeenCalled();
-  });
-
-  it('writes no members when the voice channel is gone', async () => {
-    const { service, firebase } = serviceWithGuild(makeGuild('1'));
-    service.activeChannels.set('42', '1');
-
-    await service.syncMembers('42');
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledWith('42', []);
-  });
-
-  it('writes no members when the guild is not cached', async () => {
-    const { service, firebase } = serviceWithGuild(null);
-    service.activeChannels.set('42', '1');
-
-    await service.syncMembers('42');
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledWith('42', []);
-  });
-});
-
-// ---------- onVoiceStateUpdate ----------
-
-describe('SessionService.onVoiceStateUpdate', () => {
-  function trackedService() {
-    const vc = makeVoiceChannel('123', 'Raid', [makeMember('P1')]);
-    const guild = makeGuild('456', [vc]);
-    const firebase = createMockFirebase();
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(guild) });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-    service.activeChannels.set('123', '456');
-    return { service, firebase };
-  }
-
-  it('syncs a tracked channel someone joined', async () => {
-    const { service, firebase } = trackedService();
-
-    await service.onVoiceStateUpdate(
-      { channel: null },
-      { channel: { id: '123', members: [{ bot: false }] } },
-    );
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledWith('123', [{ discordId: 'P1', name: 'P1' }]);
-  });
-
-  it('syncs a tracked channel someone left while humans remain', async () => {
-    const { service, firebase } = trackedService();
-
-    await service.onVoiceStateUpdate(
-      { channel: { id: '123', members: [{ bot: false }] } },
-      { channel: null },
-    );
-
-    expect(firebase.setChannelMembers).toHaveBeenCalledOnce();
-    expect(firebase.deleteChannelDoc).not.toHaveBeenCalled();
-  });
-
-  it('deletes the lobby when the last human leaves', async () => {
-    const { service, firebase } = trackedService();
-
-    await service.onVoiceStateUpdate(
-      { channel: { id: '123', members: [{ bot: true }] } },
-      { channel: null },
-    );
-
-    expect(firebase.deleteChannelDoc).toHaveBeenCalledWith('123');
-    expect(firebase.setChannelMembers).not.toHaveBeenCalled();
-    expect(service.activeChannels.has('123')).toBe(false);
-  });
-
-  it('ignores same-channel events (mute/unmute)', async () => {
-    const { service, firebase } = trackedService();
-    const channel = { id: '123', members: [{ bot: false }] };
-
-    await service.onVoiceStateUpdate({ channel }, { channel });
-
-    expect(firebase.setChannelMembers).not.toHaveBeenCalled();
-  });
-
-  it('ignores untracked channels', async () => {
-    const { service, firebase } = trackedService();
-
-    await service.onVoiceStateUpdate(
-      { channel: null },
-      { channel: { id: '999', members: [{ bot: false }] } },
-    );
-
-    expect(firebase.setChannelMembers).not.toHaveBeenCalled();
-  });
-});
-
-// ---------- listen ----------
-
-describe('SessionService.listen', () => {
-  function listeningService() {
-    const vc = makeVoiceChannel('42', 'Raid', [makeMember('P1')]);
-    const firebase = createMockFirebase();
-    const bot = makeBot({ get_guild: vi.fn().mockReturnValue(makeGuild('1', [vc])) });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(bot, firebase as any);
-    service.listen();
-    const handlers = firebase.listenForChannels.mock.calls[0][0] as ChannelListenerHandlers;
-    return { service, firebase, handlers };
-  }
-
-  it('tracks an added lobby and publishes its members', async () => {
-    const { service, firebase, handlers } = listeningService();
-
-    handlers.onAdded('42', { guildId: '1' });
-
-    expect(service.activeChannels.get('42')).toBe('1');
-    await vi.waitFor(() => {
-      expect(firebase.setChannelMembers).toHaveBeenCalledWith('42', [{ discordId: 'P1', name: 'P1' }]);
-    });
-  });
-
-  it('ignores an added lobby with no guildId', () => {
-    const { service, firebase, handlers } = listeningService();
-
-    handlers.onAdded('42', {});
-
-    expect(service.activeChannels.size).toBe(0);
-    expect(firebase.setChannelMembers).not.toHaveBeenCalled();
-  });
-
-  it('stops tracking a removed lobby', () => {
-    const { service, handlers } = listeningService();
-    service.activeChannels.set('42', '1');
-    service.activeChannels.set('43', '1');
-
-    handlers.onRemoved('42');
-
-    expect(service.activeChannels.has('42')).toBe(false);
-    expect(service.activeChannels.has('43')).toBe(true);
   });
 });
 
@@ -446,52 +249,5 @@ describe('SessionService.refreshGuildVoiceChannels', () => {
 
     const channels = firebase.updateGuildDoc.mock.calls[0][1].voiceChannels;
     expect(channels[0].userCount).toBe(1);
-  });
-});
-
-// ---------- cleanupChannel ----------
-
-describe('SessionService.cleanupChannel', () => {
-  it('stops tracking the channel and deletes only its channel doc', async () => {
-    const firebase = createMockFirebase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(makeBot(), firebase as any);
-
-    service.activeChannels.set('42', '1');
-    service.activeChannels.set('43', '1');
-
-    await service.cleanupChannel('42');
-
-    expect(service.activeChannels.has('42')).toBe(false);
-    expect(service.activeChannels.has('43')).toBe(true);
-    // The guild doc (group history, season pairs) must survive the lobby
-    // emptying between rounds. The mock has no guild-delete method, so an
-    // attempt to delete it would throw.
-    expect(firebase.deleteChannelDoc).toHaveBeenCalledOnce();
-    expect(firebase.deleteChannelDoc).toHaveBeenCalledWith('42');
-  });
-
-  it('is a no-op for nonexistent channels', async () => {
-    const firebase = createMockFirebase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new SessionService(makeBot(), firebase as any);
-
-    await service.cleanupChannel('999');
-
-    expect(firebase.deleteChannelDoc).not.toHaveBeenCalled();
-  });
-});
-
-// ---------- shutdown ----------
-
-describe('SessionService.shutdown', () => {
-  it('clears tracked channels', () => {
-    const { service } = makeService();
-
-    service.activeChannels.set('42', '1');
-
-    service.shutdown();
-
-    expect(service.activeChannels.size).toBe(0);
   });
 });

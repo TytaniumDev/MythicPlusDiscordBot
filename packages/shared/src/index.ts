@@ -18,6 +18,8 @@ export { WoWPlayer, WoWGroup } from './models.js';
 export {
   parsePlayerPreferences,
   parseLobbyMembers,
+  lobbyMemberName,
+  type DiscordNames,
   type LobbyMember,
   type PlayerPreferences,
 } from './profiles.js';

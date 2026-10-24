@@ -6,7 +6,7 @@ export interface DiscordContext {
   channelId: string | null;
 }
 
-interface DiscordParticipant {
+export interface DiscordParticipant {
   id: string;
   nickname: string | null;
   global_name: string | null;
@@ -139,6 +139,15 @@ export async function authorizeWithDiscord(): Promise<string> {
   return code;
 }
 
+function toParticipant(p: Record<string, unknown>): DiscordParticipant {
+  return {
+    id: (p.id ?? p.user_id ?? '') as string,
+    nickname: (p.nickname ?? null) as string | null,
+    global_name: (p.global_name ?? null) as string | null,
+    username: (p.username ?? '') as string,
+  };
+}
+
 /**
  * Get all participants connected to the current activity instance.
  * Returns empty array if not embedded or SDK not initialized.
@@ -148,14 +157,37 @@ export async function getParticipants(): Promise<DiscordParticipant[]> {
 
   try {
     const result = await _sdkInstance.commands.getInstanceConnectedParticipants();
-    return (result.participants ?? []).map((p: Record<string, unknown>) => ({
-      id: (p.id ?? p.user_id ?? '') as string,
-      nickname: (p.nickname ?? null) as string | null,
-      global_name: (p.global_name ?? null) as string | null,
-      username: (p.username ?? '') as string,
-    }));
+    return (result.participants ?? []).map(toParticipant);
   } catch (e) {
     reportError(e, { tag: 'discordSdk.getParticipants' });
     return [];
   }
+}
+
+/**
+ * Call `listener` with the instance's participants each time someone opens or
+ * closes the activity. Returns the unsubscribe function; a no-op outside
+ * Discord.
+ */
+export function onParticipantsChange(listener: (participants: DiscordParticipant[]) => void): () => void {
+  const sdk = _sdkInstance;
+  if (!sdk) return () => {};
+  const handler = (event: { participants: Record<string, unknown>[] }) => {
+    listener((event.participants ?? []).map(toParticipant));
+  };
+  sdk.subscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch((e: unknown) => {
+    reportError(e, { tag: 'discordSdk.onParticipantsChange' });
+  });
+  return () => {
+    sdk.unsubscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch(() => {});
+  };
+}
+
+/**
+ * The ID Discord gives this run of the activity. Everyone with the activity
+ * open in a channel shares it; closing it for everyone ends it. Null outside
+ * Discord.
+ */
+export function activityInstanceId(): string | null {
+  return _sdkInstance?.instanceId || null;
 }

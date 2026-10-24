@@ -82,12 +82,12 @@ activity/                  # React/Vite frontend (npm workspace)
 
 ### Data Flow for the Activity
 
-A player's profile (roles, in-game name, portrait, class) lives only in `preferences/{discordId}`. The lobby doc holds voice membership, nothing else about players.
+A player's profile (roles, in-game name, portrait, class) lives only in `preferences/{discordId}`. The lobby doc holds who has the activity open, nothing else about players.
 
 1. Users join a voice channel and launch the Wheelson activity (or run `/wheelson`)
 2. The activity (or `/wheelson`) creates `guilds/{guildId}` and `channels/{channelId}` (status: `lobby`)
-3. The bot follows the `channels` collection: when a lobby doc appears (or already exists when the bot starts), it writes `members: [{ discordId, name }]` from the voice channel. Only the bot writes `members`
-4. Voice state changes → bot rewrites `members`; the last human leaving deletes the lobby doc (never the guild doc)
+3. The activity's `useLobbySync` hook compares Discord's activity participants with the lobby's `members`. When they differ, one client calls the `syncLobbyMembers` Cloud Function, which reads the activity instance from Discord with the bot token and writes `members: [{ discordId, name }]`. Only that function writes `members`
+4. Someone opening or closing the activity (`ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE`) → the roster is synced again. A new activity instance in the channel (everyone closed it, then someone opened it again) clears the last session's round
 5. The frontend subscribes to the lobby doc and to the members' `preferences` docs, and joins them into players with `WoWPlayer.fromPreferences`. Profile edits write only `preferences`, so every client's lobby follows
 6. User clicks "Spin" → frontend runs `createMythicPlusGroups()` client-side
 7. Frontend writes `groups` + status: `spinning` to Firestore
@@ -115,7 +115,7 @@ These serve different input shapes — don't unify them.
 
 `lobby` → `spinning` → `completed`
 
-The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. The bot doesn't act on status changes; it keeps `members` in sync with the voice channel.
+The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. Nothing server-side acts on status changes; `syncLobbyMembers` only keeps `members` in step with the activity's participants.
 
 ## Conventions
 
@@ -136,7 +136,7 @@ The frontend owns the transition to `spinning` (with client-side computed groups
 - Bot tests use `vitest` and are in `packages/bot/tests/`
 - Shared package tests live in `packages/shared/tests/`
 - Frontend E2E tests use Playwright and are in `activity/tests/`. Import `test`/`expect` from `activity/tests/fixtures.ts`, not `@playwright/test`: it serves Blizzard character renders from saved copies (`activity/tests/character-renders/`, one avatar and one half-size main-raw per mock player) and holds Firestore requests open so screenshots don't depend on the network. Save both renders there when you add a mock player.
-- The end-to-end smoke test (`activity/smoke/`, run by `./scripts/smoke-test.sh`) drives the production activity build against the Firestore and Auth emulators. It seeds a lobby with the admin SDK as the bot would, spins twice through the real UI, and checks the groups, group history, and season pairs in Firestore. Keep it passing whenever the spin flow, wire format, or `firestore.rules` change.
+- The end-to-end smoke test (`activity/smoke/`, run by `./scripts/smoke-test.sh`) drives the production activity build against the Firestore and Auth emulators. It seeds a lobby with the admin SDK as `syncLobbyMembers` would, spins twice through the real UI, and checks the groups, group history, and season pairs in Firestore. Keep it passing whenever the spin flow, wire format, or `firestore.rules` change.
 - `firestore.rules` tests live in `activity/rules/` and run under `./scripts/emulator-test.sh`. When you add or change a Firestore write in `activity/src/services/firestoreService.ts`, add or update the matching "allows" case there, or the rules may reject it in production. Lobby writes that span several fields or read first (`ensureLobby`, `startSpin`, `startReveal`, `lobbyReset` in `activity/src/services/lobby.ts`) are called by the rules tests directly; keep such writes there.
 - Bot-test helpers (prebuilt WoWPlayer fixtures): `packages/bot/tests/prebuiltClasses.ts`
 

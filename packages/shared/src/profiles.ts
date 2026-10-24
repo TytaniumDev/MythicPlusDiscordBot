@@ -2,13 +2,31 @@ import { ALL_ROLES, type RoleName } from './config.js';
 import { toCharacterClass, type CharacterClass } from './types.js';
 
 /**
- * One person in a lobby's voice channel, as the bot writes it to
- * `channels/{channelId}.members`. `name` is the Discord display name with dots
- * stripped. Everything else about the player lives in `preferences/{discordId}`.
+ * One person with the lobby's activity open, as the `syncLobbyMembers` Cloud
+ * Function writes it to `channels/{channelId}.members`. `name` comes from
+ * `lobbyMemberName`. Everything else about the player lives in
+ * `preferences/{discordId}`.
  */
 export interface LobbyMember {
   discordId: string;
   name: string;
+}
+
+/** A Discord user's name as Discord reports it for a server. */
+export interface DiscordNames {
+  /** The user's nickname in this server. */
+  nick?: string | null;
+  /** The user's display name. */
+  globalName?: string | null;
+  username: string;
+}
+
+/**
+ * The name a lobby shows for a player: their server nickname, else their
+ * display name, else their username, with dots stripped.
+ */
+export function lobbyMemberName({ nick, globalName, username }: DiscordNames): string {
+  return (nick || globalName || username).replace(/\./g, '');
 }
 
 /**

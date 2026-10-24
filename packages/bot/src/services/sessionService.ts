@@ -1,7 +1,5 @@
 import { FirebaseService } from '../core/firebaseService.js';
-import logger from '../core/logger.js';
-import { reportError } from '../core/sentry.js';
-import { toLobbyMember, type DiscordMember } from '../core/utils.js';
+import type { DiscordMember } from '../core/utils.js';
 import { buildVoiceChannelsSnapshot } from '../core/discordAdapters.js';
 
 export interface VoiceChannel {
@@ -24,90 +22,18 @@ export interface Bot {
   loop?: unknown;
 }
 
-export interface VoiceState {
-  channel: { id: string; members: { bot: boolean }[] } | null;
-}
-
 /**
- * Keeps each lobby doc's `members` in sync with its voice channel.
- *
- * The set of lobbies comes from Firestore, not memory: `listen()` follows the
- * `channels` collection, so a lobby created by `/wheelson` or by the activity
- * is tracked the moment its doc appears, and a restarted bot picks up every
- * existing lobby again. Channel doc IDs are the voice channel IDs.
+ * Opens lobbies for `/wheelson`. The lobby's `members` come from the people
+ * with its activity open, which the `syncLobbyMembers` Cloud Function writes;
+ * the bot no longer follows voice channels for it.
  */
 export class SessionService {
   bot: Bot;
   firebase: FirebaseService;
-  /** Tracked lobbies: voice channel ID → guild ID. */
-  activeChannels = new Map<string, string>();
 
   constructor(bot: Bot, firebase?: FirebaseService) {
     this.bot = bot;
     this.firebase = firebase ?? FirebaseService.getInstance();
-  }
-
-  /** Start following lobby docs. Returns null when Firebase is unavailable. */
-  listen(): { unsubscribe(): void } | null {
-    return this.firebase.listenForChannels({
-      onAdded: (channelId, data) => {
-        const guildId = typeof data.guildId === 'string' ? data.guildId : '';
-        if (!guildId) {
-          logger.warn(`Lobby ${channelId} has no guildId; not tracking it`);
-          return;
-        }
-        this.trackChannel(channelId, guildId).catch((err) => {
-          reportError(err, { tags: { handler: 'sessionService.trackChannel' }, extra: { channelId } });
-        });
-      },
-      onRemoved: (channelId) => this.untrackChannel(channelId),
-    });
-  }
-
-  /** Track a lobby and publish its current voice members. Idempotent. */
-  async trackChannel(channelId: string, guildId: string): Promise<void> {
-    this.activeChannels.set(channelId, guildId);
-    await this.syncMembers(channelId);
-  }
-
-  untrackChannel(channelId: string): void {
-    if (this.activeChannels.delete(channelId)) {
-      logger.info(`Lobby ${channelId} removed from tracking`);
-    }
-  }
-
-  shutdown(): void {
-    this.activeChannels.clear();
-    logger.info('SessionService shutdown complete.');
-  }
-
-  /** Write the lobby's `members` from who is in the voice channel right now. */
-  async syncMembers(channelId: string): Promise<void> {
-    const guildId = this.activeChannels.get(channelId);
-    if (!guildId) return;
-
-    const channel = this.bot.get_guild(guildId)?.get_channel(channelId) ?? null;
-    const members = channel
-      ? channel.members.filter((m) => !m.bot).map(toLobbyMember)
-      : [];
-    await this.firebase.setChannelMembers(channelId, members);
-  }
-
-  async onVoiceStateUpdate(before: VoiceState, after: VoiceState): Promise<void> {
-    if (before.channel?.id === after.channel?.id) return;
-
-    if (before.channel && this.activeChannels.has(before.channel.id)) {
-      const humans = before.channel.members.filter((m) => !m.bot);
-      if (humans.length === 0) {
-        await this.cleanupChannel(before.channel.id);
-      } else {
-        await this.syncMembers(before.channel.id);
-      }
-    }
-
-    if (after.channel && this.activeChannels.has(after.channel.id)) {
-      await this.syncMembers(after.channel.id);
-    }
   }
 
   async getOrCreateSession(
@@ -144,10 +70,6 @@ export class SessionService {
       debug,
     );
 
-    // The channels listener also tracks a newly created doc; syncing here too
-    // means the reply never races ahead of the roster.
-    await this.trackChannel(voiceChannelId, guildId);
-
     return [guildDocId, channelDocId];
   }
 
@@ -159,14 +81,5 @@ export class SessionService {
     await this.firebase.updateGuildDoc(guild.id, {
       voiceChannels: voiceChannelsData,
     });
-  }
-
-  /**
-   * The lobby emptied: delete its channel doc. The guild doc stays — it holds
-   * today's group history and the season's pair counts.
-   */
-  async cleanupChannel(channelId: string): Promise<void> {
-    if (!this.activeChannels.delete(channelId)) return;
-    await this.firebase.deleteChannelDoc(channelId);
   }
 }
