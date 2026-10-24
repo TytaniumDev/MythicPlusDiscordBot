@@ -83,7 +83,7 @@ A player's profile (roles, in-game name, portrait, class) lives only in `prefere
 8. Pressing Spin on the wheels screen writes a server-time `revealStartAt`, and every client plays the wheel reveal from it so all screens animate together (`activity/src/lib/revealTimeline.ts`)
 9. Frontend sets status: `completed`; every client shows the results
 
-Who the current user is: the activity guesses (remembered ID, Discord participant match, or the "Select Your Name" picker) unless they opt in to Sign in with Discord (`activity/src/services/discordAuth.ts` + the `discordSignIn` Cloud Function). That makes their Firebase Auth uid their Discord ID, and it overrides every guess. Anonymous sign-in stays the default, and `firestore.rules` don't distinguish the two.
+Who the current user is: the activity uses the remembered ID or asks with the "Select Your Name" picker unless they opt in to Sign in with Discord (`activity/src/services/discordAuth.ts` + the `discordSignIn` Cloud Function). That makes their Firebase Auth uid their Discord ID, and it overrides every guess. Anonymous sign-in stays the default, and `firestore.rules` don't distinguish the two.
 
 ### Domain Model
 
@@ -104,7 +104,7 @@ These serve different input shapes — don't unify them.
 
 `lobby` → `spinning` → `completed`
 
-The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. Nothing server-side acts on status changes; `syncLobbyMembers` only keeps `members` in step with the activity's participants.
+The frontend owns the transition to `spinning` (with client-side computed groups) and `completed`. Nothing server-side acts on status changes; `syncLobbyMembers` only keeps `members` in step with who has the activity open.
 
 ## Conventions
 
