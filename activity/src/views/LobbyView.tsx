@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { reportError } from '../lib/sentry';
+import { logInfo } from '../lib/log';
 import { PlayerChip } from '../components/PlayerChip';
 import { CharacterCard, type CharacterCardHandle } from '../components/CharacterCard';
 import { CharacterCardModal } from '../components/CharacterCardModal';
@@ -53,6 +54,7 @@ export function LobbyView({ onNavigate }: LobbyViewProps) {
     setShowSpinWarning(false);
     const { currentChannelId: channelId, seasonConfig, isDemoMode } = useAppStore.getState();
     if (!channelId) return;
+    logInfo('spin', 'Spin pressed', { players: players.length, sittingOut: sittingOut.length });
     try {
       setIsCalculating(true);
 

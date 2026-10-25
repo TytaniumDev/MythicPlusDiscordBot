@@ -16,6 +16,7 @@ import { initPools } from '../lib/roles';
 import { WheelEntry } from '../types';
 import { audio } from '../lib/audio';
 import { reportError } from '../lib/sentry';
+import { logInfo } from '../lib/log';
 import { delayUntil, MIN_CATCH_UP_SPIN } from '../lib/timing';
 import { catchUpSpinDurations, revealStart, revealTimeline } from '../lib/revealTimeline';
 
@@ -194,7 +195,16 @@ export function WheelsView({ onNavigate }: WheelsViewProps) {
 
     const totalFull = store.fullGroups.length;
     const timeline = revealTimeline(totalFull, store.remainderGroups.length);
-    const base = revealStart(revealStartAt, Date.now());
+    const now = Date.now();
+    const base = revealStart(revealStartAt, now);
+    // A negative serverStartAgoMs means this device's clock is behind the
+    // server's, which delays its reveal relative to the other screens.
+    logInfo('spin', 'playing the reveal', {
+      groups: totalFull,
+      remainders: store.remainderGroups.length,
+      startsInMs: base - now,
+      serverStartAgoMs: revealStartAt === undefined ? null : now - revealStartAt,
+    });
     const at = (offset: number) => delayUntil(base + offset);
     const isOver = (offset: number) => Date.now() >= base + offset;
 

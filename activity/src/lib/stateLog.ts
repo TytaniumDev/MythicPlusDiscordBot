@@ -37,10 +37,24 @@ export function describeStateChanges(prev: AppState, next: AppState): StateChang
   if (prevStatus !== nextStatus) {
     changes.push({ message: `lobby status: ${prevStatus} → ${nextStatus}` });
   }
+  const prevGroups = prev.channelData?.groups.length ?? 0;
+  const nextGroups = next.channelData?.groups.length ?? 0;
+  if (prevGroups !== nextGroups) {
+    changes.push({ message: `round groups: ${prevGroups} → ${nextGroups}` });
+  }
+  const prevRevealed = prev.channelData?.revealedGroups ?? 0;
+  const nextRevealed = next.channelData?.revealedGroups ?? 0;
+  if (prevRevealed !== nextRevealed) {
+    changes.push({ message: `revealed groups: ${prevRevealed} → ${nextRevealed}` });
+  }
   const prevMembers = prev.channelData?.members?.length ?? 0;
   const nextMembers = next.channelData?.members?.length ?? 0;
   if (prevMembers !== nextMembers) {
     changes.push({ message: `lobby members: ${prevMembers} → ${nextMembers}` });
+  }
+  if (prev.currentPlayerId !== next.currentPlayerId) {
+    const how = !prev.currentPlayerId ? 'none → set' : !next.currentPlayerId ? 'set → none' : 'switched';
+    changes.push({ message: `my player: ${how}` });
   }
   if (prev.identityResolved !== next.identityResolved) {
     changes.push({ message: `identity: ${next.identityResolved ? 'resolved' : 'unresolved'}` });
@@ -59,11 +73,20 @@ export function describeStateChanges(prev: AppState, next: AppState): StateChang
   return changes;
 }
 
-/** Log every state change `describeStateChanges` picks out, until the returned stop is called. */
+/**
+ * Log every state change `describeStateChanges` picks out, until the returned
+ * stop is called. The first lobby to load also logs how long it took since
+ * the page started, so a report can tell slow from stuck.
+ */
 export function watchStateForLogs(): () => void {
+  let lobbyLoaded = false;
   return useAppStore.subscribe((next, prev) => {
     for (const change of describeStateChanges(prev, next)) {
       (change.warn ? logWarn : logInfo)('state', change.message);
+    }
+    if (!lobbyLoaded && next.channelData) {
+      lobbyLoaded = true;
+      logInfo('state', `first lobby loaded ${Math.round(performance.now())}ms after page start`);
     }
   });
 }

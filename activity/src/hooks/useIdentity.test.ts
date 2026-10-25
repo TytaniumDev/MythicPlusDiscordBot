@@ -134,3 +134,22 @@ describe('claims', () => {
     expect(demoService.unclaimPlayer).toHaveBeenCalledExactlyOnceWith(CHANNEL_ID, quill.discordId);
   });
 });
+
+describe('identity logging', () => {
+  function identityLines(info: { mock: { calls: unknown[][] } }): string[] {
+    return info.mock.calls.map((args) => String(args[0])).filter((line) => line.includes('[identity]'));
+  }
+
+  it('says how the identity was found', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    saveStoredDiscordId(quill.discordId);
+    await resolve();
+    expect(identityLines(info)).toEqual(['[Wheelson] [identity] remembered']);
+  });
+
+  it('says when the picker shows because nobody was remembered', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    await resolve();
+    expect(identityLines(info)).toEqual(['[Wheelson] [identity] nobody remembered; showing the picker']);
+  });
+});

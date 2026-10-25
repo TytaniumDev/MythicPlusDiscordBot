@@ -6,6 +6,7 @@ import { computeDungeonRanking } from '../lib/dungeonSuggestions';
 import type { DungeonSuggestionsState } from '../lib/dungeonSuggestions';
 import type { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
+import { logInfo, logWarn } from '../lib/log';
 import { parseInGameName, DEFAULT_REGION } from '@mythicplus/shared';
 
 interface FetchState {
@@ -128,6 +129,7 @@ export function useDungeonSuggestions(
     setFetchState((s) => ({ ...s, phase: 'loading', lookupTargetCount: uniqueLookups.length }));
 
     let cancelled = false;
+    const startedAt = performance.now();
     Promise.allSettled(
       uniqueLookups.map(t =>
         fetchCharacterDungeonScores(t.name, t.realm, t.region, controller.signal),
@@ -146,6 +148,9 @@ export function useDungeonSuggestions(
         }
       }
       const serviceErrors = failureReasons.length;
+      const summary = `Raider.io scores: ${results.length - serviceErrors} of ${results.length} in ${Math.round(performance.now() - startedAt)}ms`;
+      if (serviceErrors > 0) logWarn('dungeonSuggestions', summary, { error: String(failureReasons[0]) });
+      else logInfo('dungeonSuggestions', summary);
       // Per-character Raider.io failures are tolerated — the UI shows partial
       // data and the next refetch usually fixes it. Only escalate if every
       // lookup in the batch failed (Raider.io outage or local network down).

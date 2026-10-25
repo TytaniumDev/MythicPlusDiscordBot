@@ -1,6 +1,6 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
-import { logWarn } from './lib/log';
+import { logTimed, logWarn } from './lib/log';
 import { isDiscordEmbedded } from './lib/embedded';
 
 export interface DiscordContext {
@@ -85,7 +85,7 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
 
   try {
     const discordSdk = new DiscordSDK(clientId);
-    await discordSdk.ready();
+    await logTimed('discordSdk', 'Discord SDK ready', () => discordSdk.ready());
 
     _sdkInstance = discordSdk;
 
