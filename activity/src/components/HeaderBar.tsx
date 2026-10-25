@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { IconButton } from './ui';
 import { AffixBar } from './AffixBar';
+import { BugReportButton } from './BugReportButton';
 import wheelsonIcon from '../img/wheelson.png';
 
 const BackArrow = () => (
@@ -79,6 +80,7 @@ export function HeaderBar({
 
       <div className="header-bar__right">
         {extra}
+        <BugReportButton />
         {avatar}
       </div>
     </header>

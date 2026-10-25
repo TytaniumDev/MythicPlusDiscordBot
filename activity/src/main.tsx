@@ -1,6 +1,8 @@
-// Sentry init must run before any other module so uncaught module-level
-// errors during bootstrap are captured.
+// The log buffer and Sentry must start before any other module, so bug reports
+// hold the bootstrap's console lines and uncaught module-level errors are captured.
 import { initSentry, Sentry, reportError } from './lib/sentry';
+import { installLogBuffer } from './lib/logBuffer';
+installLogBuffer();
 initSentry();
 
 // Remove the Blizzard render-cache service worker that older builds installed:

@@ -77,6 +77,11 @@ export function initSentry(): void {
   initialized = true;
 }
 
+/** Whether Sentry is set up, so reports sent to it reach Sentry. */
+export function isSentryReady(): boolean {
+  return initialized;
+}
+
 /**
  * A one-line message for the console. The Discord SDK rejects with plain
  * `{ code, message }` objects, which `String()` turns into "[object Object]".
