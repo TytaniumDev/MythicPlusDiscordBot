@@ -3,6 +3,7 @@ import { functions, authReady } from '../firebase';
 import { useAppStore } from '../store/store';
 import { lookupCharacterProfile } from './raiderioService';
 import { reportError } from '../lib/sentry';
+import { logInfo, logWarn } from '../lib/log';
 import { toCharacterClass } from '@mythicplus/shared';
 import type { CharacterClass, Role, Utility } from '@mythicplus/shared';
 
@@ -51,6 +52,20 @@ const RAIDERIO_ROLE_MAP: Record<string, Role> = {
  * in demo mode). `forceRefresh` skips the function's one-day cache.
  */
 export async function lookupCharacter(
+  name: string,
+  realm: string,
+  region: string,
+  options?: { forceRefresh?: boolean },
+): Promise<CharacterLookupResult> {
+  const start = performance.now();
+  const result = await lookupCharacterOnce(name, realm, region, options);
+  const ms = Math.round(performance.now() - start);
+  if (result.status === 'found') logInfo('characterLookup', `found in ${ms}ms`);
+  else logWarn('characterLookup', `${result.status} after ${ms}ms`, { forceRefresh: !!options?.forceRefresh });
+  return result;
+}
+
+async function lookupCharacterOnce(
   name: string,
   realm: string,
   region: string,

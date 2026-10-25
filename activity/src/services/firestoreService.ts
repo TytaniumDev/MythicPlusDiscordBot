@@ -7,7 +7,7 @@ import { fileBadGroupReport, fileIssueReport } from './reports';
 import { parsePlayerPreferences } from '@mythicplus/shared';
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
-import { logInfo, logWarn } from '../lib/log';
+import { logInfo, logTimed, logWarn } from '../lib/log';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
 import { ensureLobby, lobbyReset, startReveal, startSpin } from './lobby';
 
@@ -193,12 +193,16 @@ class FirestoreSessionService implements SessionService {
 
   async requestSpin(channelId: string, players: readonly WoWPlayer[], seasonSlug: string | null): Promise<void> {
     await authReady;
-    await startSpin(db, channelId, players, seasonSlug);
+    const accepted = await logTimed('spin', 'spin write', () => startSpin(db, channelId, players, seasonSlug));
+    if (accepted) logInfo('spin', 'server accepted the spin', { players: players.length });
+    else logWarn('spin', 'spin not taken: the lobby was no longer waiting (someone else spun first?)');
   }
 
   async revealAllGroups(channelId: string, groupCount: number): Promise<void> {
     await authReady;
-    await startReveal(db, channelId, groupCount);
+    const accepted = await logTimed('spin', 'reveal write', () => startReveal(db, channelId, groupCount));
+    if (accepted) logInfo('spin', 'server accepted the reveal', { groups: groupCount });
+    else logWarn('spin', 'reveal not taken: the round was not spinning or already revealed');
   }
 
   async finishSequence(channelId: string): Promise<void> {
@@ -219,11 +223,11 @@ class FirestoreSessionService implements SessionService {
   async saveRoles(playerId: string, roles: string[], inGameName: string): Promise<void> {
     await authReady;
     const prefRef = doc(db, 'preferences', playerId);
-    await setDoc(prefRef, {
+    await logTimed('profile', `save roles (${roles.length})`, () => setDoc(prefRef, {
       roles,
       inGameName,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    }, { merge: true }));
   }
 
   async saveLinkedCharacter(
@@ -240,12 +244,12 @@ class FirestoreSessionService implements SessionService {
       payload.mediaUrlUpdatedAt = serverTimestamp();
     }
     if (characterClass !== undefined) payload.characterClass = characterClass;
-    await setDoc(prefRef, payload, { merge: true });
+    await logTimed('profile', 'save linked character', () => setDoc(prefRef, payload, { merge: true }));
   }
 
   async selectChannel(channelId: string, channelName: string, guildId: string): Promise<void> {
     await authReady;
-    await ensureLobby(db, channelId, channelName || '', guildId);
+    await logTimed('lobby', 'open lobby', () => ensureLobby(db, channelId, channelName || '', guildId));
   }
 
   async reportBadGroup(report: BadGroupReportInput): Promise<void> {
