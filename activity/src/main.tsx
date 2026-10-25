@@ -25,6 +25,9 @@ import { App } from './App';
 import { useAppStore } from './store/store';
 import { canAuthorizeWithDiscord, setupDiscordSdk } from './discordSdk';
 import { watchDiscordSignIn } from './services/discordAuth';
+import { watchStateForLogs } from './lib/stateLog';
+import { logInfo } from './lib/log';
+import { isDiscordEmbedded } from './lib/embedded';
 import { migrateLegacyStorage } from './lib/storedDiscordId';
 import { splitPlayers } from './lib/profiles';
 import { statusToView } from './lib/routing';
@@ -52,6 +55,9 @@ function loadFixtureChannel(raw: ChannelData & { players?: WoWPlayer[] }): Chann
 }
 
 async function init() {
+  watchStateForLogs();
+  logInfo('init', 'starting', { version: __COMMIT_HASH__, embedded: isDiscordEmbedded() });
+
   // Migrate legacy localStorage keys before any code reads
   // wheelson-discord-id (e.g. resolveLobbyGate in App.tsx).
   migrateLegacyStorage();
@@ -131,6 +137,7 @@ async function init() {
     if (discordContext) {
       guildId = discordContext.guildId;
       channelId = discordChannelId = discordContext.channelId;
+      logInfo('init', 'Discord launch context', { voiceChannel: !!discordContext.channelId });
     } else {
       console.warn('[Wheelson] Discord SDK returned null context');
     }

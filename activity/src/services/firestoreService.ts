@@ -7,6 +7,7 @@ import { fileBadGroupReport, fileIssueReport } from './reports';
 import { parsePlayerPreferences } from '@mythicplus/shared';
 import type { CharacterClass, PlayerPreferences } from '@mythicplus/shared';
 import { reportError } from '../lib/sentry';
+import { logInfo, logWarn } from '../lib/log';
 import { decodeChannelData, decodeGuildData, reportDecodeIssues } from './firestoreDecoders';
 import { ensureLobby, lobbyReset, startReveal, startSpin } from './lobby';
 
@@ -48,6 +49,7 @@ class FirestoreSessionService implements SessionService {
         // doesn't know about it either.
         if (docSnap.metadata.fromCache || this.creatingGuild) return;
         this.creatingGuild = true;
+        logInfo('firestoreService', 'no guild doc on the server; creating it');
         s.setStatusMessage('Setting up session...');
         this.createGuildEntry(guildId, launchChannelId)
           .catch((err) => {
@@ -91,7 +93,10 @@ class FirestoreSessionService implements SessionService {
         missingTimer = setTimeout(() => {
           missingTimer = null;
           const view = useAppStore.getState().currentView;
-          if (view === 'home' || view === 'connecting') return;
+          if (view === 'home' || view === 'connecting') {
+            logWarn('firestoreService', `no lobby doc on the server after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`, { view });
+            return;
+          }
           reportError(
             new Error(`No doc at channels/${channelId} after ${CHANNEL_DOC_MISSING_GRACE_MS}ms`),
             { tag: 'firestoreService.channelDocMissing', extra: { channelId, view } },

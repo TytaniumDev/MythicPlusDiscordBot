@@ -1,5 +1,6 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
+import { logWarn } from './lib/log';
 import { isDiscordEmbedded } from './lib/embedded';
 
 export interface DiscordContext {
@@ -88,7 +89,10 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
 
     _sdkInstance = discordSdk;
 
-    if (!discordSdk.guildId) return null;
+    if (!discordSdk.guildId) {
+      logWarn('discordSdk', 'ready, but launched outside a guild');
+      return null;
+    }
 
     _launchContext = {
       guildId: discordSdk.guildId,
