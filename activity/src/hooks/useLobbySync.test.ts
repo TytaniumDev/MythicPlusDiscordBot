@@ -5,11 +5,13 @@ import type { ChannelData } from '../types';
 const mocks = vi.hoisted(() => ({
   instanceId: 'i-1' as string | null,
   syncLobbyMembers: vi.fn(),
+  reportError: vi.fn(),
 }));
 vi.mock('../discordSdk', () => ({
   activityInstanceId: () => mocks.instanceId,
 }));
 vi.mock('../services/lobbyMembers', () => ({ syncLobbyMembers: mocks.syncLobbyMembers }));
+vi.mock('../lib/sentry', () => ({ reportError: mocks.reportError }));
 
 import { SYNC_INTERVAL_MS, useLobbySync } from './useLobbySync';
 import { useAppStore } from '../store/store';
@@ -41,6 +43,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   mocks.instanceId = 'i-1';
   mocks.syncLobbyMembers.mockReset().mockResolvedValue(undefined);
+  mocks.reportError.mockReset();
 });
 
 afterEach(() => {
@@ -73,6 +76,18 @@ describe('useLobbySync', () => {
     act(() => useAppStore.getState().setChannelData(lobby('spinning')));
     act(() => { vi.advanceTimersByTime(2 * SYNC_INTERVAL_MS); });
     expect(mocks.syncLobbyMembers).toHaveBeenCalledOnce();
+  });
+
+  it('reports a sync that keeps failing once, until one succeeds', async () => {
+    mocks.syncLobbyMembers.mockRejectedValue(new Error('unavailable'));
+    start();
+    await act(async () => { vi.advanceTimersByTime(2 * SYNC_INTERVAL_MS); });
+    expect(mocks.reportError).toHaveBeenCalledOnce();
+
+    mocks.syncLobbyMembers.mockResolvedValueOnce(undefined);
+    await act(async () => { vi.advanceTimersByTime(SYNC_INTERVAL_MS); });
+    await act(async () => { vi.advanceTimersByTime(SYNC_INTERVAL_MS); });
+    expect(mocks.reportError).toHaveBeenCalledTimes(2);
   });
 
   it('keeps asking after a failed sync', async () => {
