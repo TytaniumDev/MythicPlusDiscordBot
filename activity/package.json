@@ -18,7 +18,7 @@
     "@discord/embedded-app-sdk": "^2.5.0",
     "@floating-ui/react": "^0.27.20",
     "@mythicplus/shared": "*",
-    "@sentry/react": "^10.48.0",
+    "@sentry/react": "^11.14.0",
     "firebase": "^12.8.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
