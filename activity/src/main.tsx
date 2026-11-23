@@ -1,6 +1,8 @@
-// Sentry init must run before any other module so uncaught module-level
-// errors during bootstrap are captured.
+// The log buffer and Sentry must start before any other module, so bug reports
+// hold the bootstrap's console lines and uncaught module-level errors are captured.
 import { initSentry, Sentry, reportError } from './lib/sentry';
+import { installLogBuffer } from './lib/logBuffer';
+installLogBuffer();
 initSentry();
 
 // Remove the Blizzard render-cache service worker that older builds installed:
@@ -23,6 +25,9 @@ import { App } from './App';
 import { useAppStore } from './store/store';
 import { canAuthorizeWithDiscord, setupDiscordSdk } from './discordSdk';
 import { watchDiscordSignIn } from './services/discordAuth';
+import { watchStateForLogs } from './lib/stateLog';
+import { logInfo } from './lib/log';
+import { isDiscordEmbedded } from './lib/embedded';
 import { migrateLegacyStorage } from './lib/storedDiscordId';
 import { splitPlayers } from './lib/profiles';
 import { statusToView } from './lib/routing';
@@ -50,6 +55,9 @@ function loadFixtureChannel(raw: ChannelData & { players?: WoWPlayer[] }): Chann
 }
 
 async function init() {
+  watchStateForLogs();
+  logInfo('init', 'starting', { version: __COMMIT_HASH__, embedded: isDiscordEmbedded() });
+
   // Migrate legacy localStorage keys before any code reads
   // wheelson-discord-id (e.g. resolveLobbyGate in App.tsx).
   migrateLegacyStorage();
@@ -129,6 +137,7 @@ async function init() {
     if (discordContext) {
       guildId = discordContext.guildId;
       channelId = discordChannelId = discordContext.channelId;
+      logInfo('init', 'Discord launch context', { voiceChannel: !!discordContext.channelId });
     } else {
       console.warn('[Wheelson] Discord SDK returned null context');
     }

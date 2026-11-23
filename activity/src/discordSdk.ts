@@ -1,32 +1,17 @@
 import { DiscordSDK, patchUrlMappings } from '@discord/embedded-app-sdk';
 import { reportError } from './lib/sentry';
+import { logTimed, logWarn } from './lib/log';
+import { isDiscordEmbedded } from './lib/embedded';
 
 export interface DiscordContext {
   guildId: string;
   channelId: string | null;
 }
 
-export interface DiscordParticipant {
-  id: string;
-  nickname: string | null;
-  global_name: string | null;
-  username: string;
-}
-
 // Detect embedded mode early and patch network URLs before Firebase initializes.
 // Discord's activity proxy blocks direct requests to external domains — all
 // traffic must go through URL mappings configured in the Developer Portal.
-// Being in an iframe isn't sufficient (Storybook's preview is also iframed);
-// we additionally require the `frame_id` query param that Discord always
-// appends to activity URLs.
-let _isEmbedded = false;
-try {
-  const inIframe = window.self !== window.top;
-  const hasFrameId = new URLSearchParams(window.location.search).has('frame_id');
-  _isEmbedded = inIframe && hasFrameId;
-} catch {
-  _isEmbedded = true;
-}
+const _isEmbedded = isDiscordEmbedded();
 
 // Hosts whose images are loaded via <img src>. They need both a patchUrlMappings
 // entry (so the SDK whitelists them) AND a Developer Portal URL mapping.
@@ -100,11 +85,14 @@ export async function setupDiscordSdk(): Promise<DiscordContext | null> {
 
   try {
     const discordSdk = new DiscordSDK(clientId);
-    await discordSdk.ready();
+    await logTimed('discordSdk', 'Discord SDK ready', () => discordSdk.ready());
 
     _sdkInstance = discordSdk;
 
-    if (!discordSdk.guildId) return null;
+    if (!discordSdk.guildId) {
+      logWarn('discordSdk', 'ready, but launched outside a guild');
+      return null;
+    }
 
     _launchContext = {
       guildId: discordSdk.guildId,
@@ -137,50 +125,6 @@ export async function authorizeWithDiscord(): Promise<string> {
     scope: ['identify'],
   });
   return code;
-}
-
-function toParticipant(p: Record<string, unknown>): DiscordParticipant {
-  return {
-    id: (p.id ?? p.user_id ?? '') as string,
-    nickname: (p.nickname ?? null) as string | null,
-    global_name: (p.global_name ?? null) as string | null,
-    username: (p.username ?? '') as string,
-  };
-}
-
-/**
- * Get all participants connected to the current activity instance.
- * Returns empty array if not embedded or SDK not initialized.
- */
-export async function getParticipants(): Promise<DiscordParticipant[]> {
-  if (!_sdkInstance) return [];
-
-  try {
-    const result = await _sdkInstance.commands.getInstanceConnectedParticipants();
-    return (result.participants ?? []).map(toParticipant);
-  } catch (e) {
-    reportError(e, { tag: 'discordSdk.getParticipants' });
-    return [];
-  }
-}
-
-/**
- * Call `listener` with the instance's participants each time someone opens or
- * closes the activity. Returns the unsubscribe function; a no-op outside
- * Discord.
- */
-export function onParticipantsChange(listener: (participants: DiscordParticipant[]) => void): () => void {
-  const sdk = _sdkInstance;
-  if (!sdk) return () => {};
-  const handler = (event: { participants: Record<string, unknown>[] }) => {
-    listener((event.participants ?? []).map(toParticipant));
-  };
-  sdk.subscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch((e: unknown) => {
-    reportError(e, { tag: 'discordSdk.onParticipantsChange' });
-  });
-  return () => {
-    sdk.unsubscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', handler).catch(() => {});
-  };
 }
 
 /**

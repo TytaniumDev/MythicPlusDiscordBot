@@ -3,6 +3,7 @@ import { useAppStore } from '../store/store';
 import { useSessionService } from '../hooks/useSession';
 import { launchContext } from '../discordSdk';
 import { reportError } from '../lib/sentry';
+import { logInfo } from '../lib/log';
 import { HeaderBar } from '../components/HeaderBar';
 import { HeaderProfileSlot } from '../components/HeaderProfileSlot';
 
@@ -22,6 +23,7 @@ export function ConnectingView() {
     const launch = launchContext();
     const store = useAppStore.getState();
     if (!launch || store.currentChannelId) return;
+    logInfo('ConnectingView', 'rejoining the launch channel');
     store.setGuildId(launch.guildId);
     if (launch.channelId) store.setChannelId(launch.channelId);
   }, []);
@@ -29,8 +31,15 @@ export function ConnectingView() {
   // firestore.rules only accept a lobby for a guild doc that exists, so wait
   // for it (the guild subscription creates a missing one).
   useEffect(() => {
-    if (!guildReady || !guildId || !channelId) return;
-    service.selectChannel(channelId, '', guildId).catch((err) => {
+    if (!guildId || !channelId) return;
+    if (!guildReady) {
+      logInfo('ConnectingView', 'waiting for the guild doc before opening the lobby');
+      return;
+    }
+    logInfo('ConnectingView', 'opening the lobby');
+    service.selectChannel(channelId, '', guildId).then(() => {
+      logInfo('ConnectingView', 'lobby open');
+    }, (err) => {
       reportError(err, { tag: 'ConnectingView.selectChannel' });
       useAppStore.getState().setStatusMessage('Failed to open the lobby. Please try again.');
     });

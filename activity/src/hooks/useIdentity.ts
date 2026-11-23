@@ -1,9 +1,8 @@
 import { useCallback } from 'react';
-import { lobbyMemberName } from '@mythicplus/shared';
 import { useAppStore } from '../store/store';
-import { getParticipants } from '../discordSdk';
 import { WoWPlayer } from '../types';
 import { reportError } from '../lib/sentry';
+import { logInfo } from '../lib/log';
 import { loadStoredDiscordId, saveStoredDiscordId } from '../lib/storedDiscordId';
 import { getSessionService } from './useSession';
 
@@ -11,6 +10,8 @@ interface CommitOptions {
   /** When true, also write the discordId to localStorage. Skip when the call
    *  site is *reading* from localStorage (the value is already there). */
   persist: boolean;
+  /** How the identity was found, for bug reports. */
+  source: 'signed in' | 'remembered' | 'picked';
 }
 
 /**
@@ -36,6 +37,7 @@ function setClaim(discordId: string, claimed: boolean): void {
 function commitIdentity(player: WoWPlayer, opts: CommitOptions): void {
   const store = useAppStore.getState();
   const previousId = store.currentPlayerId;
+  logInfo('identity', `${opts.source}${previousId && previousId !== player.discordId ? ', replacing an earlier pick' : ''}`);
   store.setIdentity(player.discordId ?? null, player.name);
   store.setIdentityResolved(true);
   if (previousId && previousId !== player.discordId) setClaim(previousId, false);
@@ -61,13 +63,15 @@ export function useIdentity() {
       const replacedBySignIn = verifiedPlayer != null && verifiedPlayer.discordId !== state.currentPlayerId;
       if (stillHere && !replacedBySignIn) return;
       // Player left, or the signed-in Discord user is here as someone else — re-resolve
+      logInfo('identity', replacedBySignIn ? 'signed-in user is here as another player; re-resolving' : 'my player left the lobby; re-resolving');
       setClaim(state.currentPlayerId, false);
       state.resetIdentity();
     }
 
     // A Discord sign-in is proof of identity: use it and never guess past it.
     if (verifiedId) {
-      if (verifiedPlayer) commitIdentity(verifiedPlayer, { persist: true });
+      if (verifiedPlayer) commitIdentity(verifiedPlayer, { persist: true, source: 'signed in' });
+      else logInfo('identity', 'signed in, but not in this lobby yet');
       return;
     }
 
@@ -76,40 +80,17 @@ export function useIdentity() {
     if (stored) {
       const match = players.find((p) => p.discordId === stored);
       if (match) {
-        commitIdentity(match, { persist: false });
+        commitIdentity(match, { persist: false, source: 'remembered' });
         return;
       }
-    }
-
-    // Auto-match via Discord participants
-    const participants = await getParticipants();
-    if (participants.length === 0) return;
-
-    for (const participant of participants) {
-      const pName = lobbyMemberName({
-        nick: participant.nickname,
-        globalName: participant.global_name,
-        username: participant.username,
-      });
-      const match = players.find((p) => p.name === pName);
-      if (match && match.discordId) {
-        commitIdentity(match, { persist: true });
-        return;
-      }
-    }
-
-    // Try matching by discordId directly
-    const participantIds = new Set(participants.map((p) => p.id));
-    const idMatches = players.filter((p) => p.discordId && participantIds.has(p.discordId));
-    if (idMatches.length === 1) {
-      commitIdentity(idMatches[0], { persist: true });
     }
 
     // Otherwise: no match — identity selector will show in lobby
+    logInfo('identity', stored ? 'remembered player is not in this lobby; showing the picker' : 'nobody remembered; showing the picker');
   }, []);
 
   const selectPlayer = useCallback((player: WoWPlayer) => {
-    commitIdentity(player, { persist: true });
+    commitIdentity(player, { persist: true, source: 'picked' });
   }, []);
 
   return {

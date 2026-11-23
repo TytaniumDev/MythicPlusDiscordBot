@@ -31,6 +31,18 @@ We have added a GitHub Action to automatically deploy your activity files. You j
     *   **Prefix**: `/`
     *   **Target**: Paste the GitHub Pages URL you copied earlier (e.g., `https://yourname.github.io/your-repo/`).
     *   *Important:* Ensure the target URL matches exactly.
+4.  Add the mappings for the services the activity calls. Inside Discord it can only reach hosts listed here (`activity/src/discordSdk.ts` and `activity/src/lib/sentry.ts` rewrite requests to these prefixes):
+
+    | Prefix | Target |
+    | --- | --- |
+    | `/firebase` | `firestore.googleapis.com` |
+    | `/auth` | `identitytoolkit.googleapis.com` |
+    | `/authtoken` | `securetoken.googleapis.com` |
+    | `/functions` | `us-central1-<firebase project ID>.cloudfunctions.net` |
+    | `/blizzard-renders` | `render.worldofwarcraft.com` |
+    | `/raiderio-cdn` | `cdn.raiderio.net` |
+    | `/raiderio` | `raider.io` |
+    | `/sentry` | The host in `VITE_SENTRY_DSN`, the part after `@` (like `o123.ingest.us.sentry.io`) |
 
 ### Optional: Sign in with Discord
 
