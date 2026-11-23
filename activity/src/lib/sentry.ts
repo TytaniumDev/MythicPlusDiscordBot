@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react';
+import { isDiscordEmbedded } from './embedded';
 
 const ANONYMOUS_ID_KEY = 'wheelson-anonymous-id';
 
@@ -24,6 +25,25 @@ function getAnonymousId(): string {
 
 let initialized = false;
 
+/** The Developer Portal URL mapping that proxies Sentry's ingest host. */
+export const SENTRY_PROXY_PREFIX = '/sentry';
+
+/**
+ * Where reports go inside Discord: an activity can only reach hosts in its URL
+ * mappings, and Sentry sends with a fetch the SDK's `patchUrlMappings` can't
+ * rewrite, so reports are posted to the project's envelope endpoint through
+ * the `/sentry` mapping instead. Null when the DSN has no project ID.
+ */
+export function sentryTunnel(dsn: string): string | null {
+  try {
+    const projectId = new URL(dsn).pathname.split('/').filter(Boolean).pop();
+    return projectId ? `${SENTRY_PROXY_PREFIX}/api/${projectId}/envelope/` : null;
+  } catch {
+    // intentional: a malformed DSN means no tunnel; Sentry.init reports it
+    return null;
+  }
+}
+
 /**
  * Initialize Sentry. No-op when VITE_SENTRY_DSN is absent (local dev, CI
  * without the secret, preview builds), so the app keeps working without it.
@@ -37,6 +57,7 @@ export function initSentry(): void {
 
   Sentry.init({
     dsn,
+    tunnel: isDiscordEmbedded() ? sentryTunnel(dsn) ?? undefined : undefined,
     environment: import.meta.env.MODE,
     release: typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : undefined,
     // Keep the payload small — we care about errors, not performance traces.
@@ -56,6 +77,28 @@ export function initSentry(): void {
   initialized = true;
 }
 
+/** Whether Sentry is set up, so reports sent to it reach Sentry. */
+export function isSentryReady(): boolean {
+  return initialized;
+}
+
+/**
+ * A one-line message for the console. The Discord SDK rejects with plain
+ * `{ code, message }` objects, which `String()` turns into "[object Object]".
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      // intentional: a circular object falls back to String()
+      void 0;
+    }
+  }
+  return String(error);
+}
+
 /**
  * Report an error to Sentry with optional tagged context. Also logs to the
  * console so the error is still visible in local development without a DSN.
@@ -65,7 +108,7 @@ export function reportError(
   context?: { tag?: string; extra?: Record<string, unknown> },
 ): void {
   const tag = context?.tag ? `[${context.tag}] ` : '';
-  console.error(`[Wheelson] ${tag}${error instanceof Error ? error.message : String(error)}`, error);
+  console.error(`[Wheelson] ${tag}${describeError(error)}`, error);
 
   if (!initialized) return;
 
